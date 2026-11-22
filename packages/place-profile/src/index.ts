@@ -41,13 +41,11 @@ export {
   type OfferSlide,
 } from "./components/place-detail/offer-slides";
 export {
-  OFFER_TICKET_KEYS,
-  OFFER_TICKET_STEPS,
-  OfferTicket,
+  BASKET_MAX,
+  basketItems,
   readyClock,
   VouchersPane,
   voucherOffers,
-  type OfferTicketFrame,
   type VoucherOffer,
 } from "./components/place-detail/vouchers";
 export { cardExpiry, isCardExpired, MAX_PAY_CARDS, pickPayCard, type PayCard, type PayCards } from "./pay-cards";

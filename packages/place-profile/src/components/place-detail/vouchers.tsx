@@ -1,14 +1,12 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Check, CircleCheck, Clock, CreditCard, Crown, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Check, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
-import type { PlaceActions } from "../../actions";
+import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
-import {
-  PLACE_META_CLASS,
-} from "../../lib/ui";
 import { VOUCHER_TONE } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
@@ -545,55 +543,66 @@ function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
   );
 }
 
-/** How a card charge ended, as the ticket's Credits and Receipt draw it. */
+/** THE MOST OF ONE VOUCHER IN A BASKET (MESITA-4647): the server's own caps
+ *  (`_shared/vouchers.ts` BASKET_MAX_QTY 5; BASKET_ONE_ONLY Welcome and VIP
+ *  1). The server refuses past them whatever this says. */
+export const BASKET_MAX: Record<MoneyVoucherKey, number> = {
+  voucher_welcome: 1,
+  voucher_vip: 1,
+  voucher_200: 5,
+  voucher_1000: 5,
+  voucher_5000: 5,
+};
+
+/** How many of each voucher the guest picked on the Offers page. */
+export type Basket = Partial<Record<MoneyVoucherKey, number>>;
+
+/** WHAT PAY CHARGES (MESITA-4647): the picked vouchers in the page's order,
+ *  each clamped to its cap, the zero ones and the ones not buyable dropped.
+ *  Pure: it decides the basket a card is charged for. */
+export function basketItems(basket: Basket, buyable: (k: MoneyVoucherKey) => boolean = () => true): VoucherBasketItem[] {
+  return listedProducts().flatMap((p) => {
+    const raw = basket[p.key] ?? 0;
+    const n = Number.isFinite(raw) ? Math.min(Math.max(0, Math.floor(raw)), BASKET_MAX[p.key]) : 0;
+    return n > 0 && buyable(p.key) ? [{ voucher: p.key, qty: n }] : [];
+  });
+}
+
+/** One line of a basket as the receipt draws it, copied when Pay is tapped. */
+type ReceiptLine = { key: MoneyVoucherKey; short: string; qty: number; pay: string };
+
+/** How a basket's charge ended, built from the copy taken at Pay (never the
+ *  live steppers or catalog, which may change while the bank answers). */
 type Receipt = {
   outcome: "paid" | "processing";
+  lines: ReceiptLine[];
   pay: string;
   bonus: string | null;
+  get: string;
   readyAt: string | null;
-  /** The saved card it was charged to. */
   card: { label: string; last4: string } | null;
-  /** When the charge answered (ISO). */
   at: string;
 };
 
-/** What a Pay ends in: a receipt, or nothing (the host already said why;
- *  the sheet stays). */
-type PayResult = Receipt | null;
+/** The basket's sums from the server's catalog lines, or null when a line
+ *  is missing (then nothing can be added up, and Pay waits). */
+function basketTotals(items: VoucherBasketItem[], catalog: Partial<Record<MoneyVoucherKey, VoucherCatalogLine>>) {
+  let price = 0;
+  let bonus = 0;
+  let credit = 0;
+  let wait = 0;
+  for (const i of items) {
+    const line = catalog[i.voucher as MoneyVoucherKey];
+    if (!line) return null;
+    price += line.price_cents * i.qty;
+    bonus += line.bonus_cents * i.qty;
+    credit += line.credit_cents * i.qty;
+    wait = Math.max(wait, line.available_after_sec);
+  }
+  return { price, bonus, credit, wait };
+}
 
-/** One offer as the ticket draws it: the deal, who may buy it, the card it
- *  pays with, and Pay. */
-type Offer = {
-  pay: string;
-  get: string;
-  /** "+10%". */
-  bonus: string;
-  /** "$20.00MX", or null without a catalog line. */
-  bonusAmount: string | null;
-  can: boolean;
-  status: InfoStatus;
-  live: boolean;
-  buying: boolean;
-  payCards: PayCards | undefined;
-  payCard: { label: string; last4: string } | null;
-  canChange: boolean;
-  onChangeCard: () => void;
-  onRetryCards?: () => void;
-  signedOut: boolean;
-  /** The cards are still being read. */
-  cardsPending: boolean;
-  /** Cards were read and none is usable: Pay goes to Add a card. */
-  needsCard: boolean;
-  /** The guest's default is the card and one is ready: it leads the pay box (MESITA-4529). */
-  cardFirst: boolean;
-  onPay: () => Promise<PayResult>;
-  /** The host's offer_sheet_opened (MESITA-4375): called once a sheet's
-   *  cards are known, with whether a saved card is ready. */
-  onOpened: () => void;
-};
-
-/** Everything the Offers page and the ticket share: the rules, the cards,
- *  and how one product is bought. */
+/** The reads the Offers page pays with: the rules, the catalog and the cards. */
 function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined) {
   const money = place.money;
   // The host is still asking list-vouchers and the place read carried no
@@ -617,105 +626,106 @@ function useOfferCheckout(place: PlaceDetail, actions: PlaceActions | undefined)
   };
   // Signed out: no balance and no cards were read (MESITA-4224, D6).
   const signedOut = live && money != null && money.balance === null && payCards === undefined;
-
-  const offer = (p: Product): Offer => {
-    const line = catalog[p.key];
-    const pay = priceValue(p, line, currency);
-    const can = rules.buyable(p.key);
-    const lock = rules.guestLock(p.key);
-    const bonusAmount = line ? pesos(line.bonus_cents, currency) : null;
-    const receiptFor = (outcome: Receipt["outcome"]): Receipt => {
-      const wait = line ? line.available_after_sec : null;
-      const readyAt = wait !== null ? new Date(Date.now() + wait * 1000).toISOString() : null;
-      return { outcome, pay, bonus: bonusAmount ? whole(bonusAmount) : null, readyAt, card: payCard, at: new Date().toISOString() };
-    };
-    return {
-      pay,
-      get: creditValue(p, line, currency),
-      bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
-      bonusAmount,
-      can,
-      status: offerStatus(p.key, can, lock, rules.unavailable[p.key]),
-      live,
-      buying,
-      payCards,
-      payCard,
-      canChange: usableCards.length > 1,
-      onChangeCard: nextCard,
-      onRetryCards: actions?.onRetryPayCards,
-      signedOut,
-      cardsPending: payCards !== undefined && payCards.state !== "ready",
-      needsCard: payCards?.state === "ready" && payCard === null,
-      cardFirst: payCards?.state === "ready" && payCards.cardFirst === true && payCard !== null,
-      onOpened: () => actions?.onOfferOpened?.(p.key, payCard !== null),
-      onPay: async (): Promise<PayResult> => {
-        if (!live) return null;
-        // No card yet: the Add a card page, which brings the guest back to
-        // this offer (MESITA-4230, D4).
-        if (!signedOut && readyCards !== null && payCard === null && actions?.onAddPayCard) {
-          actions.onAddPayCard(p.key);
-          return null;
-        }
-        // One unit, nothing else in the basket.
-        const out = await actions?.onBuyVoucher?.([{ voucher: p.key, qty: 1 }], signedOut ? null : payCard?.id ?? null);
-        if (out !== "paid" && out !== "processing") return null;
-        return receiptFor(out);
-      },
-    };
+  return {
+    loading,
+    ...rules,
+    catalog,
+    currency,
+    live,
+    buying,
+    payCards,
+    readyCards,
+    payCard,
+    canChange: usableCards.length > 1,
+    nextCard,
+    signedOut,
+    needsCard: !signedOut && payCards?.state === "ready" && payCard === null,
   };
-  return { loading, ...rules, catalog, currency, offer };
 }
 
-/** OFFER EVENTS BASELINE (MESITA-4375): one offer_sheet_opened per opening,
- *  sent once the cards are read (or known absent), so `saved_card` is true
- *  only when a usable card was ready. The measuring ships before Apple Pay /
- *  Google Pay so the funnel has a before. */
-function useOfferOpened(offer: Offer) {
-  const sent = useRef(false);
-  const { cardsPending, onOpened } = offer;
-  useEffect(() => {
-    if (sent.current || cardsPending) return;
-    sent.current = true;
-    onOpened();
-  }, [cardsPending, onOpened]);
-}
-
-/** The card the offer pays with, Change, a failed read's Retry, and the
- *  no-card note (MESITA-4230, D4). */
-function CardLine({ offer }: { offer: Offer }) {
+/** A row of the receipt: a label at the left, the value at the right. */
+function ReceiptRow({ label, value, green }: { label: string; value: ReactNode; green?: boolean }) {
   return (
-    <>
-      {offer.payCard && !offer.signedOut ? (
-        <p className="flex items-center justify-between text-base" data-pay-card-line>
-          <span className="text-foreground truncate font-semibold">
-            {offer.payCard.label} •••• {offer.payCard.last4}
-          </span>
-          {offer.canChange ? (
-            <button
-              type="button"
-              disabled={offer.buying}
-              onClick={offer.onChangeCard}
-              className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50"
-            >
-              Change
-            </button>
-          ) : null}
-        </p>
-      ) : null}
-      {offer.payCards?.state === "error" ? (
-        <p className="flex items-center justify-between text-base" role="alert">
-          <span className="text-foreground">Couldn&apos;t load your cards</span>
-          <button type="button" onClick={offer.onRetryCards} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2">
-            Retry
+    <div className="flex min-h-11 items-center justify-between gap-3 px-4 text-base">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn("text-right font-semibold tabular-nums", green ? "text-[#00A85A]" : "text-foreground")}>{value}</span>
+    </div>
+  );
+}
+
+/** − n + (MESITA-4647): one voucher's count in the basket. */
+function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number; max: number; disabled: boolean; onChange: (n: number) => void }) {
+  const btn =
+    "border-border text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-30";
+  return (
+    <div className="flex shrink-0 items-center gap-1" data-offer-stepper>
+      <button type="button" aria-label={`Remove one ${name}`} disabled={disabled || n <= 0} onClick={() => onChange(n - 1)} className={btn} data-offer-minus>
+        <Minus className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+      <span className="text-foreground w-5 text-center text-base font-bold tabular-nums" aria-live="polite" data-offer-qty>
+        {n}
+      </span>
+      <button type="button" aria-label={`Add one ${name}`} disabled={disabled || n >= max} onClick={() => onChange(n + 1)} className={btn} data-offer-plus>
+        <Plus className="h-4 w-4" strokeWidth={2.5} />
+      </button>
+    </div>
+  );
+}
+
+/** THE (i) (Pato, 2026-11-22, MESITA-4647: "if i want to see how it works,
+ *  i open the receive in x time"; then a centred floating modal like
+ *  Categories/Location, ✕ top right, no buy button): the deal, how it works
+ *  and good to know. Information only; buying happens on the list. */
+function OfferInfo({
+  product,
+  line,
+  currency,
+  card,
+  onClose,
+}: {
+  product: Product;
+  line: VoucherCatalogLine | undefined;
+  currency: string;
+  card: { label: string; last4: string } | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const pay = priceValue(product, line, currency);
+  const get = creditValue(product, line, currency);
+  const bonusAmount = line ? whole(pesos(line.bonus_cents, currency)) : null;
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose} data-offer-info>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="offer-info-title"
+        className="bg-background flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-2xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
+          <h2 id="offer-info-title" className="text-foreground text-base font-semibold">
+            {product.short}
+          </h2>
+          <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
+            <X className="h-6 w-6" strokeWidth={2.25} />
           </button>
-        </p>
-      ) : null}
-      {offer.needsCard && !offer.signedOut ? (
-        <p className="text-muted-foreground text-center text-sm" data-offer-add-card-note>
-          You&apos;ll add a card, then come right back here.
-        </p>
-      ) : null}
-    </>
+        </div>
+        <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+          <OfferBox pay={pay} get={get} bonus={`+${product.bonus.replace(/ bonus$/, "")}`} />
+          <Box title="How it works">
+            <StepList steps={sheetSteps(whole(pay), bonusAmount, card)} />
+          </Box>
+          <GoodToKnow productKey={product.key} />
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -737,326 +747,22 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
   );
 }
 
-/** The steps of a voucher's ticket (MESITA-4630). Choosing the offer is
- *  step 0, the front, never a step on the strip (Pato, 2026-11-21,
- *  MESITA-4635: "don't even mention pick a step. that is fake"): 1 Pay ·
- *  2 Credits · 3 Receipt. "Credits" is the stored voucher ticket's word
- *  (MESITA-4627); the bought voucher's ticket picks up where this one ends.
- *  The frame's own `step` still counts the front as 1: the strip shows
- *  `step - 1`, none on the front. */
-export const OFFER_TICKET_STEPS = ["Pay", "Credits", "Receipt"] as const;
-
-/** The vouchers bought on a ticket. */
-export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"];
-
-/** One step of the ticket, handed to the host's frame (the Pay Bill ticket's
- *  header, body and footer, which live in the host). */
-export type OfferTicketFrame = {
-  /** 1 the offer (the front, no strip) · 2 Pay · 3 Credits · 4 Receipt. */
-  step: 1 | 2 | 3 | 4;
-  /** The strip lights every step, a check on Receipt. */
-  allDone: boolean;
-  title: string;
-  /** ← one step back; null where there is none. */
-  onBack: (() => void) | null;
-  /** The card is being charged: ✕ and ← do nothing. */
-  busy: boolean;
-  /** The charge answered: ✕ finishes like Done. */
-  paid: boolean;
-  body: ReactNode;
-  /** The step's one dark button; null when the step has none (a locked
-   *  offer with nothing that unlocks it). */
-  primary: { label: string; disabled: boolean; busy: boolean; onClick: () => void } | null;
-};
-
-/** A row of the receipt: a label at the left, the value at the right. */
-function ReceiptRow({ label, value, green }: { label: string; value: ReactNode; green?: boolean }) {
-  return (
-    <div className="flex min-h-11 items-center justify-between gap-3 px-4 text-base">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={cn("text-right font-semibold tabular-nums", green ? "text-[#00A85A]" : "text-foreground")}>{value}</span>
-    </div>
-  );
-}
-
-/** THE VOUCHER TICKET (Pato, 2026-11-21, MESITA-4630: "these tickets for
- *  vouchers must also be like multi steps, kinda like the visit tickets …
- *  full page … with an X at the top right"; "DON'T INCLUDE MULTIPLE PAYMENT
- *  METHODS HERE. ONLY INCLUDE THE SAVED PAYMENT METHOD IN WALLET"). Pato's six
- *  candidates (Overview · Pay · Credits · Wait · Bonus · Receipt) fold into
- *  four: the Wait and the Bonus are one line on Credits, since nobody waits
- *  three hours on a screen.
- *
- *    1 Offer ── Continue ──► 2 Pay ── Pay $X ──► 3 Credits ── See receipt ──► 4 Receipt ── Done
- *       │ locked: the reason                  │ declined: stays, the host says why
- *       └ (no Continue)                       └ no card: Add a card (a modal), stays
- *
- *  Nothing is stored before the card charge answers paid or processing: the
- *  steps live in this component, so a reload starts at Offer again. The Pay
- *  step is the confirm (the inline ask of MESITA-4357 went). Apple Pay /
- *  Google Pay went with the sheet (MESITA-4384's express slot). The host
- *  draws the frame: this hands it each step through `frame`. */
-export function OfferTicket({
-  place,
-  actions,
-  productKey,
-  frame,
-  onFinish,
-  onMissing,
-}: {
-  place: PlaceDetail;
-  actions?: PlaceActions;
-  productKey: MoneyVoucherKey;
-  frame: (f: OfferTicketFrame) => ReactNode;
-  /** Done, or ✕ after the charge. */
-  onFinish: () => void;
-  /** The place does not offer this voucher (or it is not a ticket voucher):
-   *  the host goes back to Offers. Called once the offer is read. */
-  onMissing: () => void;
-}) {
-  const onLoad = actions?.onLoadVouchers;
-  useEffect(() => {
-    onLoad?.();
-  }, [onLoad]);
-  const co = useOfferCheckout(place, actions);
-  const product = OFFER_TICKET_KEYS.includes(productKey) ? listedProducts().find((p) => p.key === productKey) ?? null : null;
-  const missing = product === null || (!co.loading && place.money != null && co.show(productKey) === "hidden");
-  useEffect(() => {
-    if (!missing) return;
-    let gone = false;
-    // After a tick: no navigation while rendering.
-    void Promise.resolve().then(() => {
-      if (!gone) onMissing();
-    });
-    return () => {
-      gone = true;
-    };
-  }, [missing, onMissing]);
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [receipt, setReceipt] = useState<Receipt | null>(null);
-  if (!product) return null;
-  return (
-    <OfferTicketSteps
-      product={product}
-      placeName={place.name}
-      offer={co.offer(product)}
-      loading={co.loading}
-      step={step}
-      setStep={setStep}
-      receipt={receipt}
-      setReceipt={setReceipt}
-      frame={frame}
-      onFinish={onFinish}
-    />
-  );
-}
-
-function OfferTicketSteps({
-  product,
-  placeName,
-  offer,
-  loading,
-  step,
-  setStep,
-  receipt,
-  setReceipt,
-  frame,
-  onFinish,
-}: {
-  product: Product;
-  placeName: string;
-  offer: Offer;
-  loading: boolean;
-  step: 1 | 2 | 3 | 4;
-  setStep: (s: 1 | 2 | 3 | 4) => void;
-  receipt: Receipt | null;
-  setReceipt: (r: Receipt) => void;
-  frame: (f: OfferTicketFrame) => ReactNode;
-  onFinish: () => void;
-}) {
-  useOfferOpened(offer);
-  const face = FACES[product.key];
-  const Mark = face.Mark ?? Ticket;
-  const amount = whole(offer.pay);
-  const bonusText = offer.bonusAmount ? whole(offer.bonusAmount) : null;
-  const { can, signedOut, buying, needsCard } = offer;
-  const paid = receipt !== null;
-  // A charge in flight, or one that answered: the steps before it are gone.
-  const shown: 1 | 2 | 3 | 4 = paid ? (step < 3 ? 3 : step) : step > 2 ? 2 : step;
-
-  const head = (
-    <div className="flex shrink-0 items-center gap-3 px-1">
-      <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl", face.card)} aria-hidden>
-        <Mark className="h-7 w-7" strokeWidth={2.25} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-foreground text-lg leading-tight font-bold">{product.short}</p>
-        <p className="text-muted-foreground truncate text-sm">{placeName}</p>
-      </div>
-    </div>
-  );
-
-  if (shown === 1) {
-    const locked = !loading && !can;
-    return frame({
-      step: 1,
-      allDone: false,
-      title: product.short,
-      onBack: null,
-      busy: false,
-      paid: false,
-      body: (
-        <>
-          {head}
-          <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />
-          <Box title="How it works" data-offer-steps-box="">
-            <StepList steps={sheetSteps(amount, bonusText, signedOut ? null : offer.payCard)} />
-          </Box>
-          <GoodToKnow productKey={product.key} />
-          {locked ? (
-            // LOCKED (MESITA-4224, D4): the reason where Continue goes.
-            <p className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 text-left text-amber-900" data-offer-status="locked">
-              <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-base leading-snug font-semibold">{offer.status.text}</span>
-            </p>
-          ) : null}
-        </>
-      ),
-      primary: locked
-        ? null
-        : { label: "Continue", disabled: loading, busy: false, onClick: () => setStep(2) },
-    });
-  }
-
-  if (shown === 2) {
-    // ONLY THE SAVED CARD (MESITA-4630): no Apple Pay / Google Pay, no "or".
-    const label = signedOut ? "Sign in to buy" : needsCard ? "Add a card" : `Pay ${amount}`;
-    return frame({
-      step: 2,
-      allDone: false,
-      title: "Pay",
-      onBack: buying ? null : () => setStep(1),
-      busy: buying,
-      paid: false,
-      body: (
-        <>
-          {head}
-          <OfferBox pay={offer.pay} get={offer.get} bonus={offer.bonus} />
-          {signedOut ? null : (
-            <Box title="Pay with" data-offer-pay-box="">
-              <div className="flex flex-col gap-2">
-                {offer.cardsPending ? <p className="text-muted-foreground text-base">Reading your cards…</p> : null}
-                <CardLine offer={offer} />
-              </div>
-            </Box>
-          )}
-        </>
-      ),
-      primary: {
-        label,
-        disabled: !offer.live || buying || offer.cardsPending,
-        busy: buying,
-        onClick: () => {
-          void offer.onPay().then((r) => {
-            if (r) {
-              setReceipt(r);
-              setStep(3);
-            }
-          });
-        },
-      },
-    });
-  }
-
-  if (!receipt) return null;
-  const confirming = receipt.outcome === "processing";
-  const bonusAt = receipt.readyAt ? readyClock(receipt.readyAt) : "";
-
-  if (shown === 3) {
-    // CREDITS (MESITA-4630): the credit is ready now, the bonus waits; Wait
-    // and Bonus are one line, the stored ticket keeps counting.
-    const steps: Step[] = confirming
-      ? [
-        { Icon: CreditCard, title: "Your bank is confirming", short: "Confirming", amount, line: "Not charged twice", state: "current" },
-        { Icon: Wallet, title: "Get your credit", short: "Credits", amount, line: "Once it's through" },
-        { Icon: Gift, title: "Get your bonus in 3 hours", short: "Bonus", amount: bonusText ? `+${bonusText}` : undefined, line: "In 3 hours, by itself", green: true },
-      ]
-      : [
-        { Icon: CreditCard, title: `Paid ${amount}`, short: "Paid", amount, line: receipt.card ? `${receipt.card.label} ${receipt.card.last4}` : "By card", state: "done" },
-        { Icon: Wallet, title: "Your credit is ready", short: "Credits", amount, line: "Ready to spend", state: "done" },
-        {
-          Icon: Gift,
-          title: "Your bonus is on its way",
-          short: "Bonus",
-          amount: bonusText ? `+${bonusText}` : undefined,
-          line: bonusAt ? `Ready at ${bonusAt}` : "Ready in 3 hours",
-          green: true,
-          state: "current",
-        },
-      ];
-    return frame({
-      step: 3,
-      allDone: false,
-      title: "Credits",
-      onBack: null,
-      busy: false,
-      paid: true,
-      body: (
-        <>
-          {head}
-          <Box data-offer-credits={receipt.outcome}>
-            <StepList steps={steps} />
-          </Box>
-        </>
-      ),
-      primary: { label: "See receipt", disabled: false, busy: false, onClick: () => setStep(4) },
-    });
-  }
-
-  // RECEIPT (MESITA-4630): what was paid, with what, when, and what it buys.
-  const when = new Date(receipt.at);
-  const whenText = Number.isNaN(when.getTime())
-    ? ""
-    : when.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-  return frame({
-    step: 4,
-    allDone: !confirming,
-    title: "Receipt",
-    onBack: () => setStep(3),
-    busy: false,
-    paid: true,
-    body: (
-      <>
-        <div className="flex shrink-0 flex-col items-center gap-2 py-2" role="status" data-offer-receipt={receipt.outcome}>
-          {confirming ? (
-            <Clock className="h-10 w-10 text-amber-600" strokeWidth={2.25} aria-hidden />
-          ) : (
-            <CircleCheck className="h-10 w-10 text-[#00A85A]" strokeWidth={2.25} aria-hidden />
-          )}
-          <p className="text-foreground text-2xl font-bold tabular-nums">{confirming ? "Confirming" : `Paid ${amount}`}</p>
-          <p className="text-muted-foreground text-sm">{confirming ? "Your bank is confirming. You won't be charged twice." : placeName}</p>
-        </div>
-        <section className={cn(CARD, "divide-border shrink-0 divide-y overflow-hidden text-left")}>
-          <ReceiptRow label="Voucher" value={product.short} />
-          <ReceiptRow label="You paid" value={amount} />
-          <ReceiptRow label="Card" value={receipt.card ? `${receipt.card.label} •••• ${receipt.card.last4}` : "Card"} />
-          {whenText ? <ReceiptRow label="Date" value={whenText} /> : null}
-          <ReceiptRow label="Credit now" value={amount} />
-          {bonusText ? <ReceiptRow label={bonusAt ? `Bonus at ${bonusAt}` : "Bonus in 3 hours"} value={`+${bonusText}`} green /> : null}
-          <ReceiptRow label="You get" value={whole(offer.get)} green />
-        </section>
-      </>
-    ),
-    primary: { label: "Done", disabled: false, busy: false, onClick: onFinish },
-  });
-}
-
+/** THE OFFERS PAGE IS A SHOP (Pato, 2026-11-22, MESITA-4647: "the offers can
+ *  be multiselected ... don't create a special subpage ... it must feel like
+ *  a shopify page. the voucher ticket is not created/saved until the sale is
+ *  done"). Each buyable row has − n +; one sticky Pay bar charges the whole
+ *  basket once with the saved card; a receipt replaces the list after.
+ *  Nothing is stored before the card charge answers: the basket lives in
+ *  this component. Each voucher's own ticket page (MESITA-4630) went.
+ *  `pick` preselects one voucher (an old link) when it is buyable. */
 export function VouchersPane({
   place,
   actions,
+  pick,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  pick?: string | null;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -1065,18 +771,81 @@ export function VouchersPane({
 
   const co = useOfferCheckout(place, actions);
   const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
-  // A TAP OPENS THE TICKET (MESITA-4630): the host pushes the voucher's own
-  // page. A bottom sheet until then
-  // (MESITA-4224). Without the host's action (admin's preview), nothing opens.
-  const openOffer = actions?.onOpenOffer;
+  // The guest's own picks; until the first tap, an asked voucher counts as one.
+  const [picked, setPicked] = useState<Basket | null>(null);
+  const [info, setInfo] = useState<MoneyVoucherKey | null>(null);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const paying = useRef(false);
+  const [payingNow, setPayingNow] = useState(false);
+  const opened = useRef(new Set<MoneyVoucherKey>());
+  const asked = !loading && pick && (MONEY_VOUCHER_KEYS as readonly string[]).includes(pick) && buyable(pick as MoneyVoucherKey) ? (pick as MoneyVoucherKey) : null;
+  const basket: Basket = picked ?? (asked ? { [asked]: 1 } : {});
+  const items = basketItems(basket, (k) => !loading && buyable(k));
+  const count = items.reduce((n, i) => n + i.qty, 0);
+  const totals = basketTotals(items, catalog);
+  // Locked while a charge is out (MESITA-4647): the basket a card answers for
+  // is the basket on screen.
+  const locked = co.buying || payingNow;
+
+  const setQty = (k: MoneyVoucherKey, n: number) => {
+    if (locked) return;
+    // OFFER EVENTS BASELINE (MESITA-4375): offer_sheet_opened is now the
+    // first + of each voucher, with whether a saved card is ready.
+    if (n > 0 && !opened.current.has(k)) {
+      opened.current.add(k);
+      actions?.onOfferOpened?.(k, co.payCard !== null);
+    }
+    setPicked({ ...basket, [k]: Math.min(Math.max(0, n), BASKET_MAX[k]) });
+  };
+
+  const pay = async () => {
+    if (!co.live || items.length === 0 || totals === null || locked || paying.current) return;
+    // No card yet: Add a card, a modal; the basket stays, the guest taps Pay again.
+    if (co.needsCard && actions?.onAddPayCard) {
+      actions.onAddPayCard();
+      return;
+    }
+    // THE COPY AT PAY (MESITA-4647): the receipt is built from what was sent.
+    const sent = items.map((i) => ({ ...i }));
+    const sentTotals = totals;
+    const card = co.payCard;
+    const lines: ReceiptLine[] = sent.map((i) => {
+      const p = listedProducts().find((x) => x.key === i.voucher)!;
+      const line = catalog[p.key]!;
+      return { key: p.key, short: p.short, qty: i.qty, pay: pesos(line.price_cents * i.qty, currency) };
+    });
+    paying.current = true;
+    setPayingNow(true);
+    try {
+      const out = await actions?.onBuyVoucher?.(sent, co.signedOut ? null : card?.id ?? null);
+      if (out !== "paid" && out !== "processing") return;
+      setReceipt({
+        outcome: out,
+        lines,
+        pay: pesos(sentTotals.price, currency),
+        bonus: sentTotals.bonus > 0 ? pesos(sentTotals.bonus, currency) : null,
+        get: pesos(sentTotals.credit, currency),
+        readyAt: new Date(Date.now() + sentTotals.wait * 1000).toISOString(),
+        card,
+        at: new Date().toISOString(),
+      });
+      setPicked({});
+    } finally {
+      paying.current = false;
+      setPayingNow(false);
+    }
+  };
+
+  if (receipt) return <BasketReceipt receipt={receipt} onDone={() => (actions?.onOffersDone ? actions.onOffersDone() : setReceipt(null))} />;
 
   // HIDDEN ROWS ARE GONE (MESITA-4603), never drawn while list-vouchers is
   // still loading (every row is a grey bone then).
   const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
+  const infoProduct = info ? listedProducts().find((p) => p.key === info) ?? null : null;
 
   return (
     // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
-    // (MESITA-4218).
+    // (MESITA-4218), and the Pay bar under them once anything is picked.
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
@@ -1092,78 +861,52 @@ export function VouchersPane({
                 const pay = priceValue(p, line, currency);
                 const get = creditValue(p, line, currency);
                 const can = !loading && buyable(p.key);
-                const face = FACES[p.key];
-                const Mark = face.Mark ?? Ticket;
                 const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
-                const locked = !loading && !can;
-                const why = locked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
-                // A PRODUCT ROW (Pato, 2026-11-17, MESITA-4224: "offers must
-                // really look like products, like item products"; D8): the
-                // product's face, its name, the deal, the bonus in ink, an
-                // arrow. Colour on the face only; no tick, no (i), no pill.
+                const blocked = !loading && !can;
+                const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
+                const n = basket[p.key] ?? 0;
+                // A PRODUCT ROW (Pato, 2026-11-22, MESITA-4647): left ONE
+                // green box, black "+10%" over "BONUS"; the name and the deal
+                // with the (i); − n + at the right. A blocked row says why,
+                // with a lock, and has no stepper.
                 return (
-                  <li key={p.key} data-voucher={p.key} className={cn(locked && dim && "opacity-50")}>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={() => openOffer?.(p.key)}
-                      aria-label={`${p.short}, pay ${whole(pay)}, get ${whole(get)}, ${bonus} bonus${locked ? `. ${why}` : ""}`}
-                      className="hover:bg-muted/50 flex min-h-[4.5rem] w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left"
+                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && "opacity-50")}>
+                    <span
+                      className={cn(
+                        "flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl tabular-nums",
+                        blocked ? "bg-muted text-muted-foreground" : "bg-[#00D66F] text-neutral-950",
+                      )}
+                      aria-hidden
+                      data-offer-bonus
                     >
-                      {/* A LOCKED OFFER READS LOCKED (Pato, 2026-11-19,
-                          MESITA-4456: "if blocked, it must be clearer"): the
-                          face and the bonus box go grey, the name and deal
-                          grey, and a third line says why, with a lock. The
-                          row still opens its sheet. */}
-                      <span
-                        className={cn(
-                          "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl",
-                          locked ? "bg-muted text-muted-foreground" : face.card,
-                        )}
-                        aria-hidden
-                      >
-                        <Mark className="h-7 w-7" strokeWidth={2.25} />
-                        {locked ? (
-                          <span className="bg-card text-foreground absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full shadow-sm" data-voucher-locked>
-                            <Lock className="h-3.5 w-3.5" strokeWidth={2.5} />
-                          </span>
-                        ) : null}
+                      <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
+                      <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Bonus</span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className={cn("truncate text-base font-semibold", blocked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
+                        <button
+                          type="button"
+                          aria-label={`How ${p.short} works`}
+                          disabled={loading}
+                          onClick={() => setInfo(p.key)}
+                          className="text-muted-foreground hover:text-foreground -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                          data-offer-info-open
+                        >
+                          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                        </button>
                       </span>
-                      <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-                        <span className={cn("truncate text-base font-semibold", locked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
-                        {/* IN INK (Pato, 2026-11-17, MESITA-4227: "the pay and
-                            get must be clearer, it's too transparent"): Pay
-                            medium, Get semibold, only the dot grey. */}
-                        <span className={cn("truncate text-base font-semibold tabular-nums", locked ? "text-muted-foreground" : "text-foreground")}>
-                          Pay {whole(pay)} <span className="text-muted-foreground">·</span>{" "}
-                          <span className="font-semibold">Get {whole(get)}</span>
+                      <span className={cn("text-sm font-semibold tabular-nums", blocked ? "text-muted-foreground" : "text-foreground")}>
+                        Pay {whole(pay)} <span className="text-muted-foreground">·</span> Get {whole(get)}
+                      </span>
+                      {blocked ? (
+                        <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-voucher-why>
+                          <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} data-voucher-locked />
+                          <span className="truncate">{why.replace(/\.$/, "")}</span>
                         </span>
-                        {locked ? (
-                          <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-voucher-why>
-                            <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
-                            <span className="truncate">{why.replace(/\.$/, "")}</span>
-                          </span>
-                        ) : null}
-                      </span>
-                      {/* THE BONUS IS THE HERO, AT THE RIGHT IN A BLACK BOX
-                          (Pato, 2026-11-17, MESITA-4230: "the bonus amount must
-                          be at the right in a box and must be clearer. its the
-                          most important ... in a black box"; MESITA-4227: "must
-                          mention bonus"): "+30%" big over "BONUS". The chevron
-                          went so the deal keeps its width on a 390px phone;
-                          the box is the row's tap cue. */}
-                      <span
-                        className={cn(
-                          "flex w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums",
-                          locked ? "bg-muted text-muted-foreground" : "bg-foreground text-paper",
-                        )}
-                        aria-hidden
-                        data-offer-bonus
-                      >
-                        <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
-                        <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase opacity-80">Bonus</span>
-                      </span>
-                    </button>
+                      ) : null}
+                    </span>
+                    {can && co.live ? <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => setQty(p.key, v)} /> : null}
                   </li>
                 );
               })}
@@ -1171,6 +914,88 @@ export function VouchersPane({
           </section>
         );
       })}
+      {count > 0 ? (
+        // THE PAY BAR (MESITA-4647): sticky at the bottom while anything is
+        // picked: how many, what the guest gets, the saved card, one Pay.
+        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 flex flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
+          <p className="flex items-center justify-between text-base">
+            <span className="text-foreground font-semibold">
+              {count} {count === 1 ? "voucher" : "vouchers"}
+            </span>
+            {totals ? <span className="font-semibold text-[#00A85A] tabular-nums">Get {whole(pesos(totals.credit, currency))}</span> : null}
+          </p>
+          {co.payCard && !co.signedOut ? (
+            <p className="flex items-center justify-between text-sm" data-pay-card-line>
+              <span className="text-muted-foreground truncate">
+                {co.payCard.label} •••• {co.payCard.last4}
+              </span>
+              {co.canChange ? (
+                <button type="button" disabled={locked} onClick={co.nextCard} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2 disabled:opacity-50">
+                  Change
+                </button>
+              ) : null}
+            </p>
+          ) : null}
+          {co.payCards?.state === "error" ? (
+            <p className="flex items-center justify-between text-sm" role="alert">
+              <span className="text-foreground">Couldn&apos;t load your cards</span>
+              <button type="button" onClick={actions?.onRetryPayCards} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2">
+                Retry
+              </button>
+            </p>
+          ) : null}
+          <button
+            type="button"
+            disabled={locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready")}
+            onClick={() => void pay()}
+            className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
+            data-offer-pay
+          >
+            {locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${whole(pesos(totals.price, currency))}` : "Pay"}
+          </button>
+        </div>
+      ) : null}
+      {infoProduct ? (
+        <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
+      ) : null}
+    </div>
+  );
+}
+
+/** THE BASKET'S RECEIPT (MESITA-4647): each line, what was paid, the card,
+ *  the credit now, the bonus and when, then Done. */
+function BasketReceipt({ receipt, onDone }: { receipt: Receipt; onDone: () => void }) {
+  const bonusAt = receipt.readyAt ? readyClock(receipt.readyAt) : "";
+  const at = new Date(receipt.at);
+  const when = Number.isNaN(at.getTime())
+    ? ""
+    : at.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const paid = receipt.outcome === "paid";
+  return (
+    <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-offer-receipt={receipt.outcome}>
+      <section className={cn(CARD, "shrink-0 overflow-hidden")}>
+        <div className="flex flex-col items-center gap-2 px-4 pt-5 pb-4 text-center">
+          <CircleCheck className={cn("h-10 w-10", paid ? "text-[#00A85A]" : "text-muted-foreground")} strokeWidth={2.25} aria-hidden />
+          <h3 className={OFFERS_TITLE_CLASS}>{paid ? "Paid" : "Confirming your payment"}</h3>
+          <p className="text-muted-foreground text-sm">
+            {paid ? "Your credit is ready now. The bonus lands by itself." : "Your bank is confirming it. Your credit shows once it does."}
+          </p>
+        </div>
+        <div className="border-border divide-border divide-y border-t">
+          {receipt.lines.map((l) => (
+            <ReceiptRow key={l.key} label={`${l.qty} × ${l.short}`} value={whole(l.pay)} />
+          ))}
+          <ReceiptRow label="You paid" value={whole(receipt.pay)} />
+          <ReceiptRow label="Card" value={receipt.card ? `${receipt.card.label} •••• ${receipt.card.last4}` : "Card"} />
+          {when ? <ReceiptRow label="Date" value={when} /> : null}
+          <ReceiptRow label="Credit now" value={whole(receipt.pay)} />
+          {receipt.bonus ? <ReceiptRow label={bonusAt ? `Bonus at ${bonusAt}` : "Bonus in 3 hours"} value={`+${whole(receipt.bonus)}`} green /> : null}
+          <ReceiptRow label="You get" value={whole(receipt.get)} green />
+        </div>
+      </section>
+      <button type="button" onClick={onDone} className="bg-foreground text-paper mt-auto flex h-12 w-full shrink-0 items-center justify-center rounded-full text-base font-semibold" data-offer-done>
+        Done
+      </button>
     </div>
   );
 }
