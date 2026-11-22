@@ -37,12 +37,13 @@ export function TicketsShortcut({
   // darker to be visible"): MESITA-4331's mid grey, ink at 15%, black glyphs.
   // LIGHT AGAIN (Pato, 2026-11-21, MESITA-4612: "back to light"): ink at
   // 15%, black words and glyph; MESITA-4610's dark grey (ink at 80%, white)
-  // lasted one deploy.
+  // lasted one deploy. LIGHTER (MESITA-4614, Pato: "make the tickets button
+  // light"): bg-muted, the title strips' grey, black words and glyph.
   if (icon) {
     return (
       <PushLink
         href={CONSUMER_ROUTES.mePages.tickets}
-        className="bg-foreground/15 text-foreground hover:bg-foreground/20 flex h-11 items-center gap-2 rounded-xl px-3.5 text-base font-semibold"
+        className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 items-center gap-2 rounded-xl px-3.5 text-base font-semibold"
         data-tickets-shortcut
       >
         {/* THE WORD, ANOTHER GLYPH, NO › (Pato, 2026-11-21, MESITA-4598: "in
