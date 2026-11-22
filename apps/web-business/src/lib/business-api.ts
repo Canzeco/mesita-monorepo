@@ -623,13 +623,35 @@ export async function setPlaceCode(placeId: string, code: string): Promise<Resul
 
 export type PlaceViewsDay = { day: string; views: number; likes: number; shares: number };
 
-export type PlaceViews = { views: number; likes: number; shares: number; timezone: string; days: PlaceViewsDay[] };
+/** Synthesized by the EF from the raw view events on every load (MESITA-4675). */
+export type PlaceViewsAnalytics = {
+  views: number;
+  viewers: number;
+  returning: number;
+  views7d: number;
+  views30d: number;
+  viewers30d: number;
+};
+
+export type PlaceViews = {
+  views: number;
+  likes: number;
+  shares: number;
+  timezone: string;
+  days: PlaceViewsDay[];
+  analytics: PlaceViewsAnalytics;
+};
+
+const NO_ANALYTICS: PlaceViewsAnalytics = { views: 0, viewers: 0, returning: 0, views7d: 0, views30d: 0, viewers30d: 0 };
 
 export async function getPlaceViews(placeId: string): Promise<Result<PlaceViews>> {
   const r = await efInvoke<PlaceViews>("business-web-get-place-views", { place_id: placeId });
   if (!r.ok) return fail(r);
-  const { views, likes, shares, timezone, days } = r.data;
-  return { ok: true, data: { views, likes, shares, timezone, days: days ?? [] } };
+  const { views, likes, shares, timezone, days, analytics } = r.data;
+  return {
+    ok: true,
+    data: { views, likes, shares, timezone, days: days ?? [], analytics: analytics ?? { ...NO_ANALYTICS, views } },
+  };
 }
 
 // ── Views log (MESITA-3213) ──────────────────────
