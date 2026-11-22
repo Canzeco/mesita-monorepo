@@ -45,9 +45,16 @@ import { useWallet } from "./use-wallet";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { AddRow, CreditsRow, RowsSkeleton, WalletPanelList } from "./WalletLists";
 
-/** A place's prepay page: its Offers at Prepayments, Back returning here. */
+/** A place's prepay page from the Prepay picker: its Offers at Prepayments.
+ *  A paid offer ends on the Loyalty Card, which replaces Offers (MESITA-4601). */
 export function prepayHref(placeIdOrSlug: string): string {
-  return `${placeHref(placeIdOrSlug)}/offers?rewards=prepayment&from=wallet`;
+  return `${placeHref(placeIdOrSlug)}/offers?rewards=prepayment`;
+}
+
+/** The same page from a screen the guest must come back to (Send Gift's Buy
+ *  Credits): `from=wallet`, so a paid offer pops back to that screen. */
+export function prepayReturnHref(placeIdOrSlug: string): string {
+  return `${prepayHref(placeIdOrSlug)}&from=wallet`;
 }
 
 /** /wallet/buy — Prepay & Get Credits (MESITA-4597, Pato: "first of all
