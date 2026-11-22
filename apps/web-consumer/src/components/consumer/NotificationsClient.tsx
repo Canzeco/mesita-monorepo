@@ -15,10 +15,7 @@ import {
   NotificationRow,
   NOTIFICATION_KINDS,
 } from "@/components/consumer/notification-row";
-import {
-  ActivityRows,
-  ActivityRowsSkeleton,
-} from "@/components/consumer/activity/ActivityRow";
+import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow";
 import { EmptyState } from "@/components/shared";
 import { newestNotificationAt } from "./use-unseen-notifications";
 
@@ -30,11 +27,20 @@ import { newestNotificationAt } from "./use-unseen-notifications";
 // those kinds; filtering on `NOTIFICATION_KINDS` here keeps a row this
 // screen cannot render off the list.
 
-// The list's bones: one card of rows, as Activity's other chips draw
-// (MESITA-3778; MESITA-2701: "the placeholders must be similar to the page").
-function SkeletonRows() {
+// NO BOX, NO MARGIN (Pato, 2026-11-21, MESITA-4607: "why … a box inside a
+// box. just show the notification straight into there"): the rows run edge
+// to edge on the page's white, a hairline between them and one under the
+// last. The page draws flush (MeScreen `flush`), as Tickets does.
+const FLUSH_ROWS = "border-border divide-border divide-y border-b";
+
+// The list's bones, flush like the rows (MESITA-2701: "the placeholders
+// must be similar to the page"): the shared skeleton with its box undone.
+export function NotificationsSkeleton() {
   return (
-    <div aria-hidden>
+    <div
+      aria-hidden
+      className="[&>div]:rounded-none [&>div]:border-x-0 [&>div]:border-t-0"
+    >
       <ActivityRowsSkeleton />
     </div>
   );
@@ -67,9 +73,9 @@ export function NotificationsList() {
   }, [newest]);
 
   return (
-    // A column, 20px between day groups; no negative margin (MESITA-3801: it
+    // A flush column (MESITA-4607); no negative margin (MESITA-3801: it
     // pulled the first child into the chip strip above).
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col">
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
           moves. it looks NOT clean. be direct"). */}
       {/* A failed read is the centred empty state with Try again, no box
@@ -84,18 +90,18 @@ export function NotificationsList() {
       ) : null}
 
       {loading ? (
-        <SkeletonRows />
+        <NotificationsSkeleton />
       ) : visible.length > 0 ? (
         <>
           {/* ONE FLAT LIST (MESITA-4000): newest first, no day headings;
               each row ends with how long ago it happened. */}
-          <ActivityRows>
+          <ul className={FLUSH_ROWS} data-activity>
             {visible.map((n) => (
               <NotificationRow key={n.id} n={n} />
             ))}
-          </ActivityRows>
+          </ul>
           {rows.length >= NOTIFICATIONS_PAGE ? (
-            <p className="text-muted-foreground text-center text-xs">
+            <p className="text-muted-foreground px-5 py-5 text-center text-xs">
               Older notifications aren&apos;t shown
             </p>
           ) : null}
