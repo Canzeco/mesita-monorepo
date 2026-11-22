@@ -24,6 +24,15 @@ const OFFER: PlaceMoney = {
   balance: { available_cents: 22000, pending_cents: 10000, held_cents: 0, spendable_cents: 22000 },
 };
 
+// The place offers Story; every other line as OFFER.
+const STORY_ON: PlaceMoney = {
+  ...OFFER,
+  test_mode: false,
+  vouchers: { ...OFFER.vouchers, voucher_story: true },
+  sell: ["voucher_200", "voucher_1000", "voucher_story"],
+  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used" },
+};
+
 function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): string {
   return renderToStaticMarkup(<VouchersPane place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} actions={onBuyVoucher ? { onBuyVoucher } : undefined} />);
 }
@@ -33,7 +42,7 @@ describe("Vouchers tab", () => {
   it("lists Story and no VIP offer (MESITA-4249)", () => {
     const html = renderToStaticMarkup(
       <VouchersPane
-        place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
+        place={{ money: STORY_ON, name: "Probe", photos: [] } as unknown as PlaceDetail}
         actions={{ onBuyVoucher: () => {}, guest: { instagramLinked: true } }}
       />,
     );
@@ -47,22 +56,35 @@ describe("Vouchers tab", () => {
     expect(render({ ...OFFER, test_mode: false })).not.toContain(TEST_BAND_TEXT);
   });
 
-  it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
-    // Live mode: a row the server does not sell wears the lock (MESITA-4224:
-    // a tap opens the sheet, where the reason replaces Pay).
+  // HIDDEN · BLOCKED · AVAILABLE (MESITA-4603): what the place doesn't offer
+  // and a Welcome already had are not on the page; Story the place offers
+  // stays, blocked by the guest's own locks.
+  it("hides what the place doesn't offer and a used Welcome; Buy only on `sell`", () => {
     const html = render({ ...OFFER, test_mode: false }, () => {});
     expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
     expect(row(html, "voucher_1000")).not.toContain("data-voucher-locked");
-    expect(row(html, "voucher_5000")).toContain("data-voucher-locked");
-    expect(row(html, "voucher_welcome")).toContain("data-voucher-locked");
-    expect(row(html, "voucher_welcome")).toContain("You already had yours here");
-    // An older read: switches on, no `sell`: nothing for sale.
+    expect(html).not.toContain('data-voucher="voucher_5000"');
+    expect(html).not.toContain('data-voucher="voucher_welcome"');
+    expect(html).not.toContain('data-voucher="voucher_story"');
+    // An older read: switches on, no `sell`: nothing for sale, nothing shown.
     const older = render({ ...placeMoneyFrom({ charges_enabled: true, vouchers: { voucher_200: true } })!, test_mode: false }, () => {});
-    expect(row(older, "voucher_200")).toContain("data-voucher-locked");
-    // Test mode too (MESITA-4399): a row the server does not sell never pays.
+    expect(older).not.toContain("data-voucher=");
+    // Test mode too (MESITA-4399): a row the server does not sell never shows.
     const test = render(OFFER, () => {});
     expect(row(test, "voucher_1000")).not.toContain("data-voucher-locked");
-    expect(row(test, "voucher_5000")).toContain("data-voucher-locked");
+    expect(test).not.toContain('data-voucher="voucher_5000"');
+    // A paused sale is not the place's: the row stays, blocked.
+    const paused = render({ ...OFFER, sell: ["voucher_1000"], unavailable: { ...OFFER.unavailable, voucher_200: "paused" } }, () => {});
+    expect(row(paused, "voucher_200")).toContain("data-voucher-locked");
+  });
+
+  it("Story the place offers is never hidden, only blocked (MESITA-4603)", () => {
+    const story = (money: PlaceMoney, guest: { instagramLinked: boolean; instagramFollowers?: number }) =>
+      row(renderToStaticMarkup(<VouchersPane place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} actions={{ onBuyVoucher: () => {}, guest }} />), "voucher_story");
+    expect(story(STORY_ON, { instagramLinked: false })).toContain("Link your Instagram");
+    expect(story(STORY_ON, { instagramLinked: true, instagramFollowers: 10 })).toContain("followers");
+    expect(story({ ...STORY_ON, sell: ["voucher_200"], unavailable: { voucher_story: "needs_visit" } }, { instagramLinked: true })).toContain("data-voucher-locked");
+    expect(story(STORY_ON, { instagramLinked: true, instagramFollowers: 5000 })).not.toContain("data-voucher-locked");
   });
 
   it("the green mark is the server's; an older read without it keeps the old rule (MESITA-3408)", () => {
