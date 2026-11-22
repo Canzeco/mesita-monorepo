@@ -8,30 +8,13 @@ export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
 /** One line of the Offers page's basket (MESITA-3841): a voucher and how many. */
 export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
-/** How a voucher buy ended (MESITA-4224): the pay sheet turns into a receipt
- *  on "paid" or "processing" and stays open to try again on "failed" (the
+/** How a voucher buy ended (MESITA-4224): the ticket moves to Credits on
+ *  "paid" or "processing" and stays on Pay to try again on "failed" (the
  *  host already said why). */
 export type VoucherBuyOutcome = "paid" | "processing" | "failed" | StoryRefused;
 /** A Story buy the server refused about the guest (MESITA-4296:
  *  private_account): nothing was charged and the page says why. */
 export type StoryRefused = { story_refused: string };
-
-/** EXPRESS PAY (MESITA-4384): what the Offers sheet hands the host's
- *  Apple Pay / Google Pay button. The package has no Stripe; the host draws
- *  the button and reports back. */
-export type ExpressPayArgs = {
-  items: VoucherBasketItem[];
-  /** The card path is paying: the button does nothing. */
-  disabled: boolean;
-  /** loading (keep the 48 px slot), ready, or none (collapse it). */
-  onState: (state: "loading" | "ready" | "none") => void;
-  /** From the wallet's confirm until it ends: the sheet cannot close. */
-  onLock: (locked: boolean) => void;
-  /** "received": Stripe took it and the receipt is on its way. */
-  onDone: (done: { outcome: "paid" | "processing" | "received"; payWith: "apple_pay" | "google_pay" | null }) => void;
-  /** The pay box's error line; null clears it. */
-  onError: (text: string | null) => void;
-};
 
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads
@@ -70,9 +53,6 @@ export type PlaceActions = {
    *  sheet. Absent, the button is inert (admin's preview). Resolves with how
    *  it ended (MESITA-4224); a host that returns nothing leaves the sheet open. */
   onBuyVoucher?: (items: VoucherBasketItem[], cardId: string | null) => void | Promise<VoucherBuyOutcome>;
-  /** Apple Pay / Google Pay in the Offers sheet's pay box (MESITA-4384).
-   *  Absent (signed out, admin's preview): no express slot. */
-  renderExpressPay?: (args: ExpressPayArgs) => ReactNode;
   /** offer_sheet_opened (MESITA-4375): an offer's sheet or Story page opened;
    *  `savedCard` says a usable saved card was ready. Fire-and-forget. */
   onOfferOpened?: (voucher: VoucherKey, savedCard: boolean) => void;
@@ -83,8 +63,12 @@ export type PlaceActions = {
    *  Story screen, where the host lands the guest after the buy. */
   onCheckStory?: (opts: { poll: boolean }) => Promise<StoryCheckAnswer>;
   /** Story's own page (MESITA-4303): the host pushes /place/<id>/story.
-   *  Absent (admin's preview), Story opens as a sheet like the rest. */
+   *  Absent (admin's preview), the Story row opens nothing. */
   onOpenStory?: () => void;
+  /** A voucher's ticket (MESITA-4630): the host pushes
+   *  /place/<id>/offers/<voucher>. Absent (admin's preview), the row opens
+   *  nothing. */
+  onOpenOffer?: (voucher: VoucherKey) => void;
   /** A voucher of the basket being paid; while set the button reads Paying…
    *  and the card rows and steppers are locked. */
   buyingVoucher?: VoucherKey | null;
@@ -94,9 +78,8 @@ export type PlaceActions = {
   /** The card a Pay charges (the host remembers the last one used). */
   payCardId?: string | null;
   onSelectPayCard?: (id: string) => void;
-  /** "Add a card": the host's Add a card page (no Stripe page). With the
-   *  offer whose sheet asked, the host brings the guest back to that sheet
-   *  (MESITA-4230). */
+  /** "Add a card": the host's Add a card modal (MESITA-4398); the ticket
+   *  stays on its Pay step and the new card becomes the selected one. */
   onAddPayCard?: (voucher?: VoucherKey) => void;
   /** Retry after the card list failed to load. */
   onRetryPayCards?: () => void;
@@ -132,9 +115,6 @@ export type PlaceActions = {
     /** The guest's Instagram username, on the Story sheet's Found card (MESITA-4296). */
     instagramHandle?: string | null;
   };
-  /** The voucher a Home offer chip asked for (MESITA-4207, `?voucher=`):
-   *  the Offers page opens with it ticked when this guest can buy it. */
-  askedVoucher?: string | null;
   /** Link Instagram in the Story (i): the host's Instagram page. */
   onLinkInstagram?: () => void;
 };

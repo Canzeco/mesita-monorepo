@@ -201,19 +201,23 @@ export function TicketHeader({ title, onBack, onClose, closeLabel = "Close" }: {
 }
 
 /** THE STEPS, AT THE BOTTOM (MESITA-4600; five since MESITA-4613):
- *  "1 Place · 2 Bill · 3 Tip · 4 Method · 5 Pay"
+ *  "1 Pick · 2 Bill · 3 Method · 4 Pay · 5 Receipt"
  *  in one row, a thin bar under each, done and current in ink, the current
  *  one semibold, the rest grey. A picture, not buttons: ← steps back.
- *  `at` "done" (the Receipt) lights all four, a check on the last. */
-export function StepStrip({ at, className }: { at: StripAt; className?: string }) {
-  const n = at === "done" ? STRIP_STEPS.length + 1 : at;
+ *  `at` "done" (the Receipt) lights all of them, a check on the last.
+ *  `steps` is Pay Bill's by default; a voucher's ticket passes its own four
+ *  (MESITA-4630). A step past the end reads as the last. */
+export function StepStrip({ at, steps = STRIP_STEPS, className }: { at: StripAt | number; steps?: readonly string[]; className?: string }) {
+  const count = steps.length;
+  const n = at === "done" ? count + 1 : Math.min(Math.max(1, at), count);
   return (
     <ol
-      className={cn("grid shrink-0 grid-cols-5 gap-1.5", className)}
-      aria-label={at === "done" ? "All steps done" : `Step ${at} of ${STRIP_STEPS.length}: ${STRIP_STEPS[at - 1]}`}
+      className={cn("grid shrink-0 gap-1.5", className)}
+      style={{ gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))` }}
+      aria-label={at === "done" ? "All steps done" : `Step ${n} of ${count}: ${steps[n - 1]}`}
       data-pay-strip
     >
-      {STRIP_STEPS.map((name, i) => {
+      {steps.map((name, i) => {
         const step = i + 1;
         const done = step < n;
         const current = step === n;
@@ -226,7 +230,7 @@ export function StepStrip({ at, className }: { at: StripAt; className?: string }
                 current ? "text-foreground font-semibold" : done ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              {at === "done" && step === STRIP_STEPS.length ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden /> : <span>{step}</span>}
+              {at === "done" && step === count ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden /> : <span>{step}</span>}
               <span className="truncate">{name}</span>
             </span>
           </li>
@@ -266,18 +270,21 @@ export function PaySection({
  *  there; its ✕ only closes, MESITA-4126/3908). */
 export function StepFooter({
   strip,
+  steps,
   primary,
   onCancel,
   cancelDisabled = false,
 }: {
-  strip?: StripAt | null;
+  strip?: StripAt | number | null;
+  /** The strip's names; Pay Bill's by default (MESITA-4630). */
+  steps?: readonly string[];
   primary?: { label: React.ReactNode; onClick: () => void; disabled: boolean; busy: boolean };
   onCancel?: () => void;
   cancelDisabled?: boolean;
 }) {
   return (
     <div className="border-border -mx-4 mt-3 flex shrink-0 flex-col gap-3 border-t px-4 pt-3">
-      {strip ? <StepStrip at={strip} /> : null}
+      {strip ? <StepStrip at={strip} steps={steps} /> : null}
       {primary ? (
         <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={primary.disabled} onClick={primary.onClick}>
           {primary.busy ? <Spinner size="sm" label="Working" /> : primary.label}

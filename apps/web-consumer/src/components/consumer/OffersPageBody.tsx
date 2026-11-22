@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock } from "lucide-react";
-import { readyClock, VouchersPane, type PlaceActions, type VoucherKey } from "@mesita/place-profile";
+import { OFFER_TICKET_KEYS, readyClock, VouchersPane, type PlaceActions } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
 import {
   CONSUMER_ROUTES,
+  placeOfferPath,
   placePath,
   placeStoryPath,
   payPlacePath,
@@ -52,18 +53,10 @@ function readFromPay(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "pay";
 }
 
-/** The voucher a Home offer chip, or the Add a card round trip, asked for
- *  (MESITA-4207, MESITA-4230). */
+/** An old `?voucher=` (the Add a card round trip, MESITA-4230; Home chips
+ *  before MESITA-4455): it now opens that voucher's ticket (MESITA-4630). */
 function readVoucherAsk(): string | null {
   return new URLSearchParams(window.location.search).get("voucher");
-}
-
-/** Rewrites this page's own query in place (no new history entry). */
-function rewriteQuery(edit: (params: URLSearchParams) => void): void {
-  const params = new URLSearchParams(window.location.search);
-  edit(params);
-  const q = params.toString();
-  window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
 }
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
@@ -80,23 +73,23 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
   const fromPay = useSyncExternalStore(noopSubscribe, readFromPay, () => false);
   const askedVoucher = useSyncExternalStore(noopSubscribe, readVoucherAsk, () => null);
-  const [askDismissed, setAskDismissed] = useState(false);
   const keep = useKeptScroll<HTMLDivElement>();
 
   // A PAID VOUCHER ENDS ON THE LOYALTY CARD (Pato, MESITA-4055: "don't
   // redirect to prepay, maybe redirect to wallet … and don't leave that
   // open"). Asked from the card, Back returns to it; otherwise the card
   // replaces this page, so Back from it never reopens Offers.
-  const vouchers = usePlaceVouchers(fetched.id, {
-    onPaid: () => {
-      setAskDismissed(true);
-      // ASKED FROM THE BILL (MESITA-4599): back to the bill, its typed amount
-      // still there, the new credits ready to pay it.
-      if (fromPay) goBack(router, payPlacePath(fetched.id));
-      else if (fromWallet) goBack(router, walletPlacePath(fetched.id));
-      else navigateTo(router, walletPlacePath(fetched.id), { replace: true, motion: "push" });
-    },
-  });
+  // A voucher is bought on its own ticket now (MESITA-4630), which owns where
+  // a paid one returns; this page only lists the offers.
+  const vouchers = usePlaceVouchers(fetched.id);
+  const from: "pay" | "wallet" | null = fromPay ? "pay" : fromWallet ? "wallet" : null;
+  const ticketFor = useCallback((key: string) => placeOfferPath(fetched.id, key, from), [fetched.id, from]);
+  // An old ?voucher= link opens that voucher's ticket in place of this page.
+  useEffect(() => {
+    if (!askedVoucher) return;
+    if (askedVoucher === "voucher_story") navigateTo(router, placeStoryPath(fetched.id), { replace: true });
+    else if ((OFFER_TICKET_KEYS as readonly string[]).includes(askedVoucher)) navigateTo(router, ticketFor(askedVoucher), { replace: true });
+  }, [askedVoucher, router, fetched.id, ticketFor]);
   const { load, loadCards } = vouchers;
   useEffect(() => {
     void load();
@@ -117,29 +110,19 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     onCheckStory: vouchers.checkStory,
     // STORY IS A PAGE (MESITA-4303): pushed over this one, so Back lands
     // here; the chip's ?voucher drops first so Back never reopens a sheet.
-    onOpenStory: () => {
-      rewriteQuery((p) => p.delete("voucher"));
-      navigateTo(router, placeStoryPath(fetched.id), { motion: "drill" });
-    },
+    onOpenStory: () => navigateTo(router, placeStoryPath(fetched.id), { motion: "drill" }),
+    // A VOUCHER'S TICKET (MESITA-4630): pushed over this page, so ✕ before
+    // paying lands back here.
+    onOpenOffer: (key) => navigateTo(router, ticketFor(key), { motion: "drill" }),
     buyingVoucher: vouchers.buying,
     // The checkout in the page (MESITA-4065): the saved cards and their pick.
     ...(vouchers.payCards ? { payCards: vouchers.payCards } : {}),
-    // Apple Pay / Google Pay (MESITA-4384): signed-in guests only.
-    ...(vouchers.payCards ? { renderExpressPay: vouchers.renderExpress } : {}),
     payCardId: vouchers.payCardId,
     onSelectPayCard: vouchers.selectCard,
-    // BACK TO THE SAME SHEET (Pato, 2026-11-17, MESITA-4230, D4): the offer
-    // rides this page's address across the Add a card trip, so Back lands on
-    // Offers with that offer's sheet open and the new card picked.
-    onAddPayCard: (voucher?: VoucherKey) => {
-      if (voucher) rewriteQuery((p) => p.set("voucher", voucher));
-      vouchers.addCard();
-    },
+    onAddPayCard: () => vouchers.addCard(),
     onRetryPayCards: () => void vouchers.loadCards(),
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
-    // The Home chip's voucher (MESITA-4207), only while its ask stands.
-    askedVoucher: askDismissed ? null : askedVoucher,
     // The Offers (i) status (MESITA-3502): Story needs a linked Instagram;
     // its lock's action opens the page that lifts it.
     ...(profile
@@ -213,7 +196,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           </div>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
-          <VouchersPane key={actions.askedVoucher ?? "none"} place={place} actions={actions} />
+          <VouchersPane place={place} actions={actions} />
         </div>
       </div>
       {/* The pay-with-a-card sheet the vouchers hook owns (MESITA-3552). */}
