@@ -130,6 +130,7 @@ import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
 import { EmptyState, Skeleton } from "@/components/shared";
 import { goBack } from "@/lib/navigate";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
 import {
@@ -1322,20 +1323,39 @@ function SocialFeedBody() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [next, moreRound, gaveUp, fromKey, supabase]);
 
-  const legacyCard = cardEvent
-    ? `${cardEvent.placeId}|${cardEvent.kind}|${cardEvent.at}|${cardTab}`
-    : "";
-  // An old ?person= address on the feed moves to the page.
-  useEffect(() => {
-    if (!cardEvent || !legacyCard) return;
-    router.replace(cardHref(PERSON_PROFILE_PATH, cardEvent, cardTab));
-    // legacyCard is the address. cardEvent is a new object every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [legacyCard, router]);
+  // A FLOATING CARD OVER THE FEED (Pato, 2026-11-21, MESITA-4629: "profile
+  // of people must be also a floating modal", the Categories modal's). The
+  // open card is the feed's own address, ?person=… on /home/social
+  // (MESITA-3026), so a place tapped in it pushes over the feed and Back
+  // finds the card open again; the X pops. The card keeps its last event
+  // through the closing fade. /home/social/person stays a page for old links.
+  const [shownCard, setShownCard] = useState<CardEvent | null>(null);
+  if (cardEvent && (!shownCard || cardKey(cardEvent) !== cardKey(shownCard))) {
+    setShownCard(cardEvent);
+  }
+  const personModal = (
+    <LocalDialog
+      open={cardEvent !== null}
+      onClose={() => goBack(router)}
+      ariaLabel="Profile"
+      scroll
+    >
+      <PersonCard
+        event={cardEvent ?? shownCard}
+        fallback={null}
+        tab={cardTab}
+        onTab={(t) => {
+          const e = cardEvent ?? shownCard;
+          if (e) router.replace(cardHref(CONSUMER_ROUTES.homeSocial, e, t), { scroll: false });
+        }}
+        onClose={() => goBack(router)}
+      />
+    </LocalDialog>
+  );
 
   const openPerson = (it: ActivityFeedItem) => {
     // Signed out, the sign modal — never the profile (Pato, MESITA-4325).
-    const href = cardHref(PERSON_PROFILE_PATH, it, "viewed");
+    const href = cardHref(CONSUMER_ROUTES.homeSocial, it, "viewed");
     if (signedOut) {
       openSignGate(href, null);
       return;
@@ -1393,6 +1413,7 @@ function SocialFeedBody() {
         setPull(0);
       }}
     >
+      {personModal}
       {pendingNew > 0 ? (
         <div className="sticky top-2 z-10 flex h-0 justify-center">
           <button
