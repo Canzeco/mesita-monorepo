@@ -183,7 +183,11 @@ function OfferWords({
       ) : (
         <>
           {slide.lead ? <span className="truncate">{short ? slide.short : slide.lead}</span> : null}
-          <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>{slide.pill}</span>
+          {/* "Up To" in the pill everywhere Prepay shows (MESITA-4676), as on
+              the Loyalty Card's tile (MESITA-4661/4663). */}
+          <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>
+            {slide.key === "prepay" ? `Up To ${slide.pill}` : slide.pill}
+          </span>
         </>
       )}
     </span>

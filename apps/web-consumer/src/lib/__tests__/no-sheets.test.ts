@@ -30,6 +30,9 @@ const DEFINITION = "components/consumer/overlay/LocalOverlay.tsx";
 /** The destructive yes/no confirms (MESITA-4094). Adding one needs a
  *  one-sentence, two-button confirm and a `decision:` line on its issue. */
 export const CONFIRM_FILES = [
+  // Remove a place from Saved (MESITA-4676, decision: Pato asked for a
+  // verification modal): Remove or Cancel.
+  "components/consumer/RemoveSavedDialog.tsx",
   // Take back a gift (MESITA-4066; its own file since MESITA-4324, the
   // gift page and the waiting Gifts row share it).
   "components/consumer/activity/GiftTakeBack.tsx",
