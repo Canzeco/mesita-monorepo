@@ -350,7 +350,7 @@ export function GuestTabView({
             </div>
           </PaySection>
         </StepBody>
-        <StepFooter strip={5} />
+        <StepFooter strip={4} />
         {cardAction ? (
           <Button
             size="lg"
@@ -509,7 +509,7 @@ export function GuestTabView({
           </section>
         ) : null}
       </StepBody>
-      <StepFooter strip={5} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
+      <StepFooter strip={4} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
       <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
