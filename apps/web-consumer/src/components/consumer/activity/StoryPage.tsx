@@ -10,7 +10,8 @@
 //
 //   [IG][place]  +$50.00MX Story bonus      the hero, the state in its tone
 //   Post your story · tag @mesita and the restaurant · no deadline
-//   Steps        Paid ✓ · Post · Keep it up, the current one lit
+//   Steps        Pay · Credits · Post Story · Wait 3 hours · Check Story ·
+//                Bonus (MESITA-4627), the current one lit
 //   Now          waiting_post: the tags to copy and Open Instagram
 //                found: buy the voucher at the place and this story counts
 //                approved: "Checking · bonus at HH:MM", keep it up
@@ -23,7 +24,9 @@
 // page says so and asks again.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Check, CircleCheck, Copy, Gift, Wallet as WalletIcon } from "lucide-react";
+import { Camera, CircleCheck, Clock3, Copy, Gift, Wallet as WalletIcon } from "lucide-react";
+import { storyVoucherStage } from "@/lib/story-voucher";
+import { type VoucherStep, type VoucherStepState, VoucherSteps } from "./VoucherSteps";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Panel } from "@/components/shared/Panel";
@@ -88,8 +91,6 @@ function CopyChip({ text }: { text: string }) {
   );
 }
 
-type StepState = "done" | "current" | undefined;
-
 /** The Story's own bonus wait, from the server (MESITA-4426): "30 s" for an
  *  emulator test, "3 hours" for a real one or an older read. */
 function waitText(sec: number | null | undefined): string {
@@ -100,56 +101,28 @@ function waitText(sec: number | null | undefined): string {
   return sec >= 120 ? `${Math.round(sec / 60)} min` : `${sec} s`;
 }
 
-/** The four steps, the current one lit, the done ones ticked. */
+/** THE STORY VOUCHER'S SIX STEPS (Pato, 2026-11-21, MESITA-4627: "1. Pay
+ *  2. Credits 3. Post Story 4. Wait 3 hours 5. Check Story 6. Bonus"; four
+ *  steps before). The stage comes from lib/story-voucher.ts. */
 function StorySteps({ s }: { s: StoryTicket }) {
-  const at: Record<string, StepState> = (() => {
-    switch (s.state) {
-      case "waiting_post":
-        return { paid: "done", credit: "done", post: "current" };
-      case "found":
-      case "approved":
-        return { paid: "done", credit: "done", post: "done", bonus: "current" };
-      case "released":
-        return { paid: "done", credit: "done", post: "done", bonus: "done" };
-      default:
-        return { paid: "done", credit: "done" };
-    }
-  })();
+  const stage = storyVoucherStage(s, s.refunded);
+  const order = ["post", "wait", "check", "bonus"] as const;
+  const reached = stage === "done" ? 4 : stage === "check" ? 2 : stage === "wait" ? 1 : stage === "post" ? 0 : -1;
+  const at = (k: (typeof order)[number]): VoucherStepState => {
+    const n = order.indexOf(k);
+    if (reached < 0) return undefined;
+    return n < reached ? "done" : n === reached ? "current" : undefined;
+  };
   const paid = money(s.amount_cents, s.currency ?? "mxn");
-  const steps = [
-    { key: "paid", Icon: WalletIcon, title: "Pay the voucher", amount: paid },
-    { key: "credit", Icon: WalletIcon, title: "Your credit is ready", amount: paid },
-    { key: "post", Icon: Camera, title: "Post a story tagging both and keep it up", amount: null },
-    { key: "bonus", Icon: Gift, title: `Cashback in ${waitText(s.wait_sec)}, by itself`, amount: storyBonus(s) },
+  const steps: VoucherStep[] = [
+    { key: "paid", Icon: WalletIcon, title: "Pay", amount: paid, state: "done" },
+    { key: "credit", Icon: WalletIcon, title: "Credits", amount: paid, state: "done" },
+    { key: "post", Icon: Camera, title: "Post Story", sub: "Tag @mesita and the restaurant", state: at("post") },
+    { key: "wait", Icon: Clock3, title: `Wait ${waitText(s.wait_sec)}`, sub: "Keep your story up", state: at("wait") },
+    { key: "check", Icon: Instagram, title: "Check Story", state: at("check") },
+    { key: "bonus", Icon: Gift, title: stage === "lost" ? "Bonus not added" : "Bonus", amount: storyBonus(s), state: at("bonus") },
   ];
-  return (
-    <Panel className="px-4 py-3" data-story-steps="">
-      <ol className="flex flex-col" aria-label="Steps">
-        {steps.map((st, i) => {
-          const state = at[st.key];
-          return (
-            <li key={st.key} className="flex gap-3" aria-current={state === "current" ? "step" : undefined} data-story-step={state}>
-              <span className="flex flex-col items-center" aria-hidden>
-                <span
-                  className={cn(
-                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                    state === "current" ? "bg-foreground text-background" : state === "done" ? "bg-emerald-50 text-emerald-700" : "bg-muted text-foreground",
-                  )}
-                >
-                  {state === "done" ? <Check className="h-4 w-4" strokeWidth={2.75} /> : <st.Icon className="h-4 w-4" strokeWidth={2.25} />}
-                </span>
-                {i < steps.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
-              </span>
-              <span className={cn("flex min-w-0 flex-1 items-baseline justify-between gap-3 pt-1.5 text-sm font-semibold tabular-nums", i < steps.length - 1 && "pb-3", state === undefined && "text-muted-foreground")}>
-                <span className="min-w-0">{st.title}</span>
-                {st.amount ? <span className="shrink-0">{st.amount}</span> : null}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-    </Panel>
-  );
+  return <VoucherSteps steps={steps} />;
 }
 
 /** The story the Story holds: its picture (or the Instagram mark) and when. */
@@ -398,7 +371,7 @@ export function StoryPage({ id, byPurchase = false }: { id: string; byPurchase?:
             icon={Instagram}
             title={read.error === "missing" ? "This Story isn't here" : "Couldn't load this Story"}
             description={read.error === "missing" ? "It may belong to another account." : "Check your connection and try again."}
-            action={read.error === "missing" ? { label: "Back to Stories", href: ticketsHref("stories") } : { label: "Try again", onClick: () => refresh(false) }}
+            action={read.error === "missing" ? { label: "Back to Vouchers", href: ticketsHref("vouchers") } : { label: "Try again", onClick: () => refresh(false) }}
           />
         );
       }

@@ -161,6 +161,13 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/me/settings/refunds",
     permanent: true,
   },
+  // No Stories tab (MESITA-4627): a Story voucher is a Vouchers row. Each
+  // Story's own screen keeps /me/tickets/stories/<id>.
+  {
+    source: "/me/tickets/stories",
+    destination: ticketsHref("vouchers"),
+    permanent: true,
+  },
   // Gifts split into Gifts-In and Gifts-Out (MESITA-3941) and are one
   // Gifts list again (MESITA-4036): /me/tickets/gifts is live.
   {

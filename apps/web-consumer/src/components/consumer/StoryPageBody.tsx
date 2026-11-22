@@ -65,7 +65,7 @@ export function StoryPageBody({ place: fetched }: { place: PlaceDetail }) {
         place={place}
         actions={actions}
         onDone={back}
-        onWallet={() => navigateTo(router, ticketsHref("stories"), { motion: "drill" })}
+        onWallet={() => navigateTo(router, ticketsHref("vouchers"), { motion: "drill" })}
       />
     </div>
   );

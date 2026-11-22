@@ -24,10 +24,14 @@
 // STORIES (Pato, 2026-11-18, MESITA-4405: Tickets gets a Stories tab):
 // /me/tickets/stories, each Story at /me/tickets/stories/<id>.
 // ORDER (Pato, 2026-11-20: "Visits. Vouchers. Stories. Gifts. THIS ORDER").
+// NO STORIES TAB (Pato, 2026-11-21, MESITA-4627: "ONLY VOUCHERS AND VISITS
+// AND GIFTS. THE STORY THING IS JUST ONE EXTRA STEP"): a Story voucher is a
+// Vouchers row; /me/tickets/stories forwards to Vouchers, and each Story's
+// screen keeps its /me/tickets/stories/<id> address. Order as the tabs
+// (MESITA-4623: "Vouchers Visits Gifts").
 export const TICKET_KINDS = [
-  "visits",
   "vouchers",
-  "stories",
+  "visits",
   "gifts",
 ] as const;
 

@@ -53,8 +53,6 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GiftTickets } from "./GiftTickets";
-import { isPendingStory, StoryTickets } from "./StoryTickets";
-import { Instagram } from "@/components/shared/instagram-icon";
 import { cn } from "@/lib/utils";
 import {
   apiListReservations,
@@ -220,11 +218,6 @@ const EMPTY: Record<
     title: "No gifts yet",
     action: { label: "Send Gift", href: CONSUMER_ROUTES.mePages.gift },
   },
-  // StoryTickets draws its own empty state (MESITA-4405).
-  stories: {
-    title: "No Stories yet",
-    action: { label: "Find a place", href: CONSUMER_ROUTES.search },
-  },
   // Refunds' words since MESITA-3771, kept (MESITA-3782).
   refunds: {
     title: "No refunds",
@@ -234,7 +227,7 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
  *  here ... Refunds is important in tickets"), last. */
-export type TicketTab = "visits" | "vouchers" | "gifts" | "stories";
+export type TicketTab = "visits" | "vouchers" | "gifts";
 // REFUNDS LEFT FOR SETTINGS (MESITA-4402): /me/settings/refunds, RefundsPage.
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
 // the ones the page's empty states already wear. Gifts became Gifts-In and
@@ -251,8 +244,7 @@ const TICKET_TABS: ReadonlyArray<{
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "gifts", label: "Gifts", icon: Gift },
-  // The Story record's own tickets (MESITA-4405), always shown.
-  { kind: "stories", label: "Stories", icon: Instagram },
+  // NO STORIES TAB (MESITA-4627): a Story voucher is a Vouchers row.
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */
@@ -260,7 +252,8 @@ function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
   if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
     return "gifts";
-  if (seg === "stories") return "stories";
+  // /me/tickets/stories forwards to Vouchers (MESITA-4627).
+  if (seg === "stories") return "vouchers";
   return "visits";
 }
 
@@ -270,7 +263,6 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   visits: UtensilsCrossed,
   vouchers: BadgeDollarSign,
   gifts: Gift,
-  stories: Instagram,
   refunds: HandCoins,
 };
 
@@ -579,7 +571,7 @@ export function TicketsBoard({
           ]
         : null,
       vouchers: of("vouchers"),
-    } satisfies Record<Exclude<TicketTab, "gifts" | "stories">, Row[] | null>;
+    } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
   }, [visitList, walletData, visitCutoff]);
 
   // PENDING TICKETS (MESITA-4623): bills waiting for the waiter, Stories
@@ -587,17 +579,14 @@ export function TicketsBoard({
   // also says so in a yellow line above the tabs.
   const pending: Partial<Record<TicketTab, number>> = {
     visits: (byKind.visits ?? []).filter((r) => r.pending).length,
-    stories: (walletData?.stories ?? []).filter(isPendingStory).length,
     vouchers: (byKind.vouchers ?? []).filter((r) => r.landing).length,
   };
-  const pendingTotal = (pending.visits ?? 0) + (pending.stories ?? 0) + (pending.vouchers ?? 0);
+  const pendingTotal = (pending.visits ?? 0) + (pending.vouchers ?? 0);
   const pendingTab: TicketTab | null = pending.visits
     ? "visits"
-    : pending.stories
-      ? "stories"
-      : pending.vouchers
-        ? "vouchers"
-        : null;
+    : pending.vouchers
+      ? "vouchers"
+      : null;
 
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
@@ -646,9 +635,7 @@ export function TicketsBoard({
         </button>
       ) : null}
       <TicketPills on={kind} onPick={onPick} flush={false} sticky={edge} pending={pending} />
-      {kind === "stories" && ready && !failed && walletData ? (
-        <StoryTickets stories={walletData.stories ?? []} showPlace={!placeId} />
-      ) : kind === "gifts" && ready && !failed && walletData ? (
+      {kind === "gifts" && ready && !failed && walletData ? (
         <GiftTickets gifts={walletData.gifts ?? []} showPlace={!placeId} onChanged={() => {
             wallet.reload();
             onChanged?.();
@@ -657,7 +644,7 @@ export function TicketsBoard({
         <TicketList
           key={kind}
           type={kind}
-          rows={kind === "gifts" || kind === "stories" ? null : byKind[kind]}
+          rows={kind === "gifts" ? null : byKind[kind]}
           ready={ready}
           failed={failed}
           retry={retry}
@@ -905,7 +892,7 @@ function TicketPills({
       aria-label="Kinds of ticket"
       // FOUR EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each"): Stories
       // (MESITA-4405) made it four; three columns wrapped it to a second line.
-      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
+      className={cn("bg-card border-border grid shrink-0 grid-cols-3 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {

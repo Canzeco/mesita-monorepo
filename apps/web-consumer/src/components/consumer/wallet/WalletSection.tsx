@@ -7,7 +7,7 @@ import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
@@ -16,10 +16,8 @@ import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB, SECTION_CARD, SECTION_ROWS, SECTION_T
 import { GiftClaimSheet } from "./SendCredit";
 import { cn } from "@/lib/utils";
 import { useWallet } from "./use-wallet";
-import { useStoryNow } from "./use-story-now";
-import { openStories } from "@/lib/story-lines";
-import { StoryRow } from "./WalletLists";
-import { money, type WaitingStory } from "@/lib/api/wallet";
+import { money } from "@/lib/api/wallet";
+import { storyForPurchase, storyPurchaseIds, storyVoucherOpen, storyVoucherStage, storyVoucherWords } from "@/lib/story-voucher";
 import { splitEntries } from "@/lib/wallet-entries";
 
 /** A voucher's credit or bonus still landing (MESITA-4625): Pay lists it in
@@ -29,10 +27,13 @@ export type PendingVoucher = {
   placeId: string;
   name: string | null;
   photo: string | null;
+  purchaseId: string | null;
   amountCents: number;
   currency: string;
   kind: string;
   availableAt: string | null;
+  /** A Story voucher still to post, wait or check (MESITA-4627). */
+  story?: { label: string; line: string };
 };
 const VOUCHER_KINDS = new Set(["voucher", "prepay", "bonus"]);
 
@@ -180,23 +181,52 @@ export function WalletSection({
   onReady?: () => void;
   /** Pay's Pending Tickets (MESITA-4623, MESITA-4625): the open Stories and
    *  the vouchers still landing go there, not in the Loyalty Cards box. */
-  onPending?: (p: { stories: WaitingStory[]; vouchers: PendingVoucher[] }) => void;
+  onPending?: (p: { vouchers: PendingVoucher[] }) => void;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
-  // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
-  const storyNow = useStoryNow(openStories(wallet?.waiting_stories ?? []));
   // PENDING TICKETS (Pato, 2026-11-21, MESITA-4623/4625): with onPending the
   // open Stories and every voucher still landing (credit or bonus, the
   // wallet's pending entries) are handed to Pay's Pending Tickets box and
   // left out of here: no Story rows, no blue pending box on the cards.
   useEffect(() => {
     if (!onPending || !wallet) return;
+    // A STORY VOUCHER IS ONE ROW (MESITA-4627): still to post, wait or
+    // check, it is one pending voucher opening its Story screen; its own
+    // credit or bonus entries are not listed again.
+    const storyBuys = storyPurchaseIds(wallet);
+    const now = Date.now();
+    const storyRows: PendingVoucher[] = wallet.balances.flatMap((b) =>
+      b.place === null
+        ? []
+        : b.entries.flatMap((e) => {
+            const pid = e.purchase_id;
+            if (e.kind !== "voucher" || !pid || !storyBuys.has(pid)) return [];
+            const refunded = b.entries.some((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid);
+            const stage = storyVoucherStage(storyForPurchase(wallet.stories, pid), refunded, now);
+            if (!storyVoucherOpen(stage)) return [];
+            const words = storyVoucherWords(stage);
+            return [
+              {
+                key: `${b.place_id}-story-${pid}`,
+                placeId: b.place_id,
+                purchaseId: pid,
+                name: b.place?.name ?? null,
+                photo: b.place?.photo ?? null,
+                amountCents: e.amount_cents,
+                currency: b.currency,
+                kind: "story",
+                availableAt: null,
+                story: { label: words.label, line: words.line },
+              },
+            ];
+          }),
+    );
     const vouchers: PendingVoucher[] = wallet.balances.flatMap((b) =>
       b.place === null
         ? []
         : splitEntries(b.entries)
-            .pending.filter((g) => VOUCHER_KINDS.has(g.kind))
+            .pending.filter((g) => VOUCHER_KINDS.has(g.kind) && !(g.purchase_id && storyBuys.has(g.purchase_id)))
             .map((g, i) => ({
               key: `${b.place_id}-${g.kind}-${g.purchase_id ?? g.at}-${i}`,
               placeId: b.place_id,
@@ -205,10 +235,11 @@ export function WalletSection({
               amountCents: g.amount_cents,
               currency: b.currency,
               kind: g.kind,
+              purchaseId: g.purchase_id ?? null,
               availableAt: g.available_at ?? null,
             })),
     );
-    onPending({ stories: openStories(wallet.waiting_stories ?? []), vouchers });
+    onPending({ vouchers: [...storyRows, ...vouchers] });
   }, [onPending, wallet]);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
@@ -275,7 +306,9 @@ export function WalletSection({
 
   const q = fold(query.trim());
   // Open Stories only (MESITA-4446): a decided one lives in Tickets.
-  const stories = onPending ? [] : openStories(wallet?.waiting_stories ?? []).filter((s) => !q || fold(s.place?.name ?? "").includes(q));
+  // NO STORY ROWS HERE (Pato, 2026-11-21, MESITA-4627: "COMPLETELY REMOVE
+  // THE INDEPENDENT STORY TICKETS"): a Story voucher is its Loyalty Card's
+  // money and, while open, a Pending Tickets row on Pay.
   // A place already listed above with Pay is not listed again (MESITA-4497).
   const cards = (credits ?? []).filter((r) => !leadIds?.has(r.placeId) && (!q || fold(r.card.name ?? "").includes(q)));
   // One state drives the card rows, the empty block and the error.
@@ -284,7 +317,7 @@ export function WalletSection({
       ? "failed"
       : !ready || !wallet || credits === null || leadIds === null
         ? "loading"
-        : cards.length === 0 && stories.length === 0
+        : cards.length === 0
           ? "empty"
           : "rows";
   const settled = creditsState === "rows" || creditsState === "empty";
@@ -304,13 +337,6 @@ export function WalletSection({
         <h2 className={SECTION_TITLE}>Loyalty Cards</h2>
         <div className={SECTION_ROWS}>
           {lead}
-          {creditsState === "rows"
-            ? stories.map((s) => (
-                <div key={s.purchase_id}>
-                  <StoryRow story={s} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(s.story_id), { motion: "drill" })} />
-                </div>
-              ))
-            : null}
           {creditsState === "rows"
             ? cards.map((row) => {
                 const gone = row.balance.place === null;

@@ -15,6 +15,6 @@ export default async function Page({
   searchParams: Promise<{ by?: string }>;
 }) {
   const [{ storyId }, { by }] = await Promise.all([params, searchParams]);
-  if (!isRouteId(storyId)) redirect(ticketsHref("stories"));
+  if (!isRouteId(storyId)) redirect(ticketsHref("vouchers"));
   return <StoryPage id={storyId} byPurchase={by === "purchase"} />;
 }
