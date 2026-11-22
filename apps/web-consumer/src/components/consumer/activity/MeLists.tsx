@@ -276,7 +276,8 @@ const ICON: Record<ListType | "all", LucideIcon> = {
  *  reservation card that led the page stays on Reservations only. */
 export function NotificationsPage() {
   return (
-    <MeScreen title="Notifications">
+    // FLUSH (MESITA-4607): the rows run edge to edge, no page margin, no box.
+    <MeScreen title="Notifications" flush>
       <NotificationsList />
     </MeScreen>
   );
