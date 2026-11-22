@@ -298,6 +298,11 @@ export function PayPage({
   // The vouchers still landing or still to post (MESITA-4625, MESITA-4627),
   // handed up by the Wallet section.
   const [pendingVouchers, setPendingVouchers] = useState<PendingVoucher[]>([]);
+  // NO "BONUS PENDING" ROWS (Pato, 2026-11-22, MESITA-4638: "the blue box
+  // below mentioning that is enough"): a bonus still landing shows only on
+  // its Loyalty Card row's blue pending box; Pending Tickets keeps the open
+  // bill and a Story voucher's next step.
+  const pendingTickets = pendingVouchers.filter((v) => v.story);
   const onPending = useCallback((p: { vouchers: PendingVoucher[] }) => setPendingVouchers(p.vouchers), []);
   const [methodReady, setMethodReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
@@ -361,12 +366,12 @@ export function PayPage({
           kinda works"): the amber box and the blue rows are gone; it wears
           Payment method's and Loyalty Cards' card, the grey title strip and
           white rows, each the place over one grey line. */}
-      {bill === "open" || pendingVouchers.length > 0 ? (
+      {bill === "open" || pendingTickets.length > 0 ? (
         <section className={SECTION_CARD} aria-label="Pending Tickets" data-pay-pending>
           <h2 className={SECTION_TITLE}>Pending Tickets</h2>
           <div className={SECTION_ROWS}>
             {bill === "open" ? <OpenBillPanel tab={openTabs?.[0] ?? null} pending={pending} places={places} /> : null}
-            {pendingVouchers.map((v) => (
+            {pendingTickets.map((v) => (
               <PendingVoucherRow key={v.key} v={v} />
             ))}
           </div>
