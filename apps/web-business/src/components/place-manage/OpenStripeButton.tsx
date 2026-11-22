@@ -3,8 +3,9 @@
 // Open Stripe (MESITA-4554/4555, Pato: "IN THE HEADER … AND IT MUST BE
 // PURPLE"): Stripe's purple, in the page header top right; a one-time link
 // into the place's Stripe dashboard for bank details, documents and tax forms.
+// Large, with Stripe's mark (MESITA-4683, Pato: "open stripe button more visible").
 import { useState } from "react";
-import { ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr";
+import { ArrowSquareOutIcon, StripeLogoIcon } from "@phosphor-icons/react/dist/ssr";
 import { openPaymentDashboard } from "@/lib/business-api";
 
 export function OpenStripeButton({ placeId }: { placeId: string }) {
@@ -15,7 +16,7 @@ export function OpenStripeButton({ placeId }: { placeId: string }) {
       {error ? <span className="text-destructive text-xs">{error}</span> : null}
       <button
         type="button"
-        className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[#635BFF] px-3 text-xs font-semibold text-white hover:bg-[#5249e6] disabled:opacity-50"
+        className="inline-flex h-11 items-center gap-2 rounded-full bg-[#635BFF] px-6 text-base font-semibold text-white hover:bg-[#5249e6] disabled:opacity-50"
         disabled={busy}
         onClick={async () => {
           setBusy(true);
@@ -26,8 +27,9 @@ export function OpenStripeButton({ placeId }: { placeId: string }) {
           else setError(r.error);
         }}
       >
+        <StripeLogoIcon size={20} weight="bold" aria-hidden />
         {busy ? "Opening…" : "Open Stripe"}
-        <ArrowSquareOutIcon size={14} weight="bold" aria-hidden />
+        <ArrowSquareOutIcon size={18} weight="bold" aria-hidden />
       </button>
     </span>
   );
