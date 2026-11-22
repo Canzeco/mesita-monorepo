@@ -10,7 +10,10 @@
 // between payment method and first item"): the rows' own line, 12px under
 // the words.
 export const SECTION_CARD = "border-border bg-card mt-2 overflow-hidden rounded-2xl border";
-export const SECTION_TITLE = "text-foreground border-border border-b px-3 py-3 text-base font-semibold";
+// A FAINT GREY STRIP (Pato, 2026-11-21, MESITA-4605: "add a bit of color to
+// the headers … a bit gray, just a bit, minimum"): the title strip wears
+// bg-muted at 50%, the lightest grey step; the rows stay white.
+export const SECTION_TITLE = "text-foreground border-border border-b px-3 py-3 text-base font-semibold bg-muted/50";
 export const SECTION_ROWS = "divide-border flex flex-col divide-y";
 
 // ONE SIZE SCALE (Pato, 2026-11-21, MESITA-4578: "standarize … sizes and
