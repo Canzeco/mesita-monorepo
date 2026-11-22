@@ -5,6 +5,7 @@ import {
   CalendarCheck,
   CreditCard,
   Crown,
+  Gift,
   Heart,
   Settings as SettingsIcon,
   Ticket,
@@ -213,6 +214,15 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Tell a friend",
     href: CONSUMER_ROUTES.share,
   },
+  // GIFT IS BACK ON ME (Pato, 2026-11-22, MESITA-4670: "Add Gift button
+  // here too"): beside Share, both about other people; it opens Send Gift's
+  // place list, the Loyalty Card's Send Gift flow. Gone since MESITA-4523.
+  {
+    Icon: Gift,
+    title: "Gift",
+    summary: "Send credit",
+    href: CONSUMER_ROUTES.walletSend,
+  },
   // NO INTEGRATIONS CELL (Pato, 2026-11-22, MESITA-4657: "Share Settings
   // (integrations here inside)"): it is Settings' first row.
 ];
@@ -255,8 +265,10 @@ export function MeHubFrame({
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
             ))}
-            {/* SETTINGS CLOSES THE GRID, beside Integrations (MESITA-3954). */}
-            {tile(ME_HUB_SETTINGS, "cell")}
+            {/* SETTINGS CLOSES THE GRID; with Gift the cells are eleven, so
+                it spans both columns rather than leave half a row empty
+                (MESITA-4670). */}
+            <div className="col-span-full">{tile(ME_HUB_SETTINGS, "cell")}</div>
           </DestGrid>
         </div>
       </KeptScroll>

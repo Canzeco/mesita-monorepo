@@ -645,7 +645,7 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 // Integrations, MESITA-3954).
 // Plan read Soon under MESITA-3855 and opens again since it is sold
 // (MESITA-3870).
-describe("T8 — Me's grid is ten cells, every one a live door", () => {
+describe("T8 — Me's grid is eleven cells, every one a live door", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -654,7 +654,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders ten cells in Pato's order", () => {
+  it("renders eleven cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -682,8 +682,9 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       // Share replaces Gift (MESITA-3940: "here add share instead of
       // gift"); it opens /share.
       "Share",
+      // Gift is back beside Share (MESITA-4670); it opens Send Gift.
+      "Gift",
       "Settings",
-      // No Gift box since MESITA-4523: Send Gift is on Pay (MESITA-4520).
     ]);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
     expect(
@@ -714,9 +715,8 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
 
   it("Settings closes the grid and the page", () => {
     // The tail cell (MESITA-1642). Support moved into it (MESITA-2169).
-    // No Gift row under it since MESITA-4523 (Send Gift is on Pay).
+    // Gift is a cell before it since MESITA-4670, never a row under it.
     expect(gridTitles().at(-1)).toBe("Settings");
-    expect(gridTitles()).not.toContain("Gift");
     expect(gridTitles()).not.toContain("Support");
   });
 
