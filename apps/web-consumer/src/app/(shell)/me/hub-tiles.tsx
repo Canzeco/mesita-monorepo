@@ -265,10 +265,11 @@ export function MeHubFrame({
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>
             ))}
-            {/* SETTINGS CLOSES THE GRID; with Gift the cells are eleven, so
-                it spans both columns rather than leave half a row empty
+            {/* SETTINGS CLOSES THE GRID, one cell like the rest, alone in the
+                last row (Pato, 2026-11-22, MESITA-4673: "settings same size
+                even if asymmetric"); it spanned both columns for one deploy
                 (MESITA-4670). */}
-            <div className="col-span-full">{tile(ME_HUB_SETTINGS, "cell")}</div>
+            {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>
       </KeptScroll>
