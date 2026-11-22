@@ -94,8 +94,8 @@ Deno.test("settings: no row is everything Off, App Payments included; unknown ke
   // Accept Stripe Payments since MESITA-3946, On by default like its column).
   // Ten since the VIP offer left (MESITA-4249); nine since Welcome left
   // (MESITA-4636); ten again with VIP back (MESITA-4640); nine since Story
-  // left (MESITA-4642).
-  assertEquals(Object.keys(off).length, 9);
+  // left (MESITA-4642); ten with Welcome back (MESITA-4645).
+  assertEquals(Object.keys(off).length, 10);
   assertEquals(off.stripe_payments, true);
   assertEquals(settingsFromRow({ stripe_payments: false }).stripe_payments, false);
   // Mesita Prepayments (MESITA-3597) reads off with no row and from anything but true.

@@ -12,11 +12,11 @@ import { pesos, readyClock, VouchersPane } from "./vouchers";
 const OFFER: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_vip: false },
+  vouchers: { voucher_welcome: true, voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_vip: false },
   test_mode: true,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000"],
-  unavailable: { voucher_5000: "not_yet" },
+  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used" },
   catalog: {
     voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
     voucher_1000: { price_cents: 100000, bonus_cents: 20000, credit_cents: 120000, available_after_sec: 3600 },
@@ -31,7 +31,7 @@ const STALE_SELL: PlaceMoney = {
   vouchers: { ...OFFER.vouchers, voucher_vip: false },
   // A stale server's retired key, outside the client's key type.
   sell: ["voucher_200", "voucher_1000", "voucher_story"] as unknown as PlaceMoney["sell"],
-  unavailable: { voucher_5000: "not_yet" },
+  unavailable: { voucher_5000: "not_yet", voucher_welcome: "used" },
 };
 
 function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): string {
@@ -58,8 +58,8 @@ describe("Vouchers tab", () => {
   });
 
   // HIDDEN · BLOCKED · AVAILABLE (MESITA-4603): what the place doesn't offer
-  // is not on the page (no Welcome at all since MESITA-4636).
-  it("hides what the place doesn't offer and any Welcome; Buy only on `sell`", () => {
+  // and a Welcome already had are not on the page.
+  it("hides what the place doesn't offer and a used Welcome; Buy only on `sell`", () => {
     const html = render({ ...OFFER, test_mode: false }, () => {});
     expect(row(html, "voucher_200")).not.toContain("data-voucher-locked");
     expect(row(html, "voucher_1000")).not.toContain("data-voucher-locked");

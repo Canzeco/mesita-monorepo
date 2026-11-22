@@ -16,6 +16,7 @@ export const MONEY_CODES = [
   "not_available",
   // the Mesita Payments switch is off here (MESITA-3396): no card part
   "cards_off",
+  "welcome_used",
   "place_code_required",
   // The place's outstanding credit across guests would pass its Credits
   // Limit after this buy (MESITA-3947; the MESITA-3305 test-mode cap before)

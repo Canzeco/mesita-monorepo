@@ -29,6 +29,9 @@
 export const CARD_BILL_PAY_LIVE = true;
 
 export const MONEY_VOUCHER_KEYS = [
+  // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
+  // BONUS. WELCOME AND THEN THE OTHER BONUSES."): once per guest per place.
+  "voucher_welcome",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -81,6 +84,8 @@ export type VoucherReason =
   | "needs_instagram"
   /** Selling is paused for every place (the admin console's kill switch). */
   | "paused"
+  /** Welcome: this guest already had theirs here, or has paid here before. */
+  | "used"
   /** The VIP voucher is for the VIP class (MESITA-4640). */
   | "not_vip"
   /** VIP, one each new visit (MESITA-3463): this guest already
@@ -109,6 +114,8 @@ export type VoucherReason =
 //  want fucking fradus"). Its key left the catalog;
 //  place_payment_settings.voucher_welcome is a dead column, false
 //  everywhere. Welcome purchases already paid stay in the ledger.
+//  WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
+//  BONUS"): its key is in the catalog again and the column is a live switch.
 //  STORIES ARE GONE (Pato, 2026-11-22, MESITA-4641/4642: "REMOVE STORIES FROM
 //  EVERYWHERE"): voucher_story left the catalog the same way; its purchases
 //  stay readable (the voucher is stored as text) and a buy is refused with

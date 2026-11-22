@@ -432,6 +432,7 @@ export type PaymentKey =
   | "cash_payments"
   | "pay_cards"
   | "prepayments"
+  | "voucher_welcome"
   | "voucher_200"
   | "voucher_1000"
   | "voucher_5000"

@@ -215,6 +215,41 @@ export type Database = {
         }
         Relationships: []
       }
+      consumer_calendar_feeds: {
+        Row: {
+          calendar: string
+          consumer_id: string
+          created_at: string
+          last_read_at: string | null
+          off: boolean
+          token: string
+        }
+        Insert: {
+          calendar: string
+          consumer_id: string
+          created_at?: string
+          last_read_at?: string | null
+          off?: boolean
+          token: string
+        }
+        Update: {
+          calendar?: string
+          consumer_id?: string
+          created_at?: string
+          last_read_at?: string | null
+          off?: boolean
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_calendar_feeds_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consumer_code_counter: {
         Row: {
           id: number
@@ -298,27 +333,34 @@ export type Database = {
         Row: {
           appear_anonymous: boolean
           avatar_url: string | null
+          birth_year: number | null
           birthday: string | null
           code: string | null
           created_at: string
           deleted_at: string | null
           first_name: string | null
           full_name: string | null
-          guest_class: string
+          guest_class: string | null
           guest_class_note: string | null
           guest_class_set_at: string | null
           guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_is_private: boolean | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
           instagram_sync_day: string | null
           instagram_synced_at: string | null
           instagram_verified_at: string | null
           last_name: string | null
+          pay_method: string | null
           phone: string | null
           plan: string
+          plan_cancel_at_period_end: boolean
+          plan_livemode: boolean | null
+          plan_paid_until: string | null
+          plan_stripe_subscription: string | null
           reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
@@ -328,27 +370,34 @@ export type Database = {
         Insert: {
           appear_anonymous?: boolean
           avatar_url?: string | null
+          birth_year?: number | null
           birthday?: string | null
           code?: string | null
           created_at?: string
           deleted_at?: string | null
           first_name?: string | null
           full_name?: string | null
-          guest_class?: string
+          guest_class?: string | null
           guest_class_note?: string | null
           guest_class_set_at?: string | null
           guest_class_set_by?: string | null
           id: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
+          instagram_is_private?: boolean | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
           instagram_sync_day?: string | null
           instagram_synced_at?: string | null
           instagram_verified_at?: string | null
           last_name?: string | null
+          pay_method?: string | null
           phone?: string | null
           plan?: string
+          plan_cancel_at_period_end?: boolean
+          plan_livemode?: boolean | null
+          plan_paid_until?: string | null
+          plan_stripe_subscription?: string | null
           reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
@@ -358,27 +407,34 @@ export type Database = {
         Update: {
           appear_anonymous?: boolean
           avatar_url?: string | null
+          birth_year?: number | null
           birthday?: string | null
           code?: string | null
           created_at?: string
           deleted_at?: string | null
           first_name?: string | null
           full_name?: string | null
-          guest_class?: string
+          guest_class?: string | null
           guest_class_note?: string | null
           guest_class_set_at?: string | null
           guest_class_set_by?: string | null
           id?: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
+          instagram_is_private?: boolean | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
           instagram_sync_day?: string | null
           instagram_synced_at?: string | null
           instagram_verified_at?: string | null
           last_name?: string | null
+          pay_method?: string | null
           phone?: string | null
           plan?: string
+          plan_cancel_at_period_end?: boolean
+          plan_livemode?: boolean | null
+          plan_paid_until?: string | null
+          plan_stripe_subscription?: string | null
           reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
@@ -391,6 +447,243 @@ export type Database = {
             columns: ["vip_partner_id"]
             isOneToOne: false
             referencedRelation: "vip_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_limit_defaults: {
+        Row: {
+          currency: string
+          limit_cents: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          currency: string
+          limit_cents: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          currency?: string
+          limit_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      google_review_observations: {
+        Row: {
+          google_place_id: string
+          observed_at: string
+          place_id: string
+          review_count: number
+          stars: number | null
+        }
+        Insert: {
+          google_place_id: string
+          observed_at: string
+          place_id: string
+          review_count: number
+          stars?: number | null
+        }
+        Update: {
+          google_place_id?: string
+          observed_at?: string
+          place_id?: string
+          review_count?: number
+          stars?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_review_observations_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_pay_attempts: {
+        Row: {
+          bill_cents: number
+          card_cents: number
+          cash_cents: number
+          charging_at: string | null
+          confirmed_key_hash: string | null
+          consumer_id: string
+          created_at: string
+          credit_cents: number
+          currency: string
+          end_reason: string | null
+          ending_at: string | null
+          ending_reason: string | null
+          expires_at: string
+          guest_label: string
+          held_at: string | null
+          id: string
+          livemode: boolean
+          needs_review_at: string | null
+          payment_id: string | null
+          place_id: string
+          prev_token_hash: string | null
+          prev_token_until: string | null
+          request_id: string
+          status: string
+          tab_id: string | null
+          tender: string
+          tip_cents: number
+          token_hash: string
+        }
+        Insert: {
+          bill_cents: number
+          card_cents?: number
+          cash_cents?: number
+          charging_at?: string | null
+          confirmed_key_hash?: string | null
+          consumer_id: string
+          created_at?: string
+          credit_cents?: number
+          currency: string
+          end_reason?: string | null
+          ending_at?: string | null
+          ending_reason?: string | null
+          expires_at: string
+          guest_label: string
+          held_at?: string | null
+          id?: string
+          livemode: boolean
+          needs_review_at?: string | null
+          payment_id?: string | null
+          place_id: string
+          prev_token_hash?: string | null
+          prev_token_until?: string | null
+          request_id: string
+          status: string
+          tab_id?: string | null
+          tender: string
+          tip_cents?: number
+          token_hash: string
+        }
+        Update: {
+          bill_cents?: number
+          card_cents?: number
+          cash_cents?: number
+          charging_at?: string | null
+          confirmed_key_hash?: string | null
+          consumer_id?: string
+          created_at?: string
+          credit_cents?: number
+          currency?: string
+          end_reason?: string | null
+          ending_at?: string | null
+          ending_reason?: string | null
+          expires_at?: string
+          guest_label?: string
+          held_at?: string | null
+          id?: string
+          livemode?: boolean
+          needs_review_at?: string | null
+          payment_id?: string | null
+          place_id?: string
+          prev_token_hash?: string | null
+          prev_token_until?: string | null
+          request_id?: string
+          status?: string
+          tab_id?: string | null
+          tender?: string
+          tip_cents?: number
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_pay_attempts_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_pay_attempts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_pay_attempts_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_pay_attempts_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "pay_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_cards_contracts: {
+        Row: {
+          created_at: string
+          currency: string | null
+          end_reason: string | null
+          ended_at: string | null
+          ended_by: string | null
+          id: string
+          ip: string | null
+          place_id: string
+          signed_at: string
+          signed_by: string
+          signed_by_email: string | null
+          signer_role: string
+          terms_version: string
+          text_sha256: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          ip?: string | null
+          place_id: string
+          signed_at?: string
+          signed_by: string
+          signed_by_email?: string | null
+          signer_role: string
+          terms_version: string
+          text_sha256: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          end_reason?: string | null
+          ended_at?: string | null
+          ended_by?: string | null
+          id?: string
+          ip?: string | null
+          place_id?: string
+          signed_at?: string
+          signed_by?: string
+          signed_by_email?: string | null
+          signer_role?: string
+          terms_version?: string
+          text_sha256?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_cards_contracts_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -415,6 +708,142 @@ export type Database = {
           refreshed_at?: string
         }
         Relationships: []
+      }
+      pay_tabs: {
+        Row: {
+          bill_cents: number | null
+          bill_version: number
+          billed_at: string | null
+          card_bill_cents: number
+          card_tip_cents: number
+          cash_bill_cents: number
+          cash_received_cents: number | null
+          cash_tip_cents: number
+          consumer_id: string | null
+          created_at: string
+          credit_cents: number
+          currency: string
+          end_reason: string | null
+          expires_at: string
+          id: string
+          join_token_hash: string | null
+          livemode: boolean
+          origin: string
+          paid_at: string | null
+          parent_tab_id: string | null
+          pay_request_id: string | null
+          paying_at: string | null
+          place_id: string
+          signing_at: string | null
+          split_at: string | null
+          split_ways: number | null
+          staff_key_hash: string | null
+          status: string
+          ticket: string | null
+          tip_cents: number
+          token_hash: string
+          updated_at: string
+          verified_at: string | null
+          verified_key_hash: string | null
+          waiter_name: string | null
+        }
+        Insert: {
+          bill_cents?: number | null
+          bill_version?: number
+          billed_at?: string | null
+          card_bill_cents?: number
+          card_tip_cents?: number
+          cash_bill_cents?: number
+          cash_received_cents?: number | null
+          cash_tip_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          credit_cents?: number
+          currency: string
+          end_reason?: string | null
+          expires_at: string
+          id?: string
+          join_token_hash?: string | null
+          livemode?: boolean
+          origin?: string
+          paid_at?: string | null
+          parent_tab_id?: string | null
+          pay_request_id?: string | null
+          paying_at?: string | null
+          place_id: string
+          signing_at?: string | null
+          split_at?: string | null
+          split_ways?: number | null
+          staff_key_hash?: string | null
+          status?: string
+          ticket?: string | null
+          tip_cents?: number
+          token_hash: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_key_hash?: string | null
+          waiter_name?: string | null
+        }
+        Update: {
+          bill_cents?: number | null
+          bill_version?: number
+          billed_at?: string | null
+          card_bill_cents?: number
+          card_tip_cents?: number
+          cash_bill_cents?: number
+          cash_received_cents?: number | null
+          cash_tip_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          credit_cents?: number
+          currency?: string
+          end_reason?: string | null
+          expires_at?: string
+          id?: string
+          join_token_hash?: string | null
+          livemode?: boolean
+          origin?: string
+          paid_at?: string | null
+          parent_tab_id?: string | null
+          pay_request_id?: string | null
+          paying_at?: string | null
+          place_id?: string
+          signing_at?: string | null
+          split_at?: string | null
+          split_ways?: number | null
+          staff_key_hash?: string | null
+          status?: string
+          ticket?: string | null
+          tip_cents?: number
+          token_hash?: string
+          updated_at?: string
+          verified_at?: string | null
+          verified_key_hash?: string | null
+          waiter_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_tabs_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_tabs_parent_tab_id_fkey"
+            columns: ["parent_tab_id"]
+            isOneToOne: false
+            referencedRelation: "pay_tabs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_tabs_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_activity: {
         Row: {
@@ -626,6 +1055,7 @@ export type Database = {
           payment_id: string | null
           place_id: string
           ticket: string | null
+          tip_cents: number
           token_hash: string
         }
         Insert: {
@@ -640,6 +1070,7 @@ export type Database = {
           payment_id?: string | null
           place_id: string
           ticket?: string | null
+          tip_cents?: number
           token_hash: string
         }
         Update: {
@@ -654,6 +1085,7 @@ export type Database = {
           payment_id?: string | null
           place_id?: string
           ticket?: string | null
+          tip_cents?: number
           token_hash?: string
         }
         Relationships: [
@@ -684,18 +1116,27 @@ export type Database = {
         Row: {
           code_hash: string
           place_id: string
+          staff_qr: string | null
+          staff_qr_made_at: string | null
+          staff_qr_used_at: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           code_hash: string
           place_id: string
+          staff_qr?: string | null
+          staff_qr_made_at?: string | null
+          staff_qr_used_at?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           code_hash?: string
           place_id?: string
+          staff_qr?: string | null
+          staff_qr_made_at?: string | null
+          staff_qr_used_at?: string | null
           updated_at?: string
           updated_by?: string | null
         }
@@ -860,21 +1301,21 @@ export type Database = {
       }
       place_events: {
         Row: {
-          consumer_id: string
+          consumer_id: string | null
           created_at: string
           id: number
           kind: string
           place_id: string
         }
         Insert: {
-          consumer_id: string
+          consumer_id?: string | null
           created_at?: string
           id?: never
           kind: string
           place_id: string
         }
         Update: {
-          consumer_id?: string
+          consumer_id?: string | null
           created_at?: string
           id?: never
           kind?: string
@@ -920,6 +1361,114 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      place_fee_invoices: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          due_at: string | null
+          hosted_invoice_url: string | null
+          id: string
+          livemode: boolean
+          paid_at: string | null
+          place_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_error: string | null
+          stripe_invoice_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency: string
+          due_at?: string | null
+          hosted_invoice_url?: string | null
+          id?: string
+          livemode: boolean
+          paid_at?: string | null
+          place_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_error?: string | null
+          stripe_invoice_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          due_at?: string | null
+          hosted_invoice_url?: string | null
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_error?: string | null
+          stripe_invoice_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_fee_invoices_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_fee_lines: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          invoice_id: string
+          payment_id: string | null
+          purchase_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          payment_id?: string | null
+          purchase_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          payment_id?: string | null
+          purchase_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_fee_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "place_fee_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_fee_lines_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_fee_lines_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_invites: {
         Row: {
@@ -1194,42 +1743,60 @@ export type Database = {
       place_payment_accounts: {
         Row: {
           account_country: string | null
+          apple_pay_domain_at: string | null
           charges_enabled: boolean
           created_at: string
           details_submitted: boolean
           disabled_reason: string | null
+          fee_customer_id: string | null
+          fee_hold: boolean
+          fee_hold_at: string | null
+          google_pay_domain_at: string | null
           last_event_created: number | null
           livemode: boolean
           payouts_enabled: boolean
           place_id: string
+          pm_domains_checked_at: string | null
           requirements_due: Json
           stripe_account_id: string
           updated_at: string
         }
         Insert: {
           account_country?: string | null
+          apple_pay_domain_at?: string | null
           charges_enabled?: boolean
           created_at?: string
           details_submitted?: boolean
           disabled_reason?: string | null
+          fee_customer_id?: string | null
+          fee_hold?: boolean
+          fee_hold_at?: string | null
+          google_pay_domain_at?: string | null
           last_event_created?: number | null
           livemode?: boolean
           payouts_enabled?: boolean
           place_id: string
+          pm_domains_checked_at?: string | null
           requirements_due?: Json
           stripe_account_id: string
           updated_at?: string
         }
         Update: {
           account_country?: string | null
+          apple_pay_domain_at?: string | null
           charges_enabled?: boolean
           created_at?: string
           details_submitted?: boolean
           disabled_reason?: string | null
+          fee_customer_id?: string | null
+          fee_hold?: boolean
+          fee_hold_at?: string | null
+          google_pay_domain_at?: string | null
           last_event_created?: number | null
           livemode?: boolean
           payouts_enabled?: boolean
           place_id?: string
+          pm_domains_checked_at?: string | null
           requirements_due?: Json
           stripe_account_id?: string
           updated_at?: string
@@ -1246,8 +1813,12 @@ export type Database = {
       }
       place_payment_settings: {
         Row: {
+          cash_payments: boolean
+          loyalty_cards: boolean
           pay_cards: boolean
           place_id: string
+          prepayments: boolean
+          stripe_payments: boolean
           updated_at: string
           updated_by: string | null
           voucher_1000: boolean
@@ -1258,8 +1829,12 @@ export type Database = {
           voucher_welcome: boolean
         }
         Insert: {
+          cash_payments?: boolean
+          loyalty_cards?: boolean
           pay_cards?: boolean
           place_id: string
+          prepayments?: boolean
+          stripe_payments?: boolean
           updated_at?: string
           updated_by?: string | null
           voucher_1000?: boolean
@@ -1270,8 +1845,12 @@ export type Database = {
           voucher_welcome?: boolean
         }
         Update: {
+          cash_payments?: boolean
+          loyalty_cards?: boolean
           pay_cards?: boolean
           place_id?: string
+          prepayments?: boolean
+          stripe_payments?: boolean
           updated_at?: string
           updated_by?: string | null
           voucher_1000?: boolean
@@ -1389,7 +1968,6 @@ export type Database = {
           closes_at: string | null
           created_at: string
           description: string | null
-          didi_food_url: string | null
           embedding: string | null
           embedding_source_text: string | null
           enriched_at: string | null
@@ -1399,6 +1977,12 @@ export type Database = {
           facebook_found: boolean
           facebook_url: string | null
           family_keys: string[] | null
+          foursquare_details: Json | null
+          foursquare_details_at: string | null
+          foursquare_place_id: string | null
+          foursquare_popularity: number | null
+          foursquare_popularity_at: string | null
+          foursquare_url: string | null
           google_address: Json | null
           google_found: boolean
           google_maps_url: string | null
@@ -1431,22 +2015,18 @@ export type Database = {
           price_level: number | null
           products: Json | null
           profile_photo: string | null
-          reddit_url: string | null
           request_count: number
           reservation_channel: string | null
           reservation_target: string | null
           reservations_enabled: boolean
-          resy_url: string | null
           source_sync: Json | null
           story: string | null
           tags: string[]
-          threads_url: string | null
           timezone: string | null
           uber_eats_url: string | null
           updated_at: string
           website_url: string | null
           whatsapp_url: string | null
-          x_url: string | null
           zone: string | null
         }
         Insert: {
@@ -1459,7 +2039,6 @@ export type Database = {
           closes_at?: string | null
           created_at?: string
           description?: string | null
-          didi_food_url?: string | null
           embedding?: string | null
           embedding_source_text?: string | null
           enriched_at?: string | null
@@ -1469,6 +2048,12 @@ export type Database = {
           facebook_found?: boolean
           facebook_url?: string | null
           family_keys?: string[] | null
+          foursquare_details?: Json | null
+          foursquare_details_at?: string | null
+          foursquare_place_id?: string | null
+          foursquare_popularity?: number | null
+          foursquare_popularity_at?: string | null
+          foursquare_url?: string | null
           google_address?: Json | null
           google_found?: boolean
           google_maps_url?: string | null
@@ -1501,22 +2086,18 @@ export type Database = {
           price_level?: number | null
           products?: Json | null
           profile_photo?: string | null
-          reddit_url?: string | null
           request_count?: number
           reservation_channel?: string | null
           reservation_target?: string | null
           reservations_enabled?: boolean
-          resy_url?: string | null
           source_sync?: Json | null
           story?: string | null
           tags?: string[]
-          threads_url?: string | null
           timezone?: string | null
           uber_eats_url?: string | null
           updated_at?: string
           website_url?: string | null
           whatsapp_url?: string | null
-          x_url?: string | null
           zone?: string | null
         }
         Update: {
@@ -1529,7 +2110,6 @@ export type Database = {
           closes_at?: string | null
           created_at?: string
           description?: string | null
-          didi_food_url?: string | null
           embedding?: string | null
           embedding_source_text?: string | null
           enriched_at?: string | null
@@ -1539,6 +2119,12 @@ export type Database = {
           facebook_found?: boolean
           facebook_url?: string | null
           family_keys?: string[] | null
+          foursquare_details?: Json | null
+          foursquare_details_at?: string | null
+          foursquare_place_id?: string | null
+          foursquare_popularity?: number | null
+          foursquare_popularity_at?: string | null
+          foursquare_url?: string | null
           google_address?: Json | null
           google_found?: boolean
           google_maps_url?: string | null
@@ -1571,22 +2157,18 @@ export type Database = {
           price_level?: number | null
           products?: Json | null
           profile_photo?: string | null
-          reddit_url?: string | null
           request_count?: number
           reservation_channel?: string | null
           reservation_target?: string | null
           reservations_enabled?: boolean
-          resy_url?: string | null
           source_sync?: Json | null
           story?: string | null
           tags?: string[]
-          threads_url?: string | null
           timezone?: string | null
           uber_eats_url?: string | null
           updated_at?: string
           website_url?: string | null
           whatsapp_url?: string | null
-          x_url?: string | null
           zone?: string | null
         }
         Relationships: []
@@ -1668,6 +2250,45 @@ export type Database = {
             foreignKeyName: "place_requests_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_reservation_notes: {
+        Row: {
+          calls: number
+          last_conversation_id: string | null
+          notes: string
+          place_id: string
+          updated_at: string
+        }
+        Insert: {
+          calls?: number
+          last_conversation_id?: string | null
+          notes?: string
+          place_id: string
+          updated_at?: string
+        }
+        Update: {
+          calls?: number
+          last_conversation_id?: string | null
+          notes?: string
+          place_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_reservation_notes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "place_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_reservation_notes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1879,6 +2500,7 @@ export type Database = {
           boost_tier: number
           content_state: Database["public"]["Enums"]["content_state"]
           created_at: string
+          credit_limit_cents: number | null
           currency: string
           id: string
           slug: string
@@ -1889,6 +2511,7 @@ export type Database = {
           boost_tier?: number
           content_state?: Database["public"]["Enums"]["content_state"]
           created_at?: string
+          credit_limit_cents?: number | null
           currency?: string
           id: string
           slug: string
@@ -1899,6 +2522,7 @@ export type Database = {
           boost_tier?: number
           content_state?: Database["public"]["Enums"]["content_state"]
           created_at?: string
+          credit_limit_cents?: number | null
           currency?: string
           id?: string
           slug?: string
@@ -1918,6 +2542,32 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premier_ad_counts: {
+        Row: {
+          impressions: number
+          place_id: string
+          taps: number
+        }
+        Insert: {
+          impressions?: number
+          place_id: string
+          taps?: number
+        }
+        Update: {
+          impressions?: number
+          place_id?: string
+          taps?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premier_ad_counts_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2055,13 +2705,24 @@ export type Database = {
           callback_state: string
           cancelled_at: string | null
           cancelled_by: string | null
+          change_answered_at: string | null
+          change_expires_at: string | null
+          change_note: string | null
+          change_party_size: number | null
+          change_proposed_at: string | null
+          change_reserved_at: string | null
+          change_state: string
           claimed_at: string | null
+          confirm_notify: string
           confirmed_at: string | null
+          confirmed_terms: string | null
           consumer_confirmed_at: string | null
           consumer_id: string
           consumer_notify: string
           consumer_phone: string | null
           created_at: string
+          guest_first_name: string | null
+          guest_last_name: string | null
           id: string
           is_test: boolean
           last_call_state: string | null
@@ -2086,12 +2747,16 @@ export type Database = {
           reminder_attempts: number
           reminder_conversation_id: string | null
           reminder_state: string
+          reported_time: string | null
           reported_verdict: string | null
+          request_id: string | null
           reschedules_day: string | null
           reschedules_today: number
           reserved_at: string
           run_id: string | null
+          seating: string
           state: Database["public"]["Enums"]["reservation_state"]
+          time_window_minutes: number
           updated_at: string
         }
         Insert: {
@@ -2107,13 +2772,24 @@ export type Database = {
           callback_state?: string
           cancelled_at?: string | null
           cancelled_by?: string | null
+          change_answered_at?: string | null
+          change_expires_at?: string | null
+          change_note?: string | null
+          change_party_size?: number | null
+          change_proposed_at?: string | null
+          change_reserved_at?: string | null
+          change_state?: string
           claimed_at?: string | null
+          confirm_notify?: string
           confirmed_at?: string | null
+          confirmed_terms?: string | null
           consumer_confirmed_at?: string | null
           consumer_id: string
           consumer_notify?: string
           consumer_phone?: string | null
           created_at?: string
+          guest_first_name?: string | null
+          guest_last_name?: string | null
           id?: string
           is_test?: boolean
           last_call_state?: string | null
@@ -2138,12 +2814,16 @@ export type Database = {
           reminder_attempts?: number
           reminder_conversation_id?: string | null
           reminder_state?: string
+          reported_time?: string | null
           reported_verdict?: string | null
+          request_id?: string | null
           reschedules_day?: string | null
           reschedules_today?: number
           reserved_at: string
           run_id?: string | null
+          seating?: string
           state?: Database["public"]["Enums"]["reservation_state"]
+          time_window_minutes?: number
           updated_at?: string
         }
         Update: {
@@ -2159,13 +2839,24 @@ export type Database = {
           callback_state?: string
           cancelled_at?: string | null
           cancelled_by?: string | null
+          change_answered_at?: string | null
+          change_expires_at?: string | null
+          change_note?: string | null
+          change_party_size?: number | null
+          change_proposed_at?: string | null
+          change_reserved_at?: string | null
+          change_state?: string
           claimed_at?: string | null
+          confirm_notify?: string
           confirmed_at?: string | null
+          confirmed_terms?: string | null
           consumer_confirmed_at?: string | null
           consumer_id?: string
           consumer_notify?: string
           consumer_phone?: string | null
           created_at?: string
+          guest_first_name?: string | null
+          guest_last_name?: string | null
           id?: string
           is_test?: boolean
           last_call_state?: string | null
@@ -2190,12 +2881,16 @@ export type Database = {
           reminder_attempts?: number
           reminder_conversation_id?: string | null
           reminder_state?: string
+          reported_time?: string | null
           reported_verdict?: string | null
+          request_id?: string | null
           reschedules_day?: string | null
           reschedules_today?: number
           reserved_at?: string
           run_id?: string | null
+          seating?: string
           state?: Database["public"]["Enums"]["reservation_state"]
+          time_window_minutes?: number
           updated_at?: string
         }
         Relationships: [
@@ -2276,6 +2971,228 @@ export type Database = {
             columns: ["consumer_id"]
             isOneToOne: false
             referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stories: {
+        Row: {
+          approved_at: string | null
+          approved_device_hash: string | null
+          bonus_cents: number
+          consumer_id: string | null
+          created_at: string
+          deadline_at: string
+          decided_at: string | null
+          first_bound_at: string | null
+          id: string
+          livemode: boolean
+          mention_id: string | null
+          place_id: string | null
+          purchase_id: string | null
+          recheck_at: string | null
+          recheck_tries: number
+          state: string
+          updated_at: string
+          void_reason: string | null
+          wait_sec: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_device_hash?: string | null
+          bonus_cents: number
+          consumer_id?: string | null
+          created_at?: string
+          deadline_at: string
+          decided_at?: string | null
+          first_bound_at?: string | null
+          id?: string
+          livemode: boolean
+          mention_id?: string | null
+          place_id?: string | null
+          purchase_id?: string | null
+          recheck_at?: string | null
+          recheck_tries?: number
+          state?: string
+          updated_at?: string
+          void_reason?: string | null
+          wait_sec?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_device_hash?: string | null
+          bonus_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          deadline_at?: string
+          decided_at?: string | null
+          first_bound_at?: string | null
+          id?: string
+          livemode?: boolean
+          mention_id?: string | null
+          place_id?: string | null
+          purchase_id?: string | null
+          recheck_at?: string | null
+          recheck_tries?: number
+          state?: string
+          updated_at?: string
+          void_reason?: string | null
+          wait_sec?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stories_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_mention_id_fkey"
+            columns: ["mention_id"]
+            isOneToOne: true
+            referencedRelation: "story_mentions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stories_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_mentions: {
+        Row: {
+          ai_checked_at: string | null
+          ai_claimed_at: string | null
+          ai_last_error: string | null
+          ai_media_path: string | null
+          ai_model: string | null
+          ai_outcome: string | null
+          ai_reason: string | null
+          ai_reviewed_at: string | null
+          ai_tries: number
+          ai_verdict: Json | null
+          created_at: string
+          deleted_at: string | null
+          handle_tries: number
+          id: string
+          ig_handle: string | null
+          ig_story_id: string
+          livemode: boolean
+          media_kind: string
+          media_purged_at: string | null
+          media_url: string | null
+          mentioned_at: string
+          probed_at: string | null
+          purchase_id: string | null
+          reachable_at_bonus: boolean | null
+          review: string | null
+          review_device_hash: string | null
+          review_place_id: string | null
+          review_token: string | null
+          reviewed_at: string | null
+          sender_igsid: string | null
+          source: string
+          tagged_place_id: string | null
+        }
+        Insert: {
+          ai_checked_at?: string | null
+          ai_claimed_at?: string | null
+          ai_last_error?: string | null
+          ai_media_path?: string | null
+          ai_model?: string | null
+          ai_outcome?: string | null
+          ai_reason?: string | null
+          ai_reviewed_at?: string | null
+          ai_tries?: number
+          ai_verdict?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          handle_tries?: number
+          id?: string
+          ig_handle?: string | null
+          ig_story_id: string
+          livemode: boolean
+          media_kind?: string
+          media_purged_at?: string | null
+          media_url?: string | null
+          mentioned_at?: string
+          probed_at?: string | null
+          purchase_id?: string | null
+          reachable_at_bonus?: boolean | null
+          review?: string | null
+          review_device_hash?: string | null
+          review_place_id?: string | null
+          review_token?: string | null
+          reviewed_at?: string | null
+          sender_igsid?: string | null
+          source: string
+          tagged_place_id?: string | null
+        }
+        Update: {
+          ai_checked_at?: string | null
+          ai_claimed_at?: string | null
+          ai_last_error?: string | null
+          ai_media_path?: string | null
+          ai_model?: string | null
+          ai_outcome?: string | null
+          ai_reason?: string | null
+          ai_reviewed_at?: string | null
+          ai_tries?: number
+          ai_verdict?: Json | null
+          created_at?: string
+          deleted_at?: string | null
+          handle_tries?: number
+          id?: string
+          ig_handle?: string | null
+          ig_story_id?: string
+          livemode?: boolean
+          media_kind?: string
+          media_purged_at?: string | null
+          media_url?: string | null
+          mentioned_at?: string
+          probed_at?: string | null
+          purchase_id?: string | null
+          reachable_at_bonus?: boolean | null
+          review?: string | null
+          review_device_hash?: string | null
+          review_place_id?: string | null
+          review_token?: string | null
+          reviewed_at?: string | null
+          sender_igsid?: string | null
+          source?: string
+          tagged_place_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_mentions_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: true
+            referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_mentions_review_place_id_fkey"
+            columns: ["review_place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_mentions_tagged_place_id_fkey"
+            columns: ["tagged_place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2456,6 +3373,7 @@ export type Database = {
           consumer_id: string | null
           created_at: string
           currency: string
+          gift_id: string | null
           id: string
           kind: string
           livemode: boolean
@@ -2470,6 +3388,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           currency: string
+          gift_id?: string | null
           id?: string
           kind: string
           livemode?: boolean
@@ -2484,6 +3403,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           currency?: string
+          gift_id?: string | null
           id?: string
           kind?: string
           livemode?: boolean
@@ -2498,6 +3418,13 @@ export type Database = {
             columns: ["consumer_id"]
             isOneToOne: false
             referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_entries_gift_id_fkey"
+            columns: ["gift_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_gifts"
             referencedColumns: ["id"]
           },
           {
@@ -2523,21 +3450,184 @@ export type Database = {
           },
         ]
       }
+      wallet_gift_code_tries: {
+        Row: {
+          consumer_id: string
+          id: number
+          tried_at: string
+        }
+        Insert: {
+          consumer_id: string
+          id?: never
+          tried_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          id?: never
+          tried_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_gift_code_tries_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_gift_link_misses: {
+        Row: {
+          bucket: string
+          id: number
+          tried_at: string
+        }
+        Insert: {
+          bucket: string
+          id?: never
+          tried_at?: string
+        }
+        Update: {
+          bucket?: string
+          id?: never
+          tried_at?: string
+        }
+        Relationships: []
+      }
+      wallet_gifts: {
+        Row: {
+          amount_cents: number
+          claimed_at: string | null
+          code_hash: string | null
+          created_at: string
+          currency: string
+          id: string
+          livemode: boolean
+          place_id: string
+          recipient_id: string | null
+          request_id: string
+          sender_id: string | null
+          status: string
+          taken_back_at: string | null
+          token_hash: string
+          token_sealed: string | null
+        }
+        Insert: {
+          amount_cents: number
+          claimed_at?: string | null
+          code_hash?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          livemode?: boolean
+          place_id: string
+          recipient_id?: string | null
+          request_id: string
+          sender_id?: string | null
+          status?: string
+          taken_back_at?: string | null
+          token_hash: string
+          token_sealed?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          claimed_at?: string | null
+          code_hash?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          livemode?: boolean
+          place_id?: string
+          recipient_id?: string | null
+          request_id?: string
+          sender_id?: string | null
+          status?: string
+          taken_back_at?: string | null
+          token_hash?: string
+          token_sealed?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_gifts_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_gifts_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_gifts_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_loyalty_cards: {
+        Row: {
+          added_at: string
+          consumer_id: string
+          place_id: string
+        }
+        Insert: {
+          added_at?: string
+          consumer_id: string
+          place_id: string
+        }
+        Update: {
+          added_at?: string
+          consumer_id?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_loyalty_cards_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_loyalty_cards_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_payments: {
         Row: {
           amount_cents: number
           application_fee_cents: number
           card_cents: number
+          charge_amount_cents: number | null
+          confirmed_by: string | null
           consumer_id: string | null
           created_at: string
           credit_cents: number
           credit_refunded_cents: number
           currency: string
           expires_at: string | null
+          fee_billed_cents: number
+          fee_collected: string
           fee_refunded_cents: number
+          held_at: string | null
+          hold_cancelled_at: string | null
           id: string
           livemode: boolean
+          outside_cents: number
           paid_at: string | null
+          part: string | null
+          pay_source: string
+          pay_with: string | null
           place_id: string
           proof_seen_at: string | null
           proof_token: string | null
@@ -2549,6 +3639,7 @@ export type Database = {
           stripe_checkout_session_id: string | null
           stripe_error: string | null
           stripe_payment_intent_id: string | null
+          tab_id: string | null
           ticket: string | null
           tip_cents: number
           tip_refunded_cents: number
@@ -2559,16 +3650,26 @@ export type Database = {
           amount_cents: number
           application_fee_cents?: number
           card_cents?: number
+          charge_amount_cents?: number | null
+          confirmed_by?: string | null
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
           credit_refunded_cents?: number
           currency: string
           expires_at?: string | null
+          fee_billed_cents?: number
+          fee_collected?: string
           fee_refunded_cents?: number
+          held_at?: string | null
+          hold_cancelled_at?: string | null
           id?: string
           livemode?: boolean
+          outside_cents?: number
           paid_at?: string | null
+          part?: string | null
+          pay_source?: string
+          pay_with?: string | null
           place_id: string
           proof_seen_at?: string | null
           proof_token?: string | null
@@ -2580,6 +3681,7 @@ export type Database = {
           stripe_checkout_session_id?: string | null
           stripe_error?: string | null
           stripe_payment_intent_id?: string | null
+          tab_id?: string | null
           ticket?: string | null
           tip_cents?: number
           tip_refunded_cents?: number
@@ -2590,16 +3692,26 @@ export type Database = {
           amount_cents?: number
           application_fee_cents?: number
           card_cents?: number
+          charge_amount_cents?: number | null
+          confirmed_by?: string | null
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
           credit_refunded_cents?: number
           currency?: string
           expires_at?: string | null
+          fee_billed_cents?: number
+          fee_collected?: string
           fee_refunded_cents?: number
+          held_at?: string | null
+          hold_cancelled_at?: string | null
           id?: string
           livemode?: boolean
+          outside_cents?: number
           paid_at?: string | null
+          part?: string | null
+          pay_source?: string
+          pay_with?: string | null
           place_id?: string
           proof_seen_at?: string | null
           proof_token?: string | null
@@ -2611,6 +3723,7 @@ export type Database = {
           stripe_checkout_session_id?: string | null
           stripe_error?: string | null
           stripe_payment_intent_id?: string | null
+          tab_id?: string | null
           ticket?: string | null
           tip_cents?: number
           tip_refunded_cents?: number
@@ -2632,26 +3745,47 @@ export type Database = {
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "wallet_payments_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "pay_tabs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       wallet_purchases: {
         Row: {
           amount_cents: number
           application_fee_cents: number
+          basket_lead_id: string | null
           bonus_cents: number
           consumer_id: string | null
           created_at: string
           currency: string
+          fee_billed_cents: number
+          fee_collected: string
           fee_refunded_cents: number
           id: string
           livemode: boolean
           paid_at: string | null
+          pay_source: string
+          pay_with: string | null
           place_id: string
           refunded_cents: number
           request_id: string | null
           settle_tries: number
           status: string
           story_activated_at: string | null
+          story_bonus: string | null
+          story_bonus_decided_at: string | null
+          story_bonus_void_reason: string | null
+          story_mention_id: string | null
+          story_recheck_at: string | null
+          story_recheck_tries: number
+          story_review: string | null
+          story_reviewed_at: string | null
+          story_reviewed_by_device: string | null
           story_token: string | null
           stripe_account_id: string
           stripe_checkout_session_id: string | null
@@ -2664,20 +3798,34 @@ export type Database = {
         Insert: {
           amount_cents: number
           application_fee_cents?: number
+          basket_lead_id?: string | null
           bonus_cents?: number
           consumer_id?: string | null
           created_at?: string
           currency: string
+          fee_billed_cents?: number
+          fee_collected?: string
           fee_refunded_cents?: number
           id?: string
           livemode?: boolean
           paid_at?: string | null
+          pay_source?: string
+          pay_with?: string | null
           place_id: string
           refunded_cents?: number
           request_id?: string | null
           settle_tries?: number
           status?: string
           story_activated_at?: string | null
+          story_bonus?: string | null
+          story_bonus_decided_at?: string | null
+          story_bonus_void_reason?: string | null
+          story_mention_id?: string | null
+          story_recheck_at?: string | null
+          story_recheck_tries?: number
+          story_review?: string | null
+          story_reviewed_at?: string | null
+          story_reviewed_by_device?: string | null
           story_token?: string | null
           stripe_account_id: string
           stripe_checkout_session_id?: string | null
@@ -2690,20 +3838,34 @@ export type Database = {
         Update: {
           amount_cents?: number
           application_fee_cents?: number
+          basket_lead_id?: string | null
           bonus_cents?: number
           consumer_id?: string | null
           created_at?: string
           currency?: string
+          fee_billed_cents?: number
+          fee_collected?: string
           fee_refunded_cents?: number
           id?: string
           livemode?: boolean
           paid_at?: string | null
+          pay_source?: string
+          pay_with?: string | null
           place_id?: string
           refunded_cents?: number
           request_id?: string | null
           settle_tries?: number
           status?: string
           story_activated_at?: string | null
+          story_bonus?: string | null
+          story_bonus_decided_at?: string | null
+          story_bonus_void_reason?: string | null
+          story_mention_id?: string | null
+          story_recheck_at?: string | null
+          story_recheck_tries?: number
+          story_review?: string | null
+          story_reviewed_at?: string | null
+          story_reviewed_by_device?: string | null
           story_token?: string | null
           stripe_account_id?: string
           stripe_checkout_session_id?: string | null
@@ -2714,6 +3876,20 @@ export type Database = {
           voucher?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "wallet_purchases_basket_lead_fk"
+            columns: ["basket_lead_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_purchases_basket_payment_intent_fk"
+            columns: ["basket_lead_id", "stripe_payment_intent_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_purchases"
+            referencedColumns: ["id", "stripe_payment_intent_id"]
+          },
           {
             foreignKeyName: "wallet_purchases_consumer_id_fkey"
             columns: ["consumer_id"]
@@ -2726,6 +3902,13 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_purchases_story_mention_id_fkey"
+            columns: ["story_mention_id"]
+            isOneToOne: false
+            referencedRelation: "story_mentions"
             referencedColumns: ["id"]
           },
         ]
@@ -2800,7 +3983,6 @@ export type Database = {
           created_at: string | null
           currency: string | null
           description: string | null
-          didi_food_url: string | null
           embedding: string | null
           embedding_source_text: string | null
           enriched_at: string | null
@@ -2808,6 +3990,10 @@ export type Database = {
           facebook_followers: number | null
           facebook_url: string | null
           family_keys: string[] | null
+          foursquare_place_id: string | null
+          foursquare_popularity: number | null
+          foursquare_popularity_at: string | null
+          foursquare_url: string | null
           google_address: Json | null
           google_maps_url: string | null
           google_name: string | null
@@ -2838,30 +4024,42 @@ export type Database = {
           price_level: number | null
           products: Json | null
           profile_photo: string | null
-          reddit_url: string | null
           request_count: number | null
           reservation_channel: string | null
           reservation_target: string | null
           reservations_enabled: boolean | null
-          resy_url: string | null
           slug: string | null
           source_sync: Json | null
           state: Database["public"]["Enums"]["place_state"] | null
           story: string | null
           tags: string[] | null
-          threads_url: string | null
           timezone: string | null
           uber_eats_url: string | null
           updated_at: string | null
           website_url: string | null
           whatsapp_url: string | null
-          x_url: string | null
           zone: string | null
         }
         Relationships: []
       }
     }
     Functions: {
+      admin_connected_places: {
+        Args: { p_before?: string; p_before_id?: string; p_livemode: boolean }
+        Returns: Json
+      }
+      admin_credit_limits: { Args: { p_livemode: boolean }; Returns: Json }
+      admin_repick_family_keys: {
+        Args: {
+          p_actor: string
+          p_after: string[]
+          p_before: string[]
+          p_place: string
+          p_run_id: string
+          p_source: string
+        }
+        Returns: string
+      }
       admin_reset_database: { Args: never; Returns: Json }
       admin_reset_storage_count: {
         Args: { p_keep_buckets?: string[] }
@@ -2880,27 +4078,34 @@ export type Database = {
         Returns: {
           appear_anonymous: boolean
           avatar_url: string | null
+          birth_year: number | null
           birthday: string | null
           code: string | null
           created_at: string
           deleted_at: string | null
           first_name: string | null
           full_name: string | null
-          guest_class: string
+          guest_class: string | null
           guest_class_note: string | null
           guest_class_set_at: string | null
           guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_is_private: boolean | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
           instagram_sync_day: string | null
           instagram_synced_at: string | null
           instagram_verified_at: string | null
           last_name: string | null
+          pay_method: string | null
           phone: string | null
           plan: string
+          plan_cancel_at_period_end: boolean
+          plan_livemode: boolean | null
+          plan_paid_until: string | null
+          plan_stripe_subscription: string | null
           reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
@@ -2930,27 +4135,34 @@ export type Database = {
         Returns: {
           appear_anonymous: boolean
           avatar_url: string | null
+          birth_year: number | null
           birthday: string | null
           code: string | null
           created_at: string
           deleted_at: string | null
           first_name: string | null
           full_name: string | null
-          guest_class: string
+          guest_class: string | null
           guest_class_note: string | null
           guest_class_set_at: string | null
           guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_is_private: boolean | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
           instagram_sync_day: string | null
           instagram_synced_at: string | null
           instagram_verified_at: string | null
           last_name: string | null
+          pay_method: string | null
           phone: string | null
           plan: string
+          plan_cancel_at_period_end: boolean
+          plan_livemode: boolean | null
+          plan_paid_until: string | null
+          plan_stripe_subscription: string | null
           reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
@@ -2964,6 +4176,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_set_place_credit_limit: {
+        Args: { p_limit_cents: number; p_place_id: string }
+        Returns: boolean
+      }
       apply_place_request: {
         Args: { p_consumer_id: string; p_place_id: string }
         Returns: {
@@ -2972,7 +4188,9 @@ export type Database = {
         }[]
       }
       atlas_family_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
-      bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
+      bump_reservation_call_counter:
+        | { Args: { pid: string }; Returns: number }
+        | { Args: { local_day: string; pid: string }; Returns: number }
       business_search_take: {
         Args: { p_account_id: string; p_cap: number }
         Returns: boolean
@@ -2988,8 +4206,38 @@ export type Database = {
           p_nearest?: boolean
           p_premier_1: number
           p_premier_2: number
+          p_repeat?: number
           p_require_active: boolean
           p_root: number
+          p_stars_power?: number
+        }
+        Returns: Json
+      }
+      catalog_rank_lanes: {
+        Args: {
+          p_ad_distance_exp: number
+          p_ad_floor?: number
+          p_ad_fsq_exp?: number
+          p_ad_fsq_factor?: number
+          p_ad_google_exp: number
+          p_ad_half_km: number
+          p_ad_premier_exp: number
+          p_ad_stars_exp: number
+          p_families: string[]
+          p_known_families: string[]
+          p_lat: number
+          p_lng: number
+          p_organic_distance_exp: number
+          p_organic_fsq_exp?: number
+          p_organic_fsq_factor?: number
+          p_organic_google_exp: number
+          p_organic_half_km: number
+          p_organic_premier_exp: number
+          p_organic_stars_exp: number
+          p_premier_1: number
+          p_premier_2: number
+          p_repeat?: number
+          p_require_active: boolean
         }
         Returns: Json
       }
@@ -3016,20 +4264,98 @@ export type Database = {
         Returns: Json
       }
       consumer_instagram_sync: {
-        Args: { p_consumer_id: string; p_followers: number; p_handle: string }
+        Args: {
+          p_consumer_id: string
+          p_followers: number
+          p_handle: string
+          p_private?: boolean
+        }
         Returns: boolean
       }
       consumer_instagram_verify: {
-        Args: { p_consumer_id: string; p_followers: number; p_handle: string }
+        Args: {
+          p_consumer_id: string
+          p_followers: number
+          p_handle: string
+          p_private?: boolean
+        }
         Returns: undefined
       }
-      consumer_redeem_vip_invitation: {
-        Args: { p_code: string; p_consumer: string }
-        Returns: string
+      consumer_plan_sync: {
+        Args: {
+          p_cancel_at_period_end: boolean
+          p_consumer: string
+          p_livemode: boolean
+          p_paid_until: string
+          p_plan: string
+          p_subscription: string
+        }
+        Returns: {
+          plan: string
+          plan_cancel_at_period_end: boolean
+          plan_livemode: boolean
+          plan_paid_until: string
+          plan_stripe_subscription: string
+          reservation_cap_override: number
+        }[]
+      }
+      consumer_set_pay_method: {
+        Args: { p_consumer_id: string; p_method: string }
+        Returns: Json
+      }
+      currency_for_country: { Args: { p_country: string }; Returns: string }
+      deep_knn: {
+        Args: {
+          p_limit: number
+          p_min_similarity: number
+          p_query: string
+          p_require_active: boolean
+        }
+        Returns: {
+          address: string
+          description: string
+          embedding: string
+          family_keys: string[]
+          google_review_count: number
+          google_stars_overall: number
+          id: string
+          name: string
+          slug: string
+        }[]
+      }
+      discovery_foursquare_boost: {
+        Args: { p_exponent: number; p_factor: number; p_raw: number }
+        Returns: number
+      }
+      discovery_growth_bases: {
+        Args: {
+          p_known_families: string[]
+          p_now?: string
+          p_require_active: boolean
+        }
+        Returns: {
+          elapsed_days: number
+          growth_base: number
+          kind: string
+          place_id: string
+        }[]
+      }
+      discovery_growth_weight: {
+        Args: { p_cap: number; p_elapsed: number; p_kind: string }
+        Returns: number
       }
       expire_saved_location_names: { Args: never; Returns: number }
       generate_consumer_code: { Args: never; Returns: string }
+      guest_pay_phase: {
+        Args: { a: Database["public"]["Tables"]["guest_pay_attempts"]["Row"] }
+        Returns: string
+      }
+      instagram_handle_of_url: { Args: { p_url: string }; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
+      jsonb_fill_absent: {
+        Args: { p_defaults: Json; p_target: Json }
+        Returns: Json
+      }
       open_place_enrichment_run: {
         Args: {
           p_actor_user_id?: string
@@ -3047,6 +4373,301 @@ export type Database = {
           run_id: string
         }[]
       }
+      pay_guest_begin: {
+        Args: {
+          p_bill_cents: number
+          p_card_bill_cents: number
+          p_card_fee_cents: number
+          p_card_tip_cents: number
+          p_cash_bill_cents: number
+          p_cash_tip_cents: number
+          p_consumer_id: string
+          p_credit_cents: number
+          p_currency: string
+          p_livemode: boolean
+          p_now?: string
+          p_place_id: string
+          p_request_id: string
+          p_stripe_account_id: string
+          p_token_hash: string
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
+      pay_guest_claim_confirm: {
+        Args: {
+          p_attempt_id: string
+          p_key_hash: string
+          p_now?: string
+          p_place_id: string
+        }
+        Returns: Json
+      }
+      pay_guest_claim_end: {
+        Args: {
+          p_attempt_id: string
+          p_consumer_id?: string
+          p_now?: string
+          p_place_id?: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      pay_guest_close: {
+        Args: { p_attempt_id: string; p_now?: string }
+        Returns: Json
+      }
+      pay_guest_finish_release: {
+        Args: { p_attempt_id: string; p_now?: string; p_reason: string }
+        Returns: Json
+      }
+      pay_guest_insert_closed: {
+        Args: {
+          p_attempt: Database["public"]["Tables"]["guest_pay_attempts"]["Row"]
+          p_now: string
+        }
+        Returns: string
+      }
+      pay_guest_mark_held: {
+        Args: { p_attempt_id: string; p_now?: string }
+        Returns: Json
+      }
+      pay_guest_mark_review: {
+        Args: { p_attempt_id: string; p_now?: string }
+        Returns: undefined
+      }
+      pay_guest_receive: {
+        Args: {
+          p_amount_cents: number
+          p_attempt_id: string
+          p_now?: string
+          p_place_id: string
+        }
+        Returns: Json
+      }
+      pay_guest_reissue_token: {
+        Args: {
+          p_attempt_id: string
+          p_consumer_id: string
+          p_now?: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
+      pay_guest_release: {
+        Args: { p_consumer_id: string; p_reason?: string; p_request_id: string }
+        Returns: Json
+      }
+      pay_guest_sweep_list: {
+        Args: { p_limit?: number; p_now?: string }
+        Returns: {
+          attempt_id: string
+          charging_at: string
+          ending_reason: string
+          needs_review_at: string
+          payment_id: string
+          payment_intent: string
+          payment_status: string
+          phase: string
+          stripe_account_id: string
+          tender: string
+        }[]
+      }
+      pay_tab_begin_capture: {
+        Args: {
+          p_now?: string
+          p_place_id: string
+          p_staff_key_hash: string
+          p_tab_id: string
+        }
+        Returns: Json
+      }
+      pay_tab_bill: {
+        Args: {
+          p_bill_cents: number
+          p_bill_version: number
+          p_now?: string
+          p_rekey: boolean
+          p_staff_key_hash: string
+          p_ticket: string
+          p_tip_cents: number
+          p_token_hash: string
+          p_ttl?: string
+          p_waiter_name: string
+        }
+        Returns: Json
+      }
+      pay_tab_capture_failed: {
+        Args: { p_error?: string; p_tab_id: string }
+        Returns: Json
+      }
+      pay_tab_cash: {
+        Args: {
+          p_now?: string
+          p_received_cents: number
+          p_staff_key_hash: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
+      pay_tab_change: {
+        Args: { p_consumer_id: string; p_mode: string; p_tab_id: string }
+        Returns: Json
+      }
+      pay_tab_finish_signing: { Args: { p_payment_id: string }; Returns: Json }
+      pay_tab_guest_end: {
+        Args: { p_now?: string; p_tab_id: string }
+        Returns: boolean
+      }
+      pay_tab_guest_pay: {
+        Args: {
+          p_bill_cents: number
+          p_card_bill_cents: number
+          p_card_expires_at?: string
+          p_card_fee_cents?: number
+          p_card_proof_token?: string
+          p_card_tip_cents: number
+          p_cash_bill_cents: number
+          p_cash_tip_cents: number
+          p_consumer_id: string
+          p_credit_cents: number
+          p_currency: string
+          p_livemode: boolean
+          p_max_open?: number
+          p_now?: string
+          p_place_id: string
+          p_proof_token: string
+          p_repeat_ok?: boolean
+          p_request_id: string
+          p_stripe_account_id?: string
+          p_ticket?: string
+          p_token_hash: string
+          p_window?: string
+        }
+        Returns: Json
+      }
+      pay_tab_guest_remint: {
+        Args: {
+          p_consumer_id: string
+          p_now?: string
+          p_tab_id: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
+      pay_tab_guest_settle: {
+        Args: { p_now?: string; p_tab_id: string }
+        Returns: Json
+      }
+      pay_tab_join: {
+        Args: {
+          p_consumer_id: string
+          p_join_token_hash: string
+          p_now?: string
+          p_share_token_hash: string
+        }
+        Returns: Json
+      }
+      pay_tab_left: {
+        Args: { p_except?: string; p_reserving: boolean; p_table_id: string }
+        Returns: number
+      }
+      pay_tab_new_share: {
+        Args: {
+          p_consumer_id: string
+          p_now: string
+          p_share_cents: number
+          p_token_hash: string
+          t: Database["public"]["Tables"]["pay_tabs"]["Row"]
+        }
+        Returns: string
+      }
+      pay_tab_open: {
+        Args: {
+          p_consumer_id: string
+          p_currency: string
+          p_livemode: boolean
+          p_now?: string
+          p_place_id: string
+          p_token_hash: string
+          p_ttl?: string
+        }
+        Returns: Json
+      }
+      pay_tab_open_parts: {
+        Args: {
+          p_bill_version: number
+          p_card_bill_cents: number
+          p_card_expires_at?: string
+          p_card_fee_cents?: number
+          p_card_proof_token?: string
+          p_card_tip_cents: number
+          p_cash_bill_cents: number
+          p_cash_tip_cents: number
+          p_consumer_id: string
+          p_credit_cents: number
+          p_max_outside_per_day: number
+          p_now?: string
+          p_proof_token: string
+          p_request_id: string
+          p_stripe_account_id?: string
+          p_tab_id: string
+        }
+        Returns: Json
+      }
+      pay_tab_reject: {
+        Args: {
+          p_now?: string
+          p_place_id: string
+          p_staff_key_hash: string
+          p_tab_id: string
+        }
+        Returns: Json
+      }
+      pay_tab_set_share: {
+        Args: {
+          p_consumer_id: string
+          p_now?: string
+          p_share_cents: number
+          p_share_tab_id: string
+        }
+        Returns: Json
+      }
+      pay_tab_share_tip: {
+        Args: {
+          p_bill_cents: number
+          p_share_cents: number
+          p_tip_cents: number
+        }
+        Returns: number
+      }
+      pay_tab_split: {
+        Args: {
+          p_consumer_id: string
+          p_join_token_hash: string
+          p_now?: string
+          p_share_cents: number
+          p_share_token_hash: string
+          p_tab_id: string
+          p_ways: number
+        }
+        Returns: Json
+      }
+      pay_tab_verify: {
+        Args: {
+          p_now?: string
+          p_place_id: string
+          p_received_cents?: number
+          p_staff_key_hash: string
+          p_tab_id: string
+        }
+        Returns: Json
+      }
+      pay_tabs_close_guest: {
+        Args: { p_limit?: number; p_now?: string }
+        Returns: number
+      }
+      pay_ticket_norm: { Args: { p: string }; Returns: string }
       place_activity_feed: {
         Args: { p_before?: string; p_limit?: number; p_place_id?: string }
         Returns: {
@@ -3112,10 +4733,52 @@ export type Database = {
         Args: { p_hash: string; p_place_id: string }
         Returns: boolean
       }
+      place_country: { Args: { p_place_id: string }; Returns: string }
+      place_country_from_address: { Args: { p_address: Json }; Returns: string }
+      place_credit_limit: { Args: { p_place_id: string }; Returns: number }
+      place_currency_open: { Args: { p_place_id: string }; Returns: boolean }
+      place_customer_key: {
+        Args: { p_consumer_id: string; p_place_id: string }
+        Returns: string
+      }
+      place_customers: {
+        Args: {
+          p_before?: Json
+          p_customer?: string
+          p_livemode: boolean
+          p_place_id: string
+        }
+        Returns: Json
+      }
       place_family_keys: {
         Args: { fallback: string; google_types: Json; stored: string[] }
         Returns: string[]
       }
+      place_fee_claim: {
+        Args: {
+          p_currency: string
+          p_livemode: boolean
+          p_min_cents: number
+          p_period: string
+          p_place_id: string
+          p_threshold_cents: number
+        }
+        Returns: Json
+      }
+      place_fee_invoice_set: {
+        Args: {
+          p_customer_id?: string
+          p_due_at?: string
+          p_error?: string
+          p_invoice_id: string
+          p_paid_at?: string
+          p_status: string
+          p_stripe_invoice_id?: string
+          p_url?: string
+        }
+        Returns: Json
+      }
+      place_guest_face: { Args: { p_consumer_id: string }; Returns: Json }
       place_invite_accept: {
         Args: { p_consumer_id: string; p_email: string }
         Returns: number
@@ -3131,6 +4794,17 @@ export type Database = {
         }
         Returns: Json
       }
+      place_monitor_list: {
+        Args: {
+          p_before?: Json
+          p_customer?: string
+          p_id?: string
+          p_kind: string
+          p_livemode: boolean
+          p_place_id: string
+        }
+        Returns: Json
+      }
       place_take_code_try: {
         Args: { p_consumer_id: string; p_max: number; p_place_id: string }
         Returns: string
@@ -3138,6 +4812,18 @@ export type Database = {
       place_take_verification_send: {
         Args: { p_channel: string; p_consumer_id: string; p_place_id: string }
         Returns: string
+      }
+      place_ticket_desk: {
+        Args: {
+          p_before?: string
+          p_before_id?: string
+          p_before_rank?: number
+          p_kind: string
+          p_livemode: boolean
+          p_place_id: string
+          p_timezone: string
+        }
+        Returns: Json
       }
       place_transfer_owner: {
         Args: { p_place_id: string; p_to_manager_id: string }
@@ -3180,12 +4866,18 @@ export type Database = {
         }[]
       }
       place_views_log: {
-        Args: { p_before?: string; p_limit?: number; p_place_id: string }
+        Args: {
+          p_before?: string
+          p_customer?: string
+          p_limit?: number
+          p_place_id: string
+        }
         Returns: {
           anonymous: boolean
           avatar_url: string
           consumer_id: string
           created_at: string
+          customer: string
           first_name: string
           guest_class: string
           instagram: boolean
@@ -3270,6 +4962,31 @@ export type Database = {
       premier_tier_rank: { Args: { p_tier: string }; Returns: number }
       recompute_due_place_boosts: { Args: never; Returns: number }
       recompute_place_boost: { Args: { p_place_id: string }; Returns: number }
+      record_premier_ad: {
+        Args: { p_kind: string; p_place: string }
+        Returns: undefined
+      }
+      reservation_insert_capped: {
+        Args: {
+          p_cap: number
+          p_confirm_notify: string
+          p_consumer_id: string
+          p_consumer_notify: string
+          p_guest_first_name: string
+          p_guest_last_name: string
+          p_live_since: string
+          p_month_start: string
+          p_notes: string
+          p_party_size: number
+          p_place_id: string
+          p_reference_code: string
+          p_request_id: string
+          p_reserved_at: string
+          p_seating: string
+          p_time_window_minutes: number
+        }
+        Returns: Json
+      }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
@@ -3278,7 +4995,6 @@ export type Database = {
         Args: { older_than?: string }
         Returns: number
       }
-      wallet_activate_story: { Args: { p_token: string }; Returns: Json }
       wallet_balance: {
         Args: {
           p_consumer_id: string
@@ -3305,6 +5021,31 @@ export type Database = {
           spendable_cents: number
         }[]
       }
+      wallet_card_held: {
+        Args: { p_now?: string; p_payment_id: string; p_window?: string }
+        Returns: Json
+      }
+      wallet_claim_gift: {
+        Args: {
+          p_livemode: boolean
+          p_recipient_id: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
+      wallet_claim_gift_code: {
+        Args: {
+          p_code_hash: string
+          p_livemode: boolean
+          p_max_misses?: number
+          p_recipient_id: string
+        }
+        Returns: Json
+      }
+      wallet_confirm_outside: {
+        Args: { p_now?: string; p_payment_id: string }
+        Returns: Json
+      }
       wallet_credit_purchase: {
         Args: {
           p_available_at?: string
@@ -3313,9 +5054,18 @@ export type Database = {
         }
         Returns: Json
       }
+      wallet_expire_outside: { Args: { p_now?: string }; Returns: number }
+      wallet_gift_link_guard: {
+        Args: { p_bucket: string; p_max: number; p_miss?: boolean }
+        Returns: boolean
+      }
       wallet_give_up: {
         Args: { p_error: string; p_kind: string; p_row_id: string }
         Returns: Json
+      }
+      wallet_hold_cancelled: {
+        Args: { p_payment_id: string }
+        Returns: undefined
       }
       wallet_hold_payment: {
         Args: {
@@ -3343,12 +5093,48 @@ export type Database = {
         Args: { p_before?: string; p_before_id?: string }
         Returns: Json
       }
-      wallet_note_fee_refund: {
-        Args: { p_fee_refunded_cents: number; p_kind: string; p_row_id: string }
+      wallet_notify_ready_credit: {
+        Args: { p_livemode: boolean; p_now?: string; p_window?: string }
+        Returns: number
+      }
+      wallet_open_outside: {
+        Args: {
+          p_consumer_id: string
+          p_credit_cents: number
+          p_currency: string
+          p_expires_at: string
+          p_livemode: boolean
+          p_outside_cents: number
+          p_place_id: string
+          p_proof_token: string
+          p_request_id: string
+          p_ticket: string
+          p_tip_cents: number
+        }
+        Returns: Json
+      }
+      wallet_open_outside_capped: {
+        Args: {
+          p_bill_cents: number
+          p_consumer_id: string
+          p_currency: string
+          p_expires_at: string
+          p_livemode: boolean
+          p_max_per_day: number
+          p_place_id: string
+          p_proof_token: string
+          p_request_id: string
+          p_ticket: string
+          p_tip_cents: number
+        }
         Returns: Json
       }
       wallet_open_payment: {
         Args: { p_payment_id: string; p_session_id: string }
+        Returns: Json
+      }
+      wallet_open_payment_pi: {
+        Args: { p_payment_id: string; p_payment_intent: string }
         Returns: Json
       }
       wallet_pay_credit: {
@@ -3369,6 +5155,7 @@ export type Database = {
         Returns: number
       }
       wallet_refund_credit: { Args: { p_attempt_id: string }; Returns: Json }
+      wallet_refund_outside: { Args: { p_payment_id: string }; Returns: Json }
       wallet_refund_payment: {
         Args: {
           p_amount_refunded: number
@@ -3389,8 +5176,31 @@ export type Database = {
         Args: { p_error?: string; p_payment_id: string; p_status: string }
         Returns: Json
       }
+      wallet_released_holds: {
+        Args: { p_limit?: number; p_tab_id?: string }
+        Returns: {
+          id: string
+          stripe_account_id: string
+          stripe_payment_intent_id: string
+        }[]
+      }
       wallet_reopen_settle: {
         Args: { p_kind: string; p_row_id: string }
+        Returns: Json
+      }
+      wallet_send_credit: {
+        Args: {
+          p_amount_cents: number
+          p_code_hash?: string
+          p_currency: string
+          p_livemode: boolean
+          p_max_open?: number
+          p_place_id: string
+          p_request_id: string
+          p_sender_id: string
+          p_token_hash: string
+          p_token_sealed?: string
+        }
         Returns: Json
       }
       wallet_settle_batch: {
@@ -3412,6 +5222,10 @@ export type Database = {
       }
       wallet_settle_payment: {
         Args: { p_payment_id: string; p_payment_intent: string }
+        Returns: Json
+      }
+      wallet_take_back_gift: {
+        Args: { p_gift_id: string; p_sender_id: string }
         Returns: Json
       }
     }

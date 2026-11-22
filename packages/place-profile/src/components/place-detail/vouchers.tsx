@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Check, CircleCheck, Clock, CreditCard, Crown, Gift, Infinity as InfinityIcon, Lock, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
+import { Check, CircleCheck, Clock, CreditCard, Crown, Gift, Infinity as InfinityIcon, Lock, PartyPopper, Repeat, Repeat1, Ticket, Utensils, Wallet, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions } from "../../actions";
@@ -108,9 +108,12 @@ const STANDARD: Product[] = [
   { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
 ];
 
-// VIP IS BACK (Pato, 2026-11-22, MESITA-4640: "Regular Offers · VIP Offers"):
-// MESITA-4249's deal, the VIP class only, one each new visit.
-const VIP: Product[] = [
+// SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
+// THE WELCOME BONUS. WELCOME AND THEN THE OTHER BONUSES."). Welcome is once
+// per guest per place. VIP IS BACK (MESITA-4640): MESITA-4249's deal, the VIP
+// class only, one each new visit.
+const SPECIAL: Product[] = [
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
   { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", limit: "One per visit.", bonus: "100% bonus", short: "VIP", brief: "VIP only · One per visit" },
 ];
 
@@ -151,6 +154,7 @@ function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
   if (reason === "off" || reason === "needs_account" || reason === "needs_loyalty_cards" || reason === "needs_billing") return "Not at this place yet";
   if (reason === "paused") return "Paused for a moment";
+  if (reason === "used") return "You had yours here";
   if (reason === "needs_visit") return "One per visit";
   return "Coming soon";
 }
@@ -184,6 +188,8 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
   // none with icons"): the sized vouchers share the ticket.
   const green: Face = { card: VOUCHER_TONE.voucher_200, ...LIGHT, Mark: Ticket };
   return {
+    // The party popper tells Welcome apart; green like every offer (MESITA-4645).
+    voucher_welcome: { ...green, card: VOUCHER_TONE.voucher_welcome, Mark: PartyPopper },
     voucher_200: green,
     voucher_1000: green,
     voucher_5000: green,
@@ -239,9 +245,11 @@ function offerStatus(
     return { ok: false, text: `${bar} Yours: ${[followers, privacy].filter(Boolean).join(" · ")}.` };
   }
   if (can) {
+    if (key === "voucher_welcome") return { ok: true, text: "Available. Once per guest at this place." };
     if (key === "voucher_vip") return { ok: true, text: "Available. One per visit." };
     return { ok: true, text: "Available. Buy as many as you like." };
   }
+  if (reason === "used") return { ok: false, text: "You already had yours here." };
   // MESITA-3463: a visit is a paid bill here with a card part.
   if (reason === "needs_visit") return { ok: false, text: "One per visit. Pay a bill here by card to buy another." };
   return { ok: false, text: `${tag(reason)}.` };
@@ -262,6 +270,7 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
       // Loyalty Cards as the server says; an older read without it is
       // read as on, so the server's own unavailable reasons stand.
       loyalty_cards: money?.loyalty_cards !== false,
+      voucher_welcome: money?.vouchers.voucher_welcome === true,
       voucher_200: money?.vouchers.voucher_200 === true,
       voucher_1000: money?.vouchers.voucher_1000 === true,
       voucher_5000: money?.vouchers.voucher_5000 === true,
@@ -307,6 +316,8 @@ function offerRules(money: PlaceDetail["money"], guest: PlaceActions["guest"]) {
     // The place doesn't offer it (switched off, no account, Loyalty Cards
     // off, billing past due, card payments off, not yet sellable): gone.
     if (reason !== undefined && !GUEST_SIDE_REASONS.has(reason)) return "hidden";
+    // Welcome is once per place: once had, it is never shown again.
+    if (k === "voucher_welcome" && reason === "used") return "hidden";
     return buyable(k) ? "available" : "blocked";
   };
   return { unavailable, dim, guestLock, buyable, show };
@@ -318,7 +329,7 @@ export type OfferShow = "hidden" | "blocked" | "available";
 /** The reasons that are the guest's, or a pause, never the place's: the row
  *  stays and reads blocked. Every other reason means the place doesn't offer
  *  it, and the row is hidden (MESITA-4603). */
-const GUEST_SIDE_REASONS: ReadonlySet<VoucherReason> = new Set<VoucherReason>(["needs_visit", "needs_instagram", "paused"]);
+const GUEST_SIDE_REASONS: ReadonlySet<VoucherReason> = new Set<VoucherReason>(["used", "needs_visit", "needs_instagram", "paused"]);
 
 /** One of the six vouchers as a row elsewhere (the Loyalty Card, MESITA-3822):
  *  the Offers page's own words, colour and rules, formatted, never added. */
@@ -344,7 +355,7 @@ export type VoucherOffer = {
 
 /** The Offers page's voucher list: TWO PANELS BY HOW MANY YOU CAN BUY
  *  (Pato, 2026-11-16, MESITA-4203: "both are prepayments ... IDK" → "Yes,
- *  rename"): SPECIAL OFFERS (Welcome one per place, VIP one per
+ *  rename"): SPECIAL OFFERS (Welcome once per place, VIP one per
  *  visit), then CLASSIC OFFERS, the three sizes, as many as you like (Pato,
  *  2026-11-17, MESITA-4218: "Classic Offers · Special Offers"; Standard Offers
  *  in MESITA-4216; Limited and
@@ -353,19 +364,21 @@ export type VoucherOffer = {
  *  Instant / Prepayment Vouchers in MESITA-4198. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
-// REGULAR OFFERS · VIP OFFERS (Pato, 2026-11-22, MESITA-4640: "ONLY CLASSIC
-// OFFERS … JUST CALL THEM … Regular Offers · VIP Offers"): Regular first,
-// VIP under it; a place that sells no VIP voucher shows no VIP panel.
-const GROUPS: { id: "special" | "prepayment" | "vip"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
+// SPECIAL OFFERS · CLASSIC OFFERS (Pato, 2026-11-22, MESITA-4645: "classic
+// offers and special offers"; "WELCOME AND THEN THE OTHER BONUSES"): Special
+// first, Welcome then VIP; Classic under it, Small, Medium, Big. Replaces
+// MESITA-4640's Regular Offers · VIP Offers. A section with no row to show
+// (the place offers none of it) is not drawn.
+const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<MoneyVoucherKey> }[] = [
   {
-    id: "prepayment",
-    title: "Regular Offers",
-    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
+    id: "special",
+    title: "Special Offers",
+    keys: new Set(["voucher_welcome", "voucher_vip"]),
   },
   {
-    id: "vip",
-    title: "VIP Offers",
-    keys: new Set(["voucher_vip"]),
+    id: "prepayment",
+    title: "Classic Offers",
+    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
 
@@ -374,12 +387,13 @@ const GROUPS: { id: "special" | "prepayment" | "vip"; title: string; keys: Reado
  *  sale yet (money-state's VIP today) is a locked row, never
  *  a missing one; it was dropped from the page from MESITA-3831. */
 function listedProducts(): Product[] {
-  // Small, Medium, Big, then VIP (no Welcome since MESITA-4636, no Story since MESITA-4641).
-  return [...STANDARD, ...VIP];
+  // Welcome, VIP, then Small, Medium, Big (MESITA-4645: the specials lead;
+  // no Story since MESITA-4641).
+  return [...SPECIAL, ...STANDARD];
 }
 
-/** The vouchers in the Offers page's order, Small · Medium · Big · VIP
- *  (MESITA-3834). */
+/** The vouchers in the Offers page's order, Welcome · VIP · Small · Medium ·
+ *  Big (MESITA-4645). */
 export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions["guest"]): VoucherOffer[] {
   const { unavailable, dim, guestLock, buyable, show } = offerRules(money, guest);
   const catalog = money?.catalog ?? {};
@@ -432,7 +446,7 @@ type Step = {
   short?: string;
 };
 
-/** Small, Medium and Big: pay, the credit now, the bonus in 3 hours. */
+/** Small, Medium, Big and Welcome: pay, the credit now, the bonus in 3 hours. */
 function sheetSteps(pay: string, bonus: string | null, card: { label: string; last4: string } | null): Step[] {
   return [
     { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `${card.label} ${card.last4}` : "By card" },
@@ -502,12 +516,14 @@ function Box({
 }
 
 /** GOOD TO KNOW (D3): every rule of the offer in one box, the limit with
- *  them. The header carries no limit chip any more. */
+ *  them; Welcome's one-time rule first and amber (MESITA-4299: "mention that
+ *  this is only one"). The header carries no limit chip any more. */
 function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
   const rows: { Icon: LucideIcon; text: string; warn?: boolean }[] = [];
+  if (productKey === "voucher_welcome") rows.push({ Icon: Clock, text: "Once per guest at this place.", warn: true });
   rows.push({ Icon: Utensils, text: "Spend it on any bill here." }, { Icon: InfinityIcon, text: "It never expires." });
   if (productKey === "voucher_vip") rows.push({ Icon: Repeat1, text: "One per visit." });
-  else rows.push({ Icon: Repeat, text: "Buy as many as you like." });
+  else if (productKey !== "voucher_welcome") rows.push({ Icon: Repeat, text: "Buy as many as you like." });
   return (
     <Box title="Good to know" data-offer-good-to-know="">
       <ul className="flex flex-col gap-2">
@@ -731,7 +747,7 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
 export const OFFER_TICKET_STEPS = ["Pay", "Credits", "Receipt"] as const;
 
 /** The vouchers bought on a ticket. */
-export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "voucher_1000", "voucher_5000"];
+export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"];
 
 /** One step of the ticket, handed to the host's frame (the Pay Bill ticket's
  *  header, body and footer, which live in the host). */

@@ -33,6 +33,7 @@ const ALL_ON: PaymentSettings = {
   prepayments: true,
   loyalty_cards: true,
   cash_payments: true,
+  voucher_welcome: true,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -51,19 +52,20 @@ const ACCOUNT: AccountRow = {
   disabled_reason: null,
 };
 
-const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null };
+const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null, welcomeUsed: false };
 
-Deno.test("every switched-on voucher sells; VIP off here reads off (MESITA-4640); Medium is back (MESITA-4056)", () => {
+Deno.test("every switched-on voucher sells, Welcome first (MESITA-4645); VIP off here reads off (MESITA-4640); Medium is back (MESITA-4056)", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(o.sell, ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"]);
   assertEquals(o.unavailable, { voucher_vip: "off" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.mesita_pay, true);
   assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 10800 });
-  // No Welcome (MESITA-4636) and no Story (MESITA-4642) in the catalog.
-  assertEquals("voucher_welcome" in o.catalog, false);
+  // Welcome is back (MESITA-4645): MX$100 +100%, its bonus in 3 hours. No
+  // Story (MESITA-4642) in the catalog.
+  assertEquals(o.catalog.voucher_welcome, { price_cents: 10000, bonus_cents: 10000, credit_cents: 20000, available_after_sec: 10800 });
   assertEquals("voucher_story" in o.catalog, false);
 });
 
@@ -75,9 +77,12 @@ Deno.test("the catalog the client shows is the server's, credit = price + bonus"
   }
 });
 
-Deno.test("paused stops every sale; an account from the other universe cannot charge", () => {
+Deno.test("paused stops every sale; Welcome once; an account from the other universe cannot charge", () => {
   assertEquals(offerFrom({ ...base, paused: true }).sell, []);
   assertEquals(offerFrom({ ...base, paused: true }).unavailable.voucher_200, "paused");
+  const used = offerFrom({ ...base, welcomeUsed: true });
+  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(used.unavailable.voucher_welcome, "used");
   const live = offerFrom({ ...base, livemode: true });
   assertEquals(live.sell, []);
   assertEquals(live.unavailable.voucher_200, "needs_account");
@@ -95,9 +100,11 @@ Deno.test("Story is retired (MESITA-4641): a basket naming it is refused with vo
   assertEquals(parseBasket({ voucher: "voucher_200" }).ok, true);
 });
 
-Deno.test("VIP is back (MESITA-4640), no Welcome (MESITA-4636)", () => {
+Deno.test("VIP is back (MESITA-4640), Welcome is back (MESITA-4645)", () => {
   assertEquals(parseBasket({ voucher: "voucher_vip" }).ok, true);
-  assertEquals(parseBasket({ voucher: "voucher_welcome" }).ok, false);
+  assertEquals(parseBasket({ voucher: "voucher_welcome" }).ok, true);
+  // One Welcome a basket: it is once per guest per place.
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 2 }] }).ok, false);
   // One VIP a basket: it is one each new visit.
   assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
 });
@@ -115,8 +122,11 @@ Deno.test("vipRefusal: only the VIP class buys the VIP voucher; the 409 names th
 });
 
 Deno.test("VIP is one each new visit (MESITA-4640)", () => {
-  assertEquals(guestReason("voucher_vip", { perVisitUsed: { voucher_vip: true } }), "needs_visit");
-  assertEquals(guestReason("voucher_vip", { perVisitUsed: { voucher_vip: false } }), null);
+  assertEquals(guestReason("voucher_vip", { welcomeUsed: false, perVisitUsed: { voucher_vip: true } }), "needs_visit");
+  assertEquals(guestReason("voucher_vip", { welcomeUsed: false, perVisitUsed: { voucher_vip: false } }), null);
+  // Welcome is its own gate: once per place, whatever the visits.
+  assertEquals(guestReason("voucher_welcome", { welcomeUsed: true }), "used");
+  assertEquals(guestReason("voucher_200", { welcomeUsed: true }), null);
 });
 
 Deno.test("buyRefusal: codes for every closed door, null for an open one", () => {
@@ -124,6 +134,7 @@ Deno.test("buyRefusal: codes for every closed door, null for an open one", () =>
   assertEquals(buyRefusal(o, "voucher_200", ACCOUNT), null);
   assertEquals(buyRefusal(o, "voucher_5000", ACCOUNT), null);
   assertEquals(buyRefusal(offerFrom({ ...base, paused: true }), "voucher_200", ACCOUNT)?.code, "paused");
+  assertEquals(buyRefusal(offerFrom({ ...base, welcomeUsed: true }), "voucher_welcome", ACCOUNT)?.code, "welcome_used");
   assertEquals(buyRefusal(offerFrom({ ...base, account: null }), "voucher_200", null)?.code, "no_account");
   const off = offerFrom({ ...base, settings: { ...ALL_ON, voucher_200: false } });
   assertEquals(buyRefusal(off, "voucher_200", ACCOUNT)?.code, "not_available");
@@ -269,18 +280,21 @@ Deno.test("Credits Limit: landing exactly on the limit sells; a place's own limi
   assertEquals(overCreditLimit(10_000_00 - 21_00, "voucher_200", 10_000_00, "usd"), true);
 });
 
-Deno.test("the mark (MESITA-3408) is taken before the pause, so it matches the list rows", () => {
+Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so it matches the list rows", () => {
   // Pay by phone off, so only the voucher can light the mark.
-  const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_1000: false, voucher_5000: false, voucher_vip: false };
-  assertEquals(offerFrom({ ...base, settings: onlySmall, paused: true }).mesita_pay, true);
+  const onlyWelcome: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_vip: false };
+  const used = offerFrom({ ...base, settings: onlyWelcome, welcomeUsed: true });
+  assertEquals(used.sell, []);
+  assertEquals(used.mesita_pay, true);
+  assertEquals(offerFrom({ ...base, settings: onlyWelcome, paused: true }).mesita_pay, true);
   // Nothing on: no mark.
-  const nothing: PaymentSettings = { ...onlySmall, voucher_200: false };
+  const nothing: PaymentSettings = { ...onlyWelcome, voucher_welcome: false };
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });
 
 // ── The basket (MESITA-3841) ───────────────────────────────────────────────
 
-Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one VIP, no key twice", () => {
+Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one Welcome / VIP, no key twice", () => {
   assertEquals(parseBasket({ voucher: "voucher_200" }), { ok: true, items: [{ voucher: "voucher_200", qty: 1 }] });
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_1000", qty: 1 }] }).ok, true);
   assertEquals(parseBasket({ voucher: "bogus" }).ok, false);
@@ -288,15 +302,19 @@ Deno.test("parseBasket: the old voucher field is a basket of one; items need kno
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 6 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 0 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1.5 }] }).ok, false);
-  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 1 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 2 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 1 }] }).ok, true);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1 }, { voucher: "voucher_200", qty: 1 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "nope", qty: 1 }] }).ok, false);
 });
 
-Deno.test("basketUnits: one unit per row, VIP leads; sameUnits compares baskets as multisets", () => {
+Deno.test("basketUnits: one unit per row, Welcome then VIP leads; sameUnits compares baskets as multisets", () => {
   const units = basketUnits([{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_vip", qty: 1 }, { voucher: "voucher_1000", qty: 1 }]);
   assertEquals(units, ["voucher_vip", "voucher_200", "voucher_200", "voucher_1000"]);
+  // Welcome leads, then VIP, then the sizes (MESITA-4645).
+  const both = basketUnits([{ voucher: "voucher_vip", qty: 1 }, { voucher: "voucher_200", qty: 1 }, { voucher: "voucher_welcome", qty: 1 }]);
+  assertEquals(both, ["voucher_welcome", "voucher_vip", "voucher_200"]);
   assertEquals(sameUnits(["voucher_200", "voucher_1000"], ["voucher_1000", "voucher_200"]), true);
   assertEquals(sameUnits(["voucher_200"], ["voucher_200", "voucher_200"]), false);
   assertEquals(sameUnits([], []), true);
@@ -354,12 +372,13 @@ Deno.test("a basket's metadata names the lead and carries the sums; a single vou
 
 // MESITA-4207: the list rows' chips drop what THIS guest already used, by
 // the same rule as the place screen's Offers (offerFrom).
-Deno.test("list rows: guestSell drops a per-visit voucher spent this visit, like offerFrom", () => {
-  const sell = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"] as const;
+Deno.test("list rows: guestSell drops Welcome used here and a per-visit voucher spent this visit, like offerFrom", () => {
+  const sell = ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"] as const;
   const vipOn = { ...base, settings: { ...ALL_ON, voucher_vip: true } };
   const blocks = guestBlocksFrom(
     [
       { place_id: "a", voucher: "voucher_story" },
+      { place_id: "e", voucher: "voucher_welcome" },
       { place_id: "b", voucher: "voucher_vip" },
       { place_id: "c", voucher: "voucher_vip" },
       { place_id: "c", voucher: "voucher_vip" },
@@ -369,22 +388,24 @@ Deno.test("list rows: guestSell drops a per-visit voucher spent this visit, like
   // a: a Story bought before MESITA-4642 blocks nothing.
   assertEquals(guestSell(sell, blocks.get("a")), [...sell]);
   // b: one VIP, no visit yet: spent until the guest pays a bill here.
-  assertEquals(guestSell(sell, blocks.get("b")), ["voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(guestSell(sell, blocks.get("b")), ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"]);
+  // e: Welcome bought here; VIP still open (no VIP bought).
+  assertEquals(guestSell(sell, blocks.get("e")), ["voucher_200", "voucher_1000", "voucher_5000", "voucher_vip"]);
   // c: two VIPs, one visit: spent.
   assertEquals(blocks.get("c")?.perVisitUsed.voucher_vip, true);
   // d: a visit and no purchase: nothing blocked, no entry.
   assertEquals(blocks.has("d"), false);
   assertEquals(guestSell(sell, blocks.get("d")), [...sell]);
   // Same answer as the place screen's offer for every place.
-  for (const id of ["a", "b", "c", "d"]) {
+  for (const id of ["a", "b", "c", "d", "e"]) {
     const g = blocks.get(id);
-    const o = offerFrom({ ...vipOn, perVisitUsed: g?.perVisitUsed });
+    const o = offerFrom({ ...vipOn, welcomeUsed: g?.welcomeUsed ?? false, perVisitUsed: g?.perVisitUsed });
     assertEquals(guestSell(sell, g), o.sell);
   }
 });
 
 Deno.test("list rows: one VIP per visit opens again after a visit (MESITA-3463, MESITA-4207)", () => {
   const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_vip" }], [{ place_id: "p" }]);
-  assertEquals(blocks.get("p"), { perVisitUsed: { voucher_vip: false } });
+  assertEquals(blocks.get("p"), { welcomeUsed: false, perVisitUsed: { voucher_vip: false } });
   assertEquals(guestSell(["voucher_vip"], blocks.get("p")), ["voucher_vip"]);
 });

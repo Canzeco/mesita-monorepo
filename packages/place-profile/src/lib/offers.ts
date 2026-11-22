@@ -38,13 +38,15 @@ export type OfferInput = {
 // THE GREEN IS STRIPE LINK'S (Pato, 2026-11-17, MESITA-4210: "MAKE THE DARK
 // GREEN BACK AGAIN. USING THE STRIPE LINK COLORS KINDA"): #00D66F, black ink;
 // MESITA-4207's pale green-200 is gone.
-// The Welcome offer is gone (MESITA-4636), the Story offer too (MESITA-4641).
+// The Story offer is gone (MESITA-4641). The Welcome offer is back
+// (MESITA-4645; gone 2026-11-21, MESITA-4636), green like every offer.
 const GREEN = "bg-[#00D66F] text-neutral-950";
 
 /** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
  *  colour call is one edit here. */
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
+  voucher_welcome: GREEN,
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,
@@ -60,6 +62,8 @@ const OFFER_SLIDES: OfferSlide[] = [
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
+  // Welcome is back (MESITA-4645): pay $100, get $200.
+  { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase

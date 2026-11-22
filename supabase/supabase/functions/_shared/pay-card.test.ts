@@ -30,6 +30,7 @@ const ALL_ON: PaymentSettings = {
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
+  voucher_welcome: true,
   voucher_vip: false,
 };
 

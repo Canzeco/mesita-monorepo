@@ -134,8 +134,8 @@ Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read
   assertEquals(rpcs, ["wallet_credit_purchase:p_ok:2026-11-07T03:05:00.000Z"]);
   // Every voucher's bonus waits 3 hours (MESITA-4214); a retired key has none.
   assertEquals(availableAtFor("voucher_200", now), "2026-11-07T03:05:00.000Z");
-  // A Welcome bought before MESITA-4636 is out of the catalog: no wait.
-  assertEquals(availableAtFor("voucher_welcome", now), null);
+  // Welcome's bonus waits 3 hours too (MESITA-4214; back since MESITA-4645).
+  assertEquals(availableAtFor("voucher_welcome", now), "2026-11-07T03:05:00.000Z");
   assertEquals(availableAtFor("voucher_story", now), null);
   assertEquals(availableAtFor(null, now), null);
 });

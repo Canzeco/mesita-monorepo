@@ -25,6 +25,7 @@ const settings = (o: Partial<PaymentSettings> = {}): PaymentSettings => ({
   voucher_200: true,
   voucher_1000: false,
   voucher_5000: false,
+  voucher_welcome: false,
   voucher_vip: false,
   ...o,
 });

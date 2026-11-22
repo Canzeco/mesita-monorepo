@@ -91,6 +91,8 @@ export type OfferInput = {
   currency: string;
   paused: boolean;
   balance: PlaceBalance | null;
+  /** Welcome once: this guest already bought one here (MESITA-3854). */
+  welcomeUsed: boolean;
   /** VIP, one each new visit (MESITA-3463): true when this guest
    *  already bought one here for every visit they made. Absent reads false. */
   perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>>;
@@ -98,13 +100,15 @@ export type OfferInput = {
   hasPlaceCode?: boolean;
 };
 
-/** This guest's own block on one voucher at one place, or null: a
- *  per-visit voucher one each new visit ("needs_visit"). One rule for the place screen's offer (offerFrom) and
+/** This guest's own block on one voucher at one place, or null: Welcome
+ *  once per place ("used", back since MESITA-4645), a per-visit voucher one
+ *  each new visit ("needs_visit"). One rule for the place screen's offer (offerFrom) and
  *  the list rows (guestSell, MESITA-4207). */
 export function guestReason(
   k: MoneyVoucherKey,
-  g: { perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>> },
-): "needs_visit" | null {
+  g: { welcomeUsed: boolean; perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>> },
+): "used" | "needs_visit" | null {
+  if (k === "voucher_welcome" && g.welcomeUsed) return "used";
   if (g.perVisitUsed?.[k as PerVisitVoucher]) return "needs_visit";
   return null;
 }
@@ -175,6 +179,18 @@ export async function readPlaceBalance(
   return { ...sums, next_ready_at: at?.available_at ?? null };
 }
 
+/** Welcome is once per guest per place, at any visit (MESITA-3854, Pato: "if
+ *  you forget to use the Welcome, you are fucked"): only a Welcome purchase
+ *  that is not expired or failed spends it; a paid bill here no longer does.
+ *  wallet_purchases_welcome_once_idx enforces the same rule where buys race. */
+export async function readWelcomeUsed(admin: SupabaseClient, consumerId: string | null, placeId: string): Promise<boolean> {
+  if (!consumerId) return false;
+  const { data, error } = await admin.from("wallet_purchases").select("id").eq("consumer_id", consumerId).eq("place_id", placeId)
+    .eq("voucher", "voucher_welcome").not("status", "in", "(expired,failed)").limit(1);
+  if (error) throw new Error(`wallet_purchases: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
 /** The per-visit vouchers, one each new visit (MESITA-3463): each is spent
  *  when the guest's live purchases of it here (not expired or failed)
  *  outnumber their visits here (visits.ts). */
@@ -199,7 +215,7 @@ export async function readPerVisitUsed(
 }
 
 /** One guest's blocks at one place, as offerFrom reads them. */
-export type GuestBlocks = { perVisitUsed: Partial<Record<PerVisitVoucher, boolean>> };
+export type GuestBlocks = { welcomeUsed: boolean; perVisitUsed: Partial<Record<PerVisitVoucher, boolean>> };
 
 /** The vouchers a place's list row sells, minus this guest's own blocks
  *  (MESITA-4207): Home's and Search's chips agree with the place screen's
@@ -211,8 +227,9 @@ export function guestSell(sell: readonly MoneyVoucherKey[], blocks: GuestBlocks 
 }
 
 /** The pure half of readGuestBlocks: the guest's live purchases (not expired
- *  or failed) of the per-visit vouchers, and their visits (visits.ts), one
- *  row each, grouped by place with readPerVisitUsed's definition. A place
+ *  or failed) of Welcome and the per-visit vouchers, and their visits
+ *  (visits.ts), one row each, grouped by place with readWelcomeUsed's and
+ *  readPerVisitUsed's definitions. A place
  *  with no purchase row gets no entry (nothing spent). */
 export function guestBlocksFrom(
   purchases: readonly { place_id: string; voucher: string }[],
@@ -231,7 +248,7 @@ export function guestBlocksFrom(
     const visitsHere = visitCount.get(placeId) ?? 0;
     const perVisitUsed: Partial<Record<PerVisitVoucher, boolean>> = {};
     for (const k of PER_VISIT_VOUCHERS) perVisitUsed[k] = perVisitSpent(byVoucher.get(k) ?? 0, visitsHere);
-    out.set(placeId, { perVisitUsed });
+    out.set(placeId, { welcomeUsed: (byVoucher.get("voucher_welcome") ?? 0) > 0, perVisitUsed });
   }
   return out;
 }
@@ -249,7 +266,7 @@ export async function readGuestBlocks(
   const ids = [...new Set(placeIds)];
   const [bought, visits] = await Promise.all([
     admin.from("wallet_purchases").select("id, place_id, voucher").eq("consumer_id", consumerId).in("place_id", ids)
-      .in("voucher", [...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
+      .in("voucher", ["voucher_welcome", ...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
     admin.from("wallet_payments").select("place_id").eq("consumer_id", consumerId).in("place_id", ids)
       .gt("card_cents", 0).in("status", [...VISIT_STATUSES]),
   ]);
@@ -284,11 +301,12 @@ export async function voucherOffer(
   livemode: boolean,
 ): Promise<VoucherOffer> {
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
-  const [settings, account, config, balance, perVisitUsed, code] = await Promise.all([
+  const [settings, account, config, balance, welcomeUsed, perVisitUsed, code] = await Promise.all([
     readSettings(admin, place.id),
     readAccount(admin, place.id),
     readMoneyConfig(admin),
     readPlaceBalance(admin, consumerId, place.id, currency, livemode),
+    readWelcomeUsed(admin, consumerId, place.id),
     readPerVisitUsed(admin, consumerId, place.id),
     admin.from("place_codes").select("place_id").eq("place_id", place.id).maybeSingle(),
   ]);
@@ -301,6 +319,7 @@ export async function voucherOffer(
     currency,
     paused: config.buying_paused,
     balance,
+    welcomeUsed,
     perVisitUsed,
     hasPlaceCode: !code.error && !!code.data,
   });
@@ -320,8 +339,9 @@ export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string
   needs_card_payments: { code: "needs_card_payments", error: "This voucher needs card payments, which are not on yet" },
   needs_instagram: { code: "needs_instagram", error: "This voucher needs the Instagram connection, which is not on yet" },
   paused: { code: "paused", error: "Voucher sales are paused for a moment" },
+  used: { code: "welcome_used", error: "You already had your Welcome voucher here" },
   needs_visit: { code: "needs_visit", error: "One each visit: pay a bill here by card to buy it again" },
-  not_vip: { code: "not_vip", error: "VIP Offers need a public Instagram with more than 5,000 followers" },
+  not_vip: { code: "not_vip", error: "The VIP voucher needs a public Instagram with more than 5,000 followers" },
 };
 
 /** Why a voucher cannot be bought right now, or null when it can. */
@@ -360,7 +380,7 @@ export function vipRefusal(voucher: MoneyVoucherKey, guest: VipGuest): (BuyRefus
     ok: false,
     status: 409,
     code: "not_vip",
-    error: `VIP Offers need a public Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
+    error: `The VIP voucher needs a public Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
     followers: guest?.followers ?? null,
     isPrivate: guest?.is_private ?? null,
   };
@@ -412,8 +432,8 @@ export type BasketItem = { voucher: MoneyVoucherKey; qty: number };
 
 /** At most this many of one voucher in a basket (Small and Big). */
 export const BASKET_MAX_QTY = 5;
-/** One each visit (VIP): one unit. */
-export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_vip"]);
+/** Once per guest per place (Welcome) or one each visit (VIP): one unit. */
+export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_welcome", "voucher_vip"]);
 
 /** Vouchers that existed and are not sold any more: STORIES ARE GONE (Pato,
  *  2026-11-22, MESITA-4641). Old purchases keep their key; a buy is refused
@@ -421,8 +441,8 @@ export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_v
 export const RETIRED_VOUCHERS: ReadonlySet<string> = new Set(["voucher_story"]);
 
 /** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
- *  `voucher` as a basket of one. Known keys, whole qty 1..5, VIP at
- *  most 1, no key twice. Pure. */
+ *  `voucher` as a basket of one. Known keys, whole qty 1..5, Welcome and
+ *  VIP at most 1, no key twice. Pure. */
 
 export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok: true; items: BasketItem[] } | { ok: false; error: string; code?: "voucher_retired" } {
   const asked = body.items === undefined || body.items === null
@@ -455,8 +475,10 @@ export function parseBasket(body: { items?: unknown; voucher?: unknown }): { ok:
   return { ok: true, items };
 }
 
-/** Catalog order, VIP first: the lead is the first unit. */
-const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"];
+/** Catalog order, Welcome first: the lead is the first unit, so Welcome's
+ *  once-per-guest index answers on the lead's write exactly as a one-voucher
+ *  buy does. Then VIP, then the sizes. */
+const BASKET_ORDER: readonly MoneyVoucherKey[] = ["voucher_welcome", "voucher_vip", "voucher_200", "voucher_1000", "voucher_5000"];
 
 /** The basket as voucher units, one per row to write: the lead first. Pure. */
 export function basketUnits(items: readonly BasketItem[]): MoneyVoucherKey[] {
@@ -491,6 +513,7 @@ export function voucherName(k: MoneyVoucherKey, currency: string = MONEY_CURRENC
     case "voucher_1000":
     case "voucher_5000":
       return `${moneyText(catalogLines(currency)[k].price_cents, currency)} voucher`;
+    case "voucher_welcome": return "Welcome voucher";
     case "voucher_vip": return "VIP voucher";
   }
 }
@@ -532,7 +555,8 @@ export async function readPlaceOutstanding(admin: SupabaseClient, placeId: strin
 
 /** The Credits Limit, then one `opening` row under the guest's request_id; the
  *  Checkout path and the saved-card path (MESITA-3552) both start here.
- *  `duplicate`: the request_id already has a row; the caller resumes it.
+ *  `duplicate`: the request_id (or Welcome's once-per-guest index) already
+ *  has a row; the caller resumes it.
  *
  *  A basket (MESITA-3841): `followers` are the other voucher units, one row
  *  each, written right after the lead with basket_lead_id and no
@@ -610,6 +634,8 @@ export async function openPurchaseRow(
       await admin.from("wallet_purchases")
         .update({ status: "failed", stripe_error: "basket_write", updated_at: new Date().toISOString() })
         .eq("id", purchaseId).eq("status", "opening");
+      // Welcome's once-per-guest index (another tap bought it meanwhile).
+      if (followErr.code === "23505") return { ok: false, status: 409, ...REFUSAL_FOR.used };
       throw new Error(`basket_insert: ${followErr.message}`);
     }
   }

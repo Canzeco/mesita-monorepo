@@ -23,7 +23,7 @@ describe("ticket desk words", () => {
 
   it("names the voucher products; an old Story purchase keeps its name (MESITA-4641)", () => {
     expect(voucherName("voucher_story")).toBe("Story Voucher");
-    expect(voucherName("voucher_welcome")).toBe("Voucher");
+    expect(voucherName("voucher_welcome")).toBe("Welcome Voucher");
     expect(voucherName(null)).toBe("Voucher");
   });
 
