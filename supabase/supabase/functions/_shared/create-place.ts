@@ -64,6 +64,7 @@ import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { googlePlacesKeyOrNull } from "./google-places.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { mainGoogleCategoryOnMesita } from "./categories.ts";
+import { loadEnrichmentConfig } from "./enrichment-config.ts";
 import { decideReservations } from "./infer-place-reservations.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
 /** The Google numbers a create stores: the same patch a Reviews reload
@@ -173,6 +174,8 @@ export async function createMinimalPlace(opts: {
   // The product caller's EF name — the log prefix for this create.
   callerName: string;
   googlePlaceId: string;
+  /** The consumer app's minimum Google reviews (MESITA-4681); other apps pass none. */
+  minGoogleReviews?: number;
 }): Promise<CreatePlaceOutcome> {
   const { admin, callerName, googlePlaceId } = opts;
 
@@ -248,17 +251,37 @@ export async function createMinimalPlace(opts: {
   // rating/review/popularity floors. After Google, before persist. One ID, one 422
   // — a batch of creates never aborts as a unit. Config-read failure falls
   // back to discovery defaults rather than failing open.
-  const map = (await loadDiscoveryConfig(admin)).map;
+  // Creation › "Allow places outside Atlas's Google categories" (MESITA-4681,
+  // every app, off by default; a failed read is off): on, both type gates
+  // below are skipped and the place lands on `undefined` when none of its
+  // Google types is allowed. The floors still apply.
+  const [map, creation] = await Promise.all([
+    loadDiscoveryConfig(admin).then((c) => c.map),
+    loadEnrichmentConfig(admin),
+  ]);
+  const anyType = creation.enrichAllowAnyGoogleCategory;
   const verdict = evaluatePlaceForMap(map, {
     primaryType: basicsRes.primaryType,
     rating: basicsRes.basics.google_stars_overall,
     reviewCount: basicsRes.basics.google_review_count,
-  });
+  }, { anyType });
   if (!verdict.eligible) {
     return {
       ok: false,
       status: 422,
       body: { ok: false, code: verdict.code, error: verdict.reason },
+    };
+  }
+  const minReviews = opts.minGoogleReviews ?? 0;
+  if (minReviews > 0 && (basicsRes.basics.google_review_count ?? 0) < minReviews) {
+    return {
+      ok: false,
+      status: 422,
+      body: {
+        ok: false,
+        code: "below_min_reviews",
+        error: `Mesita adds places with at least ${minReviews} Google reviews.`,
+      },
     };
   }
 
@@ -277,7 +300,9 @@ export async function createMinimalPlace(opts: {
   // Mesita (catalog_membership.enabled). The Map gate reads the code map;
   // this reads the switch Atlas lists, so a category switched off there can
   // never be minted. Before persist, like the Map gate.
-  const main = await mainGoogleCategoryOnMesita(admin, googleTypes);
+  const main = anyType
+    ? { slug: null, enabled: true }
+    : await mainGoogleCategoryOnMesita(admin, googleTypes);
   if (!main.enabled) {
     return {
       ok: false,
@@ -293,7 +318,12 @@ export async function createMinimalPlace(opts: {
 
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
-    ...(googleTypes[0]
+    // The switch on: the trigger picks the first allowed Google type as the
+    // category, or `undefined` when none is allowed (MESITA-4681); naming
+    // a not-allowed slug here would fail its catalog check.
+    ...(anyType
+      ? { category: null, category_label: googleTypes[0] ? humanizeCategorySlug(googleTypes[0]) : null }
+      : googleTypes[0]
       ? {
         category: googleTypes[0],
         category_label: googleTypes[0] === basicsRes.basics.category

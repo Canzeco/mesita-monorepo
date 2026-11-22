@@ -98,6 +98,20 @@ export type EnrichmentConfig = {
    */
   enrichConsumerCreatesPerDay: number;
   /**
+   * CREATE GATES (MESITA-4681, Pato 2026-11-22). A guest may add a place only
+   * with at least this many Google reviews (consumer app only; the preview
+   * still shows the place) …
+   */
+  enrichConsumerMinGoogleReviews: number;
+  /** … and at most this many places per calendar month (Mexico City). */
+  enrichConsumerCreatesPerMonth: number;
+  /**
+   * Universal, every app: on, Create skips both place-type gates (Discovery's
+   * Mesita place types and Atlas's allowed Google categories); the rating and
+   * review floors still apply. Off by default.
+   */
+  enrichAllowAnyGoogleCategory: boolean;
+  /**
    * FIELD LIMITS (MESITA-4581, Pato 2026-11-21: "two limits. One for on
    * create, other for on enrich … LIMITS FOR BOTH FOR EACH FIELD"). How many
    * Mesita Families, Presentation characters and Mesita tags the Description
@@ -157,6 +171,8 @@ export function stageFieldLimits(
 }
 
 export const CONSUMER_CREATES_PER_DAY_MAX = 10000;
+export const CONSUMER_CREATES_PER_MONTH_MAX = 10000;
+export const CONSUMER_MIN_GOOGLE_REVIEWS_MAX = 100000;
 export const UPDATE_EVERY_VIEWS_MAX = 1000;
 
 export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
@@ -188,6 +204,9 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   enrichCreateOnOpenConsumer: true,
   enrichCreateOnOpenAdmin: true,
   enrichConsumerCreatesPerDay: 1000,
+  enrichConsumerMinGoogleReviews: 10,
+  enrichConsumerCreatesPerMonth: 10,
+  enrichAllowAnyGoogleCategory: false,
   // MESITA-4581: Pato's example ("ON CREATE … 3, BUT ON ENRICH WE SAVE 5")
   // for families; Create's thin door writes a shorter text and fewer tags.
   createFamiliesMax: 3,
@@ -276,6 +295,19 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
       CONSUMER_CREATES_PER_DAY_MAX,
       d.enrichConsumerCreatesPerDay,
     ),
+    enrichConsumerMinGoogleReviews: intIn(
+      r.enrichConsumerMinGoogleReviews,
+      0,
+      CONSUMER_MIN_GOOGLE_REVIEWS_MAX,
+      d.enrichConsumerMinGoogleReviews,
+    ),
+    enrichConsumerCreatesPerMonth: intIn(
+      r.enrichConsumerCreatesPerMonth,
+      1,
+      CONSUMER_CREATES_PER_MONTH_MAX,
+      d.enrichConsumerCreatesPerMonth,
+    ),
+    enrichAllowAnyGoogleCategory: r.enrichAllowAnyGoogleCategory === true,
     createFamiliesMax: intIn(r.createFamiliesMax, 1, ENRICH_FIELD_LIMITS.familiesPerPlace.max, d.createFamiliesMax),
     enrichFamiliesMax: intIn(r.enrichFamiliesMax, 1, ENRICH_FIELD_LIMITS.familiesPerPlace.max, d.enrichFamiliesMax),
     createPresentationMaxChars: intIn(

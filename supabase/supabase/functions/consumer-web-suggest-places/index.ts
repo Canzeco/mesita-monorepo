@@ -13,7 +13,8 @@
 // into Location rows (`kind: "location"`), and `anchorPlaceId` resolves a
 // picked Location's coordinates + viewport — one Details call per pick.
 // `previewPlaceId` answers the Generate dialog's Google preview (photo,
-// category, stars) — one Details call per dialog open (MESITA-2941).
+// category, stars) — one Details call per dialog open (MESITA-2941) — and
+// `addable`, whether this guest may add the place (MESITA-4681).
 //
 // JWT-protected: clients send the Supabase anon JWT in Authorization.
 // Anonymous (anon key only, no user session) still get predictions.
@@ -24,6 +25,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
+import { classifyCaller } from "../_shared/auth.ts";
 import { runConsumerNamePipeline } from "../_shared/name-pipeline.ts";
 import { runLocationAnchor, runPlacePreview } from "./handlers.ts";
 
@@ -52,7 +54,11 @@ serveJson("consumer-web-suggest-places", async (req) => {
     return await runLocationAnchor(body.anchorPlaceId);
   }
   if (typeof body.previewPlaceId === "string" && body.previewPlaceId.trim()) {
-    return await runPlacePreview(body.previewPlaceId);
+    // Who is asking decides whether Generate is on (MESITA-4681): an
+    // anonymous visitor sees the place, never the button.
+    const who = await classifyCaller(req, env);
+    if (!who.ok) return who.response;
+    return await runPlacePreview(body.previewPlaceId, ctx.admin, who.user?.id ?? null);
   }
 
   const lat = typeof body.lat === "number" && Number.isFinite(body.lat)

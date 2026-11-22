@@ -19,6 +19,8 @@
 //   imageAnalysisPrompt / imageSortingPrompt
 //   createOnOpenConsumer / createOnOpenAdmin (boolean, MESITA-2298)
 //   consumerCreatesPerDay (1–10000, MESITA-2376)
+//   consumerMinGoogleReviews (0–100000), consumerCreatesPerMonth (1–10000),
+//     allowAnyGoogleCategory (boolean, every app): the Create gates (MESITA-4681)
 //   createFamiliesMax / enrichFamiliesMax (1–7), createPresentationMaxChars /
 //     enrichPresentationMaxChars (200–2000), createTagsMax / enrichTagsMax
 //     (0–20): Atlas's field limits (MESITA-4581)
@@ -37,6 +39,8 @@ import { normalizeEnrichmentTriggers } from "./enrich-triggers.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import {
   CONSUMER_CREATES_PER_DAY_MAX,
+  CONSUMER_CREATES_PER_MONTH_MAX,
+  CONSUMER_MIN_GOOGLE_REVIEWS_MAX,
   PRESENTATION_LIMIT_MIN,
   UPDATE_EVERY_VIEWS_MAX,
   normalizeEnrichmentConfig,
@@ -77,6 +81,9 @@ type Body = {
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
+  consumerMinGoogleReviews?: number;
+  consumerCreatesPerMonth?: number;
+  allowAnyGoogleCategory?: boolean;
   createFamiliesMax?: number;
   enrichFamiliesMax?: number;
   createPresentationMaxChars?: number;
@@ -360,6 +367,35 @@ export async function writeEnricherSection(
       );
     }
     next.enrichConsumerCreatesPerDay = n;
+    blobTouched = true;
+  }
+  if (body.consumerMinGoogleReviews !== undefined) {
+    const n = intInRange(body.consumerMinGoogleReviews, 0, CONSUMER_MIN_GOOGLE_REVIEWS_MAX);
+    if (n === null) {
+      return jsonError(
+        `consumerMinGoogleReviews must be an integer 0-${CONSUMER_MIN_GOOGLE_REVIEWS_MAX}`,
+        400,
+      );
+    }
+    next.enrichConsumerMinGoogleReviews = n;
+    blobTouched = true;
+  }
+  if (body.consumerCreatesPerMonth !== undefined) {
+    const n = intInRange(body.consumerCreatesPerMonth, 1, CONSUMER_CREATES_PER_MONTH_MAX);
+    if (n === null) {
+      return jsonError(
+        `consumerCreatesPerMonth must be an integer 1-${CONSUMER_CREATES_PER_MONTH_MAX}`,
+        400,
+      );
+    }
+    next.enrichConsumerCreatesPerMonth = n;
+    blobTouched = true;
+  }
+  if (body.allowAnyGoogleCategory !== undefined) {
+    if (typeof body.allowAnyGoogleCategory !== "boolean") {
+      return jsonError("allowAnyGoogleCategory must be a boolean", 400);
+    }
+    next.enrichAllowAnyGoogleCategory = body.allowAnyGoogleCategory;
     blobTouched = true;
   }
 
