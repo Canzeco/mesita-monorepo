@@ -33,8 +33,8 @@ import { usePayPlaces } from "./use-pay-places";
 // balance. Just display name of the place and location and card. when you
 // click the place, then you open its offers page"): `PlacePickBody` with
 // `prepay` is /wallet/buy's whole body: no "Where are you paying?", only
-// places that sell credits, "Near you" (the 3 closest) then "Your Loyalty
-// Cards" (every place the guest holds credit at, not already above), each
+// places that sell credits, the 3 closest (untitled since MESITA-4606) then
+// "Your Loyalty Cards" (every place the guest holds credit at, not already above), each
 // row the card-shaped photo, the name and the location line, no QR chip and
 // no "Show all"; a search lists every match.
 
@@ -235,7 +235,9 @@ function PlaceList({
             <Section title="Results" places={prepay ? matches : shown} onPick={onPick} prepay={prepay} />
           ) : prepay ? (
             <>
-              <Section title="Near you" places={nearest} onPick={onPick} prepay />
+              {/* NO "NEAR YOU" (Pato, 2026-11-21, MESITA-4606: "its ugly and
+                  kinda obvious"): the closest places come first untitled. */}
+              <Section places={nearest} onPick={onPick} prepay />
               <Section title="Your Loyalty Cards" places={cards} onPick={onPick} prepay />
             </>
           ) : (

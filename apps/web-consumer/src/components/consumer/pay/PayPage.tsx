@@ -236,7 +236,8 @@ export function PayPage({
     const href = payPlacePath(id);
     const state = window.history.state as { paySheet?: number } | null;
     const onPay = previousEntryPath() === CONSUMER_ROUTES.pay;
-    setPickerOpen(false);
+    // The sheet stays painted until step 2 replaces the screen (MESITA-4606):
+    // closing it first showed the Wallet for a frame between the steps.
     if (state?.paySheet === 1 || (pick && onPay)) {
       navigateTo(router, href, { replace: true, motion: "push" });
       return;

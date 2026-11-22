@@ -904,8 +904,12 @@ const childDirs = (dir: string) =>
 describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   it("(shell)/pay holds the door, the bill, a friend's share door and the receipt, and nothing else", () => {
     const pay = join(SHELL, "pay");
-    expect(existsSync(join(pay, "page.tsx"))).toBe(true);
+    // The Wallet sits in its own group so its loading frame wraps it alone
+    // (MESITA-4606).
+    expect(existsSync(join(pay, "(wallet)", "page.tsx"))).toBe(true);
+    expect(existsSync(join(pay, "loading.tsx"))).toBe(false);
     expect(childDirs(pay)).toEqual([
+      "(wallet)",
       "bill",
       "join",
       "pick",
