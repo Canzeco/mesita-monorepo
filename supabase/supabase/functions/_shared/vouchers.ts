@@ -347,8 +347,8 @@ export async function withGuestOffers<T extends { id: string; offers: { sell: Mo
  *  Search's list rows keep the place's own `offers.sell`, whoever looks; only
  *  the place-wide Story gate applies (no mention source, MESITA-4264). The
  *  Offers page and the buy door still refuse what this guest cannot buy, with
- *  the reason. The Wallet reads it too since MESITA-4582; withGuestOffers
- *  (MESITA-4207) filtered the Wallet to what the guest could still buy. */
+ *  the reason. The Wallet reads withGuestOffers (MESITA-4207, again since
+ *  MESITA-4611; this one for one day under MESITA-4582). */
 export function withPlaceOffers<T extends { offers: { sell: MoneyVoucherKey[] } }>(rows: T[]): T[] {
   if (storyMode() !== "unavailable") return rows;
   return rows.map((r) => ({ ...r, offers: { ...r.offers, sell: r.offers.sell.filter((k) => k !== "voucher_story") } }));

@@ -82,7 +82,7 @@ import {
   type SettleOutcome,
 } from "../_shared/wallet.ts";
 import { readPayMethod, readSavedCards } from "../_shared/cards.ts";
-import { withPlaceOffers } from "../_shared/vouchers.ts";
+import { withGuestOffers } from "../_shared/vouchers.ts";
 import {
   legacyWaitingState,
   readStoryList,
@@ -308,14 +308,15 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // THE OFFERS (MESITA-4262, Pato: "important to display offers inside
   // wallet too … a super important selling point"): each card's switching
   // offers, the list rows' rule (withVouchersUpTo's listRowMoney, the
-  // buying_paused kill switch). EVERY OFFER THE PLACE SELLS (Pato,
-  // 2026-11-21, MESITA-4582: "this must be changing too between available
-  // offers"): Home's rule (withPlaceOffers, MESITA-4292), not only what this
-  // guest can still buy, so the Loyalty Card's Offers tile turns through
-  // Welcome, Story and Prepay like Home and the place screen. The Offers
-  // page and the buy door still refuse what this guest cannot buy, with the
-  // reason. withGuestOffers (MESITA-4207) filtered it to one Prepay before.
-  const offerRows = withPlaceOffers(
+  // buying_paused kill switch). ONLY WHAT THIS GUEST CAN BUY (Pato,
+  // 2026-11-21, MESITA-4611: "in the carousel only display enabled offers for
+  // that specific user, not all the offers"): withGuestOffers (MESITA-4207)
+  // drops a used Welcome and a Story this guest cannot buy. MESITA-4582 had
+  // shown every offer the place sells (withPlaceOffers) for one day. A failed
+  // guest read keeps the place's list (withGuestOffers logs it).
+  const offerRows = await withGuestOffers(
+    admin,
+    userId,
     balances.map((b) => ({
       id: b.place_id,
       offers: {
