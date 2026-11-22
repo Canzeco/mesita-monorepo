@@ -134,7 +134,34 @@ const OFFER_SLIDE_CSS = `@keyframes offer-in{from{transform:translateY(100%)}to{
 const OFFER_PILL =
   "bg-foreground text-paper shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
 
-function OfferWords({ slide, short = false, plain = false, className }: { slide: OfferSlide; short?: boolean; plain?: boolean; className?: string }) {
+function OfferWords({
+  slide,
+  short = false,
+  plain = false,
+  full = false,
+  className,
+}: {
+  slide: OfferSlide;
+  short?: boolean;
+  plain?: boolean;
+  full?: boolean;
+  className?: string;
+}) {
+  // THE WHOLE OFFER IN ONE LINE where there is room (Pato, 2026-11-21,
+  // MESITA-4615: "if enough space, do mention the full offer: Prepay Up to
+  // 30% Bonus. only in the card view"): the Loyalty Card's full-width tile
+  // reads "Prepay up to +30% Bonus" (Prepay shows the best size), "Welcome
+  // +100% Bonus", "Story +30% Bonus".
+  if (full) {
+    return (
+      <span className={cn("absolute inset-0 flex items-center justify-center px-2", className)}>
+        <span className="max-w-full truncate text-base font-semibold">
+          {slide.lead ? `${slide.lead}${slide.key === "prepay" ? " up to" : ""} ` : ""}
+          {slide.pill}
+        </span>
+      </span>
+    );
+  }
   return (
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
       {/* A slide with no lead is the whole offer in the black tag (the place
@@ -167,6 +194,7 @@ export function OfferTrack({
   previous,
   short,
   plain,
+  full,
 }: {
   slides: OfferSlide[];
   index: number;
@@ -174,6 +202,8 @@ export function OfferTrack({
   short?: boolean;
   /** The place screen's chips: the words alone, a 500ms slide (MESITA-4160). */
   plain?: boolean;
+  /** The whole offer in one line, where the tile is wide (MESITA-4615). */
+  full?: boolean;
 }) {
   const inCls = plain ? "offer-in-slow" : "offer-in";
   const outCls = plain ? "offer-out-slow" : "offer-out";
@@ -183,9 +213,9 @@ export function OfferTrack({
         {OFFER_SLIDE_CSS}
       </style>
       {previous !== null ? (
-        <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} plain={plain} className={outCls} />
+        <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} plain={plain} full={full} className={outCls} />
       ) : null}
-      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} plain={plain} className={previous !== null ? inCls : undefined} />
+      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} plain={plain} full={full} className={previous !== null ? inCls : undefined} />
     </span>
   );
 }

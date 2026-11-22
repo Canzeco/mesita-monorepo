@@ -404,6 +404,7 @@ export function OffersTile({
   open,
   label = "Offers",
   className,
+  full = false,
 }: {
   name: string;
   slides: OfferSlide[];
@@ -415,6 +416,8 @@ export function OffersTile({
   label?: string;
   /** The Loyalty Card draws it full width and taller (MESITA-4577). */
   className?: string;
+  /** The whole offer in one line (the Loyalty Card's wide tile, MESITA-4615). */
+  full?: boolean;
 }) {
   const wide = label !== "Offers";
   const live = useOfferSlide(slides, ROW_TICK_MS, { every: ROW_TICKS_PER_CHANGE, phase: 1 });
@@ -453,7 +456,7 @@ export function OffersTile({
       {/* THE CHIP WEARS THE OFFER ON SCREEN'S COLOUR (MESITA-4207): Welcome
           blue, Story pink, the sizes green; one green for all before. */}
       <span className={cn(ROW_CHIP, "transition-colors duration-300", slides[index]?.tone ?? OFFERS_CHIP)}>
-        <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} plain />
+        <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} plain full={full} />
       </span>
     </button>
   );
