@@ -388,12 +388,13 @@ export function GuestTabView({
       {/* MESITA-4061: the same frame as every guest step. */}
       <PayTitle title="Pay the waiter" back={!busy} />
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102): the QR's slot takes
-          the height left (up to 340px, never under 120px). */}
+          the height left (up to 340px, never under 80px: a cash bill on a
+          375×553 phone, Safari's bars on, needs the room, MESITA-4658). */}
       <StepBody className="min-h-0 flex-1">
         <PaySection className="flex min-h-0 flex-1 flex-col" data-guest-sign-qr-step>
-          <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 p-4 text-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-1 p-3 text-center">
             <SignStep n={1} label="Waiter scans this" />
-            <div className="flex min-h-[120px] w-full flex-1 items-center justify-center">
+            <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
               <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
                 {qr ? (
                   <QRCodeSVG value={qr} size={340} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
@@ -439,25 +440,26 @@ export function GuestTabView({
             ) : null}
           </div>
         </PaySection>
-        {/* 2 HAND OVER CASH (MESITA-4618, the Link-green half): only the
-            amount, large. */}
+        {/* 2 HAND OVER CASH (MESITA-4618's Link green): one row, the step
+            on the left, the amount large on the right. Never half the screen:
+            as a half it left the QR its 120px floor and cut the total off a
+            667px phone (MESITA-4658); the QR is step 1 and takes the room. */}
         {cash > 0 ? (
           <section
-            className="flex min-h-[8rem] flex-1 flex-col items-center gap-1 rounded-2xl bg-[#00D66F] p-4 text-center text-neutral-950"
+            className="flex shrink-0 items-center gap-3 rounded-2xl bg-[#00D66F] px-4 py-3 text-neutral-950"
             aria-label={`Step 2: hand the waiter ${m(cash)} in cash`}
             data-guest-sign-cash
           >
-            <SignStep n={2} label="Hand over cash" tone="cash" />
-            <span className="flex flex-1 flex-col items-center justify-center">
-              <span className="text-4xl font-semibold tabular-nums">{m(cash)}</span>
-              <span className="mt-1 text-sm">in cash, to the waiter</span>
+            <span className="min-w-0 flex-1 whitespace-nowrap">
+              <SignStep n={2} label="Hand over cash" tone="cash" />
             </span>
+            <span className="shrink-0 text-3xl font-semibold tabular-nums">{m(cash)}</span>
           </section>
         ) : null}
         {/* LAST: THE WAITER CONFIRMS (MESITA-4521: Confirm, never Sign). The
             time left lives here; an unconfirmed bill cancels with nothing
             charged. Reads failing twice: "Reconnecting…". */}
-        <section className="bg-muted flex shrink-0 items-center gap-3 rounded-2xl p-4" aria-label="The waiter confirms" data-guest-sign-confirm>
+        <section className="bg-muted flex shrink-0 items-center gap-3 rounded-2xl px-4 py-2" aria-label="The waiter confirms" data-guest-sign-confirm>
           <StepNumber n={cash > 0 ? 3 : 2} tone="next" />
           <span className="flex min-w-0 flex-1 flex-col text-left">
             <span className="text-base font-semibold">Waiter confirms</span>
