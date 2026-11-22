@@ -44,6 +44,8 @@ import {
   Ticket,
   UtensilsCrossed,
   type LucideIcon,
+  TriangleAlert,
+  ChevronRight,
 } from "lucide-react";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { HEADER_BUTTON_CLASS } from "@/components/consumer/nav/Screen";
@@ -51,7 +53,7 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GiftTickets } from "./GiftTickets";
-import { StoryTickets } from "./StoryTickets";
+import { isPendingStory, StoryTickets } from "./StoryTickets";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn } from "@/lib/utils";
 import {
@@ -243,12 +245,14 @@ const TICKET_TABS: ReadonlyArray<{
   label: string;
   icon: LucideIcon;
 }> = [
-  { kind: "visits", label: "Visits", icon: UtensilsCrossed },
+  // VOUCHERS · VISITS · GIFTS · STORIES (Pato, 2026-11-21, MESITA-4623:
+  // "Vouchers Visits Gifts Stories YES THAT ORDER", the card page and this
+  // feed alike). Bare /me/tickets still opens Visits: every link names it.
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
-  // STORIES BEFORE GIFTS (Pato, 2026-11-20: "Visits. Vouchers. Stories.
-  // Gifts. THIS ORDER"). The Story record's own tickets (MESITA-4405), always shown.
-  { kind: "stories", label: "Stories", icon: Instagram },
+  { kind: "visits", label: "Visits", icon: UtensilsCrossed },
   { kind: "gifts", label: "Gifts", icon: Gift },
+  // The Story record's own tickets (MESITA-4405), always shown.
+  { kind: "stories", label: "Stories", icon: Instagram },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */
@@ -578,6 +582,16 @@ export function TicketsBoard({
     } satisfies Record<Exclude<TicketTab, "gifts" | "stories">, Row[] | null>;
   }, [visitList, walletData, visitCutoff]);
 
+  // PENDING TICKETS (MESITA-4623): bills waiting for the waiter, Stories
+  // waiting for their check. Their tab wears a yellow dot; the card page
+  // also says so in a yellow line above the tabs.
+  const pending: Partial<Record<TicketTab, number>> = {
+    visits: (byKind.visits ?? []).filter((r) => r.pending).length,
+    stories: (walletData?.stories ?? []).filter(isPendingStory).length,
+  };
+  const pendingTotal = (pending.visits ?? 0) + (pending.stories ?? 0);
+  const pendingTab: TicketTab | null = pending.visits ? "visits" : pending.stories ? "stories" : null;
+
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
   const ready =
@@ -610,7 +624,21 @@ export function TicketsBoard({
             : "gap-4",
       )}
     >
-      <TicketPills on={kind} onPick={onPick} flush={false} sticky={edge} />
+      {boxed && pendingTab ? (
+        <button
+          type="button"
+          onClick={() => onPick(pendingTab)}
+          className="flex w-full items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-left text-sm font-semibold text-amber-800"
+          data-tickets-pending
+        >
+          <TriangleAlert className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="min-w-0 flex-1">
+            {pendingTotal === 1 ? "1 pending ticket" : `${pendingTotal} pending tickets`}
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" aria-hidden />
+        </button>
+      ) : null}
+      <TicketPills on={kind} onPick={onPick} flush={false} sticky={edge} pending={pending} />
       {kind === "stories" && ready && !failed && walletData ? (
         <StoryTickets stories={walletData.stories ?? []} showPlace={!placeId} />
       ) : kind === "gifts" && ready && !failed && walletData ? (
@@ -854,7 +882,10 @@ function TicketPills({
   onPick,
   flush = true,
   sticky = false,
+  pending = {},
 }: {
+  /** Pending tickets per tab: a yellow dot on the word (MESITA-4623). */
+  pending?: Partial<Record<TicketTab, number>>;
   on: TicketTab | null;
   onPick?: (k: TicketTab) => void;
   /** Runs to MeScreen's edges; false inside a card page's column. */
@@ -890,6 +921,9 @@ function TicketPills({
                 you add little icons in the four"). */}
             <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.5 : 2} aria-hidden />
             {t.label}
+            {pending[t.kind] ? (
+              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" aria-label="pending" data-tab-pending />
+            ) : null}
           </button>
         );
       })}

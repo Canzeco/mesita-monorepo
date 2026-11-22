@@ -19,7 +19,7 @@ import { useWallet } from "./use-wallet";
 import { useStoryNow } from "./use-story-now";
 import { openStories } from "@/lib/story-lines";
 import { StoryRow } from "./WalletLists";
-import { money } from "@/lib/api/wallet";
+import { money, type WaitingStory } from "@/lib/api/wallet";
 
 // ONE PANEL, EACH PLACE ONCE (Pato, 2026-11-20, MESITA-4497, after a
 // /plan-design-review of MESITA-4485/4492): Pay hands this its place rows
@@ -143,6 +143,7 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
 export function WalletSection({
   giftToken = null,
   onReady,
+  onStories,
   lead = null,
   leadIds = EMPTY_IDS,
   leadCount = 0,
@@ -162,11 +163,20 @@ export function WalletSection({
   giftToken?: string | null;
   /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
   onReady?: () => void;
+  /** Pay's Pending Tickets (MESITA-4623): the open Stories go there, not in
+   *  the Loyalty Cards box. */
+  onStories?: (stories: WaitingStory[]) => void;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
   // Story lines turn to "Checking your story…" at their bonus time (MESITA-4264).
   const storyNow = useStoryNow(openStories(wallet?.waiting_stories ?? []));
+  // PENDING TICKETS (Pato, 2026-11-21, MESITA-4623): with onStories the open
+  // Stories are handed to Pay's Pending Tickets box and left out of here.
+  const waitingStories = wallet?.waiting_stories;
+  useEffect(() => {
+    if (onStories && waitingStories) onStories(openStories(waitingStories));
+  }, [onStories, waitingStories]);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -232,7 +242,7 @@ export function WalletSection({
 
   const q = fold(query.trim());
   // Open Stories only (MESITA-4446): a decided one lives in Tickets.
-  const stories = openStories(wallet?.waiting_stories ?? []).filter((s) => !q || fold(s.place?.name ?? "").includes(q));
+  const stories = onStories ? [] : openStories(wallet?.waiting_stories ?? []).filter((s) => !q || fold(s.place?.name ?? "").includes(q));
   // A place already listed above with Pay is not listed again (MESITA-4497).
   const cards = (credits ?? []).filter((r) => !leadIds?.has(r.placeId) && (!q || fold(r.card.name ?? "").includes(q)));
   // One state drives the card rows, the empty block and the error.

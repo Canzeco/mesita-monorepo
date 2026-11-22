@@ -18,6 +18,12 @@ import { GIFT_TONE } from "./GiftTickets";
 
 const OPEN = new Set(["waiting_post", "found", "approved"]);
 
+/** A Story not decided yet: Tickets paints it yellow and counts it pending
+ *  (MESITA-4623). */
+export function isPendingStory(s: Pick<StoryTicket, "state">): boolean {
+  return OPEN.has(s.state);
+}
+
 /** Open Stories first (the ones to act on), then the rest; each part keeps
  *  the read's order, newest first. */
 export function storyOrder(stories: StoryTicket[]): StoryTicket[] {
@@ -32,7 +38,10 @@ function StoryTicketRow({ s, showPlace, now }: { s: StoryTicket; showPlace: bool
       <PushLink
         href={storyTicketPath(s.story_id)}
         aria-label={`Story at ${place}, ${storyBonus(s)} bonus, ${status.label}`}
-        className="hover:bg-muted/40 active:bg-muted/60 flex min-w-0 items-center gap-3 px-4 py-3 transition"
+        className={cn(
+          "hover:bg-muted/40 active:bg-muted/60 flex min-w-0 items-center gap-3 px-4 py-3 transition",
+          OPEN.has(s.state) && "bg-amber-50",
+        )}
         data-story-ticket={s.state}
       >
         <span className="relative shrink-0" aria-hidden>

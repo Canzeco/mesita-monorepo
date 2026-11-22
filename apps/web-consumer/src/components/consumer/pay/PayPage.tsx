@@ -4,25 +4,22 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Clock, Plus, QrCode } from "lucide-react";
+import { ChevronRight, Plus, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiCancelTab, apiGetTab, apiListVisits, type GuestTab, TAB_REFUSAL } from "@/lib/api/tab";
-import { money, type PayPlace } from "@/lib/api/wallet";
+import { apiGetTab, apiListVisits, type GuestTab } from "@/lib/api/tab";
+import { money, type PayPlace, type WaitingStory } from "@/lib/api/wallet";
 import { billRead, payHere, type BillRead } from "@/lib/pay-wallet";
-import { clearGuestDraft, pendingTicket, readDraft } from "@/lib/guest-pay-draft";
+import { pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, storyTicketPath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { forgetGuestTab, NETWORK_FAILURE, PlacePhoto, readGuestTabIds, CancelBillButtons } from "./pay-common";
+import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { PlaceActionRow } from "./PlaceActionRow";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { distanceText, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
@@ -33,6 +30,8 @@ import { TicketsShortcut } from "./TicketsShortcut";
 import { MethodPreview } from "./MethodPreview";
 import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
+import { StoryRow } from "@/components/consumer/wallet/WalletLists";
+import { useStoryNow } from "@/components/consumer/wallet/use-story-now";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -297,6 +296,9 @@ export function PayPage({
   // a later "Check again" never blanks the page. Before, each box painted
   // when its own read landed.
   const [walletReady, setWalletReady] = useState(false);
+  // The open Stories, handed up by the Wallet section (MESITA-4623).
+  const [pendingStories, setPendingStories] = useState<WaitingStory[]>([]);
+  const storyNow = useStoryNow(pendingStories);
   const [methodReady, setMethodReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
   const onMethodReady = useCallback(() => setMethodReady(true), []);
@@ -326,19 +328,6 @@ export function PayPage({
           page's first button. */}
       <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
 
-      {bill === "open" ? (
-        <div className="mt-2 flex flex-col">
-          <OpenBillPanel
-            tab={openTabs?.[0] ?? null}
-            pending={pending}
-            places={places}
-            onCancelled={(tabId) => {
-              setOpenTabs((t) => (t ? t.filter((x) => x.tab_id !== tabId) : t));
-              setBillFacts({ visitsOk: true, missed: false });
-            }}
-          />
-        </div>
-      ) : null}
       {bill === "unknown" ? (
         <p className="text-muted-foreground px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
           Couldn&apos;t check for an open bill.
@@ -419,6 +408,26 @@ export function PayPage({
           border. The grey ground under the buttons (MESITA-4525/4532) is
           gone. */}
       <div className="mt-1 flex flex-1 flex-col pb-8" data-pay-cards>
+      {/* PENDING TICKETS (Pato, 2026-11-21, MESITA-4623: "below prepay and pay
+          buttons, above payment methods, create a new box called Pending
+          Tickets … visit ticket (in the pay step but not verified yet) …
+          story ticket too if no one verified story"): one row per ticket,
+          shown only when something is pending. The bill waiting for the
+          waiter replaced the big amber panel at the top (MESITA-4130); the
+          open Stories left the Loyalty Cards box. */}
+      {bill === "open" || pendingStories.length > 0 ? (
+        <section className={SECTION_CARD} aria-label="Pending Tickets" data-pay-pending>
+          <h2 className={SECTION_TITLE}>Pending Tickets</h2>
+          <div className={SECTION_ROWS}>
+            {bill === "open" ? <OpenBillPanel tab={openTabs?.[0] ?? null} pending={pending} places={places} /> : null}
+            {pendingStories.map((st) => (
+              <div key={st.purchase_id}>
+                <StoryRow story={st} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(st.story_id), { motion: "drill" })} />
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <section className={SECTION_CARD} aria-label="Payment method">
         <h2 className={SECTION_TITLE}>Payment method</h2>
         <div className={SECTION_ROWS}>
@@ -442,6 +451,7 @@ export function PayPage({
       {/* One panel (MESITA-4497): these place rows, then the Wallet's cards. */}
       <WalletSection
         onReady={onWalletReady}
+        onStories={setPendingStories}
         giftToken={giftToken}
         leadIds={placeIds}
         leadCount={shownPlaces.length}
@@ -553,30 +563,20 @@ function OpenBillPanel({
   tab,
   pending,
   places,
-  onCancelled,
 }: {
   tab: GuestTab | null;
   pending: { placeId: string; name: string | null } | null;
   places: PayPlace[] | null;
-  /** The bill is gone: Pay shows its places again. `null` for a draft. */
-  onCancelled: (tabId: string | null) => void;
 }) {
-  const getSupabase = useLazyBrowserSupabase();
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const placeId = tab ? tab.place.id : (pending?.placeId ?? "");
   const listed = places?.find((p) => p.place_id === placeId);
   const name = (tab ? tab.place.name : pending?.name) ?? listed?.name ?? null;
   const href = tab ? payBillPath(tab.tab_id) : payPlacePath(placeId);
-  const what = tab ? "Waiting for the waiter" : "Bill in progress";
   const draft = tab ? null : readDraft(placeId);
   const currency = tab?.currency ?? listed?.currency ?? "mxn";
   const bill = tab ? tab.bill_cents : draft ? readAmount(draft.amount) : null;
-  const tip = tab ? tab.card_tip_cents + tab.cash_tip_cents : null;
-  // THE SIGN TIMER (MESITA-4130, Pato: "if sign, add the timer to sign in
-  // the outside ticket"): the same countdown as the bill's Confirm step, from
-  // the server's expires_at, ticking each second while a sent bill waits.
+  const tip = tab ? tab.card_tip_cents + tab.cash_tip_cents : 0;
+  // THE SIGN TIMER (MESITA-4130): the server's expires_at, each second.
   const [now, setNow] = useState(() => Date.now());
   const waiting = tab !== null && tab.status !== "cancelled" && tab.status !== "expired" && !(tab.status === "paid" && tab.verified_at);
   useEffect(() => {
@@ -586,102 +586,21 @@ function OpenBillPanel({
   }, [waiting]);
   const secs = tab ? Math.max(0, Math.ceil((Date.parse(tab.expires_at) - now) / 1000)) : 0;
   const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-
-  async function cancel() {
-    if (busy) return;
-    setError(null);
-    if (!tab) {
-      clearGuestDraft(placeId);
-      setConfirm(false);
-      onCancelled(null);
-      return;
-    }
-    setBusy(true);
-    try {
-      await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
-      forgetGuestTab(tab.tab_id);
-      clearGuestDraft(tab.place.id);
-      setConfirm(false);
-      onCancelled(tab.tab_id);
-    } catch (e) {
-      const code = e instanceof EFError ? e.code : null;
-      setError((code && TAB_REFUSAL[code]) || NETWORK_FAILURE);
-      setConfirm(false);
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  const line = waiting ? `Waiting for the waiter · ${countdown} left` : tab ? "Waiting for the waiter" : "Bill in progress";
+  // ONE ROW OF PENDING TICKETS (MESITA-4623): the place, what it waits for
+  // with the live countdown, the amount and ›; the bill's own page has
+  // Continue and Cancel bill. The amber panel with both buttons before.
   return (
-    <Panel className="border-amber-200 bg-amber-50 text-amber-900" data-pay-open-bill>
-      <div className="flex items-center gap-3 px-4 pt-4">
-        <PlacePhoto place={{ photo: listed?.photo ?? null, name }} className="h-11 w-11" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-base font-semibold">{name ?? "Your bill"}</span>
-          <span className="block truncate text-sm text-amber-800">{what}</span>
+    <Link href={href} className="hover:bg-muted/60 flex min-h-16 w-full items-center gap-3 px-3 py-2.5 text-left transition" data-pay-open-bill>
+      <PlacePhoto place={{ photo: listed?.photo ?? null, name }} className="h-8 w-12 rounded-md" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-base font-semibold">{name ?? "Your bill"}</span>
+        <span className="block truncate text-sm text-amber-700 tabular-nums" role={waiting ? "timer" : undefined} aria-live="off" data-pay-open-bill-timer>
+          {line}
         </span>
-      </div>
-      {waiting ? (
-        <p className="flex items-center gap-2 px-4 pt-3 text-sm" role="timer" aria-live="off" data-pay-open-bill-timer>
-          <Clock className="h-4 w-4 shrink-0 text-amber-700" aria-hidden />
-          <span className="text-base font-semibold text-amber-700 tabular-nums">{countdown}</span>
-          <span className="text-amber-800">left to sign · if not, it cancels and nothing is charged</span>
-        </p>
-      ) : null}
-      {bill ? (
-        <div className="mt-4 divide-y divide-amber-200 border-t border-amber-200 text-base">
-          <BillRow label="Bill" value={money(bill, currency)} />
-          {tip ? (
-            <>
-              <BillRow label="Tip" value={money(tip, currency)} />
-              <BillRow label="Total" value={money(bill + tip, currency)} strong />
-            </>
-          ) : null}
-        </div>
-      ) : null}
-      <p className={cn("px-4 text-sm text-amber-900", bill ? "pt-1" : "pt-4")} data-pay-open-bill-warning>
-        Finish or cancel this bill before you start a new one.
-      </p>
-      {error ? (
-        <p role="alert" className="px-4 pt-2 text-sm font-semibold text-red-700">
-          {error}
-        </p>
-      ) : null}
-      {/* ONE ROW, LEFT AND RIGHT (MESITA-4130, Pato: "red cancel and black
-          continue, left and right"): the Pay steps' footer shape, red Cancel
-          bill a quarter, black Continue three quarters. Cancel asks first. */}
-      <div className="grid grid-cols-[1fr_3fr] gap-3 p-4">
-        <Button
-          type="button"
-          size="lg"
-          variant="danger"
-          className="min-h-12 w-full px-1 text-sm leading-tight font-semibold whitespace-normal"
-          onClick={() => setConfirm(true)}
-          disabled={busy}
-          data-pay-open-bill-cancel
-        >
-          Cancel bill
-        </Button>
-        <Button asChild size="lg" className="min-h-12 w-full text-base font-semibold">
-          <Link href={href}>Continue bill</Link>
-        </Button>
-      </div>
-      <LocalDialog open={confirm} onClose={() => setConfirm(false)} ariaLabel="Cancel this bill">
-        <div className="p-5">
-          <p className="text-base font-semibold">Cancel this bill?</p>
-          <p className="text-muted-foreground mt-1 text-sm">Nothing is paid.</p>
-          <CancelBillButtons busy={busy} disabled={busy} onCancel={() => void cancel()} onKeep={() => setConfirm(false)} />
-        </div>
-      </LocalDialog>
-    </Panel>
-  );
-}
-
-function BillRow({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className={cn("flex min-h-11 items-center justify-between gap-3 px-4", strong && "font-semibold")}>
-      <span>{label}</span>
-      <span className="tabular-nums">{value}</span>
-    </div>
+      </span>
+      {bill ? <span className="shrink-0 text-base font-semibold tabular-nums">{money(bill + tip, currency)}</span> : null}
+      <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+    </Link>
   );
 }
