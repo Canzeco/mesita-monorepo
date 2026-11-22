@@ -14,6 +14,16 @@ import type { GiftTicket, Wallet, WalletEntry } from "./api/wallet";
 
 export const GIFT_KINDS = new Set(["gift_out", "gift_in", "gift_back"]);
 
+/** THE GIFT TICKET'S STEPS (Pato, 2026-11-21, MESITA-4637: "TRY TO KEEP A
+ *  SIMILAR STRUCTURE FOR A GIFT TICKET. 1. Send 2. Receive 3. Receipt"). */
+export const GIFT_STEPS = ["Send", "Receive", "Receipt"] as const;
+
+/** The step a gift stands on: a waiting gift on Receive, a taken or taken
+ *  back one on its Receipt. */
+export function giftStep(g: Pick<GiftTicket, "status">): 2 | 3 {
+  return g.status === "open" ? 2 : 3;
+}
+
 export type GiftTone = "green" | "ink" | "grey";
 
 /** The gift a ledger line belongs to, when the wallet read holds it. Null for

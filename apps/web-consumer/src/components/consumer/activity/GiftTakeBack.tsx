@@ -7,7 +7,7 @@
 // LocalDialog yes/no, then the wallet read again either way (a friend may
 // have taken it meanwhile).
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
@@ -29,11 +29,15 @@ export function TakeBack({
   g,
   onDone,
   variant = "filled",
+  trigger,
 }: {
   g: GiftTicket;
   onDone: () => void;
   /** "pill": the small grey button on a waiting Gifts row (MESITA-4324). */
   variant?: "filled" | "pill";
+  /** Draws the opener instead of the button: the gift ticket's footer
+   *  button (MESITA-4637). */
+  trigger?: (open: () => void) => ReactNode;
 }) {
   const getSupabase = useLazyBrowserSupabase();
   const [open, setOpen] = useState(false);
@@ -65,6 +69,7 @@ export function TakeBack({
 
   return (
     <>
+      {trigger ? trigger(() => setOpen(true)) : (
       <button
         type="button"
         className={variant === "pill" ? PILL : FILLED}
@@ -74,6 +79,7 @@ export function TakeBack({
       >
         Take back
       </button>
+      )}
       <LocalDialog open={open} onClose={() => (busy ? undefined : setOpen(false))} ariaLabel="Take back this gift">
         <div className="flex flex-col gap-3 p-5 text-center">
           <h2 className={SHEET_TITLE_CLASS}>Take back {amount}?</h2>
