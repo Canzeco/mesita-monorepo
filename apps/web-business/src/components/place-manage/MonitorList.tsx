@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
 import { CardBadge, CashBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
 import type { Icon } from "@phosphor-icons/react";
-import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
+import { CoinsIcon, CreditCardIcon, FootprintsIcon, TicketIcon, UserCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
 
 /** The row grid every Monitor list shares: face · text · amount. */
 export const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
@@ -273,15 +273,21 @@ function PaymentsTable({ placeId, rows, timezone }: { placeId: string; rows: Mon
   );
 }
 
-/** "Showing visit #A1B2C3 · Show all" or "Showing Ana's visits · Show all". */
+/** "Showing Ana's visits" with a Show all button (MESITA-4683, Pato: "the
+ *  show all button must be bigger and clearer, more visible"; an underlined
+ *  word before). */
 export function FilterBanner({ text, clearHref }: { text: string; clearHref: string }) {
   return (
-    <p className="border-border bg-muted/40 border-b px-5 py-2.5 text-sm sm:px-6">
-      {text} ·{" "}
-      <Link href={clearHref} className="font-semibold underline underline-offset-2">
+    <div className="border-border bg-muted/40 flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3 sm:px-6">
+      <p className="text-sm font-medium">{text}</p>
+      <Link
+        href={clearHref}
+        className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold hover:opacity-90"
+      >
+        <XIcon size={16} weight="bold" aria-hidden />
         Show all
       </Link>
-    </p>
+    </div>
   );
 }
 
