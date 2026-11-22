@@ -74,8 +74,10 @@ export function IdentityBar({
   /** False draws the plain glyph (MESITA-2696). */
   instagramConnected: boolean;
 }) {
+  // The first name only (Pato, 2026-11-22, MESITA-4646: "display name, not
+  // last name"); the full name when no first name is stored.
   const name =
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+    profile?.first_name?.trim() ||
     profile?.full_name ||
     "Mesita member";
   const avatarUrl = profile?.avatar_url ?? null;
@@ -115,7 +117,7 @@ export function IdentityBar({
             guestClass={toGuestClass(profile?.guest_class)}
             privacy={
               profile?.instagram_handle
-                ? instagramPrivacyLabel(profile.instagram_is_private)
+                ? instagramPrivacyLabel(profile.instagram_is_private).replace("Privacy unknown", "Unknown")
                 : null
             }
           />
