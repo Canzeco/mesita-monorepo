@@ -44,8 +44,6 @@ export type ConsumerProfile = {
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;
-  // MESITA-2590: Settings › Social › "Public profile" off = true (MESITA-2594 name).
-  appear_anonymous?: boolean;
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
   // falls back to DefaultAvatar on Me / Profile (MESITA-880/953).
   avatar_url?: string | null;
@@ -86,12 +84,6 @@ type ConsumerInstagramPhotoPatch = {
   use_instagram_photo: boolean;
 };
 
-// "Public profile" in Settings (MESITA-2590, MESITA-2594, MESITA-3072). Off = no photo
-// or handle in Social; the first name still shows (MESITA-2612).
-type ConsumerAppearAnonymousPatch = {
-  appear_anonymous: boolean;
-};
-
 // "Show my handle on Mesita" on Me › Instagram (MESITA-4659).
 type ConsumerHandleShownPatch = {
   instagram_handle_shown: boolean;
@@ -109,7 +101,6 @@ export async function apiUpdateConsumerProfile(
     | ConsumerOnboardingInput
     | ConsumerAvatarPatch
     | ConsumerInstagramPhotoPatch
-    | ConsumerAppearAnonymousPatch
     | ConsumerHandleShownPatch
     | ConsumerFollowersEmulatedPatch,
 ): Promise<ConsumerProfile> {

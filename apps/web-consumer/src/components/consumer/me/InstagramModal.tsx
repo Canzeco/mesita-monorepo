@@ -296,8 +296,8 @@ const ROW_BUTTON_CLASS =
 // WHY CONNECT (Pato, MESITA-4342; it undoes MESITA-2983's cut). TWO PERKS,
 // NUMBERED (Pato, 2026-11-22, MESITA-4659): each a row with an icon, a bold
 // title and one line. (1) Activity: a server rule, not copy — others' full
-// handles show only to a guest whose own Instagram is connected, whose
-// profile is public and who shows their own handle (place-activity
+// handles show only to a guest whose own Instagram is verified and who
+// shows their own handle (every profile is public since MESITA-4690; place-activity
 // seesHandles), so a short second line says so. (2) VIP Class: the bar
 // (VIP_MIN_FOLLOWERS), any Instagram, public or private. It was one black box
 // (MESITA-4350); the Story box went with Stories (MESITA-4641).
@@ -1087,7 +1087,7 @@ function HandleShownRow({ pending = false }: { pending?: boolean }) {
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">Show my handle on Mesita</span>
         <span className="text-muted-foreground type-label block">
-          Off: other guests and places don&apos;t see your @handle. Instagram still decides who sees your posts.
+          Your first name and photo always show. Off hides your @handle; your follower count still shows.
         </span>
       </span>
       <Switch on={shown} />

@@ -8,8 +8,8 @@ import type { Place } from "./places";
 export type ActivityKind = "saved" | "viewed";
 
 /** A member as Social shows them: always by first name (MESITA-2612), with
- *  the full @handle when they verified Instagram and keep Public profile on
- *  (MESITA-2590); else no handle (`anonymous`, MESITA-2580). */
+ *  the full @handle when they verified Instagram and chose to show it
+ *  (MESITA-4659); else no handle (`anonymous`, MESITA-2580). */
 export type ActivityPerson = {
   name: string;
   avatarUrl: string | null;
@@ -29,9 +29,9 @@ export type ActivityPerson = {
    *  on anonymous rows too. */
   instagram: boolean;
   /** No handle on this row: a member without Instagram (MESITA-2580), a
-   *  view in the feed (MESITA-2594) or Public profile off. The first name
+   *  view in the feed (MESITA-2594) or a hidden handle. The first name
    *  still shows (MESITA-2612), and the face (MESITA-2608): photo, Class and
-   *  the Instagram flag, the photo blank when Public profile is off. */
+   *  the Instagram flag; every profile is public (MESITA-4690). */
   anonymous: boolean;
 };
 
