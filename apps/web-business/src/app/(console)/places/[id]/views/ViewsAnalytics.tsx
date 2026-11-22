@@ -10,6 +10,7 @@ export function ViewsAnalytics({ data }: { data: PlaceViews }) {
     <AnalyticsCard
       rows={[
         ["Views", count(a.views)],
+        ["Anonymous views", count(a.anonymous)],
         ["Guests who viewed", count(a.viewers)],
         ["Returning guests", count(a.returning)],
         ["Views, last 7 days", count(a.views7d)],

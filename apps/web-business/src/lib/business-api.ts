@@ -626,6 +626,8 @@ export type PlaceViewsDay = { day: string; views: number; likes: number; shares:
 /** Synthesized by the EF from the raw view events on every load (MESITA-4675). */
 export type PlaceViewsAnalytics = {
   views: number;
+  /** Signed-out opens (MESITA-4678): never customers. */
+  anonymous: number;
   viewers: number;
   returning: number;
   views7d: number;
@@ -642,7 +644,7 @@ export type PlaceViews = {
   analytics: PlaceViewsAnalytics;
 };
 
-const NO_ANALYTICS: PlaceViewsAnalytics = { views: 0, viewers: 0, returning: 0, views7d: 0, views30d: 0, viewers30d: 0 };
+const NO_ANALYTICS: PlaceViewsAnalytics = { views: 0, anonymous: 0, viewers: 0, returning: 0, views7d: 0, views30d: 0, viewers30d: 0 };
 
 export async function getPlaceViews(placeId: string): Promise<Result<PlaceViews>> {
   const r = await efInvoke<PlaceViews>("business-web-get-place-views", { place_id: placeId });
