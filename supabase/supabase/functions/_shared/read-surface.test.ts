@@ -181,8 +181,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
   "_shared/families-repick.ts", // families, texts and operator marks a family re-pick compares (MESITA-4238)
   "_shared/reservation-call-outcome.ts", // hours, lng, name, photos for a finished call's outcome (MESITA-3618)
-  "consumer-web-get-wallet/index.ts", // timezone, lng of a Story's place for its bonus time (MESITA-4264)
-  "_shared/story-screen.ts", // timezone, lng of one Story's place for its screen (MESITA-4405)
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
@@ -248,8 +246,6 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-list-premier/index.ts",
   // Wallet (MESITA-3097): the prepay place's state, currency and switch; the name and photo of each place a guest holds money at.
   "_shared/wallet.ts",
-  // List rows (MESITA-4291): each place's instagram_url, so Story leaves a row whose place has no Instagram.
-  "_shared/payments.ts",
   // VIP partners (MESITA-2556): a partner venue's id by Google Place ID, and its name for the list.
   "_shared/vip-partners.ts",
   // web-business (MESITA-3103): name and photo of the places a guest runs or

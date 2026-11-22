@@ -315,7 +315,7 @@ Deno.test("kill switch: absent → both wallets; [] → off; a list narrows; jun
 
 Deno.test("wallet label: '<voucher> · <place>', control characters stripped, trimmed, capped at 60", () => {
   assertEquals(expressLabel("$1,000.00MX voucher", "  Cuerno\n\tMasaryk "), "$1,000.00MX voucher · Cuerno Masaryk");
-  assertEquals(expressLabel("Story voucher", null), "Story voucher · Mesita");
+  assertEquals(expressLabel("VIP voucher", null), "VIP voucher · Mesita");
   const long = expressLabel("$1,000.00MX voucher", "A".repeat(80));
   assertEquals(Array.from(long).length, 60);
   assert(long.endsWith("…"));

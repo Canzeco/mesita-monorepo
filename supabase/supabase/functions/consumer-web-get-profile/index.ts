@@ -15,7 +15,6 @@ import {
   accountDeletedResponse,
   isDeletedConsumer,
 } from "../_shared/delete-history-free.ts";
-import { storyEligibilityContext } from "../_shared/vouchers.ts";
 
 serveJson("consumer-web-get-profile", async (req) => {
   const ctx = await requireConsumerRequest(req, { methods: ["GET", "POST"] });
@@ -105,12 +104,5 @@ serveJson("consumer-web-get-profile", async (req) => {
     }
   }
 
-  // MESITA-4425: the Story rules the screens draw their locks with — the live
-  // follower floor (Admin › Configurations › Stories) and whether emulator
-  // mode is in effect. The buy door checks the same context again; a failed
-  // read is the default floor with no emulator.
-  const storyCtx = await storyEligibilityContext(admin);
-  const storyRules = { min_followers: storyCtx.minFollowers, emulator: storyCtx.emulator };
-
-  return json({ ok: true, consumer: { ...rest, vip_partner: vipPartner, story_rules: storyRules } });
+  return json({ ok: true, consumer: { ...rest, vip_partner: vipPartner } });
 });

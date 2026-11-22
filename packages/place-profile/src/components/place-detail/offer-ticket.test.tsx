@@ -19,7 +19,7 @@ import { OfferTicket, type OfferTicketFrame } from "./vouchers";
 const MONEY: PlaceMoney = {
   charges_enabled: true,
   mesita_pay: true,
-  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_story: false, voucher_vip: false },
+  vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_vip: false },
   test_mode: false,
   currency: "mxn",
   sell: ["voucher_200", "voucher_1000", "voucher_5000"],

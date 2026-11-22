@@ -40,7 +40,8 @@ const VOUCHER: Record<string, string> = {
   voucher_200: "Small Voucher",
   voucher_1000: "Medium Voucher",
   voucher_5000: "Big Voucher",
-  // Never sold since MESITA-4641; an old purchase keeps its name.
+  // Never sold since MESITA-4641; an old purchase keeps its name (the
+  // purchase row stores the voucher as text).
   voucher_story: "Story Voucher",
   voucher_vip: "VIP Voucher",
 };

@@ -23,7 +23,6 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./stripe.ts";
-import { logCreditStory } from "./story-log.ts";
 
 /** How long an in-app voucher PaymentIntent may sit unfinished (a 3-D
  *  Secure check the guest left) before it is cancelled and the row
@@ -118,7 +117,6 @@ export function purchaseStore(admin: SupabaseClient): PurchaseStore {
       if (error) throw new Error(`wallet_credit_purchase: ${error.message}`);
       const res = data as { ok?: boolean; outcome?: string; code?: string } | null;
       if (!res?.ok) throw new Error(`wallet_credit_purchase: ${res?.code ?? "unknown"}`);
-      logCreditStory(id, res, "payment_intent");
       return res.outcome === "already_paid" ? "already_paid" : "credited";
     },
     async payWith(id, wallet) {

@@ -15,7 +15,6 @@ import { VOUCHER_CATALOG } from "./money.ts";
 import { purchaseStore, settlePurchaseByPaymentIntent } from "./purchase-pi.ts";
 import type { MoneyVoucherKey } from "./money-state.ts";
 import { type StripeCall } from "./stripe.ts";
-import { logCreditStory } from "./story-log.ts";
 
 export { classifySession } from "./checkout-session.ts";
 
@@ -142,7 +141,6 @@ export async function settlePurchase(
   if (error) throw new Error(`wallet_credit: ${error.message}`);
   const res = data as { ok?: boolean; outcome?: SettleOutcome; code?: string } | null;
   if (!res?.ok) throw new Error(`wallet_credit: ${res?.code ?? "unknown"}`);
-  logCreditStory(purchase.id, res, "wallet_read");
   return res.outcome === "already_paid" ? "already_paid" : "credited";
 }
 
@@ -271,8 +269,6 @@ export type VoucherPlace = {
   currency: string | null;
   /** The Premier tier, the red mark beside the name on a Pay proof (MESITA-3539). */
   boost_tier?: number | null;
-  /** The place's Instagram URL: Story sells only where it names a handle (MESITA-4291). */
-  instagram_url?: string | null;
 };
 
 /** The place a guest buys a voucher at: its name for the receipt, its state
@@ -283,7 +279,7 @@ export async function readVoucherPlace(
 ): Promise<{ ok: true; place: VoucherPlace | null } | { ok: false; error: string }> {
   const { data, error } = await admin
     .from("profiles")
-    .select("id, name, state, currency, boost_tier, instagram_url")
+    .select("id, name, state, currency, boost_tier")
     .eq("id", placeId)
     .maybeSingle();
   if (error) return { ok: false, error: `place_read: ${error.message}` };

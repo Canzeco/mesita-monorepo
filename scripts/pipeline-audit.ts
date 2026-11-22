@@ -63,7 +63,6 @@ const NEEDS = {
   contents: "contents: read",
   functions: "SUPABASE_ACCESS_TOKEN, or `supabase login` locally",
   membership: "SUPABASE_ACCESS_TOKEN and a linked project (supabase/supabase/.temp/project-ref), or `supabase link` locally",
-  stories: "SUPABASE_ACCESS_TOKEN and a linked project (supabase/supabase/.temp/project-ref), or `supabase link` locally",
   git: "a full clone of origin/main (actions/checkout fetch-depth: 0)",
 };
 
@@ -84,7 +83,7 @@ export type Io = {
 
 export type Finding = { code: string; detail: string };
 export type Unknown = { endpoint: string; status: number | null; permission: string; message: string };
-export type CheckId = "required-checks" | "merged-prs" | "workflows" | "edge-functions" | "bot-prs" | "catalog-membership" | "story-recheck";
+export type CheckId = "required-checks" | "merged-prs" | "workflows" | "edge-functions" | "bot-prs" | "catalog-membership";
 export type CheckResult = { check: CheckId; findings: Finding[]; notes: string[]; unknown?: Unknown };
 
 export type Accepted = Record<string, { reason: string; until: string }>;
@@ -107,7 +106,6 @@ export const CHECK_OF: Record<string, CheckId> = {
   "PA-EF-DRIFT": "edge-functions",
   "PA-BOT-PR": "bot-prs",
   "PA-MEMBERSHIP-DRIFT": "catalog-membership",
-  "PA-STORY-RECHECK": "story-recheck",
 };
 
 // ── Reading ─────────────────────────────────────────────────────────────────
@@ -504,29 +502,6 @@ async function checkMembership(io: Io): Promise<Omit<CheckResult, "check">> {
   return { findings, notes: [] };
 }
 
-const STORY_RECHECK_SQL =
-  "select count(*)::int as n from public.stories where state = 'approved' and decided_at is null and recheck_at < now() - interval '1 hour'";
-
-/** Approved Stories whose re-check is more than an hour late and still
- *  undecided: the re-check cron is stuck (MESITA-4267). */
-async function checkStoryRecheck(io: Io): Promise<Omit<CheckResult, "check">> {
-  const got = await io.sql(STORY_RECHECK_SQL);
-  if (!got.ok) {
-    throw new Blind({ endpoint: `supabase db query --linked "${STORY_RECHECK_SQL}"`, status: got.status, permission: NEEDS.stories, message: got.message });
-  }
-  const row = Array.isArray(got.data) ? got.data[0] as { n?: unknown } | undefined : undefined;
-  const n = typeof row?.n === "number" ? row.n : Number(row?.n);
-  if (!Number.isFinite(n)) throw new Error(`unreadable story recheck count: ${JSON.stringify(got.data).slice(0, 120)}`);
-  if (n === 0) return { findings: [], notes: [] };
-  return {
-    findings: [{
-      code: "PA-STORY-RECHECK:late",
-      detail: `${n} approved ${n === 1 ? "Story is" : "Stories are"} past recheck_at by more than an hour with no bonus decision: the re-check cron is stuck`,
-    }],
-    notes: [],
-  };
-}
-
 const CHECKS: [CheckId, (io: Io) => Promise<Omit<CheckResult, "check">>][] = [
   ["required-checks", checkRequired],
   ["merged-prs", checkMerged],
@@ -534,7 +509,6 @@ const CHECKS: [CheckId, (io: Io) => Promise<Omit<CheckResult, "check">>][] = [
   ["edge-functions", checkFunctions],
   ["bot-prs", checkBots],
   ["catalog-membership", checkMembership],
-  ["story-recheck", checkStoryRecheck],
 ];
 
 /** Read the accepted file. A malformed entry is a finding, never a silent acceptance. */

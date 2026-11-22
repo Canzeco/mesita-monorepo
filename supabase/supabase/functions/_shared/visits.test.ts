@@ -1,5 +1,5 @@
-// MESITA-3463 — a visit is a paid payment with a card part; Story and VIP
-// sell one each new visit.
+// MESITA-3463 — a visit is a paid payment with a card part; VIP
+// sells one each new visit.
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { isVisit, perVisitSpent } from "./visits.ts";

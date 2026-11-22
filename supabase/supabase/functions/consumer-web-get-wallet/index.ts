@@ -40,20 +40,6 @@
 //   with no entries is a $0 card they can remove.
 //   card_ok (MESITA-3305) says the place can take a card part: its account
 //   charges in this universe and the owner's Cards switch is on.
-//             story_purchase_ids (MESITA-4627): the guest's Story-voucher
-//               purchases (wallet_purchases.voucher = 'voucher_story'), so a
-//               voucher row knows it has a Post Story step before any Story
-//               record exists (paying creates none, MESITA-4484),
-//             stories (MESITA-4405): the Tickets Stories tab, every open Story
-//               plus the 20 most recently decided, newest first; each is
-//               consumer-web-get-story's Story view + place,
-//             waiting_stories (MESITA-3507; from the Story record since
-//               MESITA-4405, kept until the apps read `stories`): [{ purchase_id,
-//               story_id, place, place_id, amount_cents, bonus_cents, credit_cents,
-//               currency, paid_at, state: waiting | checking | released | void,
-//               claimed_at (the approval), bonus_at, recheck_at, bonus, bonus_void_reason,
-//               bonus_decided_at, refunded, time_zone, mention, test_mode, emulator }]:
-//               open Stories and those decided in the last 24 hours,
 //             sent_links (MESITA-3292): [{ gift_id, place_id, amount_cents,
 //               currency, created_at, can_share (MESITA-4390) }]: credit links the guest sent that
 //               nobody took yet (already off their balance; take-back-able),
@@ -87,18 +73,6 @@ import {
 } from "../_shared/wallet.ts";
 import { readPayMethod, readSavedCards } from "../_shared/cards.ts";
 import { withGuestOffers } from "../_shared/vouchers.ts";
-import {
-  legacyWaitingState,
-  readStoryList,
-  readStoryMentions,
-  readStoryPurchases,
-  type StoryMention,
-  type StoryPurchase,
-  type StoryRecord,
-  storyView,
-} from "../_shared/story.ts";
-import { readStoryRules, storyMode } from "../_shared/story-mention.ts";
-import { placeZone, PLACE_ZONE_COLUMNS } from "../_shared/local-time.ts";
 import { type GiftEntryRow, giftPeopleIds, type GiftRow, giftTickets, type PersonRow } from "../_shared/wallet-gifts.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
@@ -199,61 +173,6 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (!pinsRes.ok) return json({ ok: false, error: pinsRes.error }, 500);
   const balances = withPins(balancesOf(entries, Date.now(), spendable), pinsRes.pins, MONEY_CURRENCY);
 
-  // STORIES (MESITA-4405): what the guest paid is in the balances above
-  // since payment; the Story record carries the rest. `stories` is the
-  // Tickets Stories tab: every open Story plus the 20 most recently decided.
-  // A failed read only empties the tab; the money is unaffected.
-  let stories: StoryRecord[] = [];
-  let storyPurchases = new Map<string, StoryPurchase>();
-  let storyMentions = new Map<string, StoryMention>();
-  const storyZones = new Map<string, string>();
-  try {
-    stories = await readStoryList(admin, userId, livemode);
-    if (stories.length > 0) {
-      const [purchases, mentions, zones] = await Promise.all([
-        readStoryPurchases(admin, stories.map((st) => st.purchase_id)),
-        readStoryMentions(admin, stories.map((st) => st.mention_id)),
-        admin.from("place_profiles").select(`id, ${PLACE_ZONE_COLUMNS}`).in("id", [...new Set(stories.flatMap((st) => st.place_id ? [st.place_id] : []))]),
-      ]);
-      storyPurchases = purchases;
-      storyMentions = mentions;
-      for (const z of ((zones.error ? [] : zones.data) ?? []) as Array<{ id: string; timezone?: unknown; lng?: unknown }>) {
-        storyZones.set(z.id, placeZone(z));
-      }
-    }
-  } catch (e) {
-    console.error(`[consumer-web-get-wallet] stories read: ${e instanceof Error ? e.message : String(e)}`);
-  }
-  // MESITA-4527: the test buttons show only while Admin's emulator switch is on.
-  const emulatorOn = !livemode && storyMode() === "emulated" && (await readStoryRules(admin)).emulator;
-  const nowMs = Date.now();
-  const storyViews = stories.map((st) =>
-    storyView(st, {
-      purchase: st.purchase_id ? storyPurchases.get(st.purchase_id) ?? null : null,
-      mention: st.mention_id ? storyMentions.get(st.mention_id) ?? null : null,
-      timeZone: st.place_id ? storyZones.get(st.place_id) ?? placeZone(null) : placeZone(null),
-      emulator: emulatorOn,
-      nowMs,
-    })
-  );
-  // STORY VOUCHERS (MESITA-4627): which purchases are Story vouchers. A
-  // failed read leaves the list empty: the rows read as classic vouchers.
-  const { data: storyBuys, error: storyBuysErr } = await admin
-    .from("wallet_purchases")
-    .select("id")
-    .eq("consumer_id", userId)
-    .eq("livemode", livemode)
-    .eq("voucher", "voucher_story")
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (storyBuysErr) console.error(`[consumer-web-get-wallet] story purchases read: ${storyBuysErr.message}`);
-  const storyPurchaseIds = ((storyBuysErr ? [] : storyBuys) ?? []).map((p: { id: string }) => p.id);
-
-  // Tickets history (MESITA-4267): every open Story plus the 20 most recently
-  // decided, of any age. The 24-hour cutoff dropped a voided Story out of
-  // history. The Wallet itself shows only the open ones.
-  const waitingStories = stories;
-
   // EVERY GIFT SENT OR RECEIVED (MESITA-4036): Tickets' one Gifts list,
   // sender on the left, receiver on the right. The open ones the guest sent
   // are also the credit links (MESITA-3292), whose gift_out already took the
@@ -290,7 +209,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   );
 
   const ids = [
-    ...new Set([...balances.map((b) => b.place_id), ...stories.flatMap((st) => st.place_id ? [st.place_id] : []), ...gifts.map((g) => g.place_id)]),
+    ...new Set([...balances.map((b) => b.place_id), ...gifts.map((g) => g.place_id)]),
   ];
   // card_ok (MESITA-3305): the place's account can charge in this universe
   // and the owner's Cards switch is on, so the Pay tab may offer a card
@@ -328,9 +247,8 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // buying_paused kill switch). ONLY WHAT THIS GUEST CAN BUY (Pato,
   // 2026-11-21, MESITA-4611: "in the carousel only display enabled offers for
   // that specific user, not all the offers"): withGuestOffers (MESITA-4207)
-  // drops a Story this guest cannot buy. MESITA-4582 had
-  // shown every offer the place sells (withPlaceOffers) for one day. A failed
-  // guest read keeps the place's list (withGuestOffers logs it).
+  // drops what this guest cannot buy. A failed guest read keeps the place's
+  // list (withGuestOffers logs it).
   const offerRows = await withGuestOffers(
     admin,
     userId,
@@ -360,35 +278,6 @@ serveJson("consumer-web-get-wallet", async (req) => {
       card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
       offers: offersById.get(place_id) ?? { sell: [] },
     })),
-    story_purchase_ids: storyPurchaseIds,
-    stories: storyViews.map((v) => ({ ...v, place: v.place_id ? places.get(v.place_id) ?? null : null })),
-    waiting_stories: waitingStories.map((st) => {
-      const p = st.purchase_id ? storyPurchases.get(st.purchase_id) : undefined;
-      const m = st.mention_id ? storyMentions.get(st.mention_id) : undefined;
-      return {
-        purchase_id: st.purchase_id,
-        story_id: st.id,
-        place: st.place_id ? places.get(st.place_id) ?? null : null,
-        place_id: st.place_id,
-        amount_cents: p?.amount_cents ?? 0,
-        bonus_cents: st.bonus_cents,
-        credit_cents: (p?.amount_cents ?? 0) + st.bonus_cents,
-        currency: p?.currency ?? MONEY_CURRENCY,
-        paid_at: p?.paid_at ?? null,
-        state: legacyWaitingState(st, nowMs),
-        claimed_at: st.approved_at,
-        bonus_at: st.state === "approved" ? st.recheck_at : null,
-        recheck_at: st.recheck_at,
-        bonus: st.state === "released" ? "released" : st.state === "void" ? "void" : null,
-        bonus_void_reason: st.void_reason,
-        bonus_decided_at: st.decided_at,
-        refunded: !!p && p.status !== "paid",
-        time_zone: st.place_id ? storyZones.get(st.place_id) ?? placeZone(null) : placeZone(null),
-        mention: m ? { id: m.id, media_url: m.media_url, media_kind: m.media_kind, mentioned_at: m.mentioned_at, source: m.source } : null,
-        test_mode: !st.livemode,
-        emulator: emulatorOn && !st.livemode && st.state === "approved",
-      };
-    }),
     sent_links: sentLinks.map((g) => ({
       gift_id: g.id,
       place_id: g.place_id,

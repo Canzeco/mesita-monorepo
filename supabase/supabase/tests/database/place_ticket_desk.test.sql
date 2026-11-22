@@ -1,14 +1,15 @@
 -- MESITA-4487 — place_ticket_desk is one place and one universe. A visit
 -- is a paid tab, and a guest's own bill only after Verify; a waiter's open
--- bill counts. An unpaid voucher does not. A posted Story (found) sorts
--- first and counts as needs a look. A gift at another place does not. The
--- cursor skips nothing. Nobody but the service role runs it.
+-- bill counts. An unpaid voucher does not. A Story purchase made before
+-- Stories went (MESITA-4642) is still a voucher row; the stories kind is
+-- gone. A gift at another place does not count. The cursor skips nothing.
+-- Nobody but the service role runs it.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(17);
+select plan(16);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000a4487', 'maria.lopez@example.com'),
@@ -49,7 +50,7 @@ values
    '00000000-0000-4000-8000-0000000b4487', repeat('1', 64), 'paid', 'mxn', 1000, 0,
    now() - interval '40 days', now() - interval '39 days', now() - interval '40 days');
 
--- A paid voucher and one still open. A Story voucher with a posted story.
+-- A paid voucher and one still open. A Story voucher bought before MESITA-4642.
 insert into public.wallet_purchases (id, consumer_id, place_id, amount_cents, currency, status, stripe_account_id,
                                      voucher, bonus_cents, paid_at, created_at)
 values
@@ -62,13 +63,6 @@ values
   ('00000000-0000-4000-8000-000000134487', '00000000-0000-4000-8000-0000000b4487',
    '00000000-0000-4000-8000-000000014487', 10000, 'mxn', 'paid', 'acct_test_4487',
    'voucher_story', 4000, now() - interval '1 day', now() - interval '1 day');
-
-insert into public.story_mentions (id, ig_story_id, source, livemode, mentioned_at)
-values ('00000000-0000-4000-8000-000000144487', 'story-4487', 'emulator', false, now());
-insert into public.stories (id, purchase_id, consumer_id, place_id, livemode, state, deadline_at, mention_id, first_bound_at, bonus_cents, created_at)
-values ('00000000-0000-4000-8000-000000154487', '00000000-0000-4000-8000-000000134487',
-        '00000000-0000-4000-8000-0000000b4487', '00000000-0000-4000-8000-000000014487',
-        false, 'found', now() + interval '12 hours', '00000000-0000-4000-8000-000000144487', now(), 4000, now() - interval '1 day');
 
 insert into public.wallet_gifts (id, sender_id, place_id, amount_cents, currency, token_hash, status, request_id, created_at)
 values
@@ -104,22 +98,17 @@ select is(
 select is(
   (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'vouchers', false, 'America/Mexico_City') -> 'totals' ->> 'vouchers')::int,
   2,
-  'a voucher ticket is a paid purchase, including the Story voucher; an open checkout is not');
+  'a voucher ticket is a paid purchase, including a Story voucher bought before MESITA-4642; an open checkout is not');
 
 select is(
   (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'vouchers', false, 'America/Mexico_City') -> 'totals' ->> 'paid_cents')::int,
   30000,
   'voucher paid cents are what the guest paid');
 
-select is(
-  (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'stories', false, 'America/Mexico_City') -> 'totals' ->> 'needs_look')::int,
-  1,
-  'a posted story that nobody has looked at is the one that needs a look');
-
-select is(
-  (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'stories', false, 'America/Mexico_City') -> 'rows' -> 0 ->> 'state'),
-  'found',
-  'that story is the first row');
+select throws_ok(
+  $$select public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'stories', false, 'America/Mexico_City')$$,
+  'place_ticket_desk: kind must be visits, vouchers or gifts',
+  'the stories kind is gone (MESITA-4642)');
 
 select is(
   (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'gifts', false, 'America/Mexico_City') -> 'totals' ->> 'open')::int,
@@ -169,7 +158,7 @@ select is(
 
 select throws_ok(
   $$select public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'refunds', false, 'America/Mexico_City')$$,
-  'place_ticket_desk: kind must be visits, vouchers, stories or gifts',
+  'place_ticket_desk: kind must be visits, vouchers or gifts',
   'a kind the desk does not show is refused');
 
 select * from finish();

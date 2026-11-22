@@ -7,7 +7,7 @@ import { mesitaRowState, PREPAY_PAUSED } from "./mesita-row";
 const BASE: PlaceMoney = {
   charges_enabled: false,
   mesita_pay: false,
-  vouchers: { voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_story: false, voucher_vip: false },
+  vouchers: { voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_vip: false },
   test_mode: true,
   currency: "mxn",
   sell: [],

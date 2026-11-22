@@ -13,8 +13,8 @@
 //                 apart from card_cents, and start-payment refuses a tip
 //                 with no card part), an open, failed or expired row
 //
-// Readers: the Story voucher, one each new visit (vouchers.ts,
-// perVisitUsed).
+// Readers: the per-visit vouchers (PER_VISIT_VOUCHERS: VIP), one each new
+// visit (vouchers.ts, perVisitUsed).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -43,7 +43,7 @@ export async function readVisitCount(admin: SupabaseClient, consumerId: string |
 }
 
 /** The vouchers sold one each new visit (Docs › Main §6). */
-export const PER_VISIT_VOUCHERS = ["voucher_story", "voucher_vip"] as const;
+export const PER_VISIT_VOUCHERS = ["voucher_vip"] as const;
 export type PerVisitVoucher = (typeof PER_VISIT_VOUCHERS)[number];
 
 /** One each new visit: the first may be bought before any visit (the guest

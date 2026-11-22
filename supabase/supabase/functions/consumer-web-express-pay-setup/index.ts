@@ -2,12 +2,12 @@
 //
 // MESITA-4384: what the Apple Pay / Google Pay button needs before it draws
 // on the Offers sheet (Stripe's Express Checkout Element in deferred mode;
-// "express" never means a Connect Express account). Runs the place, voucher
-// and Story gates the buy runs, the kill switch, and the payment method
+// "express" never means a Connect Express account). Runs the place and
+// voucher gates the buy runs, the kill switch, and the payment method
 // domain check; writes NO purchase rows (only the account's domain stamps).
 // The buy itself is consumer-web-buy-voucher with `express: true`.
 //
-// Body: { place_id: uuid, voucher | items: [{ voucher, qty }], mention_id?: uuid }
+// Body: { place_id: uuid, voucher | items: [{ voucher, qty }] }
 //   Example: { "place_id": "…", "items": [{ "voucher": "voucher_1000", "qty": 1 }] }
 // Response 200:
 //   { ok: true, available: true, wallets: ["apple_pay", "google_pay"],
@@ -16,9 +16,8 @@
 //   { ok: true, available: false, code } — a business refusal; the sheet
 //     shows no express slot and the card path stays as today. Codes: the
 //     buy's (no_account, currency_mismatch, paused, not_available, not_yet,
-//     needs_card_payments, needs_instagram, few_followers, private_account,
-//     not_vip, needs_visit, below_minimum,
-//     story_unavailable, story_one_per_basket) plus disabled (the kill switch
+//     needs_card_payments, needs_instagram, not_vip, needs_visit,
+//     below_minimum, voucher_retired) plus disabled (the kill switch
 //     app_config.money_config.express_wallets is []) and domains_inactive
 //     (mesita.ai is not an active wallet domain on the place's account, or
 //     the 1.5 s check timed out).
@@ -38,9 +37,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readMoneyConfig } from "../_shared/money-config.ts";
-import { storyBasketRefusal } from "../_shared/story-buy.ts";
-import { storySaleModeLive } from "../_shared/story-mention.ts";
-import { basketUnits, buyRefusal, catalogLines, parseBasket, readStoryGuest, storyEligibilityContext, readVipGuest, storyRefusal, vipRefusal, voucherName, voucherOffer } from "../_shared/vouchers.ts";
+import { basketUnits, buyRefusal, catalogLines, parseBasket, readVipGuest, vipRefusal, voucherName, voucherOffer } from "../_shared/vouchers.ts";
 import { toStripeAmount } from "../_shared/money.ts";
 import { walletDomainsForSetup } from "../_shared/pm-domains.ts";
 import { expressLabel, expressWalletsFor } from "../_shared/express-pay.ts";
@@ -68,11 +65,6 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   const kinds = basket.items.map((i) => i.voucher);
   const no = (code: string) => json({ ok: true, available: false, code });
 
-  {
-    const r = storyBasketRefusal(kinds, units.length);
-    if (r) return no(r.code);
-  }
-
   const config = await readMoneyConfig(admin);
   if (config.express_wallets.length === 0) return no("disabled");
 
@@ -80,8 +72,6 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const place = placeRes.place;
   if (!place || place.state !== "active") return json({ ok: false, error: "This place can't sell vouchers" }, 404);
-  // MESITA-4535: the kill switch (story_recheck_meta) closes live Story sales too.
-  if (kinds.includes("voucher_story") && (await storySaleModeLive(admin)) === "unavailable") return no("story_unavailable");
 
   const livemode = paymentsLivemode();
   const [offer, account] = await Promise.all([voucherOffer(admin, place, user.id, livemode), readAccount(admin, placeId)]);
@@ -93,11 +83,6 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   if (!account || !account.charges_enabled || account.livemode !== livemode) return no("no_account");
   // VIP's own gate, the same as the buy door's (MESITA-4640).
   if (kinds.includes("voucher_vip") && vipRefusal("voucher_vip", await readVipGuest(admin, user.id))) return no("not_vip");
-  if (kinds.includes("voucher_story")) {
-    const [storyGuest, storyCtx] = await Promise.all([readStoryGuest(admin, user.id), storyEligibilityContext(admin)]);
-    const story = storyRefusal("voucher_story", storyGuest, storyCtx);
-    if (story) return no(story.code);
-  }
 
   const key = paymentsStripeKey();
   const publishableKey = paymentsPublishableKey(livemode);

@@ -77,7 +77,6 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
-import { withPlaceOffers } from "../_shared/vouchers.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS, NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
@@ -268,7 +267,7 @@ serveJson("consumer-web-list-places", async (req) => {
   return json({
     ok: true,
     places: withFamilyKeysList(
-      withPlaceOffers(await withVouchersUpTo(
+      await withVouchersUpTo(
         money,
         places.map(({ area: a, ad, ...p }) => {
         const wired = wireMapPlace(p as PlaceProfileRow);
@@ -286,7 +285,7 @@ serveJson("consumer-web-list-places", async (req) => {
           } satisfies WireScore,
         };
       }) as CardRow[],
-      )),
+      ),
     ),
     // Places n+1…m of this view: where they are, nothing else (MESITA-3980).
     dots: area.dots,
