@@ -167,10 +167,11 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
   );
 }
 
-// ── Payments is a table (MESITA-4683, Pato: "payments in a table too") ────
+// ── Payments and Visits are tables (MESITA-4683, MESITA-4684; Pato: "payments
+// in a table too", "visits in a table too") ────────────────────────────────
 // A header row and one column per field; money sits right so the digits line
 // up. It scrolls sideways inside its card on a narrow screen; the page never
-// does. The other Monitor pages keep their rows (MESITA-4568).
+// does. Vouchers and Gifts keep their rows (MESITA-4568).
 
 const TH = "text-muted-foreground px-3 py-2 text-xs font-medium whitespace-nowrap first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5";
 const TD = "px-3 py-2 align-middle whitespace-nowrap first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5";
@@ -187,90 +188,157 @@ function cents(row: MonitorRow, ...keys: string[]): React.ReactNode {
   return n > 0 ? money(n) : <Dash />;
 }
 
-const PAYMENT_MONEY: readonly [string, string[]][] = [
-  ["Card", ["card_cents"]],
-  ["Cash", ["outside_cents"]],
-  ["Credit", ["credit_cents"]],
-  ["Tip", ["tip_cents"]],
-  ["Refunded", ["refunded_cents", "credit_refunded_cents"]],
+/** The three ways a bill is paid; a row fills one or two (never Card and
+ *  Cash together), the rest read "—". They sit under one "Bill" header; the
+ *  tip is its own payment and stands apart (MESITA-4684, Pato: "3 columns,
+ *  but only 2 selected … the tip is another type of payment"). */
+const BILL: readonly [string, string][] = [
+  ["Card", "card_cents"],
+  ["Cash", "outside_cents"],
+  ["Credit", "credit_cents"],
 ];
 
-function PaymentsTable({ placeId, rows, timezone }: { placeId: string; rows: MonitorRow[]; timezone: string }) {
+type Col = { head: string; right?: boolean; cell: (row: MonitorRow) => React.ReactNode; className?: string };
+
+function guestCol(placeId: string): Col {
+  return {
+    head: "Guest",
+    cell: (row) => {
+      const name = row.guest ?? "Deleted guest";
+      return (
+        <span className="flex items-center gap-2">
+          <GuestAvatar face={row.customer ? (row.face ?? null) : null} size={24} />
+          {row.customer ? (
+            <Link href={customerHref(placeId, row.customer)} className="font-medium underline-offset-2 hover:underline">
+              {name}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground font-medium">{name}</span>
+          )}
+        </span>
+      );
+    },
+  };
+}
+
+function linkCol(placeId: string, head: string, kind: LinkKind): Col {
+  return {
+    head,
+    cell: (row) => {
+      const links = row.links.filter((l) => l.kind === kind);
+      if (!links.length) return <Dash />;
+      return (
+        <span className="flex gap-1.5">
+          {links.slice(0, 3).map((l) => (
+            <Link key={l.id} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
+              <ChipIcon kind={kind} />
+              {linkLabel(l)}
+            </Link>
+          ))}
+        </span>
+      );
+    },
+  };
+}
+
+/** One table for Payments and Visits: `before` columns, the Bill group, then
+ *  `after` columns. */
+function MoneyTable({ rows, before, after }: { rows: MonitorRow[]; before: Col[]; after: Col[] }) {
+  const th = (c: Col) => (
+    <th key={c.head} scope="col" className={cn(TH, c.right && "text-right")}>
+      {c.head}
+    </th>
+  );
+  const td = (c: Col, row: MonitorRow) => (
+    <td key={c.head} className={cn(TD, c.right && NUM, c.className)}>
+      {c.cell(row)}
+    </td>
+  );
   return (
     <div className="scrollbar-thin-dark min-w-0 overflow-x-auto">
       <table className="w-full border-collapse text-left text-sm">
         <thead className="bg-muted/40 border-border border-b">
           <tr>
-            {["Guest", "Method", "Date", "Customer", "Visit"].map((h) => (
-              <th key={h} scope="col" className={TH}>{h}</th>
+            <td colSpan={before.length} />
+            <th scope="colgroup" colSpan={BILL.length} className="text-muted-foreground border-border border-b px-3 pt-2 pb-1 text-center text-xs font-medium">
+              Bill
+            </th>
+            <td colSpan={after.length} />
+          </tr>
+          <tr>
+            {before.map(th)}
+            {BILL.map(([h]) => (
+              <th key={h} scope="col" className={cn(TH, "text-right")}>
+                {h}
+              </th>
             ))}
-            {PAYMENT_MONEY.map(([h]) => (
-              <th key={h} scope="col" className={cn(TH, "text-right")}>{h}</th>
-            ))}
-            <th scope="col" className={cn(TH, "text-right")}>Total</th>
-            <th scope="col" className={cn(TH, "text-right")}>ID</th>
+            {after.map(th)}
           </tr>
         </thead>
         <tbody className="divide-border divide-y">
-          {rows.map((row) => {
-            const name = row.guest ?? "Deleted guest";
-            const visits = row.links.filter((l) => l.kind === "visit");
-            return (
-              <tr key={row.id} id={row.id} className="hover:bg-muted/30">
-                <td className={TD}>
-                  <span className="flex items-center gap-2">
-                    <GuestAvatar face={row.customer ? (row.face ?? null) : null} size={24} />
-                    {row.customer ? (
-                      <Link href={customerHref(placeId, row.customer)} className="font-medium underline-offset-2 hover:underline">
-                        {name}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground font-medium">{name}</span>
-                    )}
-                  </span>
+          {rows.map((row) => (
+            <tr key={row.id} id={row.id} className="hover:bg-muted/30">
+              {before.map((c) => td(c, row))}
+              {BILL.map(([h, key]) => (
+                <td key={h} className={cn(TD, NUM)}>
+                  {cents(row, key)}
                 </td>
-                <td className={TD}>
-                  <span className="flex gap-1.5">
-                    <MethodBadges row={row} />
-                  </span>
-                </td>
-                <td className={cn(TD, "text-muted-foreground")}>{when(row.at, timezone)}</td>
-                <td className={TD}>
-                  {row.customer ? (
-                    <Link href={customerHref(placeId, row.customer)} className={cn(CHIP, "gap-1")}>
-                      <ChipIcon kind="customer" />
-                      {customerLabel(row.customer)}
-                    </Link>
-                  ) : (
-                    <Dash />
-                  )}
-                </td>
-                <td className={TD}>
-                  {visits.length ? (
-                    <span className="flex gap-1.5">
-                      {visits.slice(0, 3).map((l) => (
-                        <Link key={l.id} href={linkHref(placeId, l)} className={cn(CHIP, "gap-1")}>
-                          <ChipIcon kind="visit" />
-                          {linkLabel(l)}
-                        </Link>
-                      ))}
-                    </span>
-                  ) : (
-                    <Dash />
-                  )}
-                </td>
-                {PAYMENT_MONEY.map(([h, keys]) => (
-                  <td key={h} className={cn(TD, NUM)}>{cents(row, ...keys)}</td>
-                ))}
-                <td className={cn(TD, NUM, "font-semibold")}>{rowAmount("payments", row)}</td>
-                <td className={cn(TD, "text-muted-foreground/70 text-right font-mono text-xs tabular-nums")}>{shortId(row.id)}</td>
-              </tr>
-            );
-          })}
+              ))}
+              {after.map((c) => td(c, row))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
   );
+}
+
+function moneyColumns(kind: "payments" | "visits", placeId: string, timezone: string): { before: Col[]; after: Col[] } {
+  const date: Col = { head: "Date", className: "text-muted-foreground", cell: (r) => when(r.at, timezone) };
+  const tip: Col = { head: "Tip", right: true, cell: (r) => cents(r, "tip_cents") };
+  const total: Col = { head: "Total", right: true, className: "font-semibold", cell: (r) => rowAmount(kind, r) };
+  const id: Col = { head: "ID", right: true, className: "text-muted-foreground/70 font-mono text-xs", cell: (r) => shortId(r.id) };
+  if (kind === "visits") {
+    return {
+      before: [
+        guestCol(placeId),
+        { head: "Status", cell: (r) => <VisitBadge status={rowStatus("visits", r)} /> },
+        date,
+        { head: "Ticket", cell: (r) => (r.payload.ticket ? String(r.payload.ticket) : <Dash />) },
+        { head: "Waiter", cell: (r) => (r.payload.waiter_name ? String(r.payload.waiter_name) : <Dash />) },
+        linkCol(placeId, "Payment", "payment"),
+      ],
+      after: [tip, total, id],
+    };
+  }
+  return {
+    before: [
+      guestCol(placeId),
+      {
+        head: "Method",
+        cell: (r) => (
+          <span className="flex gap-1.5">
+            <MethodBadges row={r} />
+          </span>
+        ),
+      },
+      date,
+      {
+        head: "Customer",
+        cell: (r) =>
+          r.customer ? (
+            <Link href={customerHref(placeId, r.customer)} className={cn(CHIP, "gap-1")}>
+              <ChipIcon kind="customer" />
+              {customerLabel(r.customer)}
+            </Link>
+          ) : (
+            <Dash />
+          ),
+      },
+      linkCol(placeId, "Visit", "visit"),
+    ],
+    after: [tip, { head: "Refunded", right: true, cell: (r) => cents(r, "refunded_cents", "credit_refunded_cents") }, total, id],
+  };
 }
 
 /** "Showing Ana's visits" with a Show all button (MESITA-4683, Pato: "the
@@ -342,8 +410,8 @@ export function MonitorList({
       ) : null}
       {page.rows.length === 0 ? (
         <p className="text-muted-foreground px-5 py-6 text-sm sm:px-6">{filtered ? "Nothing matches this filter." : EMPTY[kind]}</p>
-      ) : kind === "payments" ? (
-        <PaymentsTable placeId={placeId} rows={page.rows} timezone={page.timezone} />
+      ) : kind === "payments" || kind === "visits" ? (
+        <MoneyTable rows={page.rows} {...moneyColumns(kind, placeId, page.timezone)} />
       ) : (
         <ul className="divide-border divide-y">
           {page.rows.map((row) => (
