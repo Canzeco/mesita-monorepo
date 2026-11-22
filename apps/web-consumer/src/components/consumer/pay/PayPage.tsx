@@ -356,10 +356,14 @@ export function PayPage({
           per ticket, each opening it: a bill waiting for the waiter in
           yellow; a voucher still landing, or a Story voucher still to post,
           wait or check (one row per voucher, MESITA-4627), in blue ("instead
-          of yellow put it blue"). */}
+          of yellow put it blue"). THE SAME CARD AS ITS SIBLINGS (Pato,
+          2026-11-21, MESITA-4632: "this design looks like shit but the idea
+          kinda works"): the amber box and the blue rows are gone; it wears
+          Payment method's and Loyalty Cards' card, the grey title strip and
+          white rows, each the place over one grey line. */}
       {bill === "open" || pendingVouchers.length > 0 ? (
-        <section className={cn(SECTION_CARD, "border-amber-300")} aria-label="Pending Tickets" data-pay-pending>
-          <h2 className={cn(SECTION_TITLE, "border-amber-200 bg-amber-100 text-amber-950")}>Pending Tickets</h2>
+        <section className={SECTION_CARD} aria-label="Pending Tickets" data-pay-pending>
+          <h2 className={SECTION_TITLE}>Pending Tickets</h2>
           <div className={SECTION_ROWS}>
             {bill === "open" ? <OpenBillPanel tab={openTabs?.[0] ?? null} pending={pending} places={places} /> : null}
             {pendingVouchers.map((v) => (
@@ -592,11 +596,11 @@ function OpenBillPanel({
   // with the live countdown, the amount and ›; the bill's own page has
   // Continue and Cancel bill. The amber panel with both buttons before.
   return (
-    <Link href={href} className="flex min-h-16 w-full items-center gap-3 bg-amber-50 px-3 py-2.5 text-left transition hover:bg-amber-100" data-pay-open-bill>
+    <Link href={href} className={PENDING_ROW} data-pay-open-bill>
       <PlacePhoto place={{ photo: listed?.photo ?? null, name }} className="h-8 w-12 rounded-md" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-semibold">{name ?? "Your bill"}</span>
-        <span className="block truncate text-sm text-amber-700 tabular-nums" role={waiting ? "timer" : undefined} aria-live="off" data-pay-open-bill-timer>
+        <span className={PENDING_LINE} role={waiting ? "timer" : undefined} aria-live="off" data-pay-open-bill-timer>
           {line}
         </span>
       </span>
@@ -605,6 +609,12 @@ function OpenBillPanel({
     </Link>
   );
 }
+
+/** A Pending Tickets row and its one grey line (MESITA-4632): white, like
+ *  the Loyalty Card rows under it; the line never wraps. */
+const PENDING_ROW =
+  "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
+const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
 /** A voucher still landing, one row of Pending Tickets (MESITA-4625): the
  *  place, "$X bonus pending · ready in 2 h 14 min" in blue, ›; it opens the
@@ -619,14 +629,14 @@ function PendingVoucherRow({ v }: { v: PendingVoucher }) {
     <PushLink
       // A Story voucher opens its Story screen (MESITA-4627).
       href={v.story && v.purchaseId ? storyPurchasePath(v.purchaseId) : walletPlacePath(v.placeId)}
-      className="flex min-h-16 w-full items-center gap-3 bg-blue-50 px-3 py-2.5 text-left transition hover:bg-blue-100"
+      className={PENDING_ROW}
       data-pay-pending-voucher
     >
       <PlacePhoto place={{ photo: v.photo, name: v.name }} className="h-8 w-12 rounded-md" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-semibold">{v.name ?? "A Mesita place"}</span>
-        <span className="block text-sm font-semibold text-blue-700 tabular-nums">
-          {v.story ? `${v.story.label} · ${v.story.line}` : pendingWords(v.amountCents, v.currency, v.kind, v.availableAt, now)}
+        <span className={PENDING_LINE}>
+          {v.story ? v.story.label : pendingWords(v.amountCents, v.currency, v.kind, v.availableAt, now)}
         </span>
       </span>
       <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
