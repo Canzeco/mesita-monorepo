@@ -68,6 +68,9 @@ const SHEET_ALLOWLIST = [
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */
 const DIALOG_ALLOWLIST = [
+  // Generate a profile, floating over Search and Add a place (MESITA-4665,
+  // decision: Pato asked for it "floating, not its own subpage").
+  "components/consumer/search/GeneratePlaceDialog.tsx",
   // A person's card, floating over Social (MESITA-4629, decision: Pato asked
   // for "a floating modal" like Categories); a page from MESITA-4113.
   "components/consumer/home/SocialFeed.tsx",

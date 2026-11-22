@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Screen } from "@/components/consumer/nav/Screen";
 import { AddPlaceSheet } from "@/components/consumer/search/AddPlaceSheet";
-import { generateHref } from "@/components/consumer/search/GeneratePlaceDialog";
+import { useGenerateModal } from "@/components/consumer/search/GeneratePlaceDialog";
 import { predictionOnMesita } from "@/components/consumer/search/search-pins";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import { goBack } from "@/lib/navigate";
@@ -19,6 +19,8 @@ function AddPlaceBody() {
   const params = useSearchParams();
   const router = useRouter();
   const open = useOpenPlaceHref();
+  // Generate floats over this page (MESITA-4665).
+  const { openGenerate, modal } = useGenerateModal();
   const lat = Number(params.get("lat"));
   const lng = Number(params.get("lng"));
   const origin =
@@ -42,15 +44,14 @@ function AddPlaceBody() {
             }
             return;
           }
-          open(
-            generateHref({
-              gid: row.placeId,
-              name: row.mainText,
-              address: row.secondaryText || null,
-            }),
-          );
+          openGenerate({
+            gid: row.placeId,
+            name: row.mainText,
+            address: row.secondaryText || null,
+          });
         }}
       />
+      {modal}
     </Screen>
   );
 }

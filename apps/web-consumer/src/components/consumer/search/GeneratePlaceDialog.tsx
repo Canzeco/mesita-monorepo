@@ -27,7 +27,8 @@
 // anything is created. A failed or photo-less read keeps the sparkles tile
 // in the hero; Generate never waits for the preview.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { MapPin, Sparkles, Star } from "lucide-react";
 
 import {
@@ -35,6 +36,8 @@ import {
   GenerateTile,
 } from "@/components/consumer/GeneratingPlace";
 import { Screen } from "@/components/consumer/nav/Screen";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiPreviewGooglePlace,
@@ -70,6 +73,53 @@ export function generateHref(target: {
   const q = new URLSearchParams({ gid: target.gid, name: target.name });
   if (target.address) q.set("address", target.address);
   return `/search/generate?${q.toString()}`;
+}
+
+/** FLOATING, NOT A PAGE (Pato, 2026-11-22, MESITA-4665: "the modal to add
+ *  new place must be floating, not its own subpage"): Search and Add a place
+ *  open the confirm in the app's floating card over the screen they came
+ *  from. While the create runs, the backdrop and Escape do nothing; landed,
+ *  the profile opens and the card closes when the address moves
+ *  (MESITA-2957). /search/generate stays a page for old links. */
+export function useGenerateModal(): { openGenerate: (t: GenerateTarget) => void; modal: ReactNode } {
+  const [target, setTarget] = useState<GenerateTarget | null>(null);
+  const [busy, setBusy] = useState(false);
+  const open = useOpenPlaceHref();
+  const pathname = usePathname();
+  const [openedAt, setOpenedAt] = useState<string | null>(null);
+  // The address moved (the profile opened, or Back): the card closes.
+  if (target && openedAt !== null && pathname !== openedAt) {
+    setTarget(null);
+    setOpenedAt(null);
+    setBusy(false);
+  }
+  const close = () => {
+    if (busy) return;
+    setTarget(null);
+    setOpenedAt(null);
+  };
+  const modal = (
+    <LocalDialog open={target !== null} onClose={close} ariaLabel="Generate a profile" fit>
+      {target ? (
+        <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto">
+          <GenerateBody
+            key={target.gid}
+            target={target}
+            onClose={close}
+            onGenerated={(opened) => open(opened.href)}
+            onBusy={setBusy}
+          />
+        </div>
+      ) : null}
+    </LocalDialog>
+  );
+  return {
+    openGenerate: (t) => {
+      setTarget(t);
+      setOpenedAt(pathname ?? "");
+    },
+    modal,
+  };
 }
 
 /** The confirm, on its own page (MESITA-4113). The tap creates; the page
