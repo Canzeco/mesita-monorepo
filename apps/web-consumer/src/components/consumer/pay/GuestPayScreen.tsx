@@ -609,7 +609,7 @@ export function GuestPayScreen({
             <p className="text-muted-foreground mt-3 text-sm">The place marks this received. Nothing else is charged.</p>
           </PaySection>
         </StepBody>
-        <StepFooter strip={4} />
+        <StepFooter strip={5} />
       </>,
       "cash-due",
     );
@@ -930,7 +930,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          strip={4}
+          strip={5}
           primary={{ label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }}
         />
       </>,
@@ -1016,7 +1016,7 @@ export function GuestPayScreen({
           </button>
         ) : null}
         <StepFooter
-          strip={4}
+          strip={5}
           // "Pay $X" (MESITA-4316, was "Pay in one click", MESITA-4106): the
           // card is held now and charged when the waiter signs. No card
           // saved: Add a card. After a refusal the main button leads back
@@ -1057,7 +1057,7 @@ export function GuestPayScreen({
         </PaySection>
       </StepBody>
       {status}
-      <StepFooter strip={4} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
+      <StepFooter strip={5} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
   );

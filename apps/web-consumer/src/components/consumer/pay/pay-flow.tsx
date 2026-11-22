@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import { SizedImg } from "@mesita/place-profile";
 import { Check, ChevronLeft, MapPin, X } from "lucide-react";
-import { STRIP_STEPS } from "@/lib/guest-pay-stages";
+import { STRIP_STEPS, type StripAt } from "@/lib/guest-pay-stages";
 import { useRouter } from "next/navigation";
 import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
@@ -200,16 +200,17 @@ export function TicketHeader({ title, onBack, onClose, closeLabel = "Close" }: {
   );
 }
 
-/** THE STEPS, AT THE BOTTOM (MESITA-4600): "1 Place · 2 Bill · 3 Tip · 4 Pay"
+/** THE STEPS, AT THE BOTTOM (MESITA-4600; five since MESITA-4613):
+ *  "1 Place · 2 Bill · 3 Tip · 4 Method · 5 Pay"
  *  in one row, a thin bar under each, done and current in ink, the current
  *  one semibold, the rest grey. A picture, not buttons: ← steps back.
  *  `at` "done" (the Receipt) lights all four, a check on the last. */
-export function StepStrip({ at, className }: { at: 1 | 2 | 3 | 4 | "done"; className?: string }) {
-  const n = at === "done" ? 5 : at;
+export function StepStrip({ at, className }: { at: StripAt; className?: string }) {
+  const n = at === "done" ? STRIP_STEPS.length + 1 : at;
   return (
     <ol
-      className={cn("grid shrink-0 grid-cols-4 gap-1.5", className)}
-      aria-label={at === "done" ? "All steps done" : `Step ${at} of 4: ${STRIP_STEPS[at - 1]}`}
+      className={cn("grid shrink-0 grid-cols-5 gap-1.5", className)}
+      aria-label={at === "done" ? "All steps done" : `Step ${at} of ${STRIP_STEPS.length}: ${STRIP_STEPS[at - 1]}`}
       data-pay-strip
     >
       {STRIP_STEPS.map((name, i) => {
@@ -225,7 +226,7 @@ export function StepStrip({ at, className }: { at: 1 | 2 | 3 | 4 | "done"; class
                 current ? "text-foreground font-semibold" : done ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              {at === "done" && step === 4 ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden /> : <span>{step}</span>}
+              {at === "done" && step === STRIP_STEPS.length ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden /> : <span>{step}</span>}
               <span className="truncate">{name}</span>
             </span>
           </li>
@@ -269,7 +270,7 @@ export function StepFooter({
   onCancel,
   cancelDisabled = false,
 }: {
-  strip?: 1 | 2 | 3 | 4 | "done" | null;
+  strip?: StripAt | null;
   primary?: { label: React.ReactNode; onClick: () => void; disabled: boolean; busy: boolean };
   onCancel?: () => void;
   cancelDisabled?: boolean;
