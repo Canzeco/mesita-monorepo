@@ -1,5 +1,5 @@
 // MESITA-4036: what a gift ticket says about the friend on the other side.
-// A friend's photo is personal data: Public profile off hides it.
+// Every profile is public (MESITA-4690): a friend's photo always shows.
 import { assertEquals } from "jsr:@std/assert@1";
 import { giftPeopleIds, giftTickets, type GiftRow, type PersonRow } from "./wallet-gifts.ts";
 
@@ -18,9 +18,9 @@ const row = (p: Partial<GiftRow>): GiftRow => ({
   ...p,
 });
 const people: PersonRow[] = [
-  { id: ME, first_name: "Pato", avatar_url: "https://x/me.jpg", appear_anonymous: false },
-  { id: "ana", first_name: "Ana", avatar_url: "https://x/ana.jpg", appear_anonymous: false },
-  { id: "hid", first_name: " ", avatar_url: "https://x/hid.jpg", appear_anonymous: true },
+  { id: ME, first_name: "Pato", avatar_url: "https://x/me.jpg" },
+  { id: "ana", first_name: "Ana", avatar_url: "https://x/ana.jpg" },
+  { id: "hid", first_name: " ", avatar_url: "https://x/hid.jpg" },
 ];
 
 Deno.test("an open gift I sent has no receiver yet", () => {
@@ -31,7 +31,7 @@ Deno.test("an open gift I sent has no receiver yet", () => {
   assertEquals(t.sender, { name: "Pato", photo: "https://x/me.jpg", you: true });
 });
 
-Deno.test("a gift I received names its sender; Public profile off hides the photo", () => {
+Deno.test("a gift I received names its sender; the sender photo always shows", () => {
   const [a, b] = giftTickets(
     [
       row({ id: "a", sender_id: "ana", recipient_id: ME, status: "claimed", claimed_at: "2026-11-15T11:00:00Z" }),
@@ -43,7 +43,7 @@ Deno.test("a gift I received names its sender; Public profile off hides the phot
   );
   assertEquals(a.role, "recipient");
   assertEquals(a.sender, { name: "Ana", photo: "https://x/ana.jpg", you: false });
-  assertEquals(b.sender.photo, null);
+  assertEquals(b.sender.photo, "https://x/hid.jpg");
   assertEquals(b.sender.name, "Mesita member");
 });
 

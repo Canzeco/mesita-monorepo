@@ -29,8 +29,8 @@ insert into public.consumers (id, instagram_followers_count) values
   ('00000000-0000-4000-8000-0000000d3850', 90000);
 insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
   ('00000000-0000-4000-8000-000000113850', null, null, 6000, false);
-insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, appear_anonymous, instagram_is_private) values
-  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 5001, true, false);
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
+  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 5001, false);
 
 select is(
   (select attgenerated::text from pg_attribute
@@ -72,7 +72,7 @@ select is(
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000e3850'),
   'vip',
-  'Mesita''s Public profile switch does not matter (MESITA-3864)'
+  'just over 5,000 verified followers is VIP (MESITA-3864)'
 );
 
 select is(

@@ -16,7 +16,7 @@ insert into public.consumers
   (id, first_name, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, appear_anonymous, deleted_at)
 values
   ('00000000-0000-4000-8000-0000000a3213', 'Public', 'https://x.test/a.jpg', 'public_one', 1200, now(), false, null),
-  ('00000000-0000-4000-8000-0000000b3213', 'Private', 'https://x.test/b.jpg', 'private_one', 900, now(), true, null),
+  ('00000000-0000-4000-8000-0000000b3213', 'Private', 'https://x.test/b.jpg', 'private_one', 900, now(), false, null),
   ('00000000-0000-4000-8000-0000000c3213', 'Closed', 'https://x.test/c.jpg', 'closed_one', 5, now(), false, now());
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000003213', 'Views Probe');
@@ -65,11 +65,15 @@ select is(
   'a guest who opted in shows their handle (MESITA-4659)'
 );
 
-update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000b3213';
+-- MESITA-4690: every profile is public. A signed-in guest without a verified
+-- Instagram is still anonymous (no handle, no followers) but shows their
+-- photo; the follow-up that drops appear_anonymous must keep this.
+update public.consumers set instagram_handle = null, instagram_followers_count = null, instagram_verified_at = null
+ where id = '00000000-0000-4000-8000-0000000b3213';
 select ok(
-  (select avatar_url is null and instagram_handle is null and instagram_followers_count is null and anonymous and not instagram
+  (select avatar_url = 'https://x.test/b.jpg' and instagram_handle is null and instagram_followers_count is null and anonymous
      from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Private'),
-  'Public profile off: no photo, no handle, no followers, even opted in'
+  'no verified Instagram: anonymous, no handle, the photo shows (MESITA-4690)'
 );
 
 select is(

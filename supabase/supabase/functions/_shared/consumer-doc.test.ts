@@ -17,6 +17,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   type ConsumerPatch,
   disconnectInstagram,
+  REMOVED_FIELD_APPEAR_ANONYMOUS,
   validateConsumerPatch,
   writeConsumer,
 } from "./consumer-doc.ts";
@@ -254,4 +255,30 @@ Deno.test("tombstoneDeletedConsumer: account deletion clears the sharing choice"
   assertEquals(updates.length, 1);
   assertEquals("instagram_handle_shown" in updates[0], true);
   assertEquals(updates[0].instagram_handle_shown, null);
+});
+
+// ── MESITA-4690: Public profile was removed ────────────────────────────────
+
+Deno.test("validateConsumerPatch: appear_anonymous is refused with field_removed, whatever its value", () => {
+  for (const v of [true, false, null]) {
+    const r = validateConsumerPatch({ appear_anonymous: v });
+    assertEquals(r, { ok: false, ...REMOVED_FIELD_APPEAR_ANONYMOUS });
+  }
+});
+
+Deno.test("validateConsumerPatch: appear_anonymous wins over a valid key sent with it", () => {
+  const r = validateConsumerPatch({ first_name: "Ana", appear_anonymous: false });
+  assertEquals(r.ok, false);
+  if (!r.ok) {
+    assertEquals(r.code, "field_removed");
+    assertEquals(r.error, REMOVED_FIELD_APPEAR_ANONYMOUS.error);
+  }
+});
+
+Deno.test("writeConsumer: appear_anonymous never reaches the database", async () => {
+  let touched = false;
+  const admin = { from: () => { touched = true; throw new Error("no write expected"); } } as unknown as SupabaseClient;
+  const r = await writeConsumer(admin, { mode: "update", id: "c1", patch: { appear_anonymous: true } as unknown as ConsumerPatch });
+  assertEquals(r, { ok: false, ...REMOVED_FIELD_APPEAR_ANONYMOUS });
+  assertEquals(touched, false);
 });

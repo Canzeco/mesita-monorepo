@@ -5,7 +5,8 @@
 // (Pato, MESITA-2567: "there is no visited. there is only viewed and liked"):
 // it is refused on write and dropped on read; the table's CHECK still allows
 // it, so it can come back without a migration. Who may appear (a verified
-// Instagram + Public profile + not deleted, and never for a view, MESITA-2594)
+// Instagram + not deleted, and never for a view, MESITA-2594; every profile is
+// public since MESITA-4690)
 // is decided in SQL (place_activity_visible and the readers); this module only
 // shapes what those readers return, and masks handles for a viewer who does
 // not show their own (seesHandles):
@@ -52,10 +53,10 @@ export type ActivityPerson = {
    *  Carried on anonymous rows too; the handle itself is not. */
   instagram: boolean;
   /** No handle on this row: a member without a verified Instagram
-   *  (MESITA-2580), any view in the feed (MESITA-2594), or Public profile off.
+   *  (MESITA-2580) or any view in the feed (MESITA-2594).
    *  The FIRST NAME still shows (MESITA-2612: "A member" is gone), and so do
-   *  Class, Plan, the Instagram flag and, unless Public profile is off, the
-   *  photo (MESITA-2608). Every row is a door to the person card
+   *  Class, Plan, the Instagram flag and the photo (MESITA-2608; every
+   *  profile is public, MESITA-4690). Every row is a door to the person card
    *  (MESITA-2609). */
   anonymous: boolean;
 };
@@ -97,17 +98,15 @@ export function maskHandle(handle: string): string {
 }
 
 /** Whether a viewer sees other members' full handles (MESITA-2594): only
- *  with their own Instagram verified, their profile public and (MESITA-4659)
- *  their own handle shown on Mesita. Give to get. */
+ *  with their own Instagram verified and (MESITA-4659) their own handle shown
+ *  on Mesita. Give to get. No Public profile term since MESITA-4690. */
 export function seesHandles(
   viewer: {
     instagram_verified_at: string | null;
-    appear_anonymous: boolean | null;
     instagram_handle_shown: boolean | null;
   } | null,
 ): boolean {
   return viewer != null && viewer.instagram_verified_at != null &&
-    viewer.appear_anonymous !== true &&
     viewer.instagram_handle_shown === true;
 }
 
@@ -153,7 +152,7 @@ export function toPerson(
   const first = row.first_name?.trim() || MEMBER_FALLBACK_NAME;
   if (row.anonymous === true) {
     // No handle, no followers; the face and the name show (MESITA-2608,
-    // MESITA-2612). SQL already blanked the photo for Public profile off.
+    // MESITA-2612); every profile is public (MESITA-4690).
     return {
       name: first,
       avatarUrl: row.avatar_url ?? null,

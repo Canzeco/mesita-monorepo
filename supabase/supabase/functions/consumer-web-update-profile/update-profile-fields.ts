@@ -1,5 +1,9 @@
 import { json } from "../_shared/http.ts";
-import { EMULATED_FOLLOWERS_MAX, isEmulatedFollowers } from "../_shared/consumer-doc.ts";
+import {
+  EMULATED_FOLLOWERS_MAX,
+  isEmulatedFollowers,
+  REMOVED_FIELD_APPEAR_ANONYMOUS,
+} from "../_shared/consumer-doc.ts";
 
 /** Keys a guest can never change from the app (MESITA-2553): Plan and Class
  *  are set by an operator only, through admin_set_guest_standing, and so is
@@ -32,6 +36,14 @@ export function notWritableKey(body: unknown): string | null {
   return null;
 }
 
+/** MESITA-4690: a body naming the retired Public profile field, with any
+ *  value, gets this 400 before any other check or write; else null. */
+export function removedFieldResponse(body: unknown): Response | null {
+  if (typeof body !== "object" || body === null) return null;
+  if (!("appear_anonymous" in body)) return null;
+  return json({ ok: false, ...REMOVED_FIELD_APPEAR_ANONYMOUS }, 400);
+}
+
 export type UpdateProfileBody = {
   // full_name is not a request field: this EF joins first_name + last_name
   // to repopulate it for downstream readers.
@@ -47,9 +59,9 @@ export type UpdateProfileBody = {
   avatar_url?: string | null;
   // MESITA-2585: "Use my Instagram photo" on Me › Instagram.
   use_instagram_photo?: boolean;
-  // MESITA-2590: "Public profile" off = true (no photo or handle in Social;
-  // the first name still shows, MESITA-2612).
-  appear_anonymous?: boolean;
+  // MESITA-4690: "Public profile" was removed; sending appear_anonymous with
+  // any value is refused (REMOVED_FIELD_APPEAR_ANONYMOUS).
+  appear_anonymous?: unknown;
   // MESITA-4659: "Show my handle on Mesita" on Me › Instagram. true shows the
   // handle to others, false hides it; null (no choice) is not writable here.
   instagram_handle_shown?: boolean;
@@ -334,15 +346,6 @@ export function buildProfilePatch(
       };
     }
     patch.use_instagram_photo = body.use_instagram_photo;
-  }
-  if (body.appear_anonymous !== undefined) {
-    if (typeof body.appear_anonymous !== "boolean") {
-      return {
-        ok: false,
-        response: json({ ok: false, error: "appear_anonymous must be a boolean" }, 400),
-      };
-    }
-    patch.appear_anonymous = body.appear_anonymous;
   }
   if (body.instagram_handle_shown !== undefined) {
     if (typeof body.instagram_handle_shown !== "boolean") {

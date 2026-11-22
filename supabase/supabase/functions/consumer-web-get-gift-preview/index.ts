@@ -59,14 +59,15 @@ serveJson("consumer-web-get-gift-preview", async (req) => {
   // without them. THE LINK'S CARD (Pato, 2026-11-18, MESITA-4363: "the
   // image must be the actual gift card and place"; "Yes, show sender"): the
   // place's first photo and the sender's first name and photo, so the chat
-  // preview can draw the gift. The photo stays out when the sender appears
-  // anonymous; the first name is what the gift itself already says.
+  // preview can draw the gift. Every profile is public (MESITA-4690), so the
+  // photo shows to anyone with the link; the first name is what the gift
+  // itself already says.
   const [{ data: place, error: placeError }, sender] = await Promise.all([
     anonClient(env).from("profiles").select("name, photos, profile_photo").eq("id", row.place_id).maybeSingle(),
     row.sender_id
       ? admin
         .from("consumers")
-        .select("first_name, avatar_url, appear_anonymous, deleted_at")
+        .select("first_name, avatar_url, deleted_at")
         .eq("id", row.sender_id)
         .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -79,10 +80,10 @@ serveJson("consumer-web-get-gift-preview", async (req) => {
   const photo = (typeof firstPhoto === "string" ? firstPhoto : null) ??
     (typeof p?.profile_photo === "string" && p.profile_photo.startsWith("https://") ? p.profile_photo : null);
   const c = sender.data as
-    | { first_name?: string | null; avatar_url?: string | null; appear_anonymous?: boolean | null; deleted_at?: string | null }
+    | { first_name?: string | null; avatar_url?: string | null; deleted_at?: string | null }
     | null;
   const senderName = c && !c.deleted_at && c.first_name?.trim() ? c.first_name.trim() : null;
-  const senderPhoto = senderName && !c?.appear_anonymous && c?.avatar_url?.startsWith("https://") ? c.avatar_url : null;
+  const senderPhoto = senderName && c?.avatar_url?.startsWith("https://") ? c.avatar_url : null;
 
   return noStore(json({
     ok: true,

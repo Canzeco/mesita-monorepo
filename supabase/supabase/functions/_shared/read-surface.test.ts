@@ -329,11 +329,11 @@ const CONSUMER_READ_ALLOWLIST = [
   // avatar_url only, never a name. Read-only, error logged.
   "visit-web-get-tab/index.ts",
   // Tickets › Gifts (MESITA-4036): the first name and photo of each friend a
-  // gift went to or came from (appear_anonymous hides the photo). Read-only,
-  // error logged.
+  // gift went to or came from (every profile is public, MESITA-4690).
+  // Read-only, error logged.
   "consumer-web-get-wallet/index.ts",
   // A gift link's card (MESITA-4363): the sender's first name and photo
-  // (appear_anonymous hides the photo; a closed account shows nothing).
+  // (a closed account shows nothing; every profile is public, MESITA-4690).
   // Read-only, error logged.
   "consumer-web-get-gift-preview/index.ts",
   // Payment methods (MESITA-4526): the caller's OWN pay_method, the default

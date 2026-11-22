@@ -196,7 +196,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const [peopleRes, giftEntriesRes] = giftIds.length === 0
     ? [{ data: [], error: null }, { data: [], error: null }]
     : await Promise.all([
-      admin.from("consumers").select("id, first_name, avatar_url, appear_anonymous").in("id", giftPeopleIds(gifts)),
+      admin.from("consumers").select("id, first_name, avatar_url").in("id", giftPeopleIds(gifts)),
       admin.from("wallet_entries").select("gift_id, kind, created_at, available_at").eq("consumer_id", userId).in("gift_id", giftIds),
     ]);
   if (peopleRes.error) console.error(`[consumer-web-get-wallet] gift people read: ${peopleRes.error.message}`);
