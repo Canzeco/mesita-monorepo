@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banknote, CircleCheck, Clock, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, CircleCheck, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
@@ -20,11 +20,11 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
 // /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
 //
-//   6 Confirm     mostly a large QR; the countdown on the heading's right;
-//                 under the QR the bill's total with the way it's paid, what
-//                 the signature earns, and that an unsigned bill cancels
-//                 with nothing charged. Nothing is editable; Cancel bill goes back to the
-//                 bill with everything typed. The screen stays on.
+//   6 Pay the waiter  three numbered steps (MESITA-4654): 1 Waiter scans
+//                 this (the QR, the total, the part not in cash), 2 Hand over
+//                 cash (the green box, only with cash), 3 Waiter confirms (the
+//                 time left). Nothing is editable; Cancel bill ends the
+//                 ticket. The screen stays on.
 //   Confirming    a Loader and "Confirming…" while money moves (the bank's
 //                 check, the charge at the signature).
 //   7 Receipt     the step panel, a green Paid with the total, the lines
@@ -220,9 +220,9 @@ export function GuestTabView({
   // Every way this bill is paid (MESITA-4131): Confirm named the card part alone,
   // so a bill split with credits or cash showed less than the bill.
   const ways = [
-    tab.credit_cents > 0 ? { key: "credits", icon: <Wallet aria-hidden />, cents: tab.credit_cents, alone: "credits", part: "credits" } : null,
-    card > 0 ? { key: "card", icon: <Smartphone aria-hidden />, cents: card, alone: "by card", part: "card" } : null,
-    cash > 0 ? { key: "cash", icon: <Banknote aria-hidden />, cents: cash, alone: "cash", part: "cash" } : null,
+    tab.credit_cents > 0 ? { key: "credits", cents: tab.credit_cents } : null,
+    card > 0 ? { key: "card", cents: card } : null,
+    cash > 0 ? { key: "cash", cents: cash } : null,
   ].filter((w) => w !== null);
 
   // MESITA-4386: "Paid with Apple Pay / Google Pay": the card row names the wallet.
@@ -368,146 +368,111 @@ export function GuestTabView({
     );
   }
 
-  // 5 SIGN.
+  // 5 PAY THE WAITER (MESITA-4654, Pato: "make this clearer … one box for qr.
+  // one green box for cash … waiter confirms receive … money on bottom and
+  // qr on top"): three numbered steps in the order they happen.
+  //   1 Waiter scans this   the QR, the bill's total, the part not in cash.
+  //   2 Hand over cash      only with a cash part: the Link-green box.
+  //   3 Waiter confirms     a quiet row: waiting, the time left.
+  // Without cash the confirm row is step 2 and the QR takes the room.
   const secs = Math.max(0, Math.ceil(leftMs / 1000));
   const countdown = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
   // Amber only when the time is nearly out: it read as an alarm with most of
   // an hour left (MESITA-4131).
   const closing = secs <= 120;
   const reconnecting = failedReads >= 2;
+  // The bill's other parts, under the total: the cash has its own step.
+  const notCash = ways.filter((w) => w.key !== "cash");
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
-      {/* MESITA-4061: the same frame as every guest step. The bill is open,
-          so neither arrow acts: going back is Cancel bill, the footer. */}
-      <PayTitle title="Show your waiter" back={!busy} />
-      {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
-          vertical space ... i should not be scrolling here"). The body, the
-          panel and the QR's slot are one column that fills the height left;
-          the QR takes what remains (up to 340px) instead of guessing the
-          frame's height. */}
+      {/* MESITA-4061: the same frame as every guest step. */}
+      <PayTitle title="Pay the waiter" back={!busy} />
+      {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102): the QR's slot takes
+          the height left (up to 340px, never under 120px). */}
       <StepBody className="min-h-0 flex-1">
-        {/* One panel (MESITA-4072): the heading inside, then the QR, centred.
-            The QR's white square wears no border of its own: never a box in
-            a box.
-            WHAT RANKS (MESITA-4131, Pato: "Better design for this view"):
-            the QR first, as large as the panel allows; under it the bill's
-            total, the largest words on the screen, with the way it's paid;
-            then what the signature earns and what happens if time runs out. The time left
-            sits on the heading's right, where the way's chip sat. */}
-        <PaySection
-          title="Your QR"
-          action={
-            <span className="flex shrink-0 items-center gap-1.5 text-sm tabular-nums" role="timer" aria-live="off" data-guest-sign-timer>
-              <Clock className={cn("h-4 w-4", closing ? WAIT : "text-muted-foreground")} aria-hidden />
-              <span className={cn("font-semibold", closing && WAIT)}>{countdown}</span>
-              <span className="text-muted-foreground">left to sign</span>
-            </span>
-          }
-          className="flex min-h-0 flex-1 flex-col"
-        >
-        <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 p-4 pt-3 text-center">
-          {/* The QR's slot takes the height left; the square is as tall as
-              the slot allows, never over 340px, never under 120px (a split
-              bill's parts line on a 375×553 frame needs the 20px). */}
-          <div className="flex min-h-[120px] w-full flex-1 items-center justify-center">
-            <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
-              {qr ? (
-                <QRCodeSVG value={qr} size={340} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
-              ) : qrFailed ? (
-                <div className="flex flex-col items-center gap-3" data-guest-sign-qr-failed>
-                  <p className="text-muted-foreground text-sm" role="alert">
-                    The QR didn&apos;t load.
-                  </p>
-                  <button
-                    type="button"
-                    className={cn(QUIET_BUTTON_CLASS, "w-auto")}
-                    onClick={() => {
-                      setQrFailed(false);
-                      setQrTry((n) => n + 1);
-                    }}
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : (
-                <Skeleton className="h-full w-full rounded-xl" />
-              )}
+        <PaySection className="flex min-h-0 flex-1 flex-col" data-guest-sign-qr-step>
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-1.5 p-4 text-center">
+            <SignStep n={1} label="Waiter scans this" />
+            <div className="flex min-h-[120px] w-full flex-1 items-center justify-center">
+              <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
+                {qr ? (
+                  <QRCodeSVG value={qr} size={340} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your bill's QR for the waiter" />
+                ) : qrFailed ? (
+                  <div className="flex flex-col items-center gap-3" data-guest-sign-qr-failed>
+                    <p className="text-muted-foreground text-sm" role="alert">
+                      The QR didn&apos;t load.
+                    </p>
+                    <button
+                      type="button"
+                      className={cn(QUIET_BUTTON_CLASS, "w-auto")}
+                      onClick={() => {
+                        setQrFailed(false);
+                        setQrTry((n) => n + 1);
+                      }}
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <Skeleton className="h-full w-full rounded-xl" />
+                )}
+              </div>
             </div>
-          </div>
-          {/* The whole bill, never one part of it. One way: its words beside
-              the total. A split: each part on the line under. */}
-          <p className="flex shrink-0 flex-wrap items-center justify-center gap-x-2 tabular-nums" data-guest-sign-total>
-            <span className="text-2xl font-semibold">{m(total)}</span>
-            {ways.length === 1 ? (
-              <span className="text-muted-foreground flex items-center gap-1 text-sm [&>svg]:h-4 [&>svg]:w-4">
-                {ways[0].icon}
-                {ways[0].alone}
-              </span>
+            {/* The whole bill, never one part of it. */}
+            <p className="shrink-0 text-2xl font-semibold tabular-nums" data-guest-sign-total>
+              {m(total)}
+            </p>
+            {notCash.length > 0 ? (
+              <p className="text-muted-foreground shrink-0 text-sm tabular-nums" data-guest-sign-parts>
+                {notCash.map((w) => `${m(w.cents)} ${w.key === "credits" ? "from your credits" : "by card"}`).join(" · ")}
+              </p>
             ) : null}
-          </p>
-          {ways.length > 1 ? (
-            <p className="text-muted-foreground flex shrink-0 flex-wrap items-center justify-center gap-x-3 text-sm tabular-nums" data-guest-sign-parts>
-              {ways.map((w) => (
-                <span key={w.key} className="flex items-center gap-1 [&>svg]:h-4 [&>svg]:w-4">
-                  {w.icon}
-                  {m(w.cents)} {w.part}
-                </span>
-              ))}
-            </p>
-          ) : null}
-          {/* The last line, honest about the end (MESITA-4130, Pato: "not
-              then it's final, just then it cancels"): an unsigned bill
-              expires, its card hold and credit are released, nothing is
-              charged. With the reads failing, the table bill's
-              "Reconnecting…" (the waiter can still scan). */}
-          <p className="text-muted-foreground shrink-0 text-sm" role="status" data-guest-sign-note>
-            {/* One line on a 375px phone: the longer "if not, it cancels and
-                nothing is charged" wrapped and pushed the panel 20px over. */}
-            {reconnecting ? "Reconnecting…" : "Not signed in time? It cancels, no charge."}
-          </p>
-          {error ? (
-            <p className="text-destructive shrink-0 text-sm" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {tab.test_mode && qr ? (
-            <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground flex h-6 shrink-0 items-center text-xs font-semibold underline" data-open-as-waiter>
-              Open as waiter (test)
-            </a>
-          ) : null}
-        </div>
+            {error ? (
+              <p className="text-destructive shrink-0 text-sm" role="alert">
+                {error}
+              </p>
+            ) : null}
+            {tab.test_mode && qr ? (
+              <a href={qr} target="_blank" rel="noopener noreferrer" className="text-muted-foreground flex h-6 shrink-0 items-center text-xs font-semibold underline" data-open-as-waiter>
+                Open as waiter (test)
+              </a>
+            ) : null}
+          </div>
         </PaySection>
-        {/* GIVE THE CASH, THE BOTTOM HALF (Pato, 2026-11-21, MESITA-4618: "in
-            pay in cash, the qr must also show give this amount to the waiter
-            with a money animation half and half screen"): with a cash part,
-            a Link-green panel shares the height with the QR, three
-            banknotes floating over the amount to hand over. */}
+        {/* 2 HAND OVER CASH (MESITA-4618, the Link-green half): only the
+            amount, large. */}
         {cash > 0 ? (
           <section
-            className="flex min-h-[9rem] flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-[#00D66F] p-4 text-center text-neutral-950"
-            aria-label={`Give the waiter ${m(cash)} in cash`}
+            className="flex min-h-[8rem] flex-1 flex-col items-center gap-1 rounded-2xl bg-[#00D66F] p-4 text-center text-neutral-950"
+            aria-label={`Step 2: hand the waiter ${m(cash)} in cash`}
             data-guest-sign-cash
           >
-            <style href="mesita-cash-float" precedence="default">
-              {`@keyframes mesita-cash-float{0%,100%{transform:translateY(0) rotate(var(--r))}50%{transform:translateY(-8px) rotate(var(--r))}}
-.mesita-cash-note{animation:mesita-cash-float 2.4s ease-in-out infinite}
-@media (prefers-reduced-motion: reduce){.mesita-cash-note{animation:none}}`}
-            </style>
-            <span className="flex items-end gap-1" aria-hidden>
-              {[-10, 0, 10].map((r, i) => (
-                <Banknote
-                  key={r}
-                  className="mesita-cash-note h-10 w-10"
-                  strokeWidth={1.75}
-                  style={{ ["--r" as string]: `${r}deg`, animationDelay: `${i * 0.3}s` }}
-                />
-              ))}
+            <SignStep n={2} label="Hand over cash" tone="cash" />
+            <span className="flex flex-1 flex-col items-center justify-center">
+              <span className="text-4xl font-semibold tabular-nums">{m(cash)}</span>
+              <span className="mt-1 text-sm">in cash, to the waiter</span>
             </span>
-            <span className="text-base font-semibold">Give the waiter</span>
-            <span className="text-3xl font-semibold tabular-nums">{m(cash)}</span>
-            <span className="text-sm">in cash</span>
           </section>
         ) : null}
+        {/* LAST: THE WAITER CONFIRMS (MESITA-4521: Confirm, never Sign). The
+            time left lives here; an unconfirmed bill cancels with nothing
+            charged. Reads failing twice: "Reconnecting…". */}
+        <section className="bg-muted flex shrink-0 items-center gap-3 rounded-2xl p-4" aria-label="The waiter confirms" data-guest-sign-confirm>
+          <StepNumber n={cash > 0 ? 3 : 2} tone="next" />
+          <span className="flex min-w-0 flex-1 flex-col text-left">
+            <span className="text-base font-semibold">Waiter confirms</span>
+            <span className="text-muted-foreground text-sm tabular-nums" role="timer" aria-live="off" data-guest-sign-timer>
+              {reconnecting ? (
+                "Reconnecting…"
+              ) : (
+                <>
+                  Waiting… · <span className={cn("font-semibold", closing && WAIT)}>{countdown}</span> left
+                </>
+              )}
+            </span>
+          </span>
+          <Loader2 className="text-muted-foreground h-5 w-5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden />
+        </section>
       </StepBody>
       <StepFooter strip={3} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
@@ -537,5 +502,36 @@ export function GuestTabView({
         </div>
       </LocalDialog>
     </div>
+  );
+}
+
+/** A step's number in a circle (MESITA-4654): dark for a step to do, white on
+ *  the cash green, outlined for the waiter's. */
+function StepNumber({ n, tone = "do" }: { n: number; tone?: "do" | "cash" | "next" }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums",
+        tone === "do" && "bg-foreground text-background",
+        tone === "cash" && "bg-neutral-950 text-white",
+        tone === "next" && "border-foreground text-foreground border-2",
+      )}
+      aria-hidden
+    >
+      {n}
+    </span>
+  );
+}
+
+/** A step's heading: its number, then what happens. */
+function SignStep({ n, label, tone = "do" }: { n: number; label: string; tone?: "do" | "cash" }) {
+  return (
+    <h2 className="flex w-full shrink-0 items-center gap-2 text-left text-base font-semibold">
+      <StepNumber n={n} tone={tone} />
+      <span>
+        <span className="sr-only">Step {n}: </span>
+        {label}
+      </span>
+    </h2>
   );
 }
