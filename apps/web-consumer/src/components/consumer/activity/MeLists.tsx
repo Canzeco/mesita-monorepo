@@ -270,6 +270,12 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   refunds: HandCoins,
 };
 
+/** Full width, a hairline between rows, no box (Tickets MESITA-4595,
+ *  Reservations MESITA-4608): the panels a list draws lose their radius and
+ *  side and top borders, keeping the hairline under each. */
+const FLUSH_ROWS =
+  "[&_[data-activity]]:rounded-none [&_[data-activity]]:border-x-0 [&_[data-activity]]:border-t-0 [&_section[aria-label]]:rounded-none [&_section[aria-label]]:border-x-0 [&_section[aria-label]]:border-t-0 [&_[aria-busy]]:rounded-none [&_[aria-busy]]:border-x-0 [&_[aria-busy]]:border-t-0";
+
 /** /me/notifications: what Mesita told you, every row one size (MESITA-4053,
  *  Pato 2026-11-15: "don't put a normal notification like that big one …
  *  keep standard size notifications with view button"). The "Next up"
@@ -339,8 +345,11 @@ export function ReservationsPage() {
   // column's blue-600; Home's own bar stays ink, MESITA-3687). No intro card
   // ("don't mention that stupid description").
   return (
+    // FLUSH (Pato, 2026-11-21, MESITA-4608: "i don't want a reservations
+    // tickets inside a box. just a line dividing"): no page margin, no box.
     <MeScreen
       title="Reservations"
+      flush
       // A CALENDAR SHORTCUT, TOP RIGHT (MESITA-4330, Pato: "top right, add
       // shortcut to go to calendar"): Back's white square with one plain
       // ink calendar icon, opening Me › Integrations › Calendar. Never the
@@ -356,7 +365,7 @@ export function ReservationsPage() {
         </PushLink>
       }
     >
-      <div className="flex flex-col gap-4">
+      <div className={cn("flex min-h-0 flex-1 flex-col", FLUSH_ROWS)}>
         <SubpageTabs
           label="Upcoming or past reservations"
           tabs={RESERVATION_TABS}
@@ -370,7 +379,8 @@ export function ReservationsPage() {
           failed={!!reservations.error}
           retry={reservations.reload}
           note={null}
-            empty={EMPTY_HALF[half]}
+          edge
+          empty={EMPTY_HALF[half]}
         />
       </div>
     </MeScreen>
@@ -596,7 +606,7 @@ export function TicketsBoard({
           ? `${PANEL_CLASS} [&_[data-activity]]:rounded-none [&_[data-activity]]:border-0`
           : edge
             ? // Full width, a hairline between tickets, no box (MESITA-4595).
-              "[&_[data-activity]]:rounded-none [&_[data-activity]]:border-x-0 [&_[data-activity]]:border-t-0 [&_section[aria-label]]:rounded-none [&_section[aria-label]]:border-x-0 [&_section[aria-label]]:border-t-0"
+              FLUSH_ROWS
             : "gap-4",
       )}
     >
@@ -663,8 +673,12 @@ function TicketList({
   // Load more adds 10, fetching older visits when the held ones run out.
   const [limit, setLimit] = useState(PAGE);
   const Icon = ICON[type];
-  const pad = edge ? "px-5 py-5" : "";
-  if (!ready) return <div className={pad}><ActivityRowsSkeleton /></div>;
+  // An edge list's words keep the page's 20px and fill the height, so the
+  // empty state stays centred on a flush page (MESITA-4608).
+  const pad = edge ? "flex min-h-0 flex-1 flex-col px-5 py-5" : "";
+  // Edge or not, the bones carry no padding of their own: an edge list's
+  // wrapper unboxes them (FLUSH_ROWS), a boxed one sits in the page margin.
+  if (!ready) return <ActivityRowsSkeleton />;
   if (failed || !rows) {
     return (
       <div className={pad}>
@@ -784,7 +798,7 @@ function SubpageTabs<K extends string>({
   return (
     <nav
       aria-label={label}
-      className="border-border bg-card -mx-5 -mt-5 flex shrink-0 border-b"
+      className="border-border bg-card flex shrink-0 border-b"
       data-subpage-tabs
     >
       {tabs.map((t) => {
@@ -896,17 +910,16 @@ export function MeListSkeleton({
   tabs?: "reservations" | "tickets";
 }) {
   return (
-    // Tickets draws edge to edge since MESITA-4595, its frame too.
-    <MeScreen title={title} flush={tabs === "tickets"}>
-      <div className="flex flex-col gap-4">
+    // Tickets (MESITA-4595) and Reservations (MESITA-4608) draw edge to
+    // edge, their frames too: rows full width, a hairline between them.
+    <MeScreen title={title} flush={!!tabs}>
+      <div className={cn("flex flex-col", tabs ? FLUSH_ROWS : "gap-4")}>
         {tabs === "tickets" ? (
           <TicketPills on={null} flush={false} />
         ) : tabs ? (
           <SubpageTabs label={title} tabs={RESERVATION_TABS} on={null} />
         ) : null}
-        <div className={tabs === "tickets" ? "px-5" : undefined}>
-          <ActivityRowsSkeleton />
-        </div>
+        <ActivityRowsSkeleton />
         <p role="status" className="sr-only">
           Loading {title.toLowerCase()}
         </p>
