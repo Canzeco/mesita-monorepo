@@ -44,6 +44,7 @@ export function GuestTabView({
   onPayAgain,
   onDone,
   registerClose,
+  registerBack,
 }: {
   tab: GuestTab;
   /** The place's photo, from the Pay list (null while it loads). */
@@ -54,6 +55,8 @@ export function GuestTabView({
   onDone: () => void;
   /** The header's X (MESITA-3880): on Confirm it closes; the bill keeps waiting (MESITA-3908). */
   registerClose?: (close: (() => void) | null) => void;
+  /** The header's ← (MESITA-4618): while the bill waits, back to Method. */
+  registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
@@ -160,6 +163,41 @@ export function GuestTabView({
     forgetGuestTab(tab.tab_id);
     if (signed) clearGuestDraft(tab.place.id);
   }, [done, signed, tab.tab_id, tab.place.id]);
+
+  // ← BACK TO METHOD, A NEW TICKET (Pato, 2026-11-21, MESITA-4618: "when
+  // creating ticket to pay, enable to return and just create other id for
+  // the ticket"): while the bill waits for the waiter, ← cancels it on the
+  // server (nothing charged, the hold released) and reopens "How do you
+  // pay?" with the bill and tip still typed; Pay again makes a new ticket.
+  async function backToMethod() {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
+      forgetGuestTab(tab.tab_id);
+      reopenGuestDraft(tab.place.id, "method");
+      onPayAgain(tab.place.id);
+    } catch (e) {
+      const code = e instanceof EFError ? e.code : null;
+      setError((code && TAB_REFUSAL[code]) || NETWORK_FAILURE);
+      setBusy(false);
+    }
+  }
+  useEffect(() => {
+    if (!registerBack) return;
+    if (!signing) {
+      registerBack(null);
+      return;
+    }
+    registerBack(() => {
+      void backToMethod();
+      return true;
+    });
+    return () => registerBack(null);
+    // backToMethod reads the latest tab each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registerBack, signing, tab.tab_id]);
 
   async function cancel() {
     setBusy(true);
@@ -341,7 +379,7 @@ export function GuestTabView({
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. The bill is open,
           so neither arrow acts: going back is Cancel bill, the footer. */}
-      <PayTitle title="Show your waiter" />
+      <PayTitle title="Show your waiter" back={!busy} />
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102, Pato: "optimize
           vertical space ... i should not be scrolling here"). The body, the
           panel and the QR's slot are one column that fills the height left;
@@ -439,6 +477,37 @@ export function GuestTabView({
           ) : null}
         </div>
         </PaySection>
+        {/* GIVE THE CASH, THE BOTTOM HALF (Pato, 2026-11-21, MESITA-4618: "in
+            pay in cash, the qr must also show give this amount to the waiter
+            with a money animation half and half screen"): with a cash part,
+            a Link-green panel shares the height with the QR, three
+            banknotes floating over the amount to hand over. */}
+        {cash > 0 ? (
+          <section
+            className="flex min-h-[9rem] flex-1 flex-col items-center justify-center gap-2 rounded-2xl bg-[#00D66F] p-4 text-center text-neutral-950"
+            aria-label={`Give the waiter ${m(cash)} in cash`}
+            data-guest-sign-cash
+          >
+            <style href="mesita-cash-float" precedence="default">
+              {`@keyframes mesita-cash-float{0%,100%{transform:translateY(0) rotate(var(--r))}50%{transform:translateY(-8px) rotate(var(--r))}}
+.mesita-cash-note{animation:mesita-cash-float 2.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.mesita-cash-note{animation:none}}`}
+            </style>
+            <span className="flex items-end gap-1" aria-hidden>
+              {[-10, 0, 10].map((r, i) => (
+                <Banknote
+                  key={r}
+                  className="mesita-cash-note h-10 w-10"
+                  strokeWidth={1.75}
+                  style={{ ["--r" as string]: `${r}deg`, animationDelay: `${i * 0.3}s` }}
+                />
+              ))}
+            </span>
+            <span className="text-base font-semibold">Give the waiter</span>
+            <span className="text-3xl font-semibold tabular-nums">{m(cash)}</span>
+            <span className="text-sm">in cash</span>
+          </section>
+        ) : null}
       </StepBody>
       <StepFooter strip={5} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
