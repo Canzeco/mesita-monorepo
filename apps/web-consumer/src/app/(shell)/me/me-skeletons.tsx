@@ -47,11 +47,11 @@ export function IdentityCardSkeleton() {
       <div className={IDENTITY_RING_CLASS}>
         <Skeleton className="block h-[72px] w-[72px] rounded-full" />
       </div>
-      <span className="grid w-full grid-cols-3 gap-2">
-        <Skeleton className="col-span-2 h-12 rounded-full" />
+      <span className="grid w-full grid-cols-4 gap-2">
+        <Skeleton className="col-span-3 h-12 rounded-full" />
         <Skeleton className="h-12 rounded-full" />
         <Skeleton className="h-12 rounded-full" />
-        <Skeleton className="col-span-2 h-12 rounded-full" />
+        <Skeleton className="col-span-3 h-12 rounded-full" />
       </span>
     </div>
   );
