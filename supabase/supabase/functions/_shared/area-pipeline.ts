@@ -838,8 +838,7 @@ const FEEDS: Record<RankMode, {
   },
 };
 
-/** A feed's lanes, ranked and woven (MESITA-4517, MESITA-4548): Home's rank
- *  and the Admin preview share it. Each lane's Inorganic row ranks Premier
+/** A feed's lanes, ranked and woven (MESITA-4517, MESITA-4548): Home's rank. Each lane's Inorganic row ranks Premier
  *  places in the same SQL call as an organic ranking; the close and
  *  well-known rankings feed the "both" lane. Every lane's batch is its
  *  row's. `answer` is the first SQL answer (its read and Inorganic

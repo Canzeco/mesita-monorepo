@@ -25,7 +25,7 @@
 // `params.mix.adFloor`). FEEDS AND LANES (MESITA-4517, MESITA-4548): Nearby
 // is close + both, Popular is popular + both, Family is close + well known
 // + both of one family; both = strong on close and on well known, ordered
-// by the worse rank. Every lane has an Organic and an Inorganic row; one SQL
+// nearest first (MESITA-4674). Every lane has an Organic and an Inorganic row; one SQL
 // rank per lane. Each
 // lane gives its `batch` per weave; a weave interleaves the lanes and puts
 // one ad after every `params.mix.adEvery` organic places (0 = no ads; a

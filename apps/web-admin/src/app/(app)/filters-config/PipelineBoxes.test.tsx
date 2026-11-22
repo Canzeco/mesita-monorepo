@@ -8,7 +8,6 @@ import { DISCOVERY_GATES, sourceByKey, sourcesFeedingSignal } from "./discovery-
 vi.mock("./actions", () => ({
   getDiscoveryConfig: vi.fn(),
   updateDiscoveryConfig: vi.fn(),
-  previewDiscoveryRank: vi.fn(),
 }));
 
 import {
@@ -57,9 +56,9 @@ describe("Ranking shows every lane row (MESITA-4454, MESITA-4517)", () => {
     const html = render(<RankingBox {...seed} />);
     // MESITA-4548: fourteen Catalog rows × 7 fields (Batch included) less
     // 7 forced organic Premier exponents; two Map rows × 4 editable fields
-    // (no distance, no batch) less 1 forced; plus the preview's lat and lng.
-    // 14×7 − 7 + 2×4 − 1 + 2 = 100.
-    expect(html.match(/<input/g)?.length).toBe(14 * 7 - 7 + 2 * 4 - 1 + 2);
+    // (no distance, no batch) less 1 forced; the three organic Local
+    // Favorites rows keep Batch only (MESITA-4674), 5 fewer inputs each.
+    expect(html.match(/<input/g)?.length).toBe(14 * 7 - 7 + 2 * 4 - 1 - 3 * 5);
     for (const name of ["Organic Nearby Lane", "Inorganic Local Favorites Lane", "Organic Popular Lane", "Family Mode", "½ at 0.1 km"]) {
       expect(html).toContain(name);
     }
