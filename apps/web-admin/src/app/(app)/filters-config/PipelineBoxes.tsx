@@ -1,18 +1,17 @@
 "use client";
 
-// Discovery: ONE page (MESITA-2327), five cards since MESITA-4454 (Pato:
-// one formula, two lanes, three modes):
+// Discovery: ONE page (MESITA-2327). Numbers first since MESITA-4694 (Pato:
+// "make it cleaner … simpler"): every card shows its numbers, one short line
+// of help per field, a status line and Save; anything longer sits in a closed
+// "How it works" at the card's foot. In page order:
 //
-//   1. How places are ranked   read only: the formula and which screen
-//                              reads which recipe row
-//   2. Ranking                 the ten lane rows, each with its batch →
-//                              `params.recipes` (MESITA-4517)
-//   3. Mixing                  Home's shuffle and the Inorganic lane →
-//                              `params.mix` (no page or feed size: the
-//                              lanes' batches size each weave)
-//   4. Map display             pins, dots, reload timing → four `map` keys
-//   5. Searchbars              the guest bar and the Admin & Business bar,
-//                              one card, one Save (MESITA-4463)
+//   Ranking             the lane rows, each with its batch → `params.recipes`
+//   Mixing              Home's shuffle and the Inorganic lane → `params.mix`
+//   Social              Home › Social's length → `social`
+//   Map                 pins, dots, reload timing → four `map` keys
+//   Search bars         the guest bar and the Admin & Business bar, one Save
+//   How ranking works   read only, closed: the formula and which screen
+//                       reads which recipe row
 //
 // Each card saves only its own slices (BOX_SLICES, pinned by actions.test.ts),
 // so two cards can never overwrite each other. Every save carries the stamp
@@ -21,9 +20,11 @@
 // Labels follow Pato's names: Half distance, Distance exponent, Stars
 // exponent, Google exponent, Premier exponent, Temperature; never "root".
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { LayoutGrid, ListOrdered, MapPin, Search, Shuffle, Users } from "lucide-react";
 import {
+  Chip,
+  Collapsible,
   NumberCell,
   NumberField,
   Notice,
@@ -147,12 +148,15 @@ function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slice
       if (r.ok) stamp?.set(r.updatedAt);
       return r;
     });
+  useUnsavedGuard(dirty);
   return (
     <>
-      {updatedAt ? (
+      {/* One status line: unsaved, else when it was last saved. */}
+      {dirty && !pending ? (
+        <p className="text-muted-foreground mt-4 type-meta">Unsaved changes</p>
+      ) : updatedAt ? (
         <p className="text-muted-foreground mt-4 type-meta">Last saved {formatShortDate(updatedAt)}</p>
       ) : null}
-      {dirty && !pending ? <p className="text-muted-foreground mt-4 type-meta">Unsaved changes</p> : null}
       {error && !loadBlocked ? <Notice className="mt-4">{error}</Notice> : null}
       <SaveRow
         pending={pending}
@@ -164,6 +168,22 @@ function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slice
     </>
   );
 }
+
+/** While a card has unsaved edits, the browser asks before the page is closed
+ *  or reloaded (MESITA-4694): the jump row makes it easy to leave an edited
+ *  card behind. Leaving by the sidebar is not guarded. */
+function useUnsavedGuard(dirty: boolean) {
+  useEffect(() => {
+    if (!dirty) return;
+    const ask = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", ask);
+    return () => window.removeEventListener("beforeunload", ask);
+  }, [dirty]);
+}
+
+/** The card's `right` slot: "Unsaved" beside the title while it has edits, so
+ *  it shows from the top of the card and when jumped to. */
+const unsaved = (dirty: boolean) => (dirty ? <Chip>Unsaved</Chip> : undefined);
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -259,11 +279,13 @@ export function HowRankedCard() {
     <SectionCard
       id="s-how"
       icon={<ListOrdered />}
-      title="How places are ranked"
-      subtitle="One formula for every list. Each screen reads its own row of numbers from the Ranking card."
-      className="scroll-mt-16"
+      title="How ranking works"
+      subtitle="The formula, the words, and which screen reads which row."
+      className="scroll-mt-20"
     >
-      <div className="mt-4 flex flex-col gap-4">
+      {/* Closed; the jump row opens it (`#s-how > details`). No id of its own. */}
+      <Collapsible summary="Read it">
+      <div className="flex flex-col gap-4">
         <code className="bg-muted w-fit max-w-full rounded-md px-2 py-1 text-xs break-words whitespace-normal">
           Score = Premier ^ Premier exponent × (((1 − w) × stars × reviews + w × growth) ^ Google exponent × (1 + Foursquare factor × raw ^ Foursquare exponent)) × Proximity
         </code>
@@ -340,6 +362,7 @@ export function HowRankedCard() {
           </p>
         }
       />
+      </Collapsible>
     </SectionCard>
   );
 }
@@ -423,9 +446,13 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
       icon={<LayoutGrid />}
       title="Ranking"
       subtitle="One row per lane: its batch and the numbers in its formula."
-      className="scroll-mt-16"
+      right={unsaved(dirty)}
+      className="scroll-mt-20"
     >
       <div className="mt-4 flex flex-col gap-3">
+        <code className="bg-muted w-fit max-w-full rounded-md px-2 py-1 text-xs break-words whitespace-normal">
+          Score = Premier × Popularity × Proximity
+        </code>
         <Table>
           <THead>
             <Tr>
@@ -462,6 +489,10 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
             ))}
           </TBody>
         </Table>
+      </div>
+      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.ranking} />
+      <Collapsible summary="How it works">
+        <div className="flex flex-col gap-3">
         <Meta>
           Batch {RECIPE_BOUNDS.batch.min}–{RECIPE_BOUNDS.batch.max}: how many places the lane gives each
           weave; a lane with fewer left gives fewer, so a feed can be shorter than its batches add up to.
@@ -478,8 +509,8 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
           Foursquare factor 1 allows a boost of up to 2×. A higher Foursquare exponent concentrates that
           boost near the top of the 0–1 scale. A missing Foursquare score stays at 1×.
         </p>
-      </div>
-      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.ranking} />
+        </div>
+      </Collapsible>
     </SectionCard>
   );
 }
@@ -503,11 +534,13 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-mixing"
       icon={<Shuffle />}
       title="Mixing"
-      subtitle="How Home weaves the lanes and shuffles the first weave. No page or feed size: each lane's batch sizes it. Home only: the Map and Chat are never shuffled."
-      className="scroll-mt-16"
+      subtitle="How Home weaves the lanes and shuffles the first screen."
+      right={unsaved(dirty)}
+      className="scroll-mt-20"
     >
       <div className="mt-4 flex flex-col gap-6">
         <Group title="Temperature">
+          <Meta>0 keeps the order; 1 is loose; 3 or more is near random.</Meta>
           <div className="grid gap-3 sm:grid-cols-3">
             {(["nearby", "family", "popular"] as const).map((mode) => (
               <NumberField
@@ -522,12 +555,6 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               />
             ))}
           </div>
-          <Meta>
-            Only the first weave is shuffled; everything after it keeps its exact order. 0 keeps the order
-            exactly, 0.3 swaps neighbours, 1 is loose, 3 or more is almost random. Both lanes
-            shuffle together. Every page load shuffles again (a reload draws a new feed), and so does moving
-            more than 300 m; going back to a mode within one load keeps its order.
-          </Meta>
         </Group>
         <Group title="Inorganic lane">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -538,7 +565,7 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={MIX_BOUNDS.adFloor.max}
               decimals
               disabled={off}
-              hint="Proximity × the plan's 2 or 5 must reach it. Uses the plan's 2 or 5, not the exponent."
+              hint="0 lets every Premier place take an ad slot. Higher means it must be closer."
               onChange={(adFloor) => patchMix({ adFloor })}
             />
             <NumberField
@@ -547,26 +574,38 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={MIX_BOUNDS.adEvery.min}
               max={MIX_BOUNDS.adEvery.max}
               disabled={off}
-              hint="One inorganic place after every N organic places. 0 = the Organic lane alone, on Home and on the Map."
+              hint={
+                mix.adEvery === 0
+                  ? "No inorganic places."
+                  : `${mix.adEvery === 1 ? "One organic place" : `${mix.adEvery} organic places`}, then one inorganic place, again and again.`
+              }
               onChange={(adEvery) => patchMix({ adEvery })}
             />
           </div>
-          <Meta>
-            The merge: {mix.adEvery === 0 ? "no inorganic slots; the list is the Organic lane" : (
-              <>
-                {mix.adEvery === 1 ? "one organic place" : `${mix.adEvery} organic places`}, then one inorganic place, again
-                and again
-              </>
-            )}
-            . A place already shown is skipped and its slot takes the next place of its lane. An inorganic slot
-            with no Premier place left is dropped and the organic list continues. A place appears once; guests see it
-            marked &ldquo;Ad&rdquo; only in an inorganic slot. On Home a Premier place takes an inorganic slot
-            only when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s 2 or 5 reaches the
-            Inorganic floor; on the Map the screen is the cut, and inorganic pins count against Most pins shown.
-          </Meta>
         </Group>
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.mixing} />
+      <Collapsible summary="How it works">
+        <div className="flex flex-col gap-3">
+          <Meta>
+            Only the first weave is shuffled; everything after it keeps its exact order. 0.3 swaps
+            neighbours. Both lanes shuffle together. Every page load shuffles again (a reload draws a new
+            feed), and so does moving more than 300 m; going back to a mode within one load keeps its order.
+            No page or feed size: each lane&apos;s batch sizes it. Home only: the Map and Chat are never
+            shuffled.
+          </Meta>
+          <Meta>
+            The Inorganic floor compares Proximity × the plan&apos;s 2 or 5 (not the exponent). At cadence 0
+            the list is the Organic lane alone, on Home and on the Map. A place already shown is skipped and
+            its slot takes the next place of its lane. An inorganic slot with no Premier place left is
+            dropped and the organic list continues. A place appears once; guests see it marked
+            &ldquo;Ad&rdquo; only in an inorganic slot. On Home a Premier place takes an inorganic slot only
+            when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s 2 or 5 reaches the
+            Inorganic floor; on the Map the screen is the cut, and inorganic pins count against Most pins
+            shown.
+          </Meta>
+        </div>
+      </Collapsible>
     </SectionCard>
   );
 }
@@ -583,9 +622,10 @@ export function SocialDiscoveryBox(seed: ConfigSeed<DiscoveryConfig>) {
     <SectionCard
       id="s-social"
       icon={<Users />}
-      title="Social discovery"
+      title="Social"
       subtitle="Home › Social: everyone's newest events near the guest."
-      className="scroll-mt-16"
+      right={unsaved(dirty)}
+      className="scroll-mt-20"
     >
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <NumberField
@@ -622,9 +662,10 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
     <SectionCard
       id="s-map"
       icon={<MapPin />}
-      title="Map display"
+      title="Map"
       subtitle="How many places the Search map marks, and when it reloads."
-      className="scroll-mt-16"
+      right={unsaved(dirty)}
+      className="scroll-mt-20"
     >
       <div className="mt-4 flex flex-col gap-6">
         <Group title="Pins">
@@ -635,6 +676,7 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={MAP_PLACES_SHOWN_MIN}
               max={MAP_PLACES_SHOWN_MAX}
               disabled={off}
+              hint="Full pins, each with a card."
               onChange={(placesShown) => map({ placesShown })}
             />
             <NumberField
@@ -643,15 +685,10 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={MAP_DOTS_SHOWN_MIN}
               max={MAP_DOTS_SHOWN_MAX}
               disabled={off}
+              hint="Past the pins, places show as small dots with no card."
               onChange={(dotsShown) => map({ dotsShown })}
             />
           </div>
-          <Meta>
-            The Map searches the visible circle (from the cross to the nearest edge of the map); with no
-            screen yet it uses 15 km. The best Most pins shown are full pins with a card in the carousel,
-            inorganic pins included; the places after them, up to Most marks shown in all, are small dots with no card
-            that say &ldquo;zoom in here&rdquo;. At or under Most pins shown there are no dots.
-          </Meta>
         </Group>
         <Group title="Reload">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -662,6 +699,7 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={MAP_RELOAD_IDLE_SEC_MAX}
               decimals
               disabled={off}
+              hint="At most one reload in this many seconds."
               onChange={(reloadIdleSec) => map({ reloadIdleSec })}
             />
             <NumberField
@@ -671,17 +709,28 @@ export function MapDisplayBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={MAP_RELOAD_MIN_VIEWPORT_PCT_MAX}
               decimals
               disabled={off}
+              hint="0 = any move reloads."
               onChange={(reloadMinViewportPct) => map({ reloadMinViewportPct })}
             />
           </div>
+        </Group>
+      </div>
+      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.mapDisplay} />
+      <Collapsible summary="How it works">
+        <div className="flex flex-col gap-3">
+          <Meta>
+            The Map searches the visible circle (from the cross to the nearest edge of the map); with no
+            screen yet it uses 15 km. The best Most pins shown are full pins with a card in the carousel,
+            inorganic pins included; the places after them, up to Most marks shown in all, are small dots with no card
+            that say &ldquo;zoom in here&rdquo;. At or under Most pins shown there are no dots.
+          </Meta>
           <Meta>
             The Search map reloads when the guest stops moving it, at most once every this many seconds
             counted from the last reload, and only if the camera has moved at least this share of the screen
             since that reload (a pan or a zoom). 0% is any move. Finger-width pans do not refetch.
           </Meta>
-        </Group>
-      </div>
-      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.mapDisplay} />
+        </div>
+      </Collapsible>
     </SectionCard>
   );
 }
@@ -719,24 +768,33 @@ export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
   const floor = cfg.name.popularityFloor;
   const floorExp = saved.params.popularity.root;
   const floorReviews = Math.max(0, (Math.pow(floor, 1 / floorExp) - 1) / 4);
+  // The field's one line, computed from its current value.
+  const floorHint =
+    floor <= 0
+      ? "Off: Google's order."
+      : Math.round(floorReviews) < 1
+        ? "Only places with no reviews sort last."
+        : `Places under about ${timesFmt(floorReviews).replace("×", "")} reviews at 4★ sort last.`;
   return (
     <SectionCard
       id="s-name"
       icon={<Search />}
-      title="Searchbars"
-      subtitle="Finding a place by its name. Google Autocomplete and Text Search answer; Mesita never searches its own places by name."
-      className="scroll-mt-16"
+      title="Search bars"
+      subtitle="Finding a place by its name, through Google."
+      right={unsaved(dirty)}
+      className="scroll-mt-20"
     >
       <div className="mt-4 flex flex-col gap-6">
         <Group title="Guest Search bar">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <NumberField
-              label="Seconds without typing before the search runs"
+              label="Wait before searching (s)"
               value={cfg.name.idleSec}
               min={NAME_IDLE_SEC_MIN}
               max={NAME_IDLE_SEC_MAX}
               decimals
               disabled={off}
+              hint="Seconds without typing."
               onChange={(idleSec) => name({ idleSec })}
             />
             <NumberField
@@ -745,6 +803,7 @@ export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={0}
               max={NAME_LANE_COUNT_MAX}
               disabled={off}
+              hint="0 turns Autocomplete off."
               onChange={(autoCount) => deep({ autoCount })}
             />
             <NumberField
@@ -753,12 +812,14 @@ export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={0}
               max={NAME_LANE_COUNT_MAX}
               disabled={off}
+              hint="0 turns Text Search off."
               onChange={(googleCount) => deep({ googleCount })}
             />
             <SwitchRow
               label="Show Locations"
               checked={cfg.name.locations}
               pending={off}
+              hint="Cities and regions in the results."
               onCheckedChange={(locations) => name({ locations })}
             />
             <NumberField
@@ -768,22 +829,10 @@ export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={NAME_POPULARITY_FLOOR_MAX}
               decimals
               disabled={off}
+              hint={floorHint}
               onChange={(popularityFloor) => name({ popularityFloor })}
             />
           </div>
-          <Meta>
-            The guest types a place&apos;s name; Autocomplete and Text Search answer together, merged with
-            duplicates removed. 0 rows turns a source off.{" "}
-            {floor > 0 ? (
-              <>
-                Google places whose Popularity (at exponent {floorExp}) is under {floor} sort after the rest;
-                none are removed. {floor} ≈ 4★ × {timesFmt(floorReviews).replace("×", "")} reviews.
-              </>
-            ) : (
-              <>Minimum Popularity is off: the bar keeps Google&apos;s order.</>
-            )}{" "}
-            Home, the Map and Chat never hide a place for its Popularity.
-          </Meta>
         </Group>
         <Group title="Admin & Business search">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -793,6 +842,7 @@ export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={0}
               max={NAME_LANE_COUNT_MAX}
               disabled={off}
+              hint="0 turns Autocomplete off in Find."
               onChange={(autoCount) => admin({ autoCount })}
             />
             <NumberField
@@ -801,28 +851,32 @@ export function SearchbarsBox(seed: ConfigSeed<DiscoveryConfig>) {
               min={1}
               max={NAME_ADMIN_TEXT_MAX}
               disabled={off}
+              hint="At least 1: Find always runs Text Search."
               onChange={(textCount) => admin({ textCount })}
             />
             <SwitchRow
               label="Show results on an empty query"
               checked={a.emptyQuery}
               pending={off}
+              hint="On: Find opens on every Mesita place. Off: it waits for a query."
               onCheckedChange={(emptyQuery) => admin({ emptyQuery })}
             />
           </div>
-          <Meta>
-            Admin › Single Place › Find, and Business › Places when an owner claims their place. Google&apos;s
-            own order: rows found by both sources first, then Text Search rank, then Autocomplete rank. No
-            Minimum Popularity, no Locations. 0 Autocomplete rows means Find does not call Autocomplete.
-          </Meta>
         </Group>
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.searchbars} />
       <HowItWorks
         pipeline="name"
-        summary="How the searchbars work, in full"
+        summary="How it works"
         explanation={
           <p>
+            Google Autocomplete and Text Search answer; Mesita never searches its own places by name. On
+            the guest bar the two answer together, merged with duplicates removed; Google places whose
+            Popularity (at exponent {floorExp}) is under Minimum Popularity sort after the rest and none are
+            removed. Home, the Map and Chat never hide a place for its Popularity. The Admin &amp; Business
+            bar is Admin › Single Place › Find, and Business › Places when an owner claims their place: it
+            keeps Google&apos;s own order (rows found by both sources first, then Text Search rank, then
+            Autocomplete rank), with no Minimum Popularity and no Locations.{" "}
             Both bars run the Name pipeline. A Google hit Mesita holds shows as that Mesita place; a place
             neither source returns is not found. Closed places never show and a row must be one of
             Mesita&apos;s place types. On the guest bar a Location (a city, a region) shows with a location

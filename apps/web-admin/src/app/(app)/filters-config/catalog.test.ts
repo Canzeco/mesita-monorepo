@@ -286,14 +286,14 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
 });
 
 describe("Discovery page box order", () => {
-  it("is ONE page of five cards, no subpages (MESITA-2327, MESITA-3828, MESITA-4454, MESITA-4463)", () => {
+  it("is ONE page of six sections in the guest's order, no subpages (MESITA-2327, MESITA-3828, MESITA-4454, MESITA-4463, MESITA-4694)", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
-    const order = ["<HowRankedCard", "<RankingBox", "<MixingBox", "<MapDisplayBox", "<SearchbarsBox"].map((tag) =>
+    const order = ["<RankingBox", "<MixingBox", "<SocialDiscoveryBox", "<MapDisplayBox", "<SearchbarsBox", "<HowRankedCard"].map((tag) =>
       page.indexOf(tag),
     );
     expect(order.every((at) => at > -1)).toBe(true);

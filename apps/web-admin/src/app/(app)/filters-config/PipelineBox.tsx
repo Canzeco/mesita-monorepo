@@ -1,16 +1,13 @@
-// One Discovery pipeline box (MESITA-2327; laid out settings-first in
-// MESITA-3819): title, who runs it, one plain line, the recipe (reads from ·
-// keeps only · ranked by), then Settings and Save, and last a closed "How it
-// works" (`HowItWorks`) holding Explanation, Sources, Signals, Gates,
-// Factors, Always-on rules and Scoring, drawn straight from the model
-// (discovery-surface.ts, the runtime's twin). The Searchbar boxes are
-// PipelineBoxes; the "How places are ranked" card shows the Catalog's and
-// the Map's HowItWorks (MESITA-4454). Which source feeds which signal is
-// DERIVED from the sources' declared fields (`sourcesFeedingSignal`), never
-// typed here; a source whose rows keep their own order feeds none
-// (MESITA-2338).
+// The closed "How it works" of one Discovery pipeline (MESITA-2327): its
+// Explanation, Sources, Signals, Gates, Factors, Always-on rules and Scoring,
+// drawn straight from the model (discovery-surface.ts, the runtime's twin).
+// Search bars and the How ranking works card show it. Which source feeds
+// which signal is DERIVED from the sources' declared fields
+// (`sourcesFeedingSignal`), never typed here; a source whose rows keep their
+// own order feeds none (MESITA-2338). The settings-first box that wrapped it
+// left with its last caller (MESITA-4694).
 
-import { Chip, Collapsible, SectionCard } from "@/components/admin-ui";
+import { Collapsible } from "@/components/admin-ui";
 import { KnobState } from "@/components/admin-ui/config";
 import {
   DISCOVERY_FIELD_LABELS,
@@ -45,112 +42,6 @@ const sourceLabel = (key: Parameters<typeof sourceByKey>[0]) => sourceByKey(key)
 
 /** How a pipeline orders its rows, in a few words: its signals, then the
  *  Premier factor; a pipeline with no signal keeps Google's order. */
-function rankedBy(pipeline: DiscoveryPipelineKey): string {
-  const p = DISCOVERY_PIPELINES.find((x) => x.key === pipeline);
-  if (!p) return "";
-  if (p.signals.length === 0) return "Google's order";
-  const parts = p.signals.map((k) => signalByKey(k).label);
-  if (p.factors.length > 0) parts.push("Premier");
-  return parts.join(" × ");
-}
-
-function RecipeCell({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="text-muted-foreground type-meta">{label}</span>
-      <div className="flex flex-wrap gap-1.5">{children}</div>
-    </div>
-  );
-}
-
-export function PipelineBox({
-  id,
-  pipeline,
-  title,
-  icon,
-  callers,
-  summary,
-  explanation,
-  scoring,
-  rules,
-  children,
-  save,
-}: {
-  id: string;
-  pipeline: DiscoveryPipelineKey;
-  title: string;
-  icon: React.ReactNode;
-  /** Who runs this box's configuration; defaults to the pipeline's callers. */
-  callers?: readonly string[];
-  /** One plain line under the title: what the guest or admin gets. */
-  summary?: React.ReactNode;
-  explanation: React.ReactNode;
-  /** Overrides the pipeline's Scoring line when this caller orders rows its
-   *  own way (admin Find). */
-  scoring?: string;
-  /** Overrides the pipeline's always-on rules when this caller applies
-   *  different ones (admin Find's Text Search column). */
-  rules?: readonly string[];
-  /** The Settings part (none when the pipeline is not live). */
-  children?: React.ReactNode;
-  /** The Save part. */
-  save?: React.ReactNode;
-}) {
-  const p = DISCOVERY_PIPELINES.find((x) => x.key === pipeline);
-  if (!p) return null;
-  if (!p.live) {
-    // Soon (MESITA-2345): the title, one line and the chip. Its controls are
-    // deleted from the markup, not hidden (the ConfigSoon rule).
-    return (
-      <SectionCard
-        id={id}
-        icon={icon}
-        title={title}
-        right={<Chip>Soon</Chip>}
-        className="scroll-mt-16"
-      >
-        <div className="text-muted-foreground mt-1 type-meta">{explanation}</div>
-      </SectionCard>
-    );
-  }
-  return (
-    <SectionCard
-      id={id}
-      icon={icon}
-      title={title}
-      subtitle={`Run by ${(callers ?? p.callers).join(" · ")}`}
-      className="scroll-mt-16"
-    >
-      <div className="mt-4 flex flex-col gap-4">
-        {summary ? <p className="text-foreground max-w-3xl text-sm leading-relaxed">{summary}</p> : null}
-        <div className="border-border bg-muted/30 grid gap-4 rounded-xl border p-4 sm:grid-cols-3">
-          <RecipeCell label="Reads from">
-            {p.sources.map((key) => (
-              <Chip key={key}>{sourceLabel(key)}</Chip>
-            ))}
-          </RecipeCell>
-          <RecipeCell label="Keeps only">
-            {p.gates.length === 0 ? (
-              <Chip>Open places of Mesita&apos;s types</Chip>
-            ) : (
-              p.gates.map((key) => <Chip key={key}>{gateByKey(key).label}</Chip>)
-            )}
-          </RecipeCell>
-          <RecipeCell label="Ranked by">
-            <Chip>{scoring ? "Found by both first" : rankedBy(pipeline)}</Chip>
-          </RecipeCell>
-        </div>
-      </div>
-
-      <Part label="Settings">{children}</Part>
-
-      {save ? <div>{save}</div> : null}
-
-      <HowItWorks pipeline={pipeline} explanation={explanation} scoring={scoring} rules={rules} />
-    </SectionCard>
-  );
-}
-
 /** The closed "How it works" of one pipeline, drawn from the model. */
 export function HowItWorks({
   pipeline,

@@ -1,5 +1,6 @@
 "use client";
 
+import { JUMP_BAR_CLASS, JUMP_CHIP_CLASS, JUMP_CHIP_NUMBER_CLASS } from "@/components/admin-ui/classes";
 import { PIPELINE_STEPS } from "./pipeline";
 
 // Sticks to the top of the page so no surface can scroll off and leave
@@ -25,19 +26,16 @@ export function PipelineNav() {
   return (
     <nav
       aria-label={PIPELINE_STEPS.map((step) => step.label).join(", ")}
-      className="border-border bg-background sticky top-0 z-20 -mx-4 mb-4 border-b px-4 py-2 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8"
+      className={`${JUMP_BAR_CLASS} z-20`}
     >
       <ol className="flex gap-2 overflow-x-auto scrollbar-none sm:flex-wrap sm:overflow-x-visible">
         {PIPELINE_STEPS.map((step) => (
           <li key={step.id} className="shrink-0">
             <a
               href={`#${step.id}`}
-              className="border-border bg-card hover:border-foreground/40 inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium"
+              className={JUMP_CHIP_CLASS}
             >
-              <span
-                aria-hidden
-                className="bg-muted text-muted-foreground type-label inline-flex h-5 w-5 items-center justify-center rounded-full font-semibold tabular-nums"
-              >
+              <span aria-hidden className={JUMP_CHIP_NUMBER_CLASS}>
                 {step.n}
               </span>
               {step.label}
