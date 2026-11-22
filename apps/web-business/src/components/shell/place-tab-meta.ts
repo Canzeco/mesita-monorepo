@@ -33,7 +33,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   // financial"): each bill and how it was paid.
   visits: { label: "Visits", icon: ReceiptIcon, sub: "Every bill at your place, and how it was paid." },
   vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
-  gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit guests sent each other, and where each gift stands." },
+  gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit a guest sent a friend." },
   // Payments and Payouts are two pages (MESITA-4679, Pato: "Customers, Views,
   // Visits, Vouchers, Gifts, Payments, Payouts"; one page called Stripe since
   // MESITA-4568). Payments' URL stays /money: Offers owns /payments.
