@@ -68,6 +68,9 @@ const SHEET_ALLOWLIST = [
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */
 const DIALOG_ALLOWLIST = [
+  // A person's card, floating over Social (MESITA-4629, decision: Pato asked
+  // for "a floating modal" like Categories); a page from MESITA-4113.
+  "components/consumer/home/SocialFeed.tsx",
   // The location modal, floating (MESITA-4628, decision: Pato asked for "a
   // centered floating modal" like Categories); Home's location button and
   // the app-wide gate both open it. A bottom sheet until then (MESITA-4589).
