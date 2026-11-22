@@ -157,13 +157,11 @@ function OfferWords({
   if (full) {
     return (
       <span className={cn("absolute inset-0 flex items-center justify-center gap-2 px-2", className)}>
-        {slide.lead ? (
-          <span className="min-w-0 truncate text-base font-semibold">
-            {`${slide.lead}${slide.key === "prepay" ? " up to" : ""}`}
-          </span>
-        ) : null}
+        {slide.lead ? <span className="min-w-0 truncate text-base font-semibold">{slide.lead}</span> : null}
+        {/* "UP TO" INSIDE THE BOX (Pato, 2026-11-22, MESITA-4661: "up to goes
+            in the black box"): Prepay, then [up to +30% Bonus]. */}
         <span className="bg-foreground text-paper shrink-0 rounded-md px-2 py-1 text-sm leading-none font-bold tabular-nums">
-          {slide.pill}
+          {slide.key === "prepay" ? `up to ${slide.pill}` : slide.pill}
         </span>
       </span>
     );
