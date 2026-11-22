@@ -7,8 +7,8 @@ const STEPS = [
     body: "The Enricher starts from Google and fills each profile from the place’s Instagram, website and reviews. Every place is covered the day a city turns on.",
   },
   {
-    title: "The agent makes the call.",
-    body: "Booking still happens by phone and WhatsApp. The Reservationist phones the place for you, so any place takes part just by answering.",
+    title: "Mesi makes the call.",
+    body: "Booking still happens by phone and WhatsApp. Mesi, Mesita's voice agent, phones the place for you, so any place takes part just by answering.",
   },
   {
     title: "The place takes over when it wants.",

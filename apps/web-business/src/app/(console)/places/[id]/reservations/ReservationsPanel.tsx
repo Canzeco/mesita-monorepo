@@ -56,7 +56,7 @@ export function ReservationsPanel() {
             </span>
             <div className="min-w-0">
               <p className="font-medium">Reservations</p>
-              <p className="text-muted-foreground">Guests ask for a table on Mesita; Mesita calls your phone to book it.</p>
+              <p className="text-muted-foreground">Guests ask for a table on Mesita; Mesi, Mesita&apos;s agent, calls your phone to book it.</p>
             </div>
             <p className={cn("font-semibold whitespace-nowrap", !on && "text-muted-foreground")}>{on ? "On" : "Off"}</p>
             <Switch on={on} pending={pending !== null} onClick={() => void save("switch", reservationsPatch(place))} label={`Reservations: ${on ? "on" : "off"}`} />

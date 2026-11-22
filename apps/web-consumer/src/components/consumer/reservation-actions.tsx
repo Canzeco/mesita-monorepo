@@ -220,7 +220,7 @@ export function RescheduleForm({ r }: { r: ReservationItem }) {
         reservedAt: placeInstantIso(date, time, tz),
         partySize: party,
       });
-      toast.success("Mesita is calling the place with your new time.");
+      toast.success("Mesi is calling the place with your new time.");
       router.replace(`/reservation/${r.id}`);
     } catch (e) {
       setError(errMsg(e, "Couldn't update the reservation."));

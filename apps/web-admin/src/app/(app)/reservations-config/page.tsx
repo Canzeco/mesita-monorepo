@@ -16,7 +16,7 @@ export default async function ReservationsConfigPage() {
   return (
     <ConfigPageLayout
       title="Reservations"
-      description="The voice agent books tables by phone. Keep it on the test number until a real run."
+      description="Mesi, the voice agent, books tables by phone. Keep it on the test number until a real run."
     >
       <div className="flex flex-col gap-4">
         <ReservationsConfigClient

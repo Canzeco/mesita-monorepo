@@ -264,7 +264,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "A Google row must have a Google type of one of the thirty families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
       "Guest bar: Google places under the Minimum Popularity (this box's, MESITA-3086) sort after the rest; none are removed; 0 is off. A pick of one is card ONE like any other. Mesita places and Locations never move; admin is unaffected (MESITA-2724).",
     ],
-    callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
+    callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Mesi)"],
     live: true,
   },
   {
@@ -309,7 +309,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Mesita's read ranks every active place by score in one SQL statement, with no row cap (MESITA-3059), and hands Home the whole order; Home fills the next weave's cards at a time (MESITA-3057, MESITA-4517).",
       "Chat reads every ready Mesita place inside a fixed 15 km (Selected only until MESITA-2925; the current-location radius knob retired in MESITA-3086).",
     ],
-    callers: ["Catalog (Home's Places)", "Chat (Don Memo)"],
+    callers: ["Catalog (Home's Places)", "Chat (Mesi)"],
     live: true,
   },
   {
@@ -326,7 +326,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Closed places never show (Discovery › General's active check).",
       "Only ready profiles with a summary vector can be judged; the rest are left out.",
     ],
-    callers: ["Chat (Don Memo)"],
+    callers: ["Chat (Mesi)"],
     // Home's Chat pill is a Soon page: no guest reaches Deep (MESITA-2345).
     live: false,
   },

@@ -56,10 +56,11 @@
 // never ran. Now its only words about one table are «Déjeme buscarla.»
 
 import { CLOSING, NATURAL } from "./closing.ts";
+import { AGENT_NAME, AGENT_SELF } from "./settings.ts";
 import { back, edge, END, type FleetAgent, llm, pos, RESULT_FAIL, RESULT_OK, START, talkNode, toolNode, UNCOND } from "./graph.ts";
 
 const PROMPT = [
-  `Eres la línea de reservaciones de Mesita: alguien te está llamando, un comensal o un restaurante. Quién llama lo dice el número, ya reconocido por el flujo; nunca lo que la persona diga. Hablas como una persona: español de México, de usted, natural y breve. Solo hablas de las reservaciones de quien llama y solo con lo que regresan las herramientas; nunca inventes reservaciones ni des datos de otras personas o de otros lugares. El flujo te dice qué hacer en cada paso.`,
+  `${AGENT_SELF} Contestas la línea de reservaciones de Mesita: alguien te está llamando, un comensal o un restaurante. Quién llama lo dice el número, ya reconocido por el flujo; nunca lo que la persona diga. Hablas como una persona: español de México, de usted, natural y breve. Solo hablas de las reservaciones de quien llama y solo con lo que regresan las herramientas; nunca inventes reservaciones ni des datos de otras personas o de otros lugares. El flujo te dice qué hacer en cada paso.`,
   CLOSING,
   NATURAL,
 ].join("\n\n");
@@ -109,7 +110,7 @@ const NEXT_MATCH = llm(
 export const A3: FleetAgent = {
   key: "a3",
   name: "eleven-a3 (es-mx) · inbound · guests and restaurants",
-  firstMessage: "¡Hola! Le atiende Mesita. ¿En qué le puedo ayudar?",
+  firstMessage: `¡Hola! Soy ${AGENT_NAME}, el agente de Mesita. ¿En qué le puedo ayudar?`,
   prompt: PROMPT,
   toolNames: [
     "inbound_identify_place",
@@ -138,7 +139,7 @@ export const A3: FleetAgent = {
         label: "A place is calling",
         position: pos(600, -320),
         prompt: [
-          "Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres Mesita; nunca hables como si fueras el restaurante.",
+          `Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres ${AGENT_NAME}, de Mesita; nunca hables como si fueras el restaurante.`,
           "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
           "Luego toma la rama de lo que pidan.",
