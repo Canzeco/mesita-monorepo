@@ -241,6 +241,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meTicketsGiftsIn: "/me/tickets/gifts-in",
         meTicketsGiftsOut: "/me/tickets/gifts-out",
         meTicketsRefunds: "/me/tickets/refunds",
+        meTicketsStories: "/me/tickets/stories",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
@@ -538,6 +539,11 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       {
         source: "/me/tickets/refunds",
         destination: "/me/settings/refunds",
+        permanent: true,
+      },
+      {
+        source: "/me/tickets/stories",
+        destination: "/me/tickets/vouchers",
         permanent: true,
       },
       {

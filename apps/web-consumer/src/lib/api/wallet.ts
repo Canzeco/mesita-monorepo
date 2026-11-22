@@ -184,6 +184,9 @@ export type Wallet = {
   balances: WalletBalance[];
   /** Absent from a server before MESITA-3507: reads as none. */
   waiting_stories?: WaitingStory[];
+  /** The guest's Story-voucher purchases (MESITA-4627): a voucher row knows
+   *  its Post Story step before any Story record exists. Absent: none. */
+  story_purchase_ids?: string[];
   /** Tickets › Stories (MESITA-4405): every open Story plus the 20 most
    *  recently decided, newest first. Absent from an older server: none. */
   stories?: StoryTicket[];

@@ -11,11 +11,11 @@ import {
   payBillPath,
   creditEntryPath,
   visitPath,
-  storyTicketPath,
+  storyPurchasePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
+import { storyForPurchase, storyPurchaseIds, storyVoucherOpen, storyVoucherStage, storyVoucherWords } from "@/lib/story-voucher";
 import type { TicketKind } from "@/lib/ticket-kinds";
-import { storyBonusOpen, storyLine } from "@/lib/story-lines";
 import type {
   ActivityItem,
   StatusTone,
@@ -190,6 +190,7 @@ const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
 
 export function walletRows(w: Wallet, now = Date.now()): Row[] {
   const out: Row[] = [];
+  const storyBuys = storyPurchaseIds(w);
   for (const b of w.balances) {
     const place = b.place?.name ?? "A Mesita place";
     const photo = b.place?.photo ?? null;
@@ -245,9 +246,43 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
         return;
       }
       if (BOUGHT_KINDS.has(e.kind)) {
-        const bonus = bonuses.find((x) => !usedBonus.has(x) && x.at === e.at);
+        // Its bonus: by purchase when both carry one (a Story bonus lands
+        // hours later), else by the same instant (MESITA-4627).
+        const bonus = bonuses.find(
+          (x) => !usedBonus.has(x) && (e.purchase_id && x.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at),
+        );
         if (bonus) usedBonus.add(bonus);
         const pending = e.pending || !!bonus?.pending;
+        // A STORY VOUCHER (MESITA-4627): the same row, one more step; it
+        // opens the Story screen, which finds the Story by the purchase.
+        if (e.purchase_id && storyBuys.has(e.purchase_id)) {
+          const pid = e.purchase_id;
+          const refunded = b.entries.some((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid);
+          const stage = storyVoucherStage(storyForPurchase(w.stories, pid), refunded, now);
+          const words = storyVoucherWords(stage);
+          out.push({
+            key: `b-${b.place_id}-${e.at}-${i}`,
+            type: "vouchers",
+            kind: "story",
+            sign: "+",
+            at: e.at,
+            upcoming: false,
+            place,
+            photo,
+            status:
+              stage === "done"
+                ? { label: words.label, tone: "green" }
+                : stage === "lost"
+                  ? { label: words.label, tone: "grey" }
+                  : { label: words.label, tone: "ink" },
+            landing: storyVoucherOpen(stage),
+            big: money(e.amount_cents, cur),
+            money: true,
+            line: join(words.line, bonus && `+${money(bonus.amount_cents, cur)} bonus`),
+            href: storyPurchasePath(pid),
+          });
+          return;
+        }
         out.push({
           key: `b-${b.place_id}-${e.at}-${i}`,
           type: "vouchers",
@@ -332,30 +367,8 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
       );
   }
 
-  // A Story voucher's bonus, waiting on the story (MESITA-3507; MESITA-4264:
-  // what was paid is a voucher row above, already credited). A released
-  // bonus is its own Bonus row, so it is not drawn twice.
-  for (const s of w.waiting_stories ?? []) {
-    if (s.state === "released") continue;
-    const open = storyBonusOpen(s);
-    out.push({
-      key: `s-${s.purchase_id}`,
-      type: "vouchers",
-      kind: "story",
-      sign: "+",
-      at: s.paid_at,
-      upcoming: false,
-      place: s.place?.name ?? "A Mesita place",
-      photo: s.place?.photo ?? null,
-      status: open ? { label: "Waiting", tone: "ink" } : { label: "Bonus not added", tone: "grey" },
-      big: money(s.bonus_cents, s.currency),
-      money: true,
-      line: storyLine(s, now),
-      // MESITA-4405: the Story's own screen, its steps and its QR.
-      href: s.story_id ? storyTicketPath(s.story_id) : walletPlacePath(s.place_id),
-    });
-  }
-
+  // NO STORY ROWS OF THEIR OWN (MESITA-4627): a Story voucher is its
+  // voucher row above, which carries the Story's step.
   return out;
 }
 

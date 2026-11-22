@@ -12,17 +12,16 @@ import {
   money,
   type WaitingStory,
 } from "@/lib/api/wallet";
-import { creditEntryPath, payPlacePath, payReceiptPath, storyTicketPath, walletSendPath } from "@/lib/consumer-route-contract";
+import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { useRouter } from "next/navigation";
 import { navigateTo } from "@/lib/navigate";
 import { placeHref } from "@/lib/place-route";
 import { nextAvailableMs, shouldReread } from "@/lib/wallet-countdown";
 import { type EntryGroup, groupKeys, splitEntries } from "@/lib/wallet-entries";
 import { cn } from "@/lib/utils";
-import { useStoryNew, useStoryNow } from "./use-story-now";
-import { storyBonusOpen, storyLine } from "@/lib/story-lines";
+import { storyBonusOpen } from "@/lib/story-lines";
 import { Panel, PANEL_CLASS } from "@/components/shared/Panel";
-import { PendingBox, pendingWords, WalletPanelList } from "./WalletLists";
+import { PendingBox, pendingWords } from "./WalletLists";
 import { TicketsBoard, type TicketTab } from "@/components/consumer/activity/MeLists";
 import { ActivityRowsSkeleton } from "@/components/consumer/activity/ActivityRow";
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
@@ -101,7 +100,6 @@ const ROUND_GLYPH = "h-5 w-5";
 const TICK_MS = 30_000;
 /** The server turns an entry Available on its own clock: ask a little after. */
 const REREAD_SLACK_MS = 5_000;
-const ROW = "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left";
 
 /** The rows with a page of their own besides a paid bill (MESITA-3753): a
  *  purchase, its refund, a lone bonus, a gift. The kinds Me › Tickets opens. */
@@ -113,41 +111,6 @@ function entryHref(placeId: string, g: EntryGroup): string | null {
   if (g.kind === "spend") return g.payment_id ? payReceiptPath(g.payment_id) : null;
   if (CREDIT_PAGE.has(g.kind) || (g.kind === "reversal" && g.purchase_id)) return creditEntryPath(placeId, g);
   return null;
-}
-
-/** A row's two lines and its amount; a waiting row mutes only the amount. */
-function RowBody({ title, line, amount, waiting }: { title: string; line: string; amount: string; waiting: boolean }) {
-  return (
-    <>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-base font-semibold">{title}</span>
-        <span className="text-muted-foreground mt-0.5 block text-sm">{line}</span>
-      </span>
-      <span className={cn("shrink-0 text-base font-semibold tabular-nums", waiting && "text-muted-foreground")}>{amount}</span>
-    </>
-  );
-}
-
-/** A Story voucher's bonus, in the list's own row shape (MESITA-4264): what
- *  was paid is already credit, so the row is the bonus and its line says
- *  where the story stands. */
-function StoryEntryRow({ story, onOpen, now }: { story: WaitingStory; onOpen: () => void; now: number }) {
-  const amount = `+${money(story.bonus_cents, story.currency)}`;
-  const line = storyLine(story, now);
-  // A released bonus reads New the first time it shows (MESITA-4296).
-  const fresh = useStoryNew(story);
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={cn(ROW, "hover:bg-muted/60 transition")}
-      aria-label={`Story bonus, ${amount}.${fresh ? " New." : ""} ${line}`}
-      data-loyalty-card-story={story.state}
-    >
-      <RowBody title={fresh ? "Story bonus · New" : "Story bonus"} line={line} amount={amount} waiting={storyBonusOpen(story)} />
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-    </button>
-  );
 }
 
 /** The place's round photo beside the page's title (Pato, 2026-11-15,
@@ -239,7 +202,6 @@ export function PlaceCredit({
   const { pending } = splitEntries(entries ?? []);
   const counting = pending.some((g) => g.available_at);
   const [now, setNow] = useState(() => Date.now());
-  const storyNow = useStoryNow(stories);
   const [ticketKind, setTicketKind] = useState<TicketTab>("visits");
 
   useEffect(() => {
@@ -467,17 +429,9 @@ export function PlaceCredit({
         />
       ) : null}
 
-      {/* VOUCHERS TO ACTIVATE (MESITA-4116, Pato: "also add a list of
-          vouchers pending to activate if it's the case"): Story vouchers
-          waiting for staff get their own panel over Tickets, only when
-          there are any. */}
-      {stories.length > 0 ? (
-        <WalletPanelList title="Story vouchers" className="mt-4">
-          {stories.map((st) => (
-            <StoryEntryRow key={st.purchase_id} story={st} now={storyNow} onOpen={() => navigateTo(router, storyTicketPath(st.story_id), { motion: "drill" })} />
-          ))}
-        </WalletPanelList>
-      ) : null}
+      {/* NO STORY VOUCHERS PANEL (Pato, 2026-11-21, MESITA-4627: "COMPLETELY
+          REMOVE THE INDEPENDENT STORY TICKETS"): a Story voucher is its
+          Vouchers row in Tickets below, which opens its Story screen. */}
 
       {/* MONEY ON ITS WAY (MESITA-4279): the pending lines, each with its
           countdown, stay in their own panel while there are any. */}

@@ -40,6 +40,10 @@
 //   with no entries is a $0 card they can remove.
 //   card_ok (MESITA-3305) says the place can take a card part: its account
 //   charges in this universe and the owner's Cards switch is on.
+//             story_purchase_ids (MESITA-4627): the guest's Story-voucher
+//               purchases (wallet_purchases.voucher = 'voucher_story'), so a
+//               voucher row knows it has a Post Story step before any Story
+//               record exists (paying creates none, MESITA-4484),
 //             stories (MESITA-4405): the Tickets Stories tab, every open Story
 //               plus the 20 most recently decided, newest first; each is
 //               consumer-web-get-story's Story view + place,
@@ -232,6 +236,19 @@ serveJson("consumer-web-get-wallet", async (req) => {
       nowMs,
     })
   );
+  // STORY VOUCHERS (MESITA-4627): which purchases are Story vouchers. A
+  // failed read leaves the list empty: the rows read as classic vouchers.
+  const { data: storyBuys, error: storyBuysErr } = await admin
+    .from("wallet_purchases")
+    .select("id")
+    .eq("consumer_id", userId)
+    .eq("livemode", livemode)
+    .eq("voucher", "voucher_story")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (storyBuysErr) console.error(`[consumer-web-get-wallet] story purchases read: ${storyBuysErr.message}`);
+  const storyPurchaseIds = ((storyBuysErr ? [] : storyBuys) ?? []).map((p: { id: string }) => p.id);
+
   // Tickets history (MESITA-4267): every open Story plus the 20 most recently
   // decided, of any age. The 24-hour cutoff dropped a voided Story out of
   // history. The Wallet itself shows only the open ones.
@@ -343,6 +360,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
       card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
       offers: offersById.get(place_id) ?? { sell: [] },
     })),
+    story_purchase_ids: storyPurchaseIds,
     stories: storyViews.map((v) => ({ ...v, place: v.place_id ? places.get(v.place_id) ?? null : null })),
     waiting_stories: waitingStories.map((st) => {
       const p = st.purchase_id ? storyPurchases.get(st.purchase_id) : undefined;

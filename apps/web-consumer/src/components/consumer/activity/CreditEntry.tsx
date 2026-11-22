@@ -46,7 +46,9 @@ import { creditEntryTitle } from "@/lib/credit-entry-title";
 import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BadgeDollarSign, Copy } from "lucide-react";
+import { BadgeDollarSign, Clock3, Copy, Gift } from "lucide-react";
+import { storyPurchaseIds } from "@/lib/story-voucher";
+import { VoucherSteps } from "./VoucherSteps";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -75,6 +77,7 @@ import {
 import {
   creditEntryPath,
   giftTicketPath,
+  storyPurchasePath,
   payPlacePath,
   placePath,
   walletPlacePath,
@@ -163,7 +166,13 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
   const router = useRouter();
   const found = wallet.data ? findEntry(wallet.data, placeId, entryKey).e : undefined;
   const gift = wallet.data && found ? giftOfEntry(wallet.data, found) : null;
-  const forward = gift ? giftTicketPath(gift.gift_id) : null;
+  // A Story voucher's purchase (or its bonus) is the Story screen: one
+  // voucher, one page (MESITA-4627).
+  const storyBuy =
+    wallet.data && found?.purchase_id && (found.kind === "voucher" || found.kind === "bonus") && storyPurchaseIds(wallet.data).has(found.purchase_id)
+      ? found.purchase_id
+      : null;
+  const forward = gift ? giftTicketPath(gift.gift_id) : storyBuy ? storyPurchasePath(storyBuy) : null;
   useEffect(() => {
     if (forward) router.replace(forward);
   }, [forward, router]);
@@ -306,6 +315,26 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           test={wallet.data.test_mode}
           dim={e.kind === "reversal" || refund !== undefined}
         />
+
+        {/* THE CLASSIC VOUCHER'S STEPS (Pato, 2026-11-21, MESITA-4627: "1.
+            Pay 2. Credits 3. Wait 3 hours 4. Bonus"): only when the
+            purchase came with a bonus; a refunded one has none to wait for. */}
+        {bought && bonus && !refund ? (
+          <VoucherSteps
+            steps={[
+              { key: "pay", Icon: BadgeDollarSign, title: "Pay", amount: m(amount), state: "done" },
+              { key: "credits", Icon: BadgeDollarSign, title: "Credits", amount: m(amount), state: e.pending ? "current" : "done" },
+              {
+                key: "wait",
+                Icon: Clock3,
+                title: "Wait 3 hours",
+                sub: bonus.pending && bonus.available_at ? `Ready ${entryDate(bonus.available_at)}` : null,
+                state: e.pending ? undefined : bonus.pending ? "current" : "done",
+              },
+              { key: "bonus", Icon: Gift, title: "Bonus", amount: `+${m(bonus.amount_cents)}`, state: bonus.pending ? undefined : "done" },
+            ]}
+          />
+        ) : null}
 
         {received || given ? null : bought ? (
           <TicketPanel title="Your credit">

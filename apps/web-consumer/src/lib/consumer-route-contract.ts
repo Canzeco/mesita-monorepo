@@ -278,6 +278,8 @@ export const CONSUMER_ROUTES = {
     meTicketsGiftsOut: "/me/tickets/gifts-out",
     // Refunds left Tickets for Settings (MESITA-4402).
     meTicketsRefunds: "/me/tickets/refunds",
+    // No Stories tab (MESITA-4627): a Story voucher is a Vouchers row.
+    meTicketsStories: "/me/tickets/stories",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) is live again. /me/class left Me with Class
