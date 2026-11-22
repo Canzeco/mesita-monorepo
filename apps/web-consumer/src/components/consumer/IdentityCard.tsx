@@ -212,14 +212,14 @@ export function IdentityModules({
   privacy?: string | null;
 }) {
   const [handle, followers] = splitInstagramLabel(instagram.label);
-  const facts = [followers, privacy].filter(Boolean).join(" · ");
-  // NAME LEFT, CLASS RIGHT, INSTAGRAM BUTTON (Pato, 2026-11-22, MESITA-4639:
-  // "Name left, Class right, INSTAGRAM BUTTON. Class is regular class and vip
-  // class"). The 72px photo stays centred; under it the name pill with the
-  // Class chip at its right (Regular grey, VIP ink with a crown), then the
-  // full-width Instagram pill: "@handle (2,026 followers · Public)". The 1K+
-  // crown tag (MESITA-4370) is gone: the Class chip says VIP. MESITA-4543
-  // had no Class.
+  // A 66 / 33 · 33 / 66 GRID (Pato, 2026-11-22, MESITA-4646: "Name name class
+  // / private instagram instagram / 66% 33% / 33% 66% … display name, not
+  // last name"). Row one: the first name (opens Profile) at two thirds, the
+  // Class pill (Regular grey, VIP black with a crown) at one third. Row two:
+  // Public / Private at one third, the Instagram pill ("@handle (~320
+  // followers)", opens Me › Instagram) at two thirds. With no Instagram the
+  // privacy cell is gone and Instagram reads "Connect Instagram" full width.
+  // MESITA-4639 had full-width rows with the privacy inside the Instagram pill.
   const vip = guestClass === "vip";
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
@@ -232,37 +232,44 @@ export function IdentityModules({
           )}
         </span>
       </span>
-      <span className="flex w-full min-w-0 flex-col gap-2">
-        <span className="flex w-full min-w-0 items-center gap-2">
-          <PushLink
-            href={nameHref}
-            aria-label={`Profile: ${name}`}
-            className={cn(IDENTITY_PILL_CLASS, "flex-1 justify-start")}
-            data-identity-name
-          >
-            <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="truncate">{name}</span>
-          </PushLink>
-          <span
-            className={cn(
-              "flex h-12 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold",
-              vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground",
-            )}
-            aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
-            data-identity-class={guestClass}
-          >
-            {vip && <Crown className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
-            {CLASS_LABEL[guestClass]}
-          </span>
+      <span className="grid w-full min-w-0 grid-cols-3 gap-2">
+        <PushLink
+          href={nameHref}
+          aria-label={`Profile: ${name}`}
+          className={cn(IDENTITY_PILL_CLASS, "col-span-2")}
+          data-identity-name
+        >
+          <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">{name}</span>
+        </PushLink>
+        <span
+          className={cn(
+            "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold",
+            vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground",
+          )}
+          aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
+          data-identity-class={guestClass}
+        >
+          {vip && <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />}
+          <span className="truncate">{CLASS_LABEL[guestClass]}</span>
         </span>
+        {privacy && (
+          <span
+            className="border-border bg-card text-foreground flex h-12 min-w-0 items-center justify-center rounded-full border px-3 text-sm font-semibold"
+            aria-label={`Instagram: ${privacy}`}
+            data-identity-privacy
+          >
+            <span className="truncate">{privacy}</span>
+          </span>
+        )}
         <PushLink
           href={instagram.href}
-          aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}${privacy ? ` · ${privacy}` : ""}` : instagram.label}
-          className={IDENTITY_PILL_CLASS}
+          aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
+          className={cn(IDENTITY_PILL_CLASS, privacy ? "col-span-2" : "col-span-3")}
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
-          <span className="truncate">{facts ? `${handle} (${facts})` : handle}</span>
+          <span className="truncate">{followers ? `${handle} (${followers})` : handle}</span>
         </PushLink>
       </span>
     </div>
