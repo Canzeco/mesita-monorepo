@@ -12,7 +12,7 @@
 // page only reads it and never decides it.
 
 import { useState } from "react";
-import { Check, Crown, RefreshCw, UserRound } from "lucide-react";
+import { Check, Crown, RefreshCw, Tag } from "lucide-react";
 import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { SettingsGroup, RowDivider } from "@/components/consumer/me/settings-rows";
@@ -82,18 +82,26 @@ export function ClassModal() {
           )}
           data-class-current={guestClass}
         >
-          {vip ? (
-            <Crown className="h-7 w-7" strokeWidth={2.25} aria-hidden />
-          ) : (
-            <UserRound className="text-muted-foreground h-7 w-7" strokeWidth={2.25} aria-hidden />
-          )}
+          {/* A crown for every Class (MESITA-4667/4687). */}
+          <Crown className={cn("h-7 w-7", !vip && "text-muted-foreground")} strokeWidth={2.25} aria-hidden />
           <p className="text-xl font-bold tracking-tight">{CLASS_LABEL[guestClass]}</p>
-          <p className={cn("type-label", vip ? "text-white/70" : "text-muted-foreground")}>
-            {vip
-              ? "You get VIP Offers at places that have them."
-              : "VIP gets VIP Offers at places that have them."}
-          </p>
         </div>
+
+        {/* WHY BE VIP (Pato, 2026-11-22, MESITA-4687: "mention why to be VIP
+            … BETTER OFFERS"): one perk, said once, above the steps. */}
+        <SettingsGroup title={vip ? "What VIP gets you" : "Why be VIP"}>
+          <div className="flex items-center gap-3 px-4 py-3" data-class-perk>
+            <span className="bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full" aria-hidden>
+              <Tag className="h-4 w-4" strokeWidth={2.25} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">Better offers</span>
+              <span className="text-muted-foreground type-label block">
+                VIP Offers with bigger bonuses, like Pay $100 · Get $200, at places that have them.
+              </span>
+            </span>
+          </div>
+        </SettingsGroup>
 
         <SettingsGroup title="How to be VIP">
           {steps.map((step, i) => (
