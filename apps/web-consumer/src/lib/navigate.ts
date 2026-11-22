@@ -130,9 +130,57 @@ function entryIndex(): number | null {
 
 let shellEntry: number | null = null;
 
+// A RELOAD KEEPS THE TRAIL (MESITA-4602). `shellEntry` is module state, so a
+// reload (pull to refresh, the deploy reload) used to reset it to the entry
+// reloaded on, and Back then left for the screen's parent with the guest's
+// earlier screens stranded under it. The index is kept for the tab, and a
+// document that arrives by a reload, or by the browser's Back or Forward,
+// takes it back: its history is the same trail. A document that arrives by
+// a plain navigation (a table QR, a Stripe return, a shared link) starts a
+// new trail on its own entry, as before.
+const SHELL_ENTRY_KEY = "mesita.shell-entry";
+
+/** The shell entry this document starts with: the tab's kept one when this
+ *  load continues the same trail and the kept entry is not above it. */
+export function shellEntryFor(
+  current: number | null,
+  kept: number | null,
+  arrivedBy: string | null,
+): number | null {
+  if (current === null) return null;
+  const sameTrail = arrivedBy === "reload" || arrivedBy === "back_forward";
+  return sameTrail && kept !== null && kept <= current ? kept : current;
+}
+
+function readKeptShellEntry(): number | null {
+  try {
+    const raw = window.sessionStorage.getItem(SHELL_ENTRY_KEY);
+    const n = raw === null ? NaN : Number(raw);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+function arrivedBy(): string | null {
+  try {
+    const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return nav?.type ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** The shell's first entry: called once when the shell mounts. */
 export function markShellEntry(): void {
-  if (shellEntry === null) shellEntry = entryIndex();
+  if (shellEntry !== null) return;
+  shellEntry = shellEntryFor(entryIndex(), readKeptShellEntry(), arrivedBy());
+  if (shellEntry === null) return;
+  try {
+    window.sessionStorage.setItem(SHELL_ENTRY_KEY, String(shellEntry));
+  } catch {
+    // Storage off (private mode): the entry lasts the document, as before.
+  }
 }
 
 /** The pathname of the history entry under this one, when the browser
