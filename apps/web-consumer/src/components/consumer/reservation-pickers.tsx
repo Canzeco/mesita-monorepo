@@ -195,12 +195,18 @@ export function ReservationDatePicker({
   );
 }
 
+/** Lunch ends here: a slot at or after 17:00, or after midnight, is Dinner
+ *  (MESITA-4671 D2). */
+const DINNER_FROM = "17:00";
+
 /**
- * Time — every time still ahead of the place's clock, one grid, five a row,
- * no Lunch/Dinner labels (MESITA-4183, Pato: "don't separate lunch and
- * dinner, keep it clean"). After-midnight times go last: 01:30 belongs to
- * this date but reads as tonight, so it never leads the grid (MESITA-4166).
- * Only times inside the place's hours are listed (MESITA-3951).
+ * Time — every time still ahead of the place's clock, in two labelled groups,
+ * Lunch and Dinner, four 44px pills a row (MESITA-4671 D2/D8, Pato
+ * 2026-11-22; this undoes MESITA-4183's one flat grid). A group with no times
+ * is not drawn, and a lone group drops its label (D9). After-midnight times
+ * go last: 01:30 belongs to this date but reads as tonight, so it never
+ * leads the grid (MESITA-4166). Only times inside the place's hours are
+ * listed (MESITA-3951).
  */
 export function ReservationTimePicker({
   value,
@@ -222,32 +228,49 @@ export function ReservationTimePicker({
   const ahead = buildSlots(date ?? "", hours).filter(
     (slot) => !(date && isSlotPast(date, slot.time, tz)),
   );
-  const slots = [...ahead.filter((s) => !s.afterMidnight), ...ahead.filter((s) => s.afterMidnight)];
+  const lunch = ahead.filter((s) => !s.afterMidnight && s.time < DINNER_FROM);
+  const dinner = [
+    ...ahead.filter((s) => !s.afterMidnight && s.time >= DINNER_FROM),
+    ...ahead.filter((s) => s.afterMidnight),
+  ];
+  const groups = [
+    { label: "Lunch", slots: lunch },
+    { label: "Dinner", slots: dinner },
+  ].filter((g) => g.slots.length > 0);
   return (
     <ReservationSection title="Time">
-      {slots.length === 0 ? (
+      {groups.length === 0 ? (
         <p className="text-muted-foreground type-body">No times left on this day. Pick another date.</p>
       ) : (
-        <div role="radiogroup" aria-label="Time" className="grid grid-cols-5 gap-2">
-          {slots.map((slot) => {
-            const active = slot.time === value;
-            return (
-              <button
-                key={slot.time}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                aria-label={slot.afterMidnight ? `${slot.time}, after midnight` : slot.time}
-                onClick={() => onChange(slot.time)}
-                className={cn(CHOICE, PILL, "h-11 text-base", active ? CHOICE_ON : CHOICE_OFF)}
-              >
-                {slot.time}
-              </button>
-            );
-          })}
+        <div role="radiogroup" aria-label="Time" className="flex flex-col gap-3">
+          {groups.map((g) => (
+            <div key={g.label}>
+              {groups.length > 1 && (
+                <p className="text-muted-foreground type-body mb-1.5 font-semibold">{g.label}</p>
+              )}
+              <div className="grid grid-cols-4 gap-2">
+                {g.slots.map((slot) => {
+                  const active = slot.time === value;
+                  return (
+                    <button
+                      key={slot.time}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      aria-label={slot.afterMidnight ? `${slot.time}, after midnight` : slot.time}
+                      onClick={() => onChange(slot.time)}
+                      className={cn(CHOICE, PILL, "h-11 text-base", active ? CHOICE_ON : CHOICE_OFF)}
+                    >
+                      {slot.time}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
-      {slots.length > 0 && children}
+      {groups.length > 0 && children}
     </ReservationSection>
   );
 }
@@ -405,7 +428,8 @@ export function ReservationWindowPicker({
               onClick={() => onChange(o.value)}
               className={cn(
                 "h-11 rounded-lg text-sm font-semibold transition",
-                active ? "bg-foreground text-background" : "text-foreground",
+                // One selection colour on the Reserve page (MESITA-4671 D6).
+                active ? "bg-reserve text-reserve-foreground" : "text-foreground",
               )}
             >
               {o.label}
@@ -444,10 +468,11 @@ function NotifyRow({
   onChange: (next: ReservationNotify) => void;
 }) {
   const options: Array<{ value: ReservationNotify; label: string }> = [
-    // MESITA-4266, Pato: "App Notification + Phone Call … mention like
-    // notification is important". The long one wraps inside its segment.
-    { value: "app", label: "App notification" },
-    { value: "call", label: "App notification + Phone call" },
+    // One line each (MESITA-4671 D7); MESITA-4266's "App notification +
+    // Phone call" wrapped to two. The row's question says it is a
+    // notification.
+    { value: "app", label: "App" },
+    { value: "call", label: "App + call" },
   ];
   return (
     <div>
@@ -463,8 +488,8 @@ function NotifyRow({
               aria-checked={active}
               onClick={() => onChange(o.value)}
               className={cn(
-                "min-h-12 rounded-lg px-2 py-1.5 text-sm leading-tight font-semibold text-balance transition",
-                active ? "bg-foreground text-background" : "text-foreground",
+                "h-11 rounded-lg px-2 text-sm font-semibold transition",
+                active ? "bg-reserve text-reserve-foreground" : "text-foreground",
               )}
             >
               {o.label}
@@ -526,58 +551,107 @@ export const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> 
 };
 
 /**
- * THE TOP BOX (MESITA-4259 D1, Pato: "I DON'T LIKE THE HEADER RESERVE AT
- * THERE"): no page header bar. One Panel: Back, the place's round photo and
- * name on one line, then "When · 1 of 3" over the red step segments. Back
- * walks the steps, and leaves the page from the first one.
+ * THE HEADER (MESITA-4671 D1, Pato 2026-11-22): no box. One row — Back, the
+ * place's round photo, its name, and at the right the reservations-left pill
+ * (`aside`) — then "When · 1 of 3" over the thin red step segments. Back walks
+ * the steps, and leaves the page from the first one.
  */
 export function ReserveStepNav({
   steps,
   at,
   onBack,
   place,
+  aside,
 }: {
   steps: readonly ReserveStep[];
   at: number;
   onBack: () => void;
   place: { name: string; photo: React.ReactNode };
+  /** The reservations-left pill (ReserveLeftPill), or nothing. */
+  aside?: React.ReactNode;
 }) {
   const step = steps[at];
-  const { name, icon: Icon } = STEP_META[step];
+  const { name } = STEP_META[step];
   return (
-    <div className="px-3 pt-3 pb-3.5" data-reserve-steps>
-      <div className="flex items-center gap-2.5">
+    <div className="pt-2 pb-1" data-reserve-steps>
+      <div className="flex items-center gap-2">
         <button
           type="button"
           onClick={onBack}
-          className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+          className="hover:bg-muted -ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
           aria-label={at > 0 ? `Back to ${STEP_META[steps[at - 1]].name}` : "Back"}
         >
           <ChevronLeft className="h-6 w-6" aria-hidden />
         </button>
-        <span className="shrink-0 [&>span]:h-9 [&>span]:w-9 [&>span]:text-sm">{place.photo}</span>
-        <h1 className="line-clamp-2 min-w-0 flex-1 text-lg leading-tight font-semibold tracking-tight">
+        <span className="shrink-0 [&>span]:h-8 [&>span]:w-8 [&>span]:text-xs">{place.photo}</span>
+        <h1 className="min-w-0 flex-1 truncate text-lg leading-tight font-semibold tracking-tight">
           {place.name}
         </h1>
+        {aside}
       </div>
-      <p className="type-body mt-3 flex items-center gap-1.5 px-1">
-        <Icon className="text-reserve h-4 w-4 shrink-0" aria-hidden />
-        <span className="font-semibold">{name}</span>
-        <span className="text-muted-foreground">{` · ${at + 1} of ${steps.length}`}</span>
-      </p>
-      <ol
-        className="mt-2 grid gap-1.5 px-1"
-        style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
-        aria-label={`Step ${at + 1} of ${steps.length}: ${name}`}
-      >
-        {steps.map((s, i) => (
-          <li
-            key={s}
-            aria-current={i === at ? "step" : undefined}
-            className={cn("h-1 rounded-full", i <= at ? "bg-reserve" : "bg-border")}
-          />
-        ))}
-      </ol>
+      <div className="mt-2 flex items-center gap-3">
+        <ol
+          className="grid flex-1 gap-1.5"
+          style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+          aria-label={`Step ${at + 1} of ${steps.length}: ${name}`}
+        >
+          {steps.map((s, i) => (
+            <li
+              key={s}
+              aria-current={i === at ? "step" : undefined}
+              className={cn("h-1 rounded-full", i <= at ? "bg-reserve" : "bg-border")}
+            />
+          ))}
+        </ol>
+        <p className="type-body shrink-0" aria-hidden>
+          <span className="font-semibold">{name}</span>
+          <span className="text-muted-foreground">{` · ${at + 1} of ${steps.length}`}</span>
+        </p>
+      </div>
     </div>
+  );
+}
+
+/**
+ * Reservations left this month (MESITA-4671 D1/D3, Pato: "also display how
+ * many reservations per month left here"): a 40px pill on the header's right,
+ * on every step. Grey while some are left; Reserve-red "None left" at zero,
+ * which opens the Pro step when Pro would help (`onNoneLeft`) and otherwise
+ * says when the month resets. The caller draws nothing while the count is
+ * loading, failed, or the cap does not apply.
+ */
+export function ReserveLeftPill({
+  left,
+  cap,
+  resetsOn,
+  onNoneLeft,
+}: {
+  left: number;
+  cap: number;
+  /** "Dec 1" — shown at zero when Pro would not help. */
+  resetsOn: string;
+  onNoneLeft?: () => void;
+}) {
+  const base = "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3 text-sm font-semibold whitespace-nowrap";
+  if (left > 0) {
+    return (
+      <span className={cn(base, "bg-muted text-foreground")} aria-live="polite" data-reserve-left-pill="">
+        <CalendarDays className="text-muted-foreground h-4 w-4" aria-hidden />
+        {left} of {cap} left
+        <span className="sr-only"> this month</span>
+      </span>
+    );
+  }
+  const none = cn(base, "bg-reserve/10 text-reserve");
+  return onNoneLeft ? (
+    <button type="button" onClick={onNoneLeft} className={none} aria-live="polite" data-reserve-left-pill="">
+      None left
+      <span className="sr-only"> this month. Get more reservations</span>
+    </button>
+  ) : (
+    <span className={none} aria-live="polite" data-reserve-left-pill="">
+      None left · {resetsOn}
+      <span className="sr-only"> is when more arrive</span>
+    </span>
   );
 }

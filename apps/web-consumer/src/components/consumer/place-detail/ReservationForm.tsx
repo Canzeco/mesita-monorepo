@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
+import { CalendarClock, Loader2 } from "lucide-react";
 
 import {
   buildDateOptions,
@@ -17,6 +17,7 @@ import {
   type ReservationNotify,
   type ReservationTimeWindow,
   ReservationTimePicker,
+  ReserveLeftPill,
   ReserveStepNav,
   type ReserveStep,
 } from "@/components/consumer/reservation-pickers";
@@ -40,7 +41,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { placeDateTime, placeInstantIso } from "@mesita/place-profile/lib/place-time";
-import { offerPro, type ReserveDraft } from "@/lib/reserve-plan";
+import { left as leftOf, offerPro, type ReserveDraft } from "@/lib/reserve-plan";
 import { resetDay } from "@/lib/reset-day";
 import { ReserveProStep } from "./ReserveProStep";
 import { useReservePlan } from "./useReservePlan";
@@ -171,6 +172,13 @@ export function ReservationForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // The table the request made or moved, for the done screen's View
+  // reservation (MESITA-4671 D5).
+  const [doneId, setDoneId] = useState<string | null>(null);
+  // What the done screen says is left: the count before this booking, less
+  // the one it used. Read at submit, since the new table switches the cap
+  // gate off for this place (null = the cap does not apply).
+  const [doneLeft, setDoneLeft] = useState<{ left: number; cap: number } | null>(null);
 
   // THE NAME THE TABLE IS UNDER: saved on the reservation, not the profile.
   // Both names start as the profile's (MESITA-4172, Pato: "DON'T ASK ME
@@ -314,6 +322,7 @@ export function ReservationForm({
     try {
       const reservedAt = placeInstantIso(date, time, tz);
       if (rescheduling) {
+        setDoneId(existing.id);
         await apiUpdateReservation(supabase, {
           reservationId: existing.id,
           reservedAt,
@@ -321,7 +330,7 @@ export function ReservationForm({
           notes,
         });
       } else {
-        await apiCreateReservation(supabase, {
+        const created = await apiCreateReservation(supabase, {
           projectId: place.id,
           reservedAt,
           partySize: party,
@@ -335,7 +344,13 @@ export function ReservationForm({
             [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim(), onConfirm, onReject, timeWindow].join("|"),
           ),
         });
+        setDoneId(created.reservation.id);
       }
+      setDoneLeft(
+        !rescheduling && plan.applies && plan.view
+          ? { left: Math.max(leftOf(plan.view) - 1, 0), cap: plan.view.cap }
+          : null,
+      );
       setDone(true);
       plan.clearDraft();
       onBooked();
@@ -389,29 +404,72 @@ export function ReservationForm({
     trackEvent(supabase, "reserve_pro_shown");
   }, [plan.pro, supabase]);
 
+  // THE DONE SCREEN (MESITA-4671 D5): what was asked for, who is on it, and
+  // the way to the table's own page.
   if (done) {
+    const rows: Array<[string, React.ReactNode]> = [
+      [
+        "Place",
+        <span key="p" className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 [&>span]:h-7 [&>span]:w-7 [&>span]:text-xs">
+            <PlacePhotoMark photo={place.photo ?? null} name={place.name} />
+          </span>
+          <span className="truncate">{place.name}</span>
+        </span>,
+      ],
+      ["When", `${dayLabel ? `${dayLabel} ` : ""}${time ?? "—"}`],
+      ["People", `${party} ${guestNoun(party)}`],
+    ];
     return (
-      <div className="py-6 text-center">
-        <span className="bg-primary/10 text-primary mx-auto flex h-14 w-14 items-center justify-center rounded-full">
-          <PhoneCall className="h-6 w-6" />
-        </span>
-        <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
-          {rescheduling ? "Reservation updated" : "Reservation requested"}
-        </h2>
-        <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
-          Mesi is calling{" "}
-          <span className="text-foreground font-semibold">{place.name}</span>{" "}
-          to {rescheduling ? "move" : "book"} your table for {party}{" "}
-          {guestNoun(party)}, {dayLabel ? `${dayLabel} ` : ""}at {time ?? "—"}. We&apos;ll update this reservation once the place
-          confirms.
-        </p>
-        <button
-          type="button"
-          onClick={onDone}
-          className="bg-primary text-primary-foreground mt-6 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold transition active:scale-[0.99]"
-        >
-          Done
-        </button>
+      <div className="flex min-h-0 flex-1 flex-col px-4" data-reserve-done="">
+        <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-6">
+          <h2 className={SHEET_TITLE_CLASS}>
+            {rescheduling ? "Reservation updated" : "Reservation requested"}
+          </h2>
+          <Panel>
+            <dl>
+              {rows.map(([label, value], i) => (
+                <div
+                  key={label}
+                  className={cn(
+                    "type-body flex items-center justify-between gap-4 px-4 py-3",
+                    i > 0 && "border-border border-t",
+                  )}
+                >
+                  <dt className="text-muted-foreground shrink-0">{label}</dt>
+                  <dd className="min-w-0 text-right font-semibold">{value}</dd>
+                </div>
+              ))}
+              <div className="border-border type-body flex items-center gap-2.5 border-t px-4 py-3" aria-live="polite">
+                <span className="bg-reserve h-2 w-2 shrink-0 rounded-full" aria-hidden />
+                <span className="font-semibold">
+                  Mesi is calling {place.name} {rescheduling ? "to move your table" : "now"}
+                </span>
+              </div>
+            </dl>
+          </Panel>
+          <p className="text-muted-foreground type-body">
+            We&apos;ll update this reservation once the place answers.
+            {doneLeft && ` ${doneLeft.left} of ${doneLeft.cap} reservations left this month.`}
+          </p>
+        </div>
+        <div className="border-border -mx-4 flex shrink-0 flex-col gap-2 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {doneId && (
+            <PushLink
+              href={reservationPath(doneId)}
+              className="bg-reserve text-reserve-foreground inline-flex h-14 w-full items-center justify-center rounded-2xl text-base font-semibold transition active:scale-[0.99]"
+            >
+              View reservation
+            </PushLink>
+          )}
+          <button
+            type="button"
+            onClick={onDone}
+            className="border-border bg-card hover:bg-muted inline-flex h-12 w-full items-center justify-center rounded-2xl border text-base font-semibold transition"
+          >
+            Done
+          </button>
+        </div>
       </div>
     );
   }
@@ -427,11 +485,11 @@ export function ReservationForm({
   // already have a table, add it as a prev step … IF CANCELING, THEN DON'T
   // PROCEED TO NEXT STEP"): Your table · When · Party. Its button is Change
   // it; Cancel it opens the table's page and never moves on.
-  // The call is the product (MESITA-4474). Said above the button on When,
-  // Party, and You. Hidden where the button is not a request: Your table,
-  // the Pro sheet, and a month that is already full.
+  // The call is the product (MESITA-4474). Said once, above the button that
+  // sends the request (MESITA-4671 D4: it repeated on every step). Hidden on
+  // the Pro sheet and in a month that is already full.
   const promisesACall =
-    !plan.pro && step !== "table" && !(last && !submitting && (plan.offer || plan.isBlocked));
+    !plan.pro && last && step !== "table" && !(!submitting && (plan.offer || plan.isBlocked));
   // Next waits for the duplicate answered and a time.
   const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
   const next = () => {
@@ -455,9 +513,9 @@ export function ReservationForm({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col px-4">
-      {/* The one top box (MESITA-4259 D1): Back, the place, the steps. */}
-      <Panel className="mt-3">
-        <ReserveStepNav
+      {/* The header (MESITA-4671 D1): no box — Back, the place, the
+          reservations-left pill, the steps. */}
+      <ReserveStepNav
           steps={steps}
           at={at}
           onBack={
@@ -467,26 +525,28 @@ export function ReservationForm({
                 ? () => setStepAt(at - 1)
                 : onExit
           }
-          place={{
-            name: place.name,
-            photo: <PlacePhotoMark photo={place.photo ?? null} name={place.name} />,
-          }}
-        />
-      </Panel>
+        place={{
+          name: place.name,
+          photo: <PlacePhotoMark photo={place.photo ?? null} name={place.name} />,
+        }}
+        aside={
+          // Shown only when the count is read and the cap applies
+          // (MESITA-4671 D3): never while loading, on a failed read, under
+          // the admin testing switch, or while changing a table.
+          plan.applies && plan.view ? (
+            <ReserveLeftPill
+              left={leftOf(plan.view)}
+              cap={plan.view.cap}
+              resetsOn={resetDay()}
+              onNoneLeft={plan.offer && !plan.pro ? () => plan.setPro(true) : undefined}
+            />
+          ) : null
+        }
+      />
 
       {/* One step a screen, nothing to scroll on a phone; the body scrolls
           only if a very short screen cannot hold it. */}
       <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
-        {/* Blocked and Pro would not help (Pro at its cap, an operator
-            cap): a warning on every step (MESITA-4393). */}
-        {!plan.pro && plan.isBlocked && !plan.offer && (
-          <p
-            className="type-body bg-destructive/10 text-destructive rounded-xl px-3 py-2 font-semibold"
-            data-reserve-no-left=""
-          >
-            No reservations left this month. More on {resetDay()}.
-          </p>
-        )}
         {plan.pro && (
           <ReserveProStep
             view={plan.view}
@@ -521,18 +581,6 @@ export function ReservationForm({
                 <ReservationWindowPicker value={timeWindow} onChange={setTimeWindow} time={time} />
               )}
             </ReservationTimePicker>
-            {plan.isBlocked && plan.offer && (
-              <p className="text-muted-foreground type-body" data-reserve-heads-up="">
-                No reservations left this month.{" "}
-                <button
-                  type="button"
-                  onClick={() => plan.setPro(true)}
-                  className="text-foreground -my-3 inline-flex min-h-11 items-center font-semibold underline"
-                >
-                  Get more reservations
-                </button>
-              </p>
-            )}
           </>
         )}
 
@@ -566,15 +614,23 @@ export function ReservationForm({
                   />
                 </div>
                 {/* The number Mesita calls (MESITA-4187: "prepopulated,
-                    cannot be edited"); it changes on Me, not here. */}
-                <ReservationField
-                  label="Phone"
-                  className="mt-3"
-                  value={phone || "No phone on your profile"}
-                  readOnly
-                  aria-readonly
-                  tabIndex={-1}
-                />
+                    cannot be edited"); it changes on Me, not here. A line
+                    of text, never a grey field that reads as broken
+                    (MESITA-4671 D7). */}
+                <p className="type-body mt-3" data-reserve-phone="">
+                  {phone ? (
+                    <>
+                      <span className="text-muted-foreground">Mesi calls </span>
+                      <span className="font-semibold tabular-nums">{phone}</span>
+                      <span className="text-muted-foreground"> · </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">No phone on your profile · </span>
+                  )}
+                  <PushLink href={CONSUMER_ROUTES.mePages.profile} className="font-semibold underline">
+                    {phone ? "Change on Me" : "Add a phone on Me"}
+                  </PushLink>
+                </p>
               </ReservationSection>
             )}
             {!rescheduling && (
