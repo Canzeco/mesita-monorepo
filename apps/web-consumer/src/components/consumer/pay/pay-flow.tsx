@@ -201,7 +201,7 @@ export function TicketHeader({ title, onBack, onClose, closeLabel = "Close" }: {
 }
 
 /** THE STEPS, AT THE BOTTOM (MESITA-4600; five since MESITA-4613):
- *  "1 Pick · 2 Bill · 3 Method · 4 Pay · 5 Receipt"
+ *  "1 Bill · 2 Method · 3 Pay · 4 Receipt" (Pick is step 0, MESITA-4635)
  *  in one row, a thin bar under each, done and current in ink, the current
  *  one semibold, the rest grey. A picture, not buttons: ← steps back.
  *  `at` "done" (the Receipt) lights all of them, a check on the last.

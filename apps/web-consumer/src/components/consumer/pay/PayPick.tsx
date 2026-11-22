@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import type { PayPlace } from "@/lib/api/wallet";
 import { PlacePhoto } from "./pay-common";
-import { StepStrip, TicketHeader } from "./pay-flow";
+import { TicketHeader } from "./pay-flow";
 import { distanceText, type Loc, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 
@@ -130,12 +130,9 @@ export function PlacePickBody({
           <RowsSkeleton />
         )}
       </div>
-      {/* The ticket's steps (MESITA-4600): step 1 of 4, at the bottom. */}
-      {prepay ? null : (
-        <div className="border-border shrink-0 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <StepStrip at={1} />
-        </div>
-      )}
+      {/* PICK IS STEP 0 (Pato, 2026-11-21, MESITA-4635: "don't even mention
+          pick a step. that is fake"): the picker is the front and wears no
+          strip; the ticket's strip starts at 1 Bill. */}
     </div>
   );
 }

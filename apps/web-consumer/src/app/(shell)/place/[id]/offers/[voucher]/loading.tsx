@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { OFFER_TICKET_STEPS } from "@mesita/place-profile";
-import { StepStrip, TicketHeader } from "@/components/consumer/pay/pay-flow";
+import { TicketHeader } from "@/components/consumer/pay/pay-flow";
 import { goBack } from "@/lib/navigate";
 
 // The voucher ticket's own placeholder (MESITA-4630): its header with ✕, the
-// boxes in bones, the strip at step 1 over the button's bone.
+// boxes in bones over the button's bone. The offer is the front, step 0: no
+// strip (MESITA-4635).
 export default function PlaceOfferLoading() {
   const router = useRouter();
   return (
@@ -18,7 +18,6 @@ export default function PlaceOfferLoading() {
         <div className="bg-muted h-48 w-full rounded-2xl" />
       </div>
       <div className="border-border flex shrink-0 flex-col gap-3 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <StepStrip at={1} steps={OFFER_TICKET_STEPS} />
         <div className="bg-muted h-12 w-full rounded-xl" />
       </div>
     </div>
