@@ -1,8 +1,13 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, User } from "lucide-react";
-import { CLASS_LABEL, type GuestClass } from "@/lib/guest-standing";
+import { CreditCard, Crown, User } from "lucide-react";
+import {
+  CLASS_LABEL,
+  PLAN_LABEL,
+  type GuestClass,
+  type GuestPlan,
+} from "@/lib/guest-standing";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -187,6 +192,10 @@ export function IdentityCard({
 export const IDENTITY_PILL_CLASS =
   "border-border bg-card text-foreground hover:bg-muted/60 flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
 
+/** VIP Class and Pro Plan (MESITA-4668 M2A): the same pill filled black. */
+const EARNED_PILL_CLASS =
+  "border-neutral-950 bg-neutral-950 text-white hover:bg-neutral-800";
+
 /** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
 function splitInstagramLabel(label: string): [string, string | null] {
   const at = label.indexOf(" · ");
@@ -200,6 +209,8 @@ export function IdentityModules({
   nameHref,
   guestClass = "regular",
   classHref,
+  guestPlan = "free",
+  planHref,
 }: {
   name: string;
   avatarUrl: string | null;
@@ -209,20 +220,26 @@ export function IdentityModules({
   guestClass?: GuestClass;
   /** Where the Class pill goes (MESITA-4657): /me/class. */
   classHref: string;
+  /** The guest's Plan (MESITA-4668): Free or Pro, from the profile. */
+  guestPlan?: GuestPlan;
+  /** Where the Plan pill goes (MESITA-4668): /me/plan. */
+  planHref: string;
 }) {
   // THE HANDLE ONLY (Pato, 2026-11-22, MESITA-4651: "don't mention the
   // number of followers there … only the instagram"): the count lives on Me
   // › Instagram.
   const [handle] = splitInstagramLabel(instagram.label);
-  // HALVES, THEN FULL WIDTH (Pato, 2026-11-22, MESITA-4659: "name left 50%
-  // class right 50%, instagram bottom 100%"). Row one: the first name (opens
-  // Profile) | the Class pill (Regular grey, VIP black with a crown; opens
-  // /me/class, MESITA-4657). Row two: the Instagram pill (the handle, opens
-  // Me › Instagram; "Connect Instagram" when none). No Public/Private pill:
-  // Mesita treats every linked Instagram the same (MESITA-4659). MESITA-4646
-  // and MESITA-4652 had 66/33 and 75/25 grids with that pill. Every pill is
-  // 40px (MESITA-4657).
+  // NAME / CLASS · PLAN / INSTAGRAM (Pato, 2026-11-22, MESITA-4668: "Name on
+  // top · Class on left, plan on right · Instagram on bottom · Regular Class
+  // or VIP Class. Free Plan or Pro Plan."). Name full width (opens Profile);
+  // Class | Plan in halves (open /me/class and /me/plan); Instagram full width
+  // (the handle, opens Me › Instagram; "Connect Instagram" when none). Every
+  // pill is white with a hairline and ink text; an earned or paid status
+  // (VIP, Pro) is filled black (MESITA-4668 M2A: the grey Regular read as
+  // disabled). MESITA-4659 had name | Class over Instagram. Pills are 40px
+  // (MESITA-4657).
   const vip = guestClass === "vip";
+  const pro = guestPlan === "premium";
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
@@ -246,7 +263,7 @@ export function IdentityModules({
         <PushLink
           href={nameHref}
           aria-label={`Profile: ${name}`}
-          className={IDENTITY_PILL_CLASS}
+          className={cn(IDENTITY_PILL_CLASS, "col-span-2")}
           data-identity-name
         >
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -254,18 +271,23 @@ export function IdentityModules({
         </PushLink>
         <PushLink
           href={classHref}
-          className={cn(
-            "flex h-10 min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition",
-            vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground hover:bg-muted/70",
-          )}
-          aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
+          className={cn(IDENTITY_PILL_CLASS, vip && EARNED_PILL_CLASS)}
+          aria-label={`Class: ${CLASS_LABEL[guestClass]} Class`}
           data-identity-class={guestClass}
         >
-          {/* A CROWN FOR EVERY CLASS (Pato, 2026-11-22, MESITA-4667: "use a
-              crown for the class"): grey on Regular, white on VIP; a person
-              badge on Regular until then (MESITA-4651). */}
+          {/* A crown for every Class (Pato, MESITA-4667: "use a crown for
+              the class"): ink on Regular, white on VIP. */}
           <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{CLASS_LABEL[guestClass]}</span>
+          <span className="truncate">{CLASS_LABEL[guestClass]} Class</span>
+        </PushLink>
+        <PushLink
+          href={planHref}
+          className={cn(IDENTITY_PILL_CLASS, pro && EARNED_PILL_CLASS)}
+          aria-label={`Plan: ${PLAN_LABEL[guestPlan]} Plan`}
+          data-identity-plan={guestPlan}
+        >
+          <CreditCard className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
         </PushLink>
         <PushLink
           href={instagram.href}
