@@ -19,11 +19,14 @@ export type MoneyConfig = {
    *  [] turns express off; a list narrows it. Unknown names are dropped. */
   express_wallets: ExpressWallet[];
   /** MESITA-4524: how long a guest pay ticket stays live (minutes, 5-120;
-   *  absent or bad reads 15). */
+   *  absent or bad reads 5). */
   guest_pay_window_minutes: number;
 };
 
-export const GUEST_PAY_WINDOW_DEFAULT = 15;
+/** FIVE MINUTES TO SIGN (Pato, 2026-11-21, MESITA-4618: "make payment
+ *  confirmation 5 minutes no more"): the waiter's confirmation stays (the one
+ *  proof the guest is at that table paying that amount), shorter. 15 before. */
+export const GUEST_PAY_WINDOW_DEFAULT = 5;
 
 export function guestPayWindowFrom(raw: unknown): number {
   return typeof raw === "number" && Number.isInteger(raw) && raw >= 5 && raw <= 120 ? raw : GUEST_PAY_WINDOW_DEFAULT;
