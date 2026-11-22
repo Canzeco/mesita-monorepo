@@ -145,3 +145,30 @@ export async function upsertTool(
   }
   return { ok: true, id, action: "created" };
 }
+
+/**
+ * Make sure the workspace has the agents' voice (MESITA-4624). Mesi's voice is a
+ * shared library voice: an agent PATCH naming it fails `voice_not_found` until
+ * it is added to the workspace. Present → nothing; missing → find it in the
+ * shared library by name and add it (the voice keeps its id).
+ */
+export async function ensureVoice(
+  key: string,
+  voiceId: string,
+  search: string,
+): Promise<{ ok: true; action: "present" | "added" } | { ok: false; error: string }> {
+  const have = await elFetch(key, `/v1/voices/${encodeURIComponent(voiceId)}`);
+  if (have.ok) return { ok: true, action: "present" };
+  const found = await elFetch(key, `/v1/shared-voices?page_size=100&search=${encodeURIComponent(search)}`);
+  if (!found.ok) return { ok: false, error: `voice ${voiceId}: ${found.error}` };
+  const voices = ((found.body as { voices?: Array<{ voice_id?: string; public_owner_id?: string }> })?.voices) ?? [];
+  const hit = voices.find((v) => v.voice_id === voiceId && v.public_owner_id);
+  if (!hit) return { ok: false, error: `voice ${voiceId}: not in the workspace and not found in the shared library as "${search}"` };
+  const add = await elFetch(
+    key,
+    `/v1/voices/add/${encodeURIComponent(hit.public_owner_id!)}/${encodeURIComponent(voiceId)}`,
+    { method: "POST", body: { new_name: search } },
+  );
+  if (!add.ok) return { ok: false, error: `voice ${voiceId}: ${add.error}` };
+  return { ok: true, action: "added" };
+}
