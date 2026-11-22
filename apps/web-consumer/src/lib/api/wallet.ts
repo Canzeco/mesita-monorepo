@@ -249,7 +249,10 @@ export const BUY_REFUSAL: Record<string, string> = {
   // MESITA-4641: a voucher no longer sold; nothing was charged.
   voucher_retired: "This voucher isn't sold any more.",
   // MESITA-4640: the VIP voucher is VIP class only; nothing was charged.
-  not_vip: "The VIP voucher needs a public Instagram with more than 5,000 followers.",
+  // MESITA-4659: any Instagram counts, public or private.
+  not_vip: "The VIP voucher needs an Instagram with more than 5,000 followers.",
+  // MESITA-4659: the follower count is re-read at claim (older than an hour).
+  vip_recheck: "Check your Instagram again to claim VIP.",
   below_minimum: "This amount is below the card minimum.",
   place_cap: "This place can't take more credit for now. Try again later.",
   in_progress: "Your purchase is already on its way.",

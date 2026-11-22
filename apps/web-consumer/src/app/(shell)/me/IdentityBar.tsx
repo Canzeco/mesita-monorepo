@@ -4,7 +4,6 @@ import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityModules } from "@/components/consumer/IdentityCard";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { toGuestClass } from "@/lib/guest-standing";
-import { instagramPrivacyLabel } from "@/lib/consumer-identity";
 import {
   IDENTITY_BAR_BODY_CLASS,
   IDENTITY_BAR_CLASS,
@@ -27,7 +26,8 @@ import {
 //
 // NO PLAN (MESITA-3830): it is the Plan tile on the grid below. CLASS IS
 // BACK (MESITA-4639): Name left, Class right, then the Instagram pill with
-// the followers and Public/Private (MESITA-4306 had removed the Class).
+// the handle (MESITA-4306 had removed the Class). No Public/Private since
+// MESITA-4659.
 //
 // The card itself is IdentityCard, the same one Social shows for a member
 // (MESITA-2547). NO PHONE: it is private (Pato, MESITA-2547: "that is super
@@ -116,11 +116,6 @@ export function IdentityBar({
             nameHref={CONSUMER_ROUTES.mePages.profile}
             guestClass={toGuestClass(profile?.guest_class)}
             classHref={CONSUMER_ROUTES.mePages.class}
-            privacy={
-              profile?.instagram_handle
-                ? instagramPrivacyLabel(profile.instagram_is_private).replace("Privacy unknown", "Unknown")
-                : null
-            }
           />
         )}
       </div>

@@ -67,6 +67,10 @@ export type ConsumerDoc = {
   // or handle in Social, the first name still shows (MESITA-2612).
   // place_activity_visible reads it.
   appear_anonymous: boolean;
+  // MESITA-4659: may Mesita show the handle to others? null = no choice made =
+  // hidden; only true shows it (place_shown_handle). A new handle, Disconnect
+  // and account deletion put it back to null.
+  instagram_handle_shown: boolean | null;
   // Not here on purpose: plan, guest_class, the VIP audit columns
   // (MESITA-2553) and the VIP's partner and last day (MESITA-2556). guest_class
   // is generated from the verified follower count (MESITA-3850); the rest are
@@ -94,6 +98,7 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_verified_at",
   "use_instagram_photo",
   "appear_anonymous",
+  "instagram_handle_shown",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
 
@@ -251,6 +256,13 @@ export function validateConsumerPatch(
     }
     patch.appear_anonymous = v;
   }
+  if ("instagram_handle_shown" in raw) {
+    const v = raw.instagram_handle_shown;
+    if (v !== null && typeof v !== "boolean") {
+      return { ok: false, error: "instagram_handle_shown must be a boolean or null" };
+    }
+    patch.instagram_handle_shown = v;
+  }
   if ("deleted_at" in raw) {
     const v = raw.deleted_at;
     if (!isNullableString(v)) {
@@ -404,6 +416,8 @@ export async function disconnectInstagram(
       instagram_handle: null,
       instagram_followers_count: null,
       instagram_verified_at: null,
+      // MESITA-4659: a choice was about that handle; the next one starts hidden.
+      instagram_handle_shown: null,
       ...(fromInstagram ? { avatar_url: null } : {}),
     },
   });
@@ -412,8 +426,9 @@ export async function disconnectInstagram(
 
 // ── readSocialStanding — what Social masks by (MESITA-2594) ───────────────
 
-/** Whether the viewer shows themself in Social: a verified Instagram and the
- *  Public profile switch. You see others' handles only if you show yours. */
+/** Whether the viewer shows themself in Social: a verified Instagram, the
+ *  Public profile switch and (MESITA-4659) "Show my handle on Mesita". You
+ *  see others' handles only if you show yours. */
 export async function readSocialStanding(
   admin: SupabaseClient,
   consumerId: string,
@@ -423,13 +438,14 @@ export async function readSocialStanding(
     row: {
       instagram_verified_at: string | null;
       appear_anonymous: boolean | null;
+      instagram_handle_shown: boolean | null;
     } | null;
   }
   | { ok: false; error: string }
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("instagram_verified_at, appear_anonymous")
+    .select("instagram_verified_at, appear_anonymous, instagram_handle_shown")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -441,6 +457,7 @@ export async function readSocialStanding(
         instagram_verified_at: (data.instagram_verified_at as string | null) ??
           null,
         appear_anonymous: (data.appear_anonymous as boolean | null) ?? null,
+        instagram_handle_shown: (data.instagram_handle_shown as boolean | null) ?? null,
       }
       : null,
   };
@@ -448,18 +465,27 @@ export async function readSocialStanding(
 
 // ── Class — automatic since MESITA-3850 (a generated column; nothing writes it)
 
+export type VipGuestRow = {
+  guest_class: string | null;
+  followers: number | null;
+  synced_at: string | null;
+  verified_at: string | null;
+};
+
 /** The buying guest's Class for the VIP voucher's gate (MESITA-4640), with
- *  the Instagram facts its refusal names. Null row = no live account. */
+ *  the follower count its refusal names and (MESITA-4659) when that count was
+ *  last read: the newer of the last Sync and the verification. Null row = no
+ *  live account. */
 export async function readVipStanding(
   admin: SupabaseClient,
   consumerId: string,
 ): Promise<
-  | { ok: true; row: { guest_class: string | null; followers: number | null; is_private: boolean | null } | null }
+  | { ok: true; row: VipGuestRow | null }
   | { ok: false; message: string }
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("guest_class, instagram_followers_count, instagram_is_private")
+    .select("guest_class, instagram_followers_count, instagram_synced_at, instagram_verified_at")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -470,7 +496,8 @@ export async function readVipStanding(
       ? {
         guest_class: (data.guest_class as string | null) ?? null,
         followers: (data.instagram_followers_count as number | null) ?? null,
-        is_private: (data.instagram_is_private as boolean | null) ?? null,
+        synced_at: (data.instagram_synced_at as string | null) ?? null,
+        verified_at: (data.instagram_verified_at as string | null) ?? null,
       }
       : null,
   };

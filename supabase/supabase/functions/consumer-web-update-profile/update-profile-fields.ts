@@ -49,6 +49,9 @@ export type UpdateProfileBody = {
   // MESITA-2590: "Public profile" off = true (no photo or handle in Social;
   // the first name still shows, MESITA-2612).
   appear_anonymous?: boolean;
+  // MESITA-4659: "Show my handle on Mesita" on Me › Instagram. true shows the
+  // handle to others, false hides it; null (no choice) is not writable here.
+  instagram_handle_shown?: boolean;
 };
 
 export const AVATAR_BUCKET = "consumer-avatars";
@@ -301,6 +304,15 @@ export function buildProfilePatch(
       };
     }
     patch.appear_anonymous = body.appear_anonymous;
+  }
+  if (body.instagram_handle_shown !== undefined) {
+    if (typeof body.instagram_handle_shown !== "boolean") {
+      return {
+        ok: false,
+        response: json({ ok: false, error: "instagram_handle_shown must be true or false" }, 400),
+      };
+    }
+    patch.instagram_handle_shown = body.instagram_handle_shown;
   }
 
   if (Object.keys(patch).length === 0) {

@@ -16,9 +16,11 @@ import { assert, assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   type ConsumerPatch,
+  disconnectInstagram,
   validateConsumerPatch,
   writeConsumer,
 } from "./consumer-doc.ts";
+import { tombstoneDeletedConsumer } from "./delete-history-free.ts";
 
 // ── validateConsumerPatch: accept ──────────────────────────────────────────
 
@@ -200,4 +202,56 @@ Deno.test("writeConsumer: surfaces the Postgres error code for a unique-violatio
   });
   assert(!res.ok);
   assertEquals(res.code, "23505");
+});
+
+// ── MESITA-4659: "Show my handle on Mesita" ────────────────────────────────
+
+Deno.test("validateConsumerPatch: instagram_handle_shown is true, false or null only", () => {
+  assert(validateConsumerPatch({ instagram_handle_shown: true }).ok);
+  assert(validateConsumerPatch({ instagram_handle_shown: false }).ok);
+  assert(validateConsumerPatch({ instagram_handle_shown: null }).ok);
+  for (const bad of ["true", 1, 0, {}]) {
+    const res = validateConsumerPatch({ instagram_handle_shown: bad });
+    assert(!res.ok);
+    if (!res.ok) assertEquals(res.error, "instagram_handle_shown must be a boolean or null");
+  }
+});
+
+// Records every update; select(...).eq(...).maybeSingle() reads `row`.
+function recordingAdmin(row: Record<string, unknown>) {
+  const updates: Record<string, unknown>[] = [];
+  const read = {
+    eq: () => read,
+    maybeSingle: () => Promise.resolve({ data: row, error: null }),
+  };
+  const admin = {
+    from: () => ({
+      select: () => read,
+      update(value: Record<string, unknown>) {
+        updates.push(value);
+        return { eq: () => Promise.resolve({ data: null, error: null }) };
+      },
+    }),
+    auth: { admin: { updateUserById: () => Promise.resolve({ error: null }) } },
+  } as unknown as SupabaseClient;
+  return { admin, updates };
+}
+
+Deno.test("disconnectInstagram: the sharing choice goes back to no choice (hidden)", async () => {
+  const { admin, updates } = recordingAdmin({ avatar_url: null });
+  const res = await disconnectInstagram(admin, "consumer-1");
+  assert(res.ok);
+  assertEquals(updates.length, 1);
+  assertEquals(updates[0].instagram_handle, null);
+  assertEquals("instagram_handle_shown" in updates[0], true);
+  assertEquals(updates[0].instagram_handle_shown, null);
+});
+
+Deno.test("tombstoneDeletedConsumer: account deletion clears the sharing choice", async () => {
+  const { admin, updates } = recordingAdmin({});
+  const res = await tombstoneDeletedConsumer(admin, "consumer-1");
+  assert(res.ok);
+  assertEquals(updates.length, 1);
+  assertEquals("instagram_handle_shown" in updates[0], true);
+  assertEquals(updates[0].instagram_handle_shown, null);
 });

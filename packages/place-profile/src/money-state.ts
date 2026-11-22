@@ -36,8 +36,8 @@ export const MONEY_VOUCHER_KEYS = [
   "voucher_1000",
   "voucher_5000",
   // VIP IS BACK (Pato, 2026-11-22, MESITA-4640: "Regular Offers · VIP Offers"):
-  // the VIP class only (guest_class, more than VIP_MIN_FOLLOWERS on a public
-  // Instagram), one each new visit.
+  // the VIP class only (guest_class, more than VIP_MIN_FOLLOWERS on a verified
+  // Instagram; privacy no longer counts, MESITA-4659), one each new visit.
   "voucher_vip",
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
@@ -123,7 +123,7 @@ export type VoucherReason =
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
 
 /** VIP CLASS (MESITA-4639, Pato 2026-11-22: "RETURN VIP CLASS IF MORE THAN
- *  5000 FOLLOWERS"): a verified, public Instagram with MORE THAN this many
+ *  5000 FOLLOWERS"): a verified Instagram with MORE THAN this many
  *  followers. consumers.guest_class holds the same literal (a generated column
  *  cannot read config); vip-threshold.test.ts pins the two together. Every
  *  word a guest or owner reads about the bar comes from this constant. */

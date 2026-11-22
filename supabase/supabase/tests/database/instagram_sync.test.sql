@@ -6,12 +6,13 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(17);
+select plan(20);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3060'),
   ('00000000-0000-4000-8000-0000000b3060'),
-  ('00000000-0000-4000-8000-0000000c3060');
+  ('00000000-0000-4000-8000-0000000c3060'),
+  ('00000000-0000-4000-8000-0000000d3060');
 insert into public.consumers (id, instagram_handle, instagram_followers_count, instagram_verified_at)
 values
   ('00000000-0000-4000-8000-0000000a3060', 'ana.3060', 100, '2026-10-01T00:00:00Z'),
@@ -99,6 +100,30 @@ select ok(
 select ok(
   not public.consumer_instagram_sync('00000000-0000-4000-8000-0000000c3060', 'cel.3060', 9),
   'a sync on a deleted account writes nothing');
+
+-- ━━━ verify: stamps the sync time, a new handle resets the choice ━━━━━━━━━━
+-- MESITA-4659: verify just read the follower count (the VIP claim's
+-- freshness), and "Show my handle" was a choice about one handle.
+
+insert into public.consumers (id, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_handle_shown)
+values ('00000000-0000-4000-8000-0000000d3060', 'dan.3060', 10, '2026-10-01T00:00:00Z', true);
+update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3060';
+
+select public.consumer_instagram_verify('00000000-0000-4000-8000-0000000d3060', 'dan.3060', 200);
+select is(
+  (select row(instagram_handle_shown, instagram_synced_at is not null, instagram_followers_count)::text
+     from public.consumers where id = '00000000-0000-4000-8000-0000000d3060'),
+  '(t,t,200)', 'verifying the same handle keeps the choice and stamps instagram_synced_at');
+
+select public.consumer_instagram_verify('00000000-0000-4000-8000-0000000d3060', 'ana.3060', 300);
+select is(
+  (select row(instagram_handle, instagram_handle_shown is null)::text
+     from public.consumers where id = '00000000-0000-4000-8000-0000000d3060'),
+  '(ana.3060,t)', 'a new handle resets the choice to none (hidden)');
+select is(
+  (select row(instagram_handle is null, instagram_handle_shown is null)::text
+     from public.consumers where id = '00000000-0000-4000-8000-0000000a3060'),
+  '(t,t)', 'the account the handle was taken from loses it and its choice');
 
 -- ━━━ only the service role runs them ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

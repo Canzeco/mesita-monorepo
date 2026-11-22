@@ -13,11 +13,9 @@ import {
 import {
   ArrowLeftRight,
   BadgeCheck,
-  ExternalLink,
-  Globe,
-  Lock,
-  Check,
+  AtSign,
   Copy,
+  Crown,
   Eye,
   ImageIcon,
   RefreshCw,
@@ -34,6 +32,7 @@ import {
   IconChip,
   ME_BUTTON_CLASS,
   SettingsGroup,
+  Switch,
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -51,10 +50,10 @@ import {
 } from "@/lib/api/profile";
 import {
   followersLabel,
-  instagramPrivacyLabel,
   updatedAgo,
 } from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
+import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import {
   INPUT_CLASS,
@@ -111,7 +110,7 @@ function landConnected() {
 /** Where a Sync or Change account lands (MESITA-3060): back on this page,
  *  reloaded so the header, the card and the photo show the saved values. The
  *  query only labels the guest's own toast, then is stripped. */
-function landHere(r: InstagramLookup) {
+export function landHere(r: InstagramLookup) {
   const url = new URL(window.location.pathname, window.location.origin);
   if (r.result === "synced") {
     url.searchParams.set("instagram", "synced");
@@ -149,8 +148,23 @@ function landingToast(params: URLSearchParams): string | null {
   return text;
 }
 
+/** The landing's toast, once (a ref guards StrictMode's second run), then
+ *  the query is stripped so a reload does not repeat it. Me › Instagram and
+ *  Me › Class (its Sync, MESITA-4659) both land with one. */
+export function useLandingToast() {
+  const toasted = useRef(false);
+  useEffect(() => {
+    if (toasted.current) return;
+    toasted.current = true;
+    const text = landingToast(new URLSearchParams(window.location.search));
+    if (!text) return;
+    toast.success(text);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+}
+
 /** One line per refusal, for the card and for Change account (MESITA-3060). */
-function syncErrorCopy(err: unknown, handle: string | null): string {
+export function syncErrorCopy(err: unknown, handle: string | null): string {
   if (!(err instanceof EFError) || (err.code == null && err.status == null)) {
     return "We couldn’t confirm the sync. Reload to see the latest.";
   }
@@ -224,17 +238,7 @@ export function InstagramModal() {
     };
   }, [supabase]);
 
-  // The landing's toast, once (a ref guards StrictMode's second run), then
-  // the query is stripped so a reload does not repeat it.
-  const toasted = useRef(false);
-  useEffect(() => {
-    if (toasted.current) return;
-    toasted.current = true;
-    const text = landingToast(new URLSearchParams(window.location.search));
-    if (!text) return;
-    toast.success(text);
-    window.history.replaceState(null, "", window.location.pathname);
-  }, []);
+  useLandingToast();
 
   return (
     <MeScreen title="Instagram">
@@ -255,7 +259,7 @@ export function InstagramModal() {
         {/* The two reasons to connect (MESITA-4342). Before connecting,
               above the Connect card; after, under the account, each row
               showing where the guest stands. */}
-        <WhyConnect connected={connected} />
+        <WhyConnect />
 
         {/* While it is read, the card's own silhouette, not a spinner:
               the card that lands is ~330px tall to the spinner's 64px, so
@@ -289,63 +293,57 @@ const QUIET_BUTTON_CLASS =
 const ROW_BUTTON_CLASS =
   "bg-muted text-foreground hover:bg-muted/70 flex h-14 min-w-0 items-center justify-center rounded-xl text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-60";
 
-// WHY CONNECT (Pato, MESITA-4342; it undoes MESITA-2983's cut). A server
-// rule, not copy: others' full handles show only to a guest whose own
-// Instagram is connected and whose profile is public (place-activity
-// seesHandles). A black box with the Instagram mark (MESITA-4350); the Story
-// discount box went with Stories (MESITA-4641).
-export function WhyConnect({ connected }: { connected: boolean }) {
-  const { data } = useConsumerProfile();
-  const hidden = data?.appear_anonymous === true;
+// WHY CONNECT (Pato, MESITA-4342; it undoes MESITA-2983's cut). TWO PERKS,
+// NUMBERED (Pato, 2026-11-22, MESITA-4659): each a row with an icon, a bold
+// title and one line. (1) Activity: a server rule, not copy — others' full
+// handles show only to a guest whose own Instagram is connected, whose
+// profile is public and who shows their own handle (place-activity
+// seesHandles), so a short second line says so. (2) VIP Class: the bar
+// (VIP_MIN_FOLLOWERS), any Instagram, public or private. It was one black box
+// (MESITA-4350); the Story box went with Stories (MESITA-4641).
+const WHY_CONNECT = [
+  {
+    key: "see",
+    Icon: Eye,
+    title: "See other people's activity",
+    line: "Connect your Instagram to see other people's Instagram.",
+    rule: "You see theirs while yours shows.",
+  },
+  {
+    key: "vip",
+    Icon: Crown,
+    title: "VIP Class",
+    line: `An Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`,
+    rule: null,
+  },
+] as const;
+
+export function WhyConnect() {
   return (
     <section className="flex flex-col gap-3" aria-label="Why connect">
       <h2 className="px-0.5 text-base font-semibold tracking-tight">
         Why connect
       </h2>
-      <div
-        className="bg-foreground text-paper flex flex-col gap-2 rounded-2xl p-4"
-        data-why-connect="see"
-      >
-        <div className="flex items-center gap-3">
-          <IconChip tint="instagram">
-            <Eye className="h-[18px] w-[18px]" />
-          </IconChip>
-          <p className="min-w-0 flex-1 text-base leading-tight font-bold">
-            See other guests&apos; Instagram
-          </p>
-          {connected && !hidden && (
-            <Pill className="bg-paper text-foreground">
-              <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
-              On
-            </Pill>
-          )}
-        </div>
-        <p className="type-label text-paper/70">
-          {connected && hidden
-            ? "Your profile is hidden. Make it public in Settings to see theirs."
-            : "It goes both ways: share yours to see theirs."}
-        </p>
-      </div>
+      <ol className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border">
+        {WHY_CONNECT.map((perk, i) => (
+          <li key={perk.key} className="flex items-center gap-3 px-4 py-3" data-why-connect={perk.key}>
+            <span className="text-muted-foreground w-4 shrink-0 text-center text-sm font-bold tabular-nums" aria-hidden>
+              {i + 1}
+            </span>
+            <IconChip tint={perk.key === "see" ? "instagram" : "muted"}>
+              <perk.Icon className="h-[18px] w-[18px]" />
+            </IconChip>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">{perk.title}</span>
+              <span className="text-muted-foreground type-label block">{perk.line}</span>
+              {perk.rule ? (
+                <span className="text-muted-foreground type-label block">{perk.rule}</span>
+              ) : null}
+            </span>
+          </li>
+        ))}
+      </ol>
     </section>
-  );
-}
-
-function Pill({
-  className,
-  children,
-}: {
-  className: string;
-  children: ReactNode;
-}) {
-  return (
-    <span
-      className={cn(
-        "type-meta flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 font-bold",
-        className,
-      )}
-    >
-      {children}
-    </span>
   );
 }
 
@@ -432,7 +430,7 @@ export function ConnectedAccount({
   return (
     <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
-      <AccountPrivacyRow />
+      <HandleShownRow pending={pending} />
       {asking ? (
         <div className="px-4 pt-1 pb-4">
           <PhotoQuestion onAnswer={(y) => void answer(y)} busy={saving} />
@@ -968,9 +966,7 @@ export function ConnectCardSkeleton() {
 
 // THE ACCOUNT ROW (MESITA-3060). The handle links to the account on
 // Instagram (built only from the stored handle); the line under it is the
-// count, Public/Private as the last scrape saw it (MESITA-4639: "display if
-// public or private at the top"; Sync re-reads it, nobody types it, since VIP
-// needs a public account), and "Updated …" from the later of connect and
+// count and "Updated …" from the later of connect and
 // sync, rendered client-only. Disconnect left this row for a link at the
 // page bottom.
 function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
@@ -1017,58 +1013,57 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   );
 }
 
-// ACCOUNT PRIVACY (Pato, MESITA-4655: "public or private instagram must be
-// clearer to understand and enable to configure there"). Its own row with a
-// globe or a lock, not one word in the grey line, where it read like
-// Mesita's own sharing switch. Configuring it is Instagram's job: Meta offers
-// no API to change it, and a value typed here would let anyone claim the
-// public account VIP needs (MESITA-4639). So the button opens Instagram's own
-// setting and Sync reads the new value back.
-const INSTAGRAM_PRIVACY_URL =
-  "https://www.instagram.com/accounts/who_can_see_your_content/";
+// SHOW MY HANDLE (Pato, 2026-11-22, MESITA-4659: "Guests choose whether to
+// share their handle, and Mesita displays it only when they explicitly opt
+// in"). It took the place of the Account privacy row (MESITA-4655): Mesita
+// treats every linked Instagram the same, public or private. A server fact,
+// consumers.instagram_handle_shown: only true shows the @handle to other
+// guests and places; null (no choice yet) and false hide it, so the switch is
+// off unless it is true. Linking never turns it on. The guest always sees
+// their own handle here.
+function HandleShownRow({ pending = false }: { pending?: boolean }) {
+  const supabase = useBrowserSupabase();
+  const { data, error } = useConsumerProfile();
+  const [flipped, setFlipped] = useState<boolean | null>(null);
+  const [saving, setSaving] = useState(false);
+  const known = data != null || error != null;
+  const shown = flipped ?? data?.instagram_handle_shown === true;
 
-function AccountPrivacyRow() {
-  const profile = useServerProfile();
-  const label = instagramPrivacyLabel(profile?.instagram_is_private);
-  const title =
-    label === "Public"
-      ? "Public account"
-      : label === "Private"
-        ? "Private account"
-        : "Account privacy unknown";
-  const line =
-    label === "Public"
-      ? "Anyone can see your Instagram. VIP needs this."
-      : label === "Private"
-        ? "VIP needs a public account. Switch it in Instagram, then Sync."
-        : "Tap Sync to read it from Instagram.";
+  const flip = () => {
+    if (!known || saving || pending) return;
+    const next = !shown;
+    setFlipped(next);
+    setSaving(true);
+    apiUpdateConsumerProfile(supabase, { instagram_handle_shown: next })
+      .then(() => setFlipped(null))
+      .catch((e) => {
+        setFlipped(!next);
+        toast.error(errMsg(e, "Couldn't change that."));
+      })
+      .finally(() => setSaving(false));
+  };
+
   return (
-    <div
-      className="border-border/60 mx-4 mb-3 flex items-center gap-3 rounded-xl border p-3"
-      data-instagram-privacy={label}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={shown}
+      disabled={!known || saving || pending}
+      onClick={flip}
+      className="border-border/60 hover:bg-muted/60 mx-4 mb-3 flex w-[calc(100%-2rem)] items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-60"
+      data-instagram-handle-shown={shown ? "on" : "off"}
     >
       <IconChip>
-        {label === "Private" ? (
-          <Lock className="h-[18px] w-[18px]" />
-        ) : (
-          <Globe className="h-[18px] w-[18px]" />
-        )}
+        <AtSign className="h-[18px] w-[18px]" />
       </IconChip>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="text-muted-foreground type-label block">{line}</span>
+        <span className="block text-sm font-semibold">Show my handle on Mesita</span>
+        <span className="text-muted-foreground type-label block">
+          Off: other guests and places don&apos;t see your @handle. Instagram still decides who sees your posts.
+        </span>
       </span>
-      <a
-        href={INSTAGRAM_PRIVACY_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-muted text-foreground hover:bg-muted/70 type-label flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 font-semibold transition"
-        data-instagram-privacy-change
-      >
-        Open Instagram
-        <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-      </a>
-    </div>
+      <Switch on={shown} />
+    </button>
   );
 }
 

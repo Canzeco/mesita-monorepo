@@ -95,9 +95,11 @@ export type PlaceActions = {
     /** The guest's Class (MESITA-4640): the VIP voucher is VIP only. Absent
      *  reads Regular, so a signed-out or unread guest sees VIP locked. */
     guestClass?: "regular" | "vip";
-    /** What the last scrape said (consumers.instagram_is_private); null = not known. */
-    instagramPrivate?: boolean | null;
   };
+  /** "Link Instagram" on a VIP offer for a guest with no verified Instagram
+   *  (MESITA-4659): the host opens Me › Instagram. Absent, that row shows
+   *  the locked line alone. */
+  onLinkInstagram?: () => void;
 };
 
 export function inertButtonProps(live: boolean): {

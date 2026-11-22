@@ -78,12 +78,15 @@ Deno.test("a viewer who does not show their Instagram gets masked handles", () =
   assertEquals(feedEvents([row({})], "z", false)[0].person.handle, "per***");
 });
 
-Deno.test("seesHandles: a verified Instagram and a public profile, both", () => {
+Deno.test("seesHandles: a verified Instagram, a public profile and the viewer's own handle shown (MESITA-4659)", () => {
   const at = "2026-10-20T00:00:00Z";
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false }), true);
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: null }), true);
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: true }), false);
-  assertEquals(seesHandles({ instagram_verified_at: null, appear_anonymous: false }), false);
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false, instagram_handle_shown: true }), true);
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: null, instagram_handle_shown: true }), true);
+  // Give to get: no choice (null) or a hidden handle sees masks.
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false, instagram_handle_shown: null }), false);
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false, instagram_handle_shown: false }), false);
+  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: true, instagram_handle_shown: true }), false);
+  assertEquals(seesHandles({ instagram_verified_at: null, appear_anonymous: false, instagram_handle_shown: true }), false);
   assertEquals(seesHandles(null), false);
 });
 

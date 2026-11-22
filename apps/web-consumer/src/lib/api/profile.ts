@@ -31,9 +31,10 @@ export type ConsumerProfile = {
   // the card's "Updated …" is the later one. Optional (older EF payloads).
   instagram_verified_at?: string | null;
   instagram_synced_at?: string | null;
-  // MESITA-4639: what the last profile scrape said; VIP needs false. null =
-  // not known yet. Optional (older EF payloads).
-  instagram_is_private?: boolean | null;
+  // MESITA-4659: may other guests and places see the @handle? Only true
+  // shows it; null (no choice recorded) and false hide it. Linking never
+  // sets it. Optional (older EF payloads).
+  instagram_handle_shown?: boolean | null;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;
@@ -85,13 +86,19 @@ type ConsumerAppearAnonymousPatch = {
   appear_anonymous: boolean;
 };
 
+// "Show my handle on Mesita" on Me › Instagram (MESITA-4659).
+type ConsumerHandleShownPatch = {
+  instagram_handle_shown: boolean;
+};
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
   input:
     | ConsumerOnboardingInput
     | ConsumerAvatarPatch
     | ConsumerInstagramPhotoPatch
-    | ConsumerAppearAnonymousPatch,
+    | ConsumerAppearAnonymousPatch
+    | ConsumerHandleShownPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,

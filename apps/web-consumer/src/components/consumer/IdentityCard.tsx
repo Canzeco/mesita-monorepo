@@ -1,7 +1,7 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { CircleHelp, Crown, Globe, Lock, User, UserRound } from "lucide-react";
+import { Crown, User, UserRound } from "lucide-react";
 import { CLASS_LABEL, type GuestClass } from "@/lib/guest-standing";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -199,7 +199,6 @@ export function IdentityModules({
   instagram,
   nameHref,
   guestClass = "regular",
-  privacy = null,
   classHref,
 }: {
   name: string;
@@ -208,9 +207,6 @@ export function IdentityModules({
   nameHref: string;
   /** The guest's Class (MESITA-4639): Regular or VIP, computed by the server. */
   guestClass?: GuestClass;
-  /** "Public", "Private" or "Privacy unknown" for a linked Instagram; null
-   *  when none is linked (MESITA-4639). */
-  privacy?: string | null;
   /** Where the Class pill goes (MESITA-4657): /me/class. */
   classHref: string;
 }) {
@@ -218,23 +214,26 @@ export function IdentityModules({
   // number of followers there … only the instagram"): the count lives on Me
   // › Instagram.
   const [handle] = splitInstagramLabel(instagram.label);
-  // A 66 / 33 · 33 / 66 GRID (Pato, 2026-11-22, MESITA-4646: "Name name class
-  // / private instagram instagram / 66% 33% / 33% 66% … display name, not
-  // last name"). Row one: the first name (opens Profile) at two thirds, the
-  // Class pill (Regular grey, VIP black with a crown) at one third. Row two:
-  // Public / Private at one third, the Instagram pill ("@handle (~320
-  // followers)", opens Me › Instagram) at two thirds. With no Instagram the
-  // privacy cell is gone and Instagram reads "Connect Instagram" full width.
-  // MESITA-4639 had full-width rows with the privacy inside the Instagram pill.
-  // THE SMALL PILLS ARE DOORS (Pato, 2026-11-22, MESITA-4657: "make regular
-  // or vip clickable"): Class opens /me/class, Public/Private opens Me ›
-  // Instagram, where its Account privacy row says how to change it
-  // (MESITA-4655). Every pill is 40px since MESITA-4657 ("make the header
-  // text boxes a bit shorter"); 48px before.
+  // HALVES, THEN FULL WIDTH (Pato, 2026-11-22, MESITA-4659: "name left 50%
+  // class right 50%, instagram bottom 100%"). Row one: the first name (opens
+  // Profile) | the Class pill (Regular grey, VIP black with a crown; opens
+  // /me/class, MESITA-4657). Row two: the Instagram pill (the handle, opens
+  // Me › Instagram; "Connect Instagram" when none). No Public/Private pill:
+  // Mesita treats every linked Instagram the same (MESITA-4659). MESITA-4646
+  // and MESITA-4652 had 66/33 and 75/25 grids with that pill. Every pill is
+  // 40px (MESITA-4657).
   const vip = guestClass === "vip";
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
-      <span className={IDENTITY_RING_CLASS} aria-hidden>
+      {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
+          profile photo redirect me to profile subpage"): it opens the same
+          Profile page as the name pill; the 72px photo is past the 44px floor. */}
+      <PushLink
+        href={nameHref}
+        aria-label="Profile"
+        className={cn(IDENTITY_RING_CLASS, "block", DOOR_HOVER_CLASS)}
+        data-identity-photo
+      >
         <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
           {avatarUrl ? (
             <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
@@ -242,16 +241,12 @@ export function IdentityModules({
             <DefaultAvatar className="h-full w-full" />
           )}
         </span>
-      </span>
-      {/* QUARTERS (Pato, 2026-11-22, MESITA-4652: "maybe 75% and 25% and 25%
-          and 75%, that way is better"): name 3/4 | Class 1/4, Public/Private
-          1/4 | Instagram 3/4. A quarter of a phone card is ~70px, so the two
-          small pills set 12px and show the icon alone below an 18rem card. */}
-      <span className="@container grid w-full min-w-0 grid-cols-4 gap-2">
+      </PushLink>
+      <span className="grid w-full min-w-0 grid-cols-2 gap-2">
         <PushLink
           href={nameHref}
           aria-label={`Profile: ${name}`}
-          className={cn(IDENTITY_PILL_CLASS, "col-span-3")}
+          className={IDENTITY_PILL_CLASS}
           data-identity-name
         >
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -260,7 +255,7 @@ export function IdentityModules({
         <PushLink
           href={classHref}
           className={cn(
-            "flex h-10 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold",
+            "flex h-10 min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition",
             vip ? "border-neutral-950 bg-neutral-950 text-white" : "border-border bg-muted text-muted-foreground hover:bg-muted/70",
           )}
           aria-label={`Class: ${CLASS_LABEL[guestClass]}`}
@@ -273,30 +268,12 @@ export function IdentityModules({
           ) : (
             <UserRound className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           )}
-          <span className="hidden truncate @[18rem]:inline">{CLASS_LABEL[guestClass]}</span>
+          <span className="truncate">{CLASS_LABEL[guestClass]}</span>
         </PushLink>
-        {privacy && (
-          <PushLink
-            href={instagram.href}
-            className="border-border bg-card text-foreground hover:bg-muted/60 flex h-10 min-w-0 items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold"
-            aria-label={`Instagram: ${privacy}`}
-            data-identity-privacy
-          >
-            {/* A globe for Public, a lock for Private, a muted ? otherwise (MESITA-4651). */}
-            {privacy === "Public" ? (
-              <Globe className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            ) : privacy === "Private" ? (
-              <Lock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            ) : (
-              <CircleHelp className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            )}
-            <span className="hidden truncate @[18rem]:inline">{privacy}</span>
-          </PushLink>
-        )}
         <PushLink
           href={instagram.href}
           aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-          className={cn(IDENTITY_PILL_CLASS, privacy ? "col-span-3" : "col-span-4")}
+          className={cn(IDENTITY_PILL_CLASS, "col-span-2")}
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
