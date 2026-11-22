@@ -11,19 +11,27 @@
 // MESITA-3213: and the chart's 30 days, in the place's timezone. The log is
 // business-web-list-place-views-log.
 //
+// MESITA-4675 (Pato: "the whole analytics are run from all the events" on
+// every load): `analytics` is synthesized here from every raw view event of
+// the place (place_views_events, read in pages). Nothing is stored.
+//
 // Body: { place_id: uuid }
 // Response: { ok: true, views: number, likes: number, shares: number, timezone: string,
-//             days: [{ day: "YYYY-MM-DD", views: number, likes: number, shares: number }] }
+//             days: [{ day: "YYYY-MM-DD", views: number, likes: number, shares: number }],
+//             analytics: ViewsAnalytics (./analytics.ts) }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { readBoostPlace } from "../_shared/boost.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { synthesizeViews, type ViewEventRow } from "./analytics.ts";
 
 const CHART_DAYS = 30;
 const DEFAULT_TIMEZONE = "America/Mexico_City";
+const PAGE = 1000;
 
 /** The place's timezone when the runtime knows it. A bad value would fail the SQL. */
 function usableTimezone(timezone: string | null | undefined): string {
@@ -53,14 +61,15 @@ serveJson("business-web-get-place-views", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const timezone = usableTimezone(placeRes.place?.timezone);
 
-  const [views, likes, shares, days] = await Promise.all([
+  const [views, likes, shares, days, raw] = await Promise.all([
     // place_views_events drops closed accounts, as the chart does.
     admin.rpc("place_views_events", { p_place_id: placeId }, { count: "exact", head: true }).eq("kind", "viewed"),
     admin.from("place_activity").select("*", { count: "exact", head: true }).eq("place_id", placeId).eq("kind", "saved"),
     admin.from("place_shares").select("*", { count: "exact", head: true }).eq("place_id", placeId),
     admin.rpc("place_views_days", { p_place_id: placeId, p_timezone: timezone, p_days: CHART_DAYS }),
+    readViewEvents(admin, placeId),
   ]);
-  const failed = views.error ?? likes.error ?? shares.error ?? days.error;
+  const failed = views.error ?? likes.error ?? shares.error ?? days.error ?? raw.error;
   if (failed) return json({ ok: false, error: failed.message }, 500);
 
   return json({
@@ -70,5 +79,25 @@ serveJson("business-web-get-place-views", async (req) => {
     shares: shares.count ?? 0,
     timezone,
     days: days.data ?? [],
+    analytics: synthesizeViews(raw.rows, Date.now()),
   });
 });
+
+/** Every raw view event of the place, all time, in pages. */
+async function readViewEvents(
+  admin: SupabaseClient,
+  placeId: string,
+): Promise<{ rows: ViewEventRow[]; error: { message: string } | null }> {
+  const rows: ViewEventRow[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await admin
+      .rpc("place_views_events", { p_place_id: placeId })
+      .eq("kind", "viewed")
+      .order("created_at", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { rows, error };
+    const page = (data ?? []) as ViewEventRow[];
+    rows.push(...page);
+    if (page.length < PAGE) return { rows, error: null };
+  }
+}
