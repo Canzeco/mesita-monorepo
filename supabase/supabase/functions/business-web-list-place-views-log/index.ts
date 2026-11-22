@@ -9,6 +9,13 @@
 // MESITA-4538: each event carries the viewer's per-place customer key (never
 // the member id), and `customer` filters the log to one guest.
 //
+// MESITA-4678 (Pato: "Anonymous users cannot be customers. however the log
+// events for views can count for anonymous. Just mention Anonymous user"): a
+// signed-out open is a row with no consumer. It reads "Anonymous user", with
+// no face, handle or marks, and `customer: null`, so it is never a customer.
+// Branch on the missing consumer, never on `anonymous`: that flag also marks
+// a signed-in guest who hides their profile.
+//
 // Body: { place_id: uuid, before?: ISO timestamp, customer?: key }
 // Response: { ok: true,
 //             events: [{ kind: "viewed" | "saved" | "shared", at,
@@ -24,6 +31,14 @@ import { type ActivityRow, toPerson } from "../_shared/place-activity.ts";
 import { isCustomerKey } from "../_shared/monitor.ts";
 
 const PAGE = 30;
+const ANONYMOUS_PERSON = {
+  name: "Anonymous user",
+  avatarUrl: null,
+  handle: null,
+  followers: 0,
+  guestClass: "regular",
+  instagram: false,
+} as const;
 
 serveJson("business-web-list-place-views-log", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -50,10 +65,13 @@ serveJson("business-web-list-place-views-log", async (req) => {
   });
   if (error) return json({ ok: false, error: `place_views_log: ${error.message}` }, 500);
 
-  const rows = (data ?? []) as Array<ActivityRow & { customer?: string | null }>;
+  const rows = (data ?? []) as Array<Omit<ActivityRow, "consumer_id"> & { consumer_id: string | null; customer?: string | null }>;
   const page = rows.slice(0, PAGE);
   const events = page.map((row) => {
-    const { name, avatarUrl, handle, followers, guestClass, instagram } = toPerson(row, user.id);
+    if (row.consumer_id == null) {
+      return { kind: row.kind, at: row.created_at, customer: null, person: ANONYMOUS_PERSON };
+    }
+    const { name, avatarUrl, handle, followers, guestClass, instagram } = toPerson({ ...row, consumer_id: row.consumer_id }, user.id);
     return {
       kind: row.kind,
       at: row.created_at,

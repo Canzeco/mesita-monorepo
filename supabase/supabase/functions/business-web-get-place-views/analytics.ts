@@ -7,6 +7,8 @@ export type ViewEventRow = { consumer_id: string | null; kind: string; created_a
 export type ViewsAnalytics = {
   /** Every open, all time. */
   views: number;
+  /** Opens by signed-out visitors, all time (MESITA-4678): never customers. */
+  anonymous: number;
   /** Distinct guests who opened it, all time. */
   viewers: number;
   /** Guests who opened it on two or more different days. */
@@ -24,6 +26,7 @@ export function synthesizeViews(rows: ViewEventRow[], now: number): ViewsAnalyti
   const days = new Map<string, Set<string>>();
   const viewers30 = new Set<string>();
   let views = 0;
+  let anonymous = 0;
   let views7d = 0;
   let views30d = 0;
 
@@ -36,7 +39,10 @@ export function synthesizeViews(rows: ViewEventRow[], now: number): ViewsAnalyti
       views30d++;
       if (r.consumer_id) viewers30.add(r.consumer_id);
     }
-    if (!r.consumer_id) continue;
+    if (!r.consumer_id) {
+      anonymous++;
+      continue;
+    }
     let d = days.get(r.consumer_id);
     if (!d) days.set(r.consumer_id, (d = new Set()));
     d.add(r.created_at.slice(0, 10));
@@ -45,5 +51,5 @@ export function synthesizeViews(rows: ViewEventRow[], now: number): ViewsAnalyti
   let returning = 0;
   for (const d of days.values()) if (d.size > 1) returning++;
 
-  return { views, viewers: days.size, returning, views7d, views30d, viewers30d: viewers30.size };
+  return { views, anonymous, viewers: days.size, returning, views7d, views30d, viewers30d: viewers30.size };
 }
