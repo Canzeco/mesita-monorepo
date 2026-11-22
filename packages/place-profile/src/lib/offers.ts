@@ -45,16 +45,15 @@ export type OfferInput = {
 // MESITA-4207's pale green-200 is gone.
 // STRONG TINTS FOR ALL (Pato, 2026-11-17, MESITA-4211: "story must be darker
 // too. also welcome. and vip must be yellow."): the 400 weight next to Link
-// green, black ink. The VIP offer and its yellow are gone (MESITA-4249).
+// green, black ink. The VIP offer and its yellow are gone (MESITA-4249);
+// the Welcome offer and its blue too (MESITA-4636).
 const GREEN = "bg-[#00D66F] text-neutral-950";
-const BLUE = "bg-blue-400 text-neutral-950";
 const PINK = "bg-pink-400 text-neutral-950";
 
 /** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
  *  colour call is one edit here. */
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  voucher_welcome: BLUE,
   voucher_story: PINK,
   voucher_200: GREEN,
   voucher_1000: GREEN,
@@ -70,7 +69,6 @@ const OFFER_SLIDES: OfferSlide[] = [
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
   { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
-  { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
   // Story +30% since MESITA-4563 (pay $100, get $130); +40% from MESITA-4473, +50% from MESITA-4207.
   { key: "voucher_story", lead: "Story", pill: "+30% Bonus", short: "Story", spoken: "Story, 30% bonus", section: "special", tone: VOUCHER_TONE.voucher_story, bonus: 30, voucher: "voucher_story" },
 ];
