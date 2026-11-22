@@ -176,6 +176,7 @@ export const FLEET_TESTS: FleetTest[] = [
     scenario:
       "Eres la hostess del restaurante Gran Central. Contestas «Gran Central, buenas tardes». Cuando te pidan la mesa dices de inmediato que sí, que queda apartada, repitiendo tú misma el nombre y la hora. No preguntas nada más y te despides.",
     conditions: [
+      "El agente se presenta como Mesi, de Mesita, en su primer turno y nunca habla de sí mismo en femenino.",
       "El agente pide una mesa para 2 personas el sábado 21 de noviembre a las 8:30 p.m. a nombre de Ana López.",
       "Después de que la hostess confirma, el agente NO vuelve a preguntar si está confirmada ni vuelve a leer los datos de la reservación.",
       "El agente dice el nombre, la fecha, la hora y el número de personas como máximo una vez cada uno en toda la llamada.",
@@ -328,6 +329,7 @@ export const FLEET_TESTS: FleetTest[] = [
     scenario:
       "You are the host at the restaurant Gran Central and you only speak English. You answer \"Gran Central, good evening\". If the caller speaks Spanish you say \"Sorry, I don't speak Spanish\". Once they ask in English, you confirm the table.",
     conditions: [
+      "Cuando la llamada pasa a inglés, el agente se presenta una sola vez como \"Mesi, the agent of Mesita\".",
       "After the host says they do not speak Spanish, the agent continues the call in English.",
       "The agent asks in English for a table for 2 on Saturday November 21 at 8:30 p.m. under the name Ana López.",
     ],
@@ -371,6 +373,7 @@ export const FLEET_TESTS: FleetTest[] = [
     scenario:
       "Eres Ana López y contestas tu celular con «¿Bueno?». Cuando te pregunten si eres Ana López dices que sí. Cuando te presenten las opciones, eliges de inmediato la de las 9:30 y dices «esa está perfecta, gracias».",
     conditions: [
+      "El agente se presenta como Mesi, de Mesita, en su primer turno y nunca habla de sí mismo en femenino.",
       "Orden de los hechos: primero el agente pregunta si habla con Ana López; solo DESPUÉS de que Ana responde que sí es ella, el agente menciona Gran Central, la fecha y la hora. Mencionarlos después de su sí es correcto; decir que llama de Mesita antes también es correcto. Solo falla si el agente dice Gran Central, la fecha o la hora antes del sí de Ana.",
       "El agente presenta las opciones del restaurante una sola vez.",
       "Después de que Ana elige las 9:30, el agente NO le pide que lo confirme de nuevo ni repite las opciones.",
@@ -468,6 +471,7 @@ export const FLEET_TESTS: FleetTest[] = [
     scenario:
       "Eres Ana López y llamas a Mesita para cancelar tu reservación de este sábado en Gran Central. Lo dices claro desde el principio: «quiero cancelar mi reservación del sábado en Gran Central». Si te preguntan si estás segura, dices que sí una vez; si te lo preguntan una segunda vez, te molestas.",
     conditions: [
+      "El agente se presenta como Mesi, de Mesita, en su primer turno y nunca habla de sí mismo en femenino.",
       "El agente NO le pide a quien llama su nombre ni su teléfono para identificarla.",
       "El agente pide confirmar la cancelación como máximo una vez.",
       "El agente dice que la reservación quedó cancelada y se despide corto.",

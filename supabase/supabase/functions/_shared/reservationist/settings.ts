@@ -6,6 +6,16 @@
 
 export const LANGUAGE = "es";
 
+/**
+ * The agent's name (MESITA-4620, Pato 2026-11-21: "The reservations Agent must
+ * be called Mesi ... Mesi is his name ... a male voice"). Every call opens with
+ * «Soy Mesi, el agente de Mesita»; the role sentence below is the first line of
+ * every agent's prompt, so a rename is this one constant.
+ */
+export const AGENT_NAME = "Mesi";
+export const AGENT_SELF =
+  `Eres ${AGENT_NAME}, el agente de reservaciones de Mesita (hombre: habla de ti en masculino).`;
+
 // claude-haiku-4-5. haiku-5-5 (10x cheaper) was tried 2026-11-14 and failed
 // 3 of 13 simulated calls, every time at a tool node whose inputs the model
 // fills (MESITA-4026); reliability is the product. The workflow stays shaped
@@ -19,7 +29,10 @@ export const LLM = {
 
 export const TTS = {
   model_id: "eleven_flash_v2_5",
-  voice_id: "x5O3bgPT2grYhry6qmWR",
+  // "Alejandro Garcia — Deep, Warm, Confident": native Mexican male, northern
+  // accent, a shared library voice (MESITA-4620). Fallback if it is ever
+  // withdrawn: x5O3bgPT2grYhry6qmWR ("Jess", the female voice before Mesi).
+  voice_id: "9gm2jXcKEKzgaypKoOlk",
   speed: 1,
   stability: 0.5,
   similarity_boost: 0.75,

@@ -9,6 +9,7 @@ import type { WorkspaceCtx } from "./context.ts";
 import { type AgentShape, elFetch, readWorkflow, summarizeWorkflow, type VersionedAgentShape } from "../el-client.ts";
 import { json } from "../../_shared/http.ts";
 import { agentHash, FLEET, kbDocName } from "../../_shared/reservationist/index.ts";
+import { TTS } from "../../_shared/reservationist/settings.ts";
 
 export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, configuredAgents, listedAgents, toolRows, toolIdByName } = ctx;
@@ -48,6 +49,7 @@ export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
       language_presets: Object.keys((cc.language_presets ?? {}) as Record<string, unknown>),
       turn: cc.turn ?? null,
       client_events: (cc.conversation as { client_events?: unknown } | undefined)?.client_events ?? null,
+      voice_id: (cc.tts as { voice_id?: unknown } | undefined)?.voice_id ?? null,
     };
     const checks = {
       prompt_hash: liveHash === repoHash,
@@ -55,6 +57,8 @@ export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
       knowledge: kb.length === 1 && kb[0].name === kbDocName(spec.key),
       end_call: !!builtIn.end_call,
       workflow: Object.values(wf?.edges ?? {}).some((e) => e.source === "start_node"),
+      // Mesi's voice is live (MESITA-4620): the prompt hash never covered TTS.
+      voice: liveSettings.voice_id === TTS.voice_id,
     };
     agents.push({
       key: spec.key,
