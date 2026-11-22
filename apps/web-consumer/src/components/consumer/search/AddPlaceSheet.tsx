@@ -173,7 +173,7 @@ export function AddPlaceSheet({
                   <PlaceActionRow
                     mark={
                       <MapPin
-                        className="text-muted-foreground h-5 w-5"
+                        className="text-fact-closed h-5 w-5"
                         strokeWidth={2.25}
                         aria-hidden
                       />

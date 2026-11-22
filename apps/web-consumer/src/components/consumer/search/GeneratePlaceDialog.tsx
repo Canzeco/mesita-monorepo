@@ -26,6 +26,12 @@
 // address in the place box, so two places with one name read apart before
 // anything is created. A failed or photo-less read keeps the sparkles tile
 // in the hero; Generate never waits for the preview.
+//
+// WHO MAY ADD IT (Pato, 2026-11-22, MESITA-4681). The preview also answers
+// `addable`: the gates Create applies (signed in, Creation's minimum Google
+// reviews, an Atlas category, the month's limit). A refusal keeps the place on
+// screen, turns Generate off and says why in the body line; an allowed add
+// shows the month ("You can add 10 places a month to Mesita · 7 left").
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
@@ -232,6 +238,8 @@ function GenerateBody({
   const opening = phase === "opening";
   const running = phase === "generating" || opening;
   const failed = phase === "error";
+  const addable = preview?.addable ?? null;
+  const refused = addable !== null && !addable.canAdd;
   const address = preview?.address || target.address;
   const rating = preview?.rating ? preview.rating.toFixed(1) : null;
 
@@ -250,11 +258,22 @@ function GenerateBody({
               ? "Generating profile…"
               : failed
                 ? "Couldn't generate this profile"
-                : "Generate a profile?"}
+                : refused
+                  ? "Can't add this place"
+                  : "Generate a profile?"}
           </h2>
           <p className="text-muted-foreground mt-1.5 max-w-[280px] text-sm leading-relaxed">
-            {failed ? error : "We'll build its profile from Google."}
+            {failed
+              ? error
+              : refused
+                ? addable.message
+                : "We'll build its profile from Google."}
           </p>
+          {addable?.canAdd && !failed ? (
+            <p className="text-foreground mt-1 max-w-[280px] text-xs font-semibold" data-generate-place-month>
+              {addable.message}
+            </p>
+          ) : null}
         </div>
         <div className="bg-muted mt-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left">
           <MapPin
@@ -317,7 +336,11 @@ function GenerateBody({
               ref={primaryRef}
               type="button"
               onClick={() => void generate()}
-              className={cn(PRIMARY_BUTTON_CLASS, "h-auto flex-1 py-3")}
+              disabled={refused && !failed}
+              className={cn(
+                PRIMARY_BUTTON_CLASS,
+                "h-auto flex-1 py-3 disabled:pointer-events-none disabled:opacity-40",
+              )}
               data-generate-place-confirm
             >
               <Sparkles className="h-4 w-4" aria-hidden />

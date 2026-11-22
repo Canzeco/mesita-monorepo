@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 // (muted) for one Mesita holds. A Location has no button: it is an area,
 // not a place.
 //
+// The button is small (Pato, 2026-11-22, MESITA-4681: "generate button
+// maybe smaller, Open button too"): the name leads the row.
+//
 // The body and the button are siblings, never nested: in the bar the body
 // anchors the map (MESITA-1405) and the button opens or creates.
 
@@ -78,7 +81,7 @@ export function PlaceActionRow({
           onClick={action.onClick}
           aria-label={`${action.onMesita ? "Open" : "Generate a profile for"} ${title}`}
           className={cn(
-            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition active:scale-[0.97]",
+            "inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-3 text-xs font-semibold transition active:scale-[0.97]",
             action.onMesita
               ? "bg-muted text-foreground"
               : "bg-foreground text-paper",
@@ -86,7 +89,7 @@ export function PlaceActionRow({
           data-place-row-action={action.onMesita ? "open" : "create"}
         >
           {action.onMesita ? null : (
-            <Sparkles className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           )}
           {action.onMesita ? "Open" : "Generate"}
         </button>

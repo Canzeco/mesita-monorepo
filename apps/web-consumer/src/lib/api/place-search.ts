@@ -58,6 +58,7 @@ export type GooglePlacePreview = {
   photoUrl: string | null;
   photoAuthor: string | null;
   mapsUrl: string | null;
+  addable: AddVerdict | null;
 };
 
 /**
@@ -69,14 +70,27 @@ export async function apiPreviewGooglePlace(
   client: SupabaseClient,
   placeId: string,
 ): Promise<GooglePlacePreview> {
-  const { preview } = await invokeEF<{ preview: GooglePlacePreview }>(
+  const { preview, addable } = await invokeEF<{
+    preview: GooglePlacePreview;
+    addable?: AddVerdict;
+  }>(
     client,
     "consumer-web-suggest-places",
     { previewPlaceId: placeId },
     "Couldn't load that place right now.",
   );
-  return preview;
+  return { ...preview, addable: addable ?? null };
 }
+
+/** Whether this guest may add the place (MESITA-4681): the gates Create
+ *  applies — signed in, Creation's minimum Google reviews, an Atlas category,
+ *  the month's limit. A refusal keeps the preview and turns Generate off. */
+export type AddVerdict = {
+  canAdd: boolean;
+  code: string | null;
+  message: string;
+  monthly: { limit: number; used: number } | null;
+};
 
 type CreatedProject = {
   ok: boolean;
