@@ -185,8 +185,9 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(card).toContain(
       "https://www.instagram.com/${encodeURIComponent(person.handle)}/",
     );
-    expect(card).toContain('target="_blank"');
-    expect(card).toContain('rel="noopener noreferrer"');
+    // The handle pill opens it in a new tab (IdentityCard's
+    // PersonInstagramPill since MESITA-4695), counted.
+    expect(card).toContain("<PersonInstagramPill");
     expect(card).toContain('trackEvent(supabase, "social_open_instagram", {})');
     // Never on the guest's own card, never for a masked handle (MESITA-2594).
     expect(card).toContain(
@@ -198,10 +199,12 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
   // masks; the card offers the way to unlock instead of a link.
   it("a masked handle has no link and says how to see it", () => {
     const card = FEED.slice(FEED.indexOf("function PersonCard("));
-    expect(card).toContain("data-social-unlock-instagram");
-    expect(card).toContain("CONSUMER_ROUTES.mePages.instagram");
-    expect(card).toContain("Connect your Instagram to see theirs");
-    expect(card).toContain("Make your profile public to see their Instagram");
+    // Since MESITA-4695: a viewer without Instagram gets the add-yours box
+    // (whatever the person has); a masked handle reads "No Instagram", no link.
+    expect(FEED).toContain("data-social-add-instagram");
+    expect(FEED).toContain("CONSUMER_ROUTES.mePages.instagram");
+    expect(card).toContain("person.handle && (person.isYou || !person.handleLocked)");
+    expect(card).toContain('<PersonInstagramPill label="No Instagram" />');
   });
 
   // The switch sits in Settings › Account since MESITA-3793 (its own Social
