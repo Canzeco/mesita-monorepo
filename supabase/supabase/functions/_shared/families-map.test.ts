@@ -16,6 +16,11 @@ Deno.test("only allowed Google categories are listed, Undefined is no family", (
   );
   assertEquals(map.enabledCategories.map((c) => c.slug), ["bakery", "cafe"]);
   assertEquals(map.families.map((f) => f.slug), ["coffee"]);
+  // MESITA-4680: the rest of Google's list, never an allowed one or a Table B marker.
+  const nope = new Set(map.notAllowedCategories.map((c) => c.slug));
+  assertEquals(nope.has("gas_station"), true);
+  assertEquals(nope.has("cafe") || nope.has("bakery"), false);
+  assertEquals(nope.has("point_of_interest") || nope.has("establishment"), false);
 });
 
 Deno.test("tags keep the english label and follow facet order", () => {
