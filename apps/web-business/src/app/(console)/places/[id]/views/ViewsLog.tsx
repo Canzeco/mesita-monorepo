@@ -5,8 +5,10 @@
 // important, also mentioning who say what ... based that kinda of the current
 // social feed"). Social's row without the place's photo, since the page is one
 // place: the guest's face with the same two marks, the name, the verb, and under
-// it their Instagram and the time. What the server sends is Social's rule: no
-// photo or handle for a guest with Public profile off.
+// it their Instagram and the time. What the server sends is Social's rule: a
+// signed-out view or a guest without a verified, shown Instagram has no
+// handle; only a signed-out view has no photo (every profile is public,
+// MESITA-4690).
 
 import { useState } from "react";
 import Link from "next/link";

@@ -1,7 +1,8 @@
 // A guest's face on a Business list (MESITA-4554, Pato: "more friendly
 // profile picture"): the photo, or the default avatar, with Social's two
 // marks: the Instagram glyph for a verified Instagram they show, the crown
-// for VIP. The server already hid the photo of a guest who appears anonymous.
+// for VIP. Every profile is public (MESITA-4690); only a signed-out view
+// comes without a photo.
 import { Crown } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { cn } from "@/lib/utils";

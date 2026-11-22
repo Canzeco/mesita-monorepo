@@ -24,7 +24,7 @@
 // profile picture … Remember the bubble you had for the event type. well do
 // the same for the subtype of user"): Instagram bottom-left when verified,
 // a VIP crown bottom-right. The server sends the photo and the marks for
-// every member who keeps Public profile on.
+// every member: every Mesita profile is public (MESITA-4690).
 // One line, ALWAYS THIRD PERSON (Pato, MESITA-3051: "never mention first
 // person, always mention all as third person, even if the event is
 // yourself"; it retires "You"): the member's name, always (Pato,

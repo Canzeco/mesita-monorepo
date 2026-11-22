@@ -12,7 +12,6 @@ import {
   SettingsLinkRow,
 } from "@/components/consumer/me/settings-rows";
 import { PhoneRow } from "@/components/consumer/me/PhoneRow";
-import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
@@ -24,17 +23,16 @@ import { cn } from "@/lib/utils";
 // (MESITA-3468: "remove the stupid delete account button"); Contact is the
 // way to ask, and Send feedback (MESITA-3029) the way to tell us about the
 // app itself. The one server write here is Sign out.
-// Social has one switch, "Public profile" (MESITA-2590, MESITA-2594): off, you
-// still show, by first name, without photo or handle (MESITA-2612). Nothing makes a member disappear from Social
-// (MESITA-2552: "if you connect your … instagram, is because you want to be
-// seen").
+// No Public profile switch (Pato, MESITA-4690: "all profiles are public in
+// Mesita"): your first name and photo always show; the one privacy choice is
+// "Show my handle on Mesita" on Me › Instagram (MESITA-4659).
 //
 // THREE GROUPS AND SIGN OUT (Pato, MESITA-3793: "make this better. it looks
 // like shit"). Four eyebrows for six rows read as clutter: Contact and
 // Feedback sat under "Your account", Social and Session were one-row groups,
 // Sign out drew a different row, and Terms and Privacy showed raw URLs.
 //
-//   ACCOUNT   Phone (a fact) · Public profile (the switch). Plan was a door
+//   ACCOUNT   Phone (a fact) · Refunds (a door). Plan was a door
 //             here while Me's Plan cell read Soon (MESITA-3855); it went
 //             back to the grid when Plan was sold again (MESITA-3870)
 //   HELP      Contact · Send feedback
@@ -113,8 +111,6 @@ export function SettingsModal() {
         <>
           {/* The login phone left Me's card for here (MESITA-2547). */}
           <PhoneRow />
-          <RowDivider />
-          <SocialNameRow />
           <RowDivider />
           {/* Refunds left Tickets for here (Pato, MESITA-4402). */}
           <SettingsLinkRow

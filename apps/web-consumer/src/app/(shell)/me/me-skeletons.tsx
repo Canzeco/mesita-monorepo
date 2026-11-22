@@ -69,14 +69,13 @@ export function IdentityBarSkeleton() {
 }
 
 /** One settings row (settings-rows.tsx: SettingsInfoRow, SettingsLinkRow,
- *  SocialNameRow, Contact's links, Instagram's photo switch): px-4 py-3, the
+ *  Contact's links, Instagram's photo and handle switches): px-4 py-3, the
  *  36px icon chip, a 14px label over an 11px line, and the 40×24 switch
  *  when the row has one.
  *
- *  A SWITCH ROW'S WORDS ARE ITS OWN (MESITA-2701). SocialNameRow and the
- *  photo switch paint their default line before their read lands, and that
- *  line wraps — "You're visible in the Social feed" is two lines at 320px,
- *  the photo line two at every width — so pass `label` and `sub` and they are
+ *  A SWITCH ROW'S WORDS ARE ITS OWN (MESITA-2701). The photo switch paints
+ *  its default line before its read lands, and that line wraps — two lines
+ *  at every width — so pass `label` and `sub` and they are
  *  drawn as themselves, wrapping where the row's do. Without them the row is
  *  two bars, for a row whose one-line words are a door or data. */
 export function SettingsRowSkeleton({

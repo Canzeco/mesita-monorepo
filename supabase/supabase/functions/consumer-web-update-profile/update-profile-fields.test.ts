@@ -5,6 +5,7 @@ import {
   parseBirthYear,
   parseFollowersEmulated,
   parseName,
+  removedFieldResponse,
 } from "./update-profile-fields.ts";
 
 // Each half of the name is written independently (MESITA-1806): onboarding
@@ -222,4 +223,18 @@ Deno.test("buildProfilePatch: the emulated count is written alone, null included
   assertEquals(set.ok && set.patch, { instagram_followers_emulated: 5001 });
   const reset = buildProfilePatch({ instagram_followers_emulated: null }, { ...fields, followersEmulated: null });
   assertEquals(reset.ok && reset.patch, { instagram_followers_emulated: null });
+});
+
+// MESITA-4690: Public profile was removed. Any value of appear_anonymous gets
+// one 400 before any other check or write; a body without it passes through.
+Deno.test("removedFieldResponse: appear_anonymous is a 400 field_removed, whatever its value", async () => {
+  for (const v of [true, false, null]) {
+    const res = removedFieldResponse({ appear_anonymous: v, first_name: "Ana" });
+    assertEquals(res?.status, 400);
+    const body = await res!.json();
+    assertEquals(body.ok, false);
+    assertEquals(body.code, "field_removed");
+  }
+  assertEquals(removedFieldResponse({ first_name: "Ana" }), null);
+  assertEquals(removedFieldResponse(null), null);
 });

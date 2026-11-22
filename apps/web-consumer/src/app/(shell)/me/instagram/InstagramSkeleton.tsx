@@ -26,8 +26,7 @@ import { useConsumerIdentity } from "@/lib/identity-context";
 //
 // THE WORDS ARE THE PAGE'S: the intro, the account card and the
 // Connect card are InstagramModal's own components, and the switch rows'
-// words are switch-words.ts, the rows' first paint (on, before the read
-// lands), drawn as themselves so they wrap where the rows' do.
+// words are drawn as themselves so they wrap where the rows' do.
 export function InstagramSkeleton() {
   const { igConnected: connected } = useConsumerIdentity();
 

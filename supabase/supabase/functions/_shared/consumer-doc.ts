@@ -63,10 +63,10 @@ export type ConsumerDoc = {
   instagram_verified_at: string | null;
   // MESITA-2585: may verifying Instagram set the picture? Default true.
   use_instagram_photo: boolean;
-  // MESITA-2590: Settings › Social › "Public profile", off = true: no photo
-  // or handle in Social, the first name still shows (MESITA-2612).
-  // place_activity_visible reads it.
-  appear_anonymous: boolean;
+  // No appear_anonymous: "Public profile" was removed (Pato, MESITA-4690: "all
+  // profiles are public in Mesita"). The column stays, forced false by
+  // consumers_profile_always_public, until the follow-up drops it; a patch
+  // naming it is refused (REMOVED_FIELD_APPEAR_ANONYMOUS).
   // MESITA-4659: may Mesita show the handle to others? null = no choice made =
   // hidden; only true shows it (place_shown_handle). A new handle, Disconnect
   // and account deletion put it back to null.
@@ -100,7 +100,6 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_followers_count",
   "instagram_verified_at",
   "use_instagram_photo",
-  "appear_anonymous",
   "instagram_handle_shown",
   "instagram_followers_emulated",
   "deleted_at",
@@ -129,7 +128,17 @@ export type ConsumerPatch = Partial<
 
 export type ConsumerValidationResult =
   | { ok: true; patch: ConsumerPatch }
-  | { ok: false; error: string };
+  | { ok: false; error: string; code?: string };
+
+/** MESITA-4690: the one answer for a write naming the retired Public profile
+ *  field, from the consumer EF and from any writeConsumer caller (an MCP
+ *  agent included). Names the field, says to drop it, and carries a stable
+ *  code. */
+export const REMOVED_FIELD_APPEAR_ANONYMOUS = {
+  error:
+    "appear_anonymous: Public profile was removed; every profile is public. Remove appear_anonymous from the request.",
+  code: "field_removed",
+} as const;
 
 const SEX_VALUES = new Set(["male", "female"]);
 // Consumer QR codes: sequential 8 digits, canonical form 0000-0000 … 9999-9999.
@@ -163,6 +172,12 @@ export function validateConsumerPatch(
     return { ok: false, error: "consumer patch must be an object" };
   }
   const raw = input as Record<string, unknown>;
+
+  // Before the unknown-key loop, so the caller learns the field was removed
+  // rather than "unknown consumer field" (MESITA-4690).
+  if ("appear_anonymous" in raw) {
+    return { ok: false, ...REMOVED_FIELD_APPEAR_ANONYMOUS };
+  }
 
   for (const key of Object.keys(raw)) {
     if (!(CONSUMER_PATCH_KEYS as readonly string[]).includes(key)) {
@@ -261,13 +276,6 @@ export function validateConsumerPatch(
     }
     patch.use_instagram_photo = v;
   }
-  if ("appear_anonymous" in raw) {
-    const v = raw.appear_anonymous;
-    if (typeof v !== "boolean") {
-      return { ok: false, error: "appear_anonymous must be a boolean" };
-    }
-    patch.appear_anonymous = v;
-  }
   if ("instagram_handle_shown" in raw) {
     const v = raw.instagram_handle_shown;
     if (v !== null && typeof v !== "boolean") {
@@ -322,7 +330,9 @@ export async function writeConsumer(
   args: ConsumerWriteArgs,
 ): Promise<ConsumerWriteResult> {
   const validated = validateConsumerPatch(args.patch);
-  if (!validated.ok) return { ok: false, error: validated.error };
+  if (!validated.ok) {
+    return { ok: false, error: validated.error, code: validated.code };
+  }
 
   if (args.mode === "insert") {
     const row = { id: args.id, ...validated.patch };
@@ -448,9 +458,9 @@ export async function disconnectInstagram(
 
 // ── readSocialStanding — what Social masks by (MESITA-2594) ───────────────
 
-/** Whether the viewer shows themself in Social: a verified Instagram, the
- *  Public profile switch and (MESITA-4659) "Show my handle on Mesita". You
- *  see others' handles only if you show yours. */
+/** Whether the viewer shows themself in Social: a verified Instagram and
+ *  (MESITA-4659) "Show my handle on Mesita". You see others' handles only if
+ *  you show yours. Every profile is public (MESITA-4690). */
 export async function readSocialStanding(
   admin: SupabaseClient,
   consumerId: string,
@@ -459,7 +469,6 @@ export async function readSocialStanding(
     ok: true;
     row: {
       instagram_verified_at: string | null;
-      appear_anonymous: boolean | null;
       instagram_handle_shown: boolean | null;
     } | null;
   }
@@ -467,7 +476,7 @@ export async function readSocialStanding(
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("instagram_verified_at, appear_anonymous, instagram_handle_shown")
+    .select("instagram_verified_at, instagram_handle_shown")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -478,7 +487,6 @@ export async function readSocialStanding(
       ? {
         instagram_verified_at: (data.instagram_verified_at as string | null) ??
           null,
-        appear_anonymous: (data.appear_anonymous as boolean | null) ?? null,
         instagram_handle_shown: (data.instagram_handle_shown as boolean | null) ?? null,
       }
       : null,

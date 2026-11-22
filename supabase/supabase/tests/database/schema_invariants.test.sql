@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(216);
+select plan(218);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -770,7 +770,22 @@ select ok(
       and column_name = 'appear_anonymous') = 'false'
     and pg_get_functiondef('public.place_activity_visible(public.consumers)'::regprocedure)
       like '%appear_anonymous%',
-  'consumers.appear_anonymous defaults to false and place_activity_visible reads it (MESITA-2590)'
+  'consumers.appear_anonymous defaults to false and place_activity_visible reads it (MESITA-2590; retired by MESITA-4690, the follow-up rewrites this)'
+);
+
+-- MESITA-4690: every Mesita profile is public; the column can never be true.
+select ok(
+  exists (select 1 from pg_constraint
+           where conrelid = 'public.consumers'::regclass
+             and conname = 'consumers_profile_always_public'
+             and contype = 'c'),
+  'consumers_profile_always_public exists (MESITA-4690)'
+);
+select throws_ok(
+  $$ insert into public.consumers (id, appear_anonymous) values ('00000000-0000-4000-8000-000000004690', true) $$,
+  '23514',
+  null,
+  'no profile can be hidden: appear_anonymous = true is refused (MESITA-4690)'
 );
 
 -- MESITA-2461: a handle is proved, not typed.

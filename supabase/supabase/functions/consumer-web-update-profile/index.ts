@@ -27,10 +27,11 @@ import {
   parseSex,
   type UpdateProfileBody,
   notWritableKey,
+  removedFieldResponse,
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, appear_anonymous, instagram_handle_shown, instagram_followers_emulated, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_followers_emulated, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -41,6 +42,9 @@ serveJson("consumer-web-update-profile", async (req) => {
   const bodyRes = await readJson<UpdateProfileBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
+
+  const removed = removedFieldResponse(body);
+  if (removed) return removed;
 
   const blocked = notWritableKey(body);
   if (blocked) {

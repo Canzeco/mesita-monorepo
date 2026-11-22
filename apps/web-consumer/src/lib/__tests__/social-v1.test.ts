@@ -154,29 +154,11 @@ describe("Social has no sample", () => {
   });
 });
 
-// MESITA-2590: the person card opens Instagram in a new tab and counts it;
-// Settings › Social: Public profile off hides the photo and handle.
-describe("full handle, Open Instagram, and the Social name switch", () => {
+// MESITA-2590: the person card opens Instagram in a new tab and counts it.
+// No Public profile switch since MESITA-4690: every profile is public.
+describe("full handle and Open Instagram", () => {
   const FEED = readFileSync(
     join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
-    "utf8",
-  );
-  const SETTINGS = readFileSync(
-    join(__dirname, "../../components/consumer/me/SettingsModal.tsx"),
-    "utf8",
-  );
-  const SWITCH = readFileSync(
-    join(__dirname, "../../components/consumer/me/SocialNameRow.tsx"),
-    "utf8",
-  );
-  const INSTAGRAM = readFileSync(
-    join(__dirname, "../../components/consumer/me/InstagramModal.tsx"),
-    "utf8",
-  );
-  // The switch's words moved to a plain module the route fallbacks read too
-  // (MESITA-2701).
-  const SWITCH_WORDS = readFileSync(
-    join(__dirname, "../../components/consumer/me/switch-words.ts"),
     "utf8",
   );
 
@@ -205,17 +187,5 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(FEED).toContain("CONSUMER_ROUTES.mePages.instagram");
     expect(card).toContain("person.handle && (person.isYou || !person.handleLocked)");
     expect(card).toContain('<PersonInstagramPill label="No Instagram" />');
-  });
-
-  // The switch sits in Settings › Account since MESITA-3793 (its own Social
-  // group before); the group's name is copy, not pinned.
-  it("Settings: 'Public profile' writes appear_anonymous", () => {
-    expect(SETTINGS).toContain("<SocialNameRow />");
-    expect(SWITCH_WORDS).toContain('label: "Public profile"');
-    expect(SWITCH).toContain("{PUBLIC_PROFILE_SWITCH.label}");
-    // MESITA-3072: asked in Settings only, never on Me › Instagram.
-    expect(INSTAGRAM).not.toContain("<SocialNameRow />");
-    expect(SWITCH).toContain("appear_anonymous: !next");
-    expect(SWITCH).toContain('role="switch"');
   });
 });

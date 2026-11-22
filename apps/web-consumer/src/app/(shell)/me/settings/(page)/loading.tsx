@@ -3,7 +3,6 @@ import {
   SettingsFrame,
   SignOutRowSkeleton,
 } from "@/components/consumer/me/SettingsModal";
-import { PUBLIC_PROFILE_SWITCH } from "@/components/consumer/me/switch-words";
 import { SettingsRowSkeleton } from "../../me-skeletons";
 
 // /me/settings' fallback: SettingsModal's own frame — the title, the four
@@ -12,9 +11,8 @@ import { SettingsRowSkeleton } from "../../me-skeletons";
 // the page you are loading, like the sizes"). Every row is a door or a
 // fetched fact, so each is a silhouette at its height:
 //
-//   Account   Phone (a fact) · Public profile with its switch; its words are
-//             SocialNameRow's first paint (switch-words.ts), drawn as
-//             themselves because the line wraps to two on a narrow phone
+//   Account   Phone (a fact) · Refunds (a door). No Public profile row:
+//             every Mesita profile is public (Pato, MESITA-4690)
 //   Help      Contact · Send feedback                      60px rows
 //   Legal     Terms · Privacy                              60px rows
 //   Sign out  one centred row, 52px (MESITA-3793)
@@ -29,12 +27,6 @@ export default function SettingsLoading() {
       account={
         <>
           <SettingsRowSkeleton />
-          <RowDivider />
-          <SettingsRowSkeleton
-            label={PUBLIC_PROFILE_SWITCH.label}
-            sub={PUBLIC_PROFILE_SWITCH.on}
-            toggle
-          />
           <RowDivider />
           <SettingsRowSkeleton label="Refunds" sub="Money returned to you" />
         </>

@@ -78,15 +78,13 @@ Deno.test("a viewer who does not show their Instagram gets masked handles", () =
   assertEquals(feedEvents([row({})], "z", false)[0].person.handle, "per***");
 });
 
-Deno.test("seesHandles: a verified Instagram, a public profile and the viewer's own handle shown (MESITA-4659)", () => {
+Deno.test("seesHandles: a verified Instagram and the viewer's own handle shown (MESITA-4659, MESITA-4690)", () => {
   const at = "2026-10-20T00:00:00Z";
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false, instagram_handle_shown: true }), true);
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: null, instagram_handle_shown: true }), true);
+  assertEquals(seesHandles({ instagram_verified_at: at, instagram_handle_shown: true }), true);
   // Give to get: no choice (null) or a hidden handle sees masks.
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false, instagram_handle_shown: null }), false);
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: false, instagram_handle_shown: false }), false);
-  assertEquals(seesHandles({ instagram_verified_at: at, appear_anonymous: true, instagram_handle_shown: true }), false);
-  assertEquals(seesHandles({ instagram_verified_at: null, appear_anonymous: false, instagram_handle_shown: true }), false);
+  assertEquals(seesHandles({ instagram_verified_at: at, instagram_handle_shown: null }), false);
+  assertEquals(seesHandles({ instagram_verified_at: at, instagram_handle_shown: false }), false);
+  assertEquals(seesHandles({ instagram_verified_at: null, instagram_handle_shown: true }), false);
   assertEquals(seesHandles(null), false);
 });
 
@@ -218,7 +216,7 @@ Deno.test("a row without a handle is named by first name, with a face but no han
     instagram: true,
     anonymous: true,
   });
-  // Public profile off: SQL blanked the photo, and nothing here invents one.
+  // A row without a photo (none uploaded) stays without one; nothing here invents one.
   // A missing first name falls back, never to "A member".
   assertEquals(toPerson(row({ anonymous: true, first_name: null }), "z").name, "Mesita member");
   const chosen = toPerson(row({ anonymous: true, avatar_url: null, guest_class: null, plan: null, instagram: null }), "z");

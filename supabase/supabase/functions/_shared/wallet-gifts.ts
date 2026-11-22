@@ -6,8 +6,8 @@
 // wallet-gifts.test.ts.
 //
 // WHO SHOWS: a person is their first name (or the Me header's fallback) and
-// their photo; Public profile off (appear_anonymous) hides the photo, as
-// Social does (MESITA-2590, MESITA-2612). Nothing else about the friend
+// their photo, always: every profile is public (MESITA-4690), as in Social
+// (MESITA-2612). Nothing else about the friend
 // leaves the server. The receiver is null until someone takes the gift.
 
 import { MEMBER_FALLBACK_NAME } from "./place-activity.ts";
@@ -29,7 +29,6 @@ export type PersonRow = {
   id: string;
   first_name: string | null;
   avatar_url: string | null;
-  appear_anonymous: boolean | null;
 };
 
 /** The guest's own ledger line for a gift: its Loyalty Card entry page.
@@ -69,7 +68,7 @@ export function giftPerson(
   const p = people.get(id);
   return {
     name: p?.first_name?.trim() || MEMBER_FALLBACK_NAME,
-    photo: p && p.appear_anonymous !== true ? (p.avatar_url ?? null) : null,
+    photo: p?.avatar_url ?? null,
     you: id === viewerId,
   };
 }

@@ -42,11 +42,12 @@
 //   two spots triangulate a member).
 //
 // Who appears is the SQL's call (place_activity_visible: a verified Instagram,
-// Public profile, not deleted; views too since MESITA-3051), never this
-// file's. The guest's own row counts like anyone's, third person (MESITA-3051).
-// What this file decides is whether the VIEWER sees full handles (MESITA-2594,
-// seesHandles): only with their own Instagram verified and their profile
-// public; otherwise every other member's handle leaves masked ("per***").
+// not deleted; views too since MESITA-3051; every profile is public since
+// MESITA-4690), never this file's. The guest's own row counts like anyone's,
+// third person (MESITA-3051). What this file decides is whether the VIEWER
+// sees full handles (MESITA-2594, seesHandles): only with their own Instagram
+// verified and their own handle shown (MESITA-4659); otherwise every other
+// member's handle leaves masked ("per***").
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";

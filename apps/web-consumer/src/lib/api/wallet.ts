@@ -639,7 +639,7 @@ export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "paymen
 
 /** A link the guest sent that nobody took yet. */
 /** One side of a gift (MESITA-4036): a first name and a photo (none when
- *  their Public profile is off); `you` is the guest reading it. */
+ *  they have none); `you` is the guest reading it. */
 export type GiftPerson = { name: string; photo: string | null; you: boolean };
 
 /** A gift sent or received (MESITA-4036, the server's _shared/wallet-gifts.ts):
