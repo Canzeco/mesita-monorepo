@@ -588,9 +588,16 @@ export function TicketsBoard({
   const pending: Partial<Record<TicketTab, number>> = {
     visits: (byKind.visits ?? []).filter((r) => r.pending).length,
     stories: (walletData?.stories ?? []).filter(isPendingStory).length,
+    vouchers: (byKind.vouchers ?? []).filter((r) => r.landing).length,
   };
-  const pendingTotal = (pending.visits ?? 0) + (pending.stories ?? 0);
-  const pendingTab: TicketTab | null = pending.visits ? "visits" : pending.stories ? "stories" : null;
+  const pendingTotal = (pending.visits ?? 0) + (pending.stories ?? 0) + (pending.vouchers ?? 0);
+  const pendingTab: TicketTab | null = pending.visits
+    ? "visits"
+    : pending.stories
+      ? "stories"
+      : pending.vouchers
+        ? "vouchers"
+        : null;
 
   const walletReady = !wallet.loading;
   // Visits waits for the wallet too, so its payments never pop in late.
@@ -922,7 +929,11 @@ function TicketPills({
             <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.5 : 2} aria-hidden />
             {t.label}
             {pending[t.kind] ? (
-              <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" aria-label="pending" data-tab-pending />
+              <span
+                className={cn("h-2 w-2 shrink-0 rounded-full", t.kind === "vouchers" ? "bg-blue-500" : "bg-amber-400")}
+                aria-label="pending"
+                data-tab-pending
+              />
             ) : null}
           </button>
         );

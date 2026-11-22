@@ -68,6 +68,8 @@ export type ActivityItem = {
   /** Not resolved yet (MESITA-4623): a bill waiting for the waiter. The
    *  row wears a yellow background. */
   pending?: boolean;
+  /** A voucher's credit or bonus still landing (MESITA-4625): blue. */
+  landing?: boolean;
   /** Its kind: the badge on the photo and the name's first word. */
   kind?: TicketRowKind;
   /** What happened to the guest's credit (MESITA-4001): "+" came in (green),
@@ -196,7 +198,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
   // NEVER A CUT WORD (MESITA-4343, Pato: "if not enough space, it's ok if
   // tickets are a bit taller … all the tickets in four sections"): lines
   // wrap and the row grows; nothing truncates.
-  const cls = cn("flex items-center gap-3 px-4 py-3", t.pending && "bg-amber-50");
+  const cls = cn("flex items-center gap-3 px-4 py-3", t.pending && "bg-amber-50", t.landing && "bg-blue-50");
   return (
     <li>
       {t.href ? (

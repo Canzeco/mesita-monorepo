@@ -260,6 +260,8 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
           status: pending
             ? { label: "Pending", tone: "ink" }
             : { label: "Available", tone: "green" },
+          // STILL LANDING IS BLUE (Pato, 2026-11-21, MESITA-4625).
+          landing: pending,
           big: money(e.amount_cents, cur),
           money: true,
           line: join(
@@ -316,6 +318,7 @@ export function walletRows(w: Wallet, now = Date.now()): Row[] {
         status: e.pending
           ? { label: "Pending", tone: "ink" }
           : { label: "Available", tone: "green" },
+        landing: e.pending,
         big: money(e.amount_cents, cur),
         money: true,
         line: "Bonus",
