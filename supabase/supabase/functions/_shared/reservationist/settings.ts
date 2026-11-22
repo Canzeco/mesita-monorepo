@@ -27,6 +27,9 @@ export const LLM = {
   max_tokens: -1,
 };
 
+/** The shared-library name the fleet sync searches to add the voice (MESITA-4624). */
+export const TTS_VOICE_NAME = "Alejandro Garcia";
+
 export const TTS = {
   model_id: "eleven_flash_v2_5",
   // "Alejandro Garcia — Deep, Warm, Confident": native Mexican male, northern

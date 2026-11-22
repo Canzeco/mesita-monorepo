@@ -12,6 +12,7 @@ import { failedVerification, type WorkspaceCtx } from "./context.ts";
 import {
   type AgentShape,
   elFetch,
+  ensureVoice,
   resolveMainBranchId,
   upsertTool,
   type VersionedAgentShape,
@@ -25,6 +26,7 @@ import {
   guardrailsDrift,
   toolConfigs,
 } from "../../_shared/reservationist/index.ts";
+import { TTS, TTS_VOICE_NAME } from "../../_shared/reservationist/settings.ts";
 
 export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, env, agentsConfig, configuredAgents, toolIdByName, toolSecret, listedAgents, saveAgentsConfig } =
@@ -42,6 +44,10 @@ export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
   // A rerun adopts agents by exact name even if a previous config write failed.
   const agentIdByName = new Map<string, string>();
   for (const a of listedAgents) if (a.agent_id && a.name) agentIdByName.set(a.name, a.agent_id);
+
+  // 1b · Mesi's voice is in the workspace before any agent names it (MESITA-4624).
+  const voice = await ensureVoice(key, TTS.voice_id, TTS_VOICE_NAME);
+  if (!voice.ok) return json({ ok: false, error: voice.error }, 502);
 
   // 2 · Each agent, whole.
   const agentsOut: Record<string, { id: string; name: string; hash: string }> = {};
