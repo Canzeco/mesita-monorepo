@@ -1,5 +1,6 @@
 "use client";
 
+import { LocationModal } from "@/components/consumer/home/LocationModal";
 // Home's location control — the whole of Home's header (Pato, MESITA-2405:
 // "The top bar is just to select the location. thats it."): since
 // MESITA-2476 (Pato: "location must be inside a box or something") a
@@ -25,8 +26,6 @@
 
 import { useState } from "react";
 import { ChevronDown, MapPin, MapPinOff } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import {
   useUserLocation,
   useUserLocationLocating,
@@ -34,7 +33,6 @@ import {
 } from "@/lib/use-user-location";
 import { useActiveLocation } from "@/lib/active-location";
 import {
-  LocationChooser,
   locationLabel,
   type PickerTarget,
 } from "@/components/consumer/home/LocationChooser";
@@ -92,7 +90,6 @@ export function LocationPicker() {
     setPicking(false);
     setPicker(null);
   };
-  const back = () => setPicker(null);
 
   return (
     <>
@@ -121,16 +118,9 @@ export function LocationPicker() {
         />
       </button>
 
-      {/* The body is LocationChooser (MESITA-4542), the same one Places
-          shows inline when there is no location. */}
-      <LocalSheet open={picking} onClose={picker ? back : close} ariaLabel="Location">
-        <LocationChooser
-          onDone={close}
-          picker={picker}
-          onPickerChange={setPicker}
-          bodyClassName={SHEET_BODY_CLASS}
-        />
-      </LocalSheet>
+      {/* The floating location modal (MESITA-4628); its body is
+          LocationChooser (MESITA-4542), the one Places shows inline. */}
+      <LocationModal open={picking} onClose={close} picker={picker} onPickerChange={setPicker} />
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { LocationModal } from "@/components/consumer/home/LocationModal";
 // NO LOCATION, NO MESITA (Pato, 2026-11-21, MESITA-4589: "YOU CANNOT USE
 // MESITA IF YOU DON'T SELECT A LOCATION … IT DOESN'T MATTER WHICH ONE. JUST
 // ASK FOR LOCATION AND WHEN CLICK, THEN DISPLAY LOCATIONS MODAL TO ADD
@@ -18,9 +19,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MapPin } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
-  LocationChooser,
   takeLastChoiceSource,
   type PickerTarget,
 } from "@/components/consumer/home/LocationChooser";
@@ -28,7 +27,7 @@ import { useActiveLocation } from "@/lib/active-location";
 import { trackEvent } from "@/lib/analytics/track";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useUserLocation, useUserLocationSettled } from "@/lib/use-user-location";
-import { PRIMARY_BUTTON_CLASS, SHEET_BODY_CLASS } from "@/lib/ui-classes";
+import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { Z_LOCATION_GATE } from "@/lib/z-index";
 import { cn } from "@/lib/utils";
 
@@ -120,16 +119,9 @@ export function LocationGate() {
         Choose location
       </button>
 
-      {/* The locations sheet: the header's own body. While its pin step is
-          open, the backdrop and Escape act as Back. */}
-      <LocalSheet open={open} onClose={picker ? () => setPicker(null) : close} ariaLabel="Location">
-        <LocationChooser
-          onDone={close}
-          picker={picker}
-          onPickerChange={setPicker}
-          bodyClassName={SHEET_BODY_CLASS}
-        />
-      </LocalSheet>
+      {/* The floating location modal (MESITA-4628), Home's own. While its
+          pin step is open, the backdrop and Escape act as Back. */}
+      <LocationModal open={open} onClose={close} picker={picker} onPickerChange={setPicker} />
     </div>
   );
 }

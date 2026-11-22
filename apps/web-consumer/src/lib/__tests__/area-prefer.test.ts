@@ -92,7 +92,8 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     // The gate covers Home and Search (only) until a point exists.
     const gateSrc = src("components/consumer/LocationGate.tsx");
     expect(gateSrc).toContain("const asking = here && answered && !hasPoint;");
-    expect(gateSrc).toContain("<LocationChooser");
+    // Through the floating modal since MESITA-4628.
+    expect(gateSrc).toContain("<LocationModal");
     expect(src("app/(shell)/layout.tsx")).toContain("<LocationGate />");
     expect(rails).not.toContain("cityBar");
     expect(rails).not.toContain("data-places-city-fallback");
