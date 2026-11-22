@@ -589,7 +589,9 @@ export const ROUTE_MAP = {
   // A voucher, bonus, refund or gift, opened from Tickets (MESITA-3782).
   credit: row("/me/tickets/credit/:placeId/:entry", "me", "page", "meTickets"),
   // One gift, sender and receiver, opened from Tickets › Gifts (MESITA-4066).
-  gift: row("/me/tickets/gift/:giftId", "me", "page", "meTickets"),
+  // A gift's ticket (MESITA-4637): Send · Receive · Receipt in the ticket
+  // frame, no bar, like a voucher's ticket.
+  gift: row("/me/tickets/gift/:giftId", "me", "page", "meTickets", false),
   // One Story and its steps, opened from Tickets › Stories (MESITA-4405).
   story: row("/me/tickets/stories/:storyId", "me", "page", "meTickets"),
   pay: row("/pay", "pay", "tab", null),
