@@ -38,12 +38,16 @@ export type PayScreen =
   | "not-paid"
   | "off";
 
-/** The bottom strip's four steps (MESITA-4600). */
-export const STRIP_STEPS = ["Place", "Bill", "Tip", "Pay"] as const;
+/** The bottom strip's five steps (Pato, 2026-11-21, MESITA-4613: "1. Place,
+ *  2. Bill, 3. Tip. 4. Method. 5. Pay."); four under MESITA-4600, "How do
+ *  you pay?" lit as Pay. */
+export const STRIP_STEPS = ["Place", "Bill", "Tip", "Method", "Pay"] as const;
+export type StripAt = 1 | 2 | 3 | 4 | 5 | "done";
 
-/** The step a screen lights: 1 Place · 2 Bill · 3 Tip · 4 Pay; "done" on the
- *  Receipt (all four done); null where no strip shows (Not paid, Off). */
-export function stripStep(screen: PayScreen): 1 | 2 | 3 | 4 | "done" | null {
+/** The step a screen lights: 1 Place · 2 Bill · 3 Tip · 4 Method · 5 Pay;
+ *  "done" on the Receipt (all five done); null where no strip shows (Not
+ *  paid, Off). */
+export function stripStep(screen: PayScreen): StripAt | null {
   switch (screen) {
     case "pick":
       return 1;
@@ -52,11 +56,12 @@ export function stripStep(screen: PayScreen): 1 | 2 | 3 | 4 | "done" | null {
     case "tip":
       return 3;
     case "method":
+      return 4;
     case "pay":
     case "cash-due":
     case "confirm":
     case "confirming":
-      return 4;
+      return 5;
     case "receipt":
       return "done";
     case "not-paid":
