@@ -38,32 +38,35 @@ export type PayScreen =
   | "not-paid"
   | "off";
 
-/** The bottom strip's five steps (Pato, 2026-11-21, MESITA-4619: "1. Pick 2.
+/** The bottom strip's four steps; five, Pick first, under MESITA-4619 ("1. Pick 2.
  *  Bill & Tip MERGE THESE TWO into one … 3. Method 4. Pay … 5. Receipt … the
  *  last step must be receipt"). The merged step reads "Bill" (MESITA-4630:
  *  "call the step bill, not bill & tip, even though you are using both in
  *  the same page"). Place · Bill · Tip · Method · Pay under MESITA-4613;
  *  four under MESITA-4600. */
-export const STRIP_STEPS = ["Pick", "Bill", "Method", "Pay", "Receipt"] as const;
-export type StripAt = 1 | 2 | 3 | 4 | 5 | "done";
+// PICK IS STEP 0 (Pato, 2026-11-21, MESITA-4635: "don't even mention pick
+// a step. that is fake. only four steps … 0. Pick 1. Bill 2. Method 3. Pay
+// 4. Receipt"): the place picker is the front and wears no strip.
+export const STRIP_STEPS = ["Bill", "Method", "Pay", "Receipt"] as const;
+export type StripAt = 1 | 2 | 3 | 4 | "done";
 
-/** The step a screen lights: 1 Pick · 2 Bill · 3 Method · 4 Pay; "done"
- *  on the Receipt (all five lit, a check on Receipt); null where no strip
- *  shows (Not paid, Off). */
+/** The step a screen lights: 1 Bill · 2 Method · 3 Pay; "done" on the
+ *  Receipt (all four lit, a check on Receipt); null where no strip shows
+ *  (the picker, Not paid, Off). */
 export function stripStep(screen: PayScreen): StripAt | null {
   switch (screen) {
     case "pick":
-      return 1;
+      return null;
     case "bill":
     case "tip":
-      return 2;
+      return 1;
     case "method":
-      return 3;
+      return 2;
     case "pay":
     case "cash-due":
     case "confirm":
     case "confirming":
-      return 4;
+      return 3;
     case "receipt":
       return "done";
     case "not-paid":

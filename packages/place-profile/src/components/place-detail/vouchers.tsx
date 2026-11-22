@@ -452,6 +452,8 @@ type Step = {
   green?: boolean;
   /** Story's live sheet lights the step the guest is on and ticks the one done. */
   state?: "current" | "done";
+  /** The word under the icon when the steps run across (MESITA-4635). */
+  short?: string;
 };
 /** The place's Instagram username from its stored URL, or null: the twin of
  *  supabase _shared/place-instagram.ts (MESITA-4291). */
@@ -461,14 +463,13 @@ export function instagramHandle(url: unknown): string | null {
   return m ? m[1].toLowerCase() : null;
 }
 
-const CREDIT_LINE = "Ready to spend the second you pay.";
 
 /** Small, Medium, Big and Welcome: pay, the credit now, the bonus in 3 hours. */
 function sheetSteps(pay: string, bonus: string | null, card: { label: string; last4: string } | null): Step[] {
   return [
-    { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `With your ${card.label} ending ${card.last4}.` : "By card." },
-    { Icon: Wallet, title: "Get your credit now", amount: pay, line: CREDIT_LINE },
-    { Icon: Gift, title: "Get your bonus in 3 hours", amount: bonus ? `+${bonus}` : undefined, line: "Added by itself. Nothing to do.", green: true },
+    { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `${card.label} ${card.last4}` : "By card" },
+    { Icon: Wallet, title: "Get your credit now", short: "Credits", amount: pay, line: "Right away" },
+    { Icon: Gift, title: "Get your bonus in 3 hours", short: "Bonus", amount: bonus ? `+${bonus}` : undefined, line: "In 3 hours, by itself", green: true },
   ];
 }
 
@@ -478,11 +479,12 @@ function sheetSteps(pay: string, bonus: string | null, card: { label: string; la
  *  ticket is a different row, born when the story is detected. */
 function storySteps(pay: string, bonus: string | null, post: ReactNode, emulator = false): Step[] {
   return [
-    { Icon: CreditCard, title: "Pay", amount: pay, line: "By card." },
-    { Icon: Wallet, title: "Get your credit now", amount: pay, line: CREDIT_LINE },
+    { Icon: CreditCard, title: "Pay", amount: pay, line: "By card" },
+    { Icon: Wallet, title: "Get your credit now", short: "Credits", amount: pay, line: "Right away" },
     {
       Icon: Camera,
       title: "Post a story tagging Mesita and the restaurant",
+      short: "Post Story",
       line: (
         <>
           {post} Keep that same story up. Your Story ticket is separate from this voucher.
@@ -492,6 +494,7 @@ function storySteps(pay: string, bonus: string | null, post: ReactNode, emulator
     {
       Icon: Gift,
       title: "Get your bonus",
+      short: "Bonus",
       amount: bonus ? `+${bonus}` : undefined,
       // MESITA-4426: emulator mode's test Story waits seconds, not 3 hours.
       line: emulator ? "30 seconds after you post it, if it is still up (test)." : "3 hours after you post it, if it is still up.",
@@ -511,17 +514,25 @@ function storyPostLine(handle: string | null): string {
 
 const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
 
-/** The steps: a round icon and the line down to the next, the title with its
- *  amount, one small line. */
+/** THE STEPS RUN ACROSS (Pato, 2026-11-21, MESITA-4635: "steps of this
+ *  must be horizontal similar to visits steps"): one column per step, a
+ *  round icon on a line joining the next, the step's short word, its amount
+ *  and one small line under it; the bonus in green. Down the sheet before. */
 function StepList({ steps, dim }: { steps: Step[]; dim?: boolean }) {
   return (
-    <ol className={cn("flex flex-col", dim && "opacity-50")} aria-label="How it works" data-offer-steps>
+    <ol
+      className={cn("grid gap-2", dim && "opacity-50")}
+      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+      aria-label="How it works"
+      data-offer-steps
+    >
       {steps.map((s, i) => (
-        <li key={s.title} className="flex gap-3" aria-current={s.state === "current" ? "step" : undefined} data-offer-step={s.state}>
-          <span className="flex flex-col items-center" aria-hidden>
+        <li key={s.title} className="flex min-w-0 flex-col items-center text-center" aria-current={s.state === "current" ? "step" : undefined} data-offer-step={s.state}>
+          <span className="relative flex w-full justify-center" aria-hidden>
+            {i < steps.length - 1 ? <span className="bg-border absolute top-1/2 left-1/2 h-0.5 w-[calc(100%+0.5rem)]" /> : null}
             <span
               className={cn(
-                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
                 s.state === "current"
                   ? "bg-foreground text-paper"
                   : s.state === "done"
@@ -533,15 +544,10 @@ function StepList({ steps, dim }: { steps: Step[]; dim?: boolean }) {
             >
               {s.state === "done" ? <Check className="h-5 w-5" strokeWidth={2.75} /> : <s.Icon className="h-5 w-5" strokeWidth={2.25} />}
             </span>
-            {i < steps.length - 1 ? <span className="bg-border my-1 w-0.5 flex-1" /> : null}
           </span>
-          <span className={cn("flex min-w-0 flex-1 flex-col pt-1.5", i < steps.length - 1 && "pb-4")}>
-            <span className={cn("flex items-baseline justify-between gap-3 text-lg leading-snug font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>
-              <span className="min-w-0">{s.title}</span>
-              {s.amount ? <span className="shrink-0">{s.amount}</span> : null}
-            </span>
-            <span className="text-muted-foreground mt-0.5 text-sm leading-snug">{s.line}</span>
-          </span>
+          <span className={cn("mt-2 text-sm leading-tight font-bold", s.green ? "text-[#00A85A]" : "text-foreground")}>{s.short ?? s.title}</span>
+          {s.amount ? <span className={cn("mt-0.5 text-sm font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>{s.amount}</span> : null}
+          <span className="text-muted-foreground mt-1 text-xs leading-snug">{s.line}</span>
         </li>
       ))}
     </ol>
@@ -1123,10 +1129,14 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
   );
 }
 
-/** The four steps of a voucher's ticket (MESITA-4630). "Credits" is the
- *  stored voucher ticket's word (MESITA-4627: Pay · Credits · Wait 3 hours ·
- *  Bonus); the bought voucher's ticket picks up where this one ends. */
-export const OFFER_TICKET_STEPS = ["Offer", "Pay", "Credits", "Receipt"] as const;
+/** The steps of a voucher's ticket (MESITA-4630). Choosing the offer is
+ *  step 0, the front, never a step on the strip (Pato, 2026-11-21,
+ *  MESITA-4635: "don't even mention pick a step. that is fake"): 1 Pay ·
+ *  2 Credits · 3 Receipt. "Credits" is the stored voucher ticket's word
+ *  (MESITA-4627); the bought voucher's ticket picks up where this one ends.
+ *  The frame's own `step` still counts the front as 1: the strip shows
+ *  `step - 1`, none on the front. */
+export const OFFER_TICKET_STEPS = ["Pay", "Credits", "Receipt"] as const;
 
 /** The vouchers bought on a ticket. Story keeps its own page (MESITA-4303). */
 export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"];
@@ -1134,7 +1144,7 @@ export const OFFER_TICKET_KEYS: readonly MoneyVoucherKey[] = ["voucher_200", "vo
 /** One step of the ticket, handed to the host's frame (the Pay Bill ticket's
  *  header, body and footer, which live in the host). */
 export type OfferTicketFrame = {
-  /** 1 Offer · 2 Pay · 3 Credits · 4 Receipt. */
+  /** 1 the offer (the front, no strip) · 2 Pay · 3 Credits · 4 Receipt. */
   step: 1 | 2 | 3 | 4;
   /** The strip lights every step, a check on Receipt. */
   allDone: boolean;
@@ -1361,18 +1371,19 @@ function OfferTicketSteps({
     // and Bonus are one line, the stored ticket keeps counting.
     const steps: Step[] = confirming
       ? [
-        { Icon: CreditCard, title: "Your bank is confirming", amount, line: "The credit shows once it's through. You won't be charged twice.", state: "current" },
-        { Icon: Wallet, title: "Get your credit", amount, line: CREDIT_LINE },
-        { Icon: Gift, title: "Get your bonus in 3 hours", amount: bonusText ? `+${bonusText}` : undefined, line: "Added by itself. Nothing to do.", green: true },
+        { Icon: CreditCard, title: "Your bank is confirming", short: "Confirming", amount, line: "Not charged twice", state: "current" },
+        { Icon: Wallet, title: "Get your credit", short: "Credits", amount, line: "Once it's through" },
+        { Icon: Gift, title: "Get your bonus in 3 hours", short: "Bonus", amount: bonusText ? `+${bonusText}` : undefined, line: "In 3 hours, by itself", green: true },
       ]
       : [
-        { Icon: CreditCard, title: `Paid ${amount}`, line: receipt.card ? `With your ${receipt.card.label} ending ${receipt.card.last4}.` : "By card.", state: "done" },
-        { Icon: Wallet, title: "Your credit is ready", amount, line: `Spend it on any bill at ${placeName}.`, state: "done" },
+        { Icon: CreditCard, title: `Paid ${amount}`, short: "Paid", amount, line: receipt.card ? `${receipt.card.label} ${receipt.card.last4}` : "By card", state: "done" },
+        { Icon: Wallet, title: "Your credit is ready", short: "Credits", amount, line: "Ready to spend", state: "done" },
         {
           Icon: Gift,
           title: "Your bonus is on its way",
+          short: "Bonus",
           amount: bonusText ? `+${bonusText}` : undefined,
-          line: bonusAt ? `Ready at ${bonusAt}. Added by itself.` : "Ready in 3 hours. Added by itself.",
+          line: bonusAt ? `Ready at ${bonusAt}` : "Ready in 3 hours",
           green: true,
           state: "current",
         },

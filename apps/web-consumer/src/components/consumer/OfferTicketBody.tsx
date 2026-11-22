@@ -108,7 +108,8 @@ export function OfferTicketBody({ place: fetched, voucher }: { place: PlaceDetai
       />
       <div className="flex min-h-0 flex-1 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]" data-offer-ticket={f.step}>
         <StepBody className="text-left">{f.body}</StepBody>
-        <StepFooter strip={f.allDone ? "done" : f.step} steps={OFFER_TICKET_STEPS} primary={f.primary ?? undefined} />
+        {/* The offer is the front, step 0: no strip there (MESITA-4635). */}
+        <StepFooter strip={f.allDone ? "done" : f.step > 1 ? f.step - 1 : null} steps={OFFER_TICKET_STEPS} primary={f.primary ?? undefined} />
       </div>
     </>
   );

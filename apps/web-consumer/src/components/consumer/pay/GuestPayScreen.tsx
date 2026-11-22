@@ -626,7 +626,7 @@ export function GuestPayScreen({
             <p className="text-muted-foreground mt-3 text-sm">The place marks this received. Nothing else is charged.</p>
           </PaySection>
         </StepBody>
-        <StepFooter strip={4} />
+        <StepFooter strip={3} />
       </>,
       "cash-due",
     );
@@ -710,7 +710,7 @@ export function GuestPayScreen({
           </PaySection>
         </div>
         {status}
-        <StepFooter strip={2} primary={{ label: "Next", busy, disabled: billCents <= 0 || !tipOk || held, onClick: toMethod }} />
+        <StepFooter strip={1} primary={{ label: "Next", busy, disabled: billCents <= 0 || !tipOk || held, onClick: toMethod }} />
       </>,
       "bill",
     );
@@ -857,7 +857,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          strip={3}
+          strip={2}
           primary={
             creditsOnly
               ? { label: "Show the waiter", busy, disabled: held, onClick: () => void openBill(null) }
@@ -941,7 +941,7 @@ export function GuestPayScreen({
         </StepBody>
         {status}
         <StepFooter
-          strip={4}
+          strip={3}
           primary={{ label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }}
         />
       </>,
@@ -1027,7 +1027,7 @@ export function GuestPayScreen({
           </button>
         ) : null}
         <StepFooter
-          strip={4}
+          strip={3}
           // "Pay $X" (MESITA-4316, was "Pay in one click", MESITA-4106): the
           // card is held now and charged when the waiter signs. No card
           // saved: Add a card. After a refusal the main button leads back
@@ -1068,7 +1068,7 @@ export function GuestPayScreen({
         </PaySection>
       </StepBody>
       {status}
-      <StepFooter strip={4} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
+      <StepFooter strip={3} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
     </>,
     "cash",
   );
@@ -1176,7 +1176,7 @@ export function BillStepBones() {
           </div>
         </PaySection>
       </div>
-      <StepFooter strip={2} primary={{ label: "Next", busy: false, disabled: true, onClick: () => {} }} />
+      <StepFooter strip={1} primary={{ label: "Next", busy: false, disabled: true, onClick: () => {} }} />
     </div>
   );
 }
