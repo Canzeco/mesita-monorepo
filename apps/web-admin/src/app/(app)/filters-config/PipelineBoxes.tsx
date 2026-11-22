@@ -28,8 +28,6 @@ import {
   NumberField,
   Notice,
   SectionCard,
-  SelectField,
-  Button,
   SwitchRow,
   Table,
   TBody,
@@ -41,7 +39,7 @@ import {
 import { SaveRow } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { formatShortDate } from "@/lib/format";
-import { getDiscoveryConfig, previewDiscoveryRank, updateDiscoveryConfig, type DiscoverySlice, type RankPreviewPage, type RankPreviewRow } from "./actions";
+import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import {
   isMapRow,
   isOrganicRow,
@@ -228,13 +226,19 @@ const LANE_ROWS: readonly { row: RecipeRow; lane: string; mode: string }[] = [
   { row: "mapInorganic", lane: "Map Lane", mode: "Map" },
 ];
 
+/** The organic Local Favorites rows (MESITA-4674): nearest first, nothing
+ *  else, so Batch is their only number. */
+const isFavoritesRow = (row: RecipeRow) =>
+  row === "catalogNearbyBoth" || row === "catalogFamilyBoth" || row === "catalogPopularBoth";
+
 /** "Organic Nearby Lane" / "Inorganic Local Favorites Lane". */
 const laneName = (row: RecipeRow, lane: string) => `${isOrganicRow(row) ? "Organic" : "Inorganic"} ${lane}`;
 
 /** Under the name: the Mode and how close (½ at N km). */
 function laneNote(row: RecipeRow, mode: string, recipe: Recipe): string {
   const parts = [mode];
-  if (recipe.halfKm != null) parts.push(`½ at ${recipe.halfKm} km`);
+  if (isFavoritesRow(row)) parts.push("nearest first");
+  else if (recipe.halfKm != null) parts.push(`½ at ${recipe.halfKm} km`);
   else parts.push("no distance");
   if (!isOrganicRow(row)) parts.push("Premier only");
   return parts.join(" · ");
@@ -280,8 +284,8 @@ export function HowRankedCard() {
             (close) + the <strong>Local Favorites Lane</strong>; Popular Mode is the{" "}
             <strong>Popular Lane</strong> (well known) + the Local Favorites Lane, every family. Family Mode is
             one family in all three. The Local Favorites Lane is the places that are both near and popular:
-            the better half of the Nearby ranking and the better half of the Popular ranking, ordered by the
-            worse of the two ranks; the two scores are never averaged. Organic rows have Premier exponent 0, so a plan never
+            the better half of the Nearby ranking and the better half of the Popular ranking, nearest first and
+            nothing else. Organic rows have Premier exponent 0, so a plan never
             moves them. Inorganic rows rank Premier places only; guests see them marked &ldquo;Ad&rdquo;.
           </p>
           <p>
@@ -368,9 +372,7 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
 /** What the row's numbers do, computed from the row as edited (1A). */
 function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): string {
   const organic = isOrganicRow(row);
-  if (row === "catalogFamilyBoth" || row === "catalogNearbyBoth" || row === "catalogPopularBoth") {
-    return "Order: the worse of its Nearby and Popular ranks";
-  }
+  if (isFavoritesRow(row)) return "Order: nearest first";
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
   if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
@@ -382,107 +384,6 @@ function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): s
 const Fixed = ({ children }: { children: React.ReactNode }) => (
   <span className="text-muted-foreground">{children}</span>
 );
-
-const PREVIEW_MODES: { mode: RankMode; label: string }[] = [
-  { mode: "nearby", label: "Nearby" },
-  { mode: "family", label: "Family" },
-  { mode: "popular", label: "Popular" },
-];
-
-function PreviewColumn({ title, rows }: { title: string; rows: RankPreviewRow[] }) {
-  return (
-    <div className="min-w-0 flex-1">
-      <p className="text-sm font-semibold">{title}</p>
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground type-meta mt-1">No places.</p>
-      ) : (
-        <ol className="mt-1 flex flex-col gap-0.5">
-          {rows.map((row, i) => (
-            <li key={row.id} className="type-meta flex items-baseline gap-2">
-              <span className="text-muted-foreground w-5 shrink-0 tabular-nums">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate">{row.name}</span>
-              <span className="text-muted-foreground shrink-0">{row.lane === "inorganic" ? "Ad" : "Organic"}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
-}
-
-/** The edited recipe's first page beside the saved one (MESITA-4458). */
-function RecipePreview({
-  recipes,
-  disabled,
-}: {
-  recipes: DiscoveryConfig["params"]["recipes"];
-  disabled: boolean;
-}) {
-  const [lat, setLat] = useState(25.67);
-  const [lng, setLng] = useState(-100.31);
-  const [mode, setMode] = useState<RankMode>("nearby");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pages, setPages] = useState<{ live: RankPreviewPage; draft: RankPreviewPage } | null>(null);
-  const run = async () => {
-    setBusy(true);
-    setError(null);
-    const r = await previewDiscoveryRank(lat, lng, mode, recipes);
-    setBusy(false);
-    if (!r.ok) {
-      setPages(null);
-      setError(r.error);
-      return;
-    }
-    setPages({ live: r.live, draft: r.draft });
-  };
-  return (
-    <div className="border-border flex flex-col gap-3 rounded-xl border p-3">
-      <div>
-        <p className="text-sm font-semibold">Preview before saving</p>
-        <p className="text-muted-foreground type-meta mt-1">
-          The first page this edit would show, beside the saved recipe: Organic, Inorganic, the merge, then the shuffle.
-          Same point and the same shuffle. Nothing is saved.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <SelectField
-          label="Mode"
-          aria-label="Preview mode"
-          value={mode}
-          disabled={disabled || busy}
-          onChange={(v) => setMode(v as RankMode)}
-          well={false}
-        >
-          {PREVIEW_MODES.map((m) => (
-            <option key={m.mode} value={m.mode}>{m.label}</option>
-          ))}
-        </SelectField>
-        <NumberField label="Latitude" value={lat} min={-90} max={90} decimals disabled={disabled || busy} onChange={setLat} well={false} />
-        <NumberField label="Longitude" value={lng} min={-180} max={180} decimals disabled={disabled || busy} onChange={setLng} well={false} />
-        <Button type="button" disabled={disabled || busy} pending={busy} onClick={() => void run()}>
-          Preview
-        </Button>
-      </div>
-      {error ? <p className="text-destructive type-meta">{error}</p> : null}
-      {pages ? (
-        <div className="flex flex-col gap-4">
-          {([
-            ["organic", "Organic"],
-            ["inorganic", "Inorganic"],
-            ["merged", "Merged"],
-            ["shuffled", "Shuffled"],
-          ] as const).map(([key, label]) => (
-            <div key={key} className="flex gap-4">
-              <PreviewColumn title={`Saved · ${label}`} rows={pages.live[key]} />
-              <PreviewColumn title={`This edit · ${label}`} rows={pages.draft[key]} />
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
@@ -501,6 +402,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const cell = (row: RecipeRow, rowName: string, key: RecipeKey, label: string) => {
     const recipe = cfg.params.recipes[row];
     if (isMapRow(row) && (key === "halfKm" || key === "distanceExp" || key === "batch")) return <Fixed>—</Fixed>;
+    if (isFavoritesRow(row) && key !== "batch") return <Fixed>—</Fixed>;
     if (isOrganicRow(row) && key === "premierExp") return <Fixed>0</Fixed>;
     return (
       <NumberCell
@@ -563,8 +465,8 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
         <Meta>
           Batch {RECIPE_BOUNDS.batch.min}–{RECIPE_BOUNDS.batch.max}: how many places the lane gives each
           weave; a lane with fewer left gives fewer, so a feed can be shorter than its batches add up to.
-          The Map has no batch: Most pins shown cuts it. Family both ranks by the other two Family lanes, so
-          its numbers only score its cards. Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
+          The Map has no batch: Most pins shown cuts it. The Organic Local Favorites Lane is nearest first, so
+          Batch is its only number. Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
           by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Google exponent: how far apart
           famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
           counts in the Inorganic lane; at the same distance and stars a 2X place passes a 5X place only with
@@ -576,7 +478,6 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
           Foursquare factor 1 allows a boost of up to 2×. A higher Foursquare exponent concentrates that
           boost near the top of the 0–1 scale. A missing Foursquare score stays at 1×.
         </p>
-        <RecipePreview recipes={cfg.params.recipes} disabled={off} />
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.ranking} />
     </SectionCard>

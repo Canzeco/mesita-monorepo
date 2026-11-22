@@ -144,7 +144,7 @@ export type SignalParams = {
 
 /** The recipe rows, Catalog modes × lanes plus the Map's two (MESITA-4454).
  *  Family is three organic lanes since MESITA-4517: close, well known, and
- *  both (strong on both; ordered by the worse of the two ranks). */
+ *  both (strong on both; nearest first). */
 export const RECIPE_ROWS = [
   "catalogNearbyOrganic",
   "catalogNearbyInorganic",

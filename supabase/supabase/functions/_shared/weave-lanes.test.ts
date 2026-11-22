@@ -3,14 +3,14 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { strongOnBoth, weaveLanes } from "./pipeline-signals.ts";
 
-Deno.test("strongOnBoth: better half of each ranking, ordered by the worse rank", () => {
+Deno.test("strongOnBoth: better half of each ranking, nearest first", () => {
   const close = ["a", "b", "c", "d", "e", "f"];
   const well = ["c", "f", "a", "b", "e", "d"];
-  // Better half (index < 3): close {a,b,c}, well {c,f,a}. Both: a (0,2) and c (2,0).
-  // Worse ranks tie at 2 and better ranks at 0: the close rank decides.
+  // Better half (index < 3): close {a,b,c}, well {c,f,a}. Both: a and c, in close order.
   assertEquals(strongOnBoth(close, well), ["a", "c"]);
-  // Merely close (b) and merely famous (f) stay off.
-  assertEquals(strongOnBoth(close, well).includes("b") || strongOnBoth(close, well).includes("f"), false);
+  // The close order wins even when the other rank is far better (MESITA-4674).
+  assertEquals(strongOnBoth(["x", "y", "z", "q"], ["y", "x", "q", "z"]), ["x", "y"]);
+  assertEquals(strongOnBoth(["y", "x", "z", "q"], ["x", "y", "q", "z"]), ["y", "x"]);
 });
 
 Deno.test("weaveLanes: each lane gives its batch per weave, one place once, ads by cadence and capped per weave", () => {

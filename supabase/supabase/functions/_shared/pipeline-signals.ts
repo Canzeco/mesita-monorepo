@@ -471,24 +471,17 @@ export function weaveLanes(
 }
 
 /**
- * BOTH (MESITA-4517; every feed since MESITA-4548): the places in the
- * better half of the close ranking AND the better half of the well-known ranking (index < n ÷ 2 in
- * each), ordered by the worse of their two ranks, then the better, then the
- * close rank. Scores are never averaged.
+ * BOTH, the Local Favorites Lane (MESITA-4517; every feed since
+ * MESITA-4548): the places in the better half of the close ranking AND the
+ * better half of the well-known ranking (index < n ÷ 2 in each), nearest
+ * first: the close ranking's order and nothing else (MESITA-4674).
  */
 export function strongOnBoth(close: readonly string[], wellKnown: readonly string[]): string[] {
-  const rc = new Map(close.map((id, i) => [id, i] as const));
   const rw = new Map(wellKnown.map((id, i) => [id, i] as const));
-  const both: Array<{ id: string; worse: number; better: number; c: number }> = [];
-  for (const [id, c] of rc) {
+  return close.filter((id, c) => {
     const w = rw.get(id);
-    if (w === undefined) continue;
-    if (c * 2 >= close.length || w * 2 >= wellKnown.length) continue;
-    both.push({ id, worse: Math.max(c, w), better: Math.min(c, w), c });
-  }
-  return both
-    .sort((a, b) => a.worse - b.worse || a.better - b.better || a.c - b.c)
-    .map((x) => x.id);
+    return w !== undefined && c * 2 < close.length && w * 2 < wellKnown.length;
+  });
 }
 
 /** A keyed uniform in (0, 1) from (seed, id): FNV-1a over the id, mixed
