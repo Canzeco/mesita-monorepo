@@ -281,7 +281,14 @@ export async function syncSavedPlaces<T extends { id: string }>(
       /* best effort */
     }
   }
+  // A DISABLED PLACE LEAVES SAVED (Pato, MESITA-4616: "if i disable a place …
+  // it must not be visible in the consumer app even if its saved"). The
+  // server returns cards only for listed places; a saved id with no card is
+  // unlisted (or gone), so its cached card goes and the row stops drawing it.
+  // The save stays: re-enabling the place brings it back. Nothing is said.
   const map = readPreviewStorage<T>();
+  const listed = new Set(server.places.map((p) => p.id));
+  for (const id of server.ids) if (!listed.has(id)) map.delete(id);
   for (const p of server.places) map.set(p.id, p);
   writePreviewStorage(map);
   // Insertion order is oldest first (savedPlaceList reverses it).
