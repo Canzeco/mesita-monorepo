@@ -462,6 +462,7 @@ export function PlaceCredit({
           name={card.name}
           slides={offers}
           className="mt-4 h-16 w-full rounded-2xl"
+          full
           open={(slide) => () => navigateTo(router, offerHref(href, slide, true), { motion: "drill" })}
         />
       ) : null}
