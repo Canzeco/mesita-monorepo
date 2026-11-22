@@ -43,7 +43,6 @@ export const PAYMENT_KEYS = [
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
-  "voucher_welcome",
   "voucher_story",
 ] as const;
 export type PaymentKey = (typeof PAYMENT_KEYS)[number];
@@ -57,7 +56,6 @@ export const NEEDS_STRIPE_KEYS = [
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
-  "voucher_welcome",
   "voucher_story",
 ] as const;
 export function needsStripe(key: string): boolean {

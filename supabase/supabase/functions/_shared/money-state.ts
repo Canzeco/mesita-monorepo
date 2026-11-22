@@ -18,7 +18,7 @@
 // Payments, W2b, CARD_BILL_PAY_LIVE) or buy a voucher (Mesita Prepayments):
 //   mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0
 // Three blind spots on purpose, because the list rows cannot see them: the
-// admin pause, Welcome-used and the fee hold (MESITA-3461) do not turn the
+// admin pause, the guest's own limits and the fee hold (MESITA-3461) do not turn the
 // mark off.
 // CARD_BILL_PAY_LIVE is code, not config, on purpose: one edit turns card bill
 // pay off the mark and brings back the "arrives soon" notes on Business ›
@@ -32,7 +32,6 @@ export const MONEY_VOUCHER_KEYS = [
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
-  "voucher_welcome",
   "voucher_story",
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
@@ -79,8 +78,6 @@ export type VoucherReason =
   | "needs_instagram"
   /** Selling is paused for every place (the admin console's kill switch). */
   | "paused"
-  /** Welcome: this guest already had theirs here, or has paid here before. */
-  | "used"
   /** Story, one each new visit (MESITA-3463): this guest already
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
@@ -103,6 +100,10 @@ export type VoucherReason =
 //  THE VIP OFFER IS GONE (Pato, 2026-11-17, MESITA-4249: "THE VIP OFFER IS
 //  GONE ACROSS ALL THE APP"): the special offers are Welcome and Story. Its
 //  key left the catalog; place_payment_settings.voucher_vip is a dead column.
+//  THE WELCOME VOUCHER IS GONE TOO (Pato, 2026-11-21, MESITA-4636: "i don't
+//  want fucking fradus"): Story is the one special offer. Its key left the
+//  catalog; place_payment_settings.voucher_welcome is a dead column, false
+//  everywhere. Welcome purchases already paid stay in the ledger.
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
 
 /** The DEFAULT follower floor for the Story voucher (MESITA-3507): a guest

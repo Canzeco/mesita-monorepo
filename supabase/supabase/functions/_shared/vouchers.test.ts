@@ -38,7 +38,6 @@ const ALL_ON: PaymentSettings = {
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
-  voucher_welcome: true,
   voucher_story: true,
 };
 
@@ -54,11 +53,11 @@ const ACCOUNT: AccountRow = {
   disabled_reason: null,
 };
 
-const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null, welcomeUsed: false };
+const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null };
 
 Deno.test("every switched-on voucher sells but VIP, off sale (MESITA-4197); Medium is back (MESITA-4056)", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story"]);
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
   assertEquals(o.unavailable, {});
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
@@ -66,7 +65,7 @@ Deno.test("every switched-on voucher sells but VIP, off sale (MESITA-4197); Medi
   assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 10800 });
   // Every voucher waits an hour except Story (MESITA-3323).
-  assertEquals(o.catalog.voucher_welcome.available_after_sec, 10800);
+  assertEquals("voucher_welcome" in o.catalog, false);
   assertEquals(o.catalog.voucher_story.available_after_sec, 10800);
 });
 
@@ -78,12 +77,9 @@ Deno.test("the catalog the client shows is the server's, credit = price + bonus"
   }
 });
 
-Deno.test("paused stops every sale; Welcome once; an account from the other universe cannot charge", () => {
+Deno.test("paused stops every sale; an account from the other universe cannot charge", () => {
   assertEquals(offerFrom({ ...base, paused: true }).sell, []);
   assertEquals(offerFrom({ ...base, paused: true }).unavailable.voucher_200, "paused");
-  const used = offerFrom({ ...base, welcomeUsed: true });
-  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
-  assertEquals(used.unavailable.voucher_welcome, "used");
   const live = offerFrom({ ...base, livemode: true });
   assertEquals(live.sell, []);
   assertEquals(live.unavailable.voucher_200, "needs_account");
@@ -94,10 +90,11 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
 
 // VIP's one-each-new-visit rule (MESITA-3463) is unreachable while VIP is
 // parked; the parked reason wins and the buy door refuses it.
-Deno.test("no VIP offer (MESITA-4249): the catalog sells Welcome and Story as its specials", () => {
+Deno.test("no VIP (MESITA-4249) and no Welcome (MESITA-4636): Story is the one special", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story"]);
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
   assertEquals(parseBasket({ voucher: "voucher_vip" }).ok, false);
+  assertEquals(parseBasket({ voucher: "voucher_welcome" }).ok, false);
 });
 
 Deno.test("buyRefusal: codes for every closed door, null for an open one", () => {
@@ -105,7 +102,6 @@ Deno.test("buyRefusal: codes for every closed door, null for an open one", () =>
   assertEquals(buyRefusal(o, "voucher_200", ACCOUNT), null);
   assertEquals(buyRefusal(o, "voucher_5000", ACCOUNT), null);
   assertEquals(buyRefusal(offerFrom({ ...base, paused: true }), "voucher_200", ACCOUNT)?.code, "paused");
-  assertEquals(buyRefusal(offerFrom({ ...base, welcomeUsed: true }), "voucher_welcome", ACCOUNT)?.code, "welcome_used");
   assertEquals(buyRefusal(offerFrom({ ...base, account: null }), "voucher_200", null)?.code, "no_account");
   const off = offerFrom({ ...base, settings: { ...ALL_ON, voucher_200: false } });
   assertEquals(buyRefusal(off, "voucher_200", ACCOUNT)?.code, "not_available");
@@ -218,7 +214,7 @@ Deno.test("any other insert error is thrown, so the EF answers 500 and nothing r
   await assertRejects(() => openPurchaseRow(fake.admin, BUY), Error, "purchase_insert");
 });
 
-// ── MESITA-3947: the Credits Limit; MESITA-3305: a second Welcome buy ─────────────────
+// ── MESITA-3947: the Credits Limit; MESITA-3305 ─────────────────
 
 Deno.test("place_cap: a buy that would take the place past its Credits Limit is refused, in test and live alike", async () => {
   // MX$99,900 outstanding + MX$220 of credit from a MX$200 Small = MX$100,120.
@@ -251,15 +247,12 @@ Deno.test("Credits Limit: landing exactly on the limit sells; a place's own limi
   assertEquals(overCreditLimit(10_000_00 - 21_00, "voucher_200", 10_000_00, "usd"), true);
 });
 
-Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so it matches the list rows", () => {
+Deno.test("the mark (MESITA-3408) is taken before the pause, so it matches the list rows", () => {
   // Pay by phone off, so only the voucher can light the mark.
-  const onlyWelcome: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_story: false };
-  const used = offerFrom({ ...base, settings: onlyWelcome, welcomeUsed: true });
-  assertEquals(used.sell, []);
-  assertEquals(used.mesita_pay, true);
-  assertEquals(offerFrom({ ...base, settings: onlyWelcome, paused: true }).mesita_pay, true);
+  const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_1000: false, voucher_5000: false, voucher_story: false };
+  assertEquals(offerFrom({ ...base, settings: onlySmall, paused: true }).mesita_pay, true);
   // Nothing on: no mark.
-  const nothing: PaymentSettings = { ...onlyWelcome, voucher_welcome: false };
+  const nothing: PaymentSettings = { ...onlySmall, voucher_200: false };
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });
 
@@ -327,7 +320,7 @@ Deno.test("storyEligibilityContext: emulator mode only with the switch on, test 
 
 // ── The basket (MESITA-3841) ───────────────────────────────────────────────
 
-Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one Welcome / Story, no key twice", () => {
+Deno.test("parseBasket: the old voucher field is a basket of one; items need known keys, qty 1..5, one Story, no key twice", () => {
   assertEquals(parseBasket({ voucher: "voucher_200" }), { ok: true, items: [{ voucher: "voucher_200", qty: 1 }] });
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_1000", qty: 1 }] }).ok, true);
   assertEquals(parseBasket({ voucher: "bogus" }).ok, false);
@@ -335,15 +328,15 @@ Deno.test("parseBasket: the old voucher field is a basket of one; items need kno
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 6 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 0 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1.5 }] }).ok, false);
-  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 2 }] }).ok, false);
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 1 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_story", qty: 2 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1 }, { voucher: "voucher_200", qty: 1 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "nope", qty: 1 }] }).ok, false);
 });
 
-Deno.test("basketUnits: one unit per row, Welcome leads; sameUnits compares baskets as multisets", () => {
-  const units = basketUnits([{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_welcome", qty: 1 }, { voucher: "voucher_1000", qty: 1 }]);
-  assertEquals(units, ["voucher_welcome", "voucher_200", "voucher_200", "voucher_1000"]);
+Deno.test("basketUnits: one unit per row, Story leads; sameUnits compares baskets as multisets", () => {
+  const units = basketUnits([{ voucher: "voucher_200", qty: 2 }, { voucher: "voucher_story", qty: 1 }, { voucher: "voucher_1000", qty: 1 }]);
+  assertEquals(units, ["voucher_story", "voucher_200", "voucher_200", "voucher_1000"]);
   assertEquals(sameUnits(["voucher_200", "voucher_1000"], ["voucher_1000", "voucher_200"]), true);
   assertEquals(sameUnits(["voucher_200"], ["voucher_200", "voucher_200"]), false);
   assertEquals(sameUnits([], []), true);
@@ -401,8 +394,8 @@ Deno.test("a basket's metadata names the lead and carries the sums; a single vou
 
 // MESITA-4207: the list rows' chips drop what THIS guest already used, by
 // the same rule as the place screen's Offers (offerFrom).
-Deno.test("list rows: guestSell drops Welcome used here and a per-visit voucher spent this visit, like offerFrom", () => {
-  const sell = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story"] as const;
+Deno.test("list rows: guestSell drops a per-visit voucher spent this visit, like offerFrom", () => {
+  const sell = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"] as const;
   const blocks = guestBlocksFrom(
     [
       { place_id: "a", voucher: "voucher_welcome" },
@@ -412,10 +405,10 @@ Deno.test("list rows: guestSell drops Welcome used here and a per-visit voucher 
     ],
     [{ place_id: "c" }, { place_id: "d" }],
   );
-  // a: Welcome bought here; Story still open (no Story bought).
-  assertEquals(guestSell(sell, blocks.get("a")), ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"]);
+  // a: a Welcome bought before MESITA-4636 blocks nothing.
+  assertEquals(guestSell(sell, blocks.get("a")), [...sell]);
   // b: one Story, no visit yet: spent until the guest pays a bill here.
-  assertEquals(guestSell(sell, blocks.get("b")), ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome"]);
+  assertEquals(guestSell(sell, blocks.get("b")), ["voucher_200", "voucher_1000", "voucher_5000"]);
   // c: two Stories, one visit: spent.
   assertEquals(blocks.get("c")?.perVisitUsed.voucher_story, true);
   // d: a visit and no purchase: nothing blocked, no entry.
@@ -424,14 +417,14 @@ Deno.test("list rows: guestSell drops Welcome used here and a per-visit voucher 
   // Same answer as the place screen's offer for every place.
   for (const id of ["a", "b", "c", "d"]) {
     const g = blocks.get(id);
-    const o = offerFrom({ ...base, welcomeUsed: g?.welcomeUsed ?? false, perVisitUsed: g?.perVisitUsed });
+    const o = offerFrom({ ...base, perVisitUsed: g?.perVisitUsed });
     assertEquals(guestSell(sell, g), o.sell);
   }
 });
 
 Deno.test("list rows: one Story per visit opens again after a visit (MESITA-3463, MESITA-4207)", () => {
   const blocks = guestBlocksFrom([{ place_id: "p", voucher: "voucher_story" }], [{ place_id: "p" }]);
-  assertEquals(blocks.get("p"), { welcomeUsed: false, perVisitUsed: { voucher_story: false } });
+  assertEquals(blocks.get("p"), { perVisitUsed: { voucher_story: false } });
   assertEquals(guestSell(["voucher_story"], blocks.get("p")), ["voucher_story"]);
 });
 

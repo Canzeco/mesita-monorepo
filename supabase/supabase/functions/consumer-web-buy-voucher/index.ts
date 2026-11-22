@@ -15,7 +15,7 @@
 //
 // MESITA-3841: a BASKET. `items: [{ voucher, qty }]` buys several vouchers
 // with ONE charge, all or nothing (the old `voucher` field is a basket of
-// one). Small and Big take qty 1..5; Welcome and VIP at most 1. Every gate
+// one). Small, Medium and Big take qty 1..5; Story at most 1. Every gate
 // runs per voucher; the place cap counts the whole basket. One row per unit:
 // the lead under request_id, the others pointing to it (basket_lead_id).
 //
@@ -27,7 +27,7 @@
 // (voucherBuyGate), then the place and voucher gates. A replay of the same
 // request_id never opens a second PaymentIntent.
 //
-// Body: { place_id: uuid, voucher: voucher_200|voucher_1000|voucher_welcome|…,
+// Body: { place_id: uuid, voucher: voucher_200|voucher_1000|…,
 //         items?: [{ voucher, qty }] (in place of voucher),
 //         request_id: uuid (one per basket and card; every retry after an
 //           unknown outcome carries the same),
@@ -42,7 +42,7 @@
 //   404 place · 409 no_account | currency_mismatch | paused | not_available |
 //   not_yet | needs_card_payments | needs_instagram | few_followers (Story) |
 //   story_unavailable (Story with live payments and Meta off, MESITA-4264) |
-//   welcome_used | below_minimum | place_cap (MESITA-3947)
+//   below_minimum | place_cap (MESITA-3947)
 //   502 card_failed | stripe_unreachable · 503 payments not configured
 // MESITA-4405: THE STORY VOUCHER PAYS FIRST. It is bought like any voucher,
 // with no story gate: the credit creates its Story record (_shared/story.ts),
@@ -112,7 +112,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_body", field: "place_id", error: "place_id must be a Mesita place id" }, 400);
   const basket = parseBasket(bodyRes.body);
   if (!basket.ok) return json({ ok: false, code: "bad_body", field: "items", error: basket.error }, 400);
-  // One row per unit, the lead first (Welcome leads when it is in it).
+  // One row per unit, the lead first.
   const units = basketUnits(basket.items);
   const voucher = units[0];
   const followers = units.slice(1);
@@ -145,7 +145,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
 
   // The same saved-card tap again (the screen asks once Stripe.js finished
   // a bank check, or after a lost answer): the gates ran when its row was
-  // opened, and they would now count that very row (Welcome used, one per
+  // opened, and they would now count that very row (one per
   // visit), so it only reads where its PaymentIntent stands.
   {
     const replay = await readRequestRow(admin, userId, requestId);

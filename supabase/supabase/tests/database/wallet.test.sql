@@ -1,8 +1,8 @@
 -- MESITA-3302 — Wallet on Connect: the ledger credits a paid purchase once
 -- (voucher plus bonus, Pending until available_at), refunds apply a
 -- cumulative amount in any order and never push a balance below zero, the
--- new statuses and entry kinds hold their shape, Welcome is once per guest
--- per place, a place's open charge codes are unique, and nobody but the EFs
+-- new statuses and entry kinds hold their shape, the Welcome voucher stays
+-- off (MESITA-4636), a place's open charge codes are unique, and nobody but the EFs
 -- touches any of it.
 
 begin;
@@ -128,23 +128,17 @@ select throws_ok(
   'an unknown status is refused'
 );
 
--- ━━━ Welcome is once per guest per place ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ━━━ The Welcome voucher is gone (MESITA-4636) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-insert into public.wallet_purchases (consumer_id, place_id, amount_cents, currency, status, stripe_account_id, voucher, bonus_cents)
-values ('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 10000, 'mxn', 'open', 'acct_test_3302', 'voucher_welcome', 3000);
-
-select throws_ok(
-  $$insert into public.wallet_purchases (consumer_id, place_id, amount_cents, currency, status, stripe_account_id, voucher, bonus_cents)
-    values ('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 10000, 'mxn', 'open', 'acct_test_3302', 'voucher_welcome', 3000)$$,
-  '23505', null,
-  'a second Welcome for the same guest at the same place is refused'
+select ok(
+  exists (select 1 from pg_constraint
+           where conrelid = 'public.place_payment_settings'::regclass
+             and conname = 'place_payment_settings_no_welcome' and contype = 'c'),
+  'no place can turn the Welcome voucher back on'
 );
 
-select lives_ok(
-  $$insert into public.wallet_purchases (consumer_id, place_id, amount_cents, currency, status, stripe_account_id, voucher, bonus_cents)
-    values ('00000000-0000-4000-8000-0000000b3302', '00000000-0000-4000-8000-000000003302', 10000, 'mxn', 'open', 'acct_test_3302', 'voucher_welcome', 3000)$$,
-  'another guest gets their own Welcome there'
-);
+select hasnt_index('public', 'wallet_purchases', 'wallet_purchases_welcome_once_idx',
+  'the Welcome once-per-guest index is gone with the voucher');
 
 -- ━━━ Entry kinds and their shape ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
