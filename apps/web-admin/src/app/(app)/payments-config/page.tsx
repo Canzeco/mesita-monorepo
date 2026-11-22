@@ -28,13 +28,15 @@ const NAME: Record<string, string> = {
   voucher_1000: "Medium",
   voucher_5000: "Big",
   voucher_story: "Story",
+  voucher_vip: "VIP",
 };
-const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story"];
+const ORDER = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story", "voucher_vip"];
 const WHO: Record<string, string> = {
   voucher_200: "As many as they like",
   voucher_1000: "As many as they like",
   voucher_5000: "As many as they like",
   voucher_story: "Guests with 1,000+ Instagram followers, one per visit",
+  voucher_vip: "Only guests with a public Instagram over 5,000 followers, one per visit",
 };
 
 /** "MX$100", "¥1,000": whole units in the currency's own symbol. */

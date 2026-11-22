@@ -58,6 +58,8 @@ export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
   voucher_200: GREEN,
   voucher_1000: GREEN,
   voucher_5000: GREEN,
+  // Every offer green (MESITA-4181); the crown tells VIP apart (MESITA-4640).
+  voucher_vip: GREEN,
 };
 // THE WORDS (Pato, 2026-11-17, MESITA-4219: "Classic (30% Bonus) · Welcome
 // (100% Bonus) · Story · VIP"): Classic, the best standard voucher, leads;

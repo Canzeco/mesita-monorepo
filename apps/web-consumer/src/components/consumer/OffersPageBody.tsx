@@ -129,6 +129,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
       ? {
         guest: {
           instagramLinked: Boolean(profile.instagram_handle),
+          guestClass: profile.guest_class === "vip" ? "vip" : "regular",
+          instagramPrivate: profile.instagram_is_private ?? null,
           instagramFollowers: profile.instagram_followers_count ?? null,
           instagramHandle: profile.instagram_handle ?? null,
           storyMinFollowers: storyRulesOf(profile).minFollowers,

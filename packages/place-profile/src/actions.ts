@@ -114,6 +114,11 @@ export type PlaceActions = {
     storyEmulator?: boolean;
     /** The guest's Instagram username, on the Story sheet's Found card (MESITA-4296). */
     instagramHandle?: string | null;
+    /** The guest's Class (MESITA-4640): the VIP voucher is VIP only. Absent
+     *  reads Regular, so a signed-out or unread guest sees VIP locked. */
+    guestClass?: "regular" | "vip";
+    /** What the last scrape said (consumers.instagram_is_private); null = not known. */
+    instagramPrivate?: boolean | null;
   };
   /** Link Instagram in the Story (i): the host's Instagram page. */
   onLinkInstagram?: () => void;
