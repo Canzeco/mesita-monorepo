@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText, HandCoins, MessageSquare, MessageSquareHeart, ScrollText } from "lucide-react";
+import { FileText, HandCoins, MessageSquare, MessageSquareHeart, Plug, ScrollText } from "lucide-react";
 import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
 import { APP_VERSION } from "@/lib/app-version";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -70,6 +70,18 @@ export function SettingsFrame({
   return (
     <MeScreen title="Settings">
       <div className="flex flex-col gap-4">
+        {/* INTEGRATIONS INSIDE SETTINGS (Pato, 2026-11-22, MESITA-4657:
+            "Settings (integrations here inside)"): Me's Integrations cell
+            became this first group. Static, so the fallback draws it too. */}
+        <SettingsGroup title="Integrations">
+          <SettingsLinkRow
+            Icon={Plug}
+            tint="muted"
+            href={CONSUMER_ROUTES.mePages.integrations}
+            label="Integrations"
+            sub="Calendar and MCP"
+          />
+        </SettingsGroup>
         <SettingsGroup title="Account">{account}</SettingsGroup>
         <SettingsGroup title="Help">{help}</SettingsGroup>
         <SettingsGroup title="Legal">{legal}</SettingsGroup>

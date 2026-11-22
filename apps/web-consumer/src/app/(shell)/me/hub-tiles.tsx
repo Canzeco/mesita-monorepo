@@ -4,11 +4,11 @@ import {
   Bell,
   CalendarCheck,
   CreditCard,
+  Crown,
   Heart,
   Settings as SettingsIcon,
   Ticket,
   UserRound,
-  Plug,
   Share2,
   type LucideIcon,
 } from "lucide-react";
@@ -112,6 +112,11 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Tickets · Share / Integrations · Settings /
 //   Gift (full width)
 //
+// CLASS BACK, INTEGRATIONS INTO SETTINGS (MESITA-4657, Pato 2026-11-22):
+//
+//   Profile · Instagram / Class · Plan / Notifications · Reservations /
+//   Saved · Tickets / Share · Settings
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -148,6 +153,15 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Connect your account",
     href: CONSUMER_ROUTES.mePages.instagram,
   },
+  // CLASS IS BACK (Pato, 2026-11-22, MESITA-4657: "add again a class page
+  // in the boxes below … Class Plan"): /me/class, Regular or VIP and the
+  // steps to VIP. It left with MESITA-4306.
+  {
+    Icon: Crown,
+    title: "Class",
+    summary: "Regular or VIP",
+    href: CONSUMER_ROUTES.mePages.class,
+  },
   // PLAN IS SOLD AGAIN (Pato, 2026-11-14, MESITA-3870: "Add the Plan
   // again"): the cell opens /me/plan — Free 3 reservation tickets a month, Pro 10
   // at $2 a month. It read Soon under MESITA-3855.
@@ -156,16 +170,6 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Plan",
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
-  },
-  // SAVED, A SHORTCUT (Pato, 2026-11-18, MESITA-4327: "add a new box, a
-  // shortcut for saved places. not own place. just a shortcut"): Home on
-  // its ❤️ Saved row, no page of its own. Right after Plan (MESITA-4329:
-  // "put it after plan"); it sat beside Settings first.
-  {
-    Icon: Heart,
-    title: "Saved",
-    summary: "Places you saved",
-    href: `${CONSUMER_ROUTES.home}?row=saved`,
   },
   // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855). The Notifications cell
   // wears the red dot the bar's Activity tab wore (MESITA-3717).
@@ -180,6 +184,16 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Reservations",
     summary: "Upcoming and past",
     href: CONSUMER_ROUTES.mePages.reservations,
+  },
+  // SAVED, A SHORTCUT (after Reservations since MESITA-4657) (Pato, 2026-11-18, MESITA-4327: "add a new box, a
+  // shortcut for saved places. not own place. just a shortcut"): Home on
+  // its ❤️ Saved row, no page of its own. Right after Plan (MESITA-4329:
+  // "put it after plan"); it sat beside Settings first.
+  {
+    Icon: Heart,
+    title: "Saved",
+    summary: "Places you saved",
+    href: `${CONSUMER_ROUTES.home}?row=saved`,
   },
   // TICKETS BEFORE GIFT (MESITA-3885, Pato: "tickets before gift").
   // Every transaction, four kinds — Visit, Voucher, Gift, Refund.
@@ -199,17 +213,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Tell a friend",
     href: CONSUMER_ROUTES.share,
   },
-  // INTEGRATIONS (Pato, 2026-11-14, MESITA-3954: "Rename MCP for
-  // integrations and make a list of integrations, and one integration is the
-  // MCP"): the cell opens /me/integrations — Calendar, and MCP Soon since
-  // MESITA-3976 (Soon on Plan's Pro card too). It read
-  // "MCP" (Soon, MESITA-3867) before.
-  {
-    Icon: Plug,
-    title: "Integrations",
-    summary: "Calendar and MCP",
-    href: CONSUMER_ROUTES.mePages.integrations,
-  },
+  // NO INTEGRATIONS CELL (Pato, 2026-11-22, MESITA-4657: "Share Settings
+  // (integrations here inside)"): it is Settings' first row.
 ];
 
 /** The last cell: Settings closes the grid (MESITA-2562); a full-width row

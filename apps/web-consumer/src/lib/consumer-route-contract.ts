@@ -153,6 +153,9 @@ export const CONSUMER_ROUTES = {
     // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
+    // Class, Regular or VIP, back on Me (MESITA-4657); it left with
+    // MESITA-4306.
+    class: "/me/class",
     // GIFT (Pato, 2026-11-11, MESITA-3771): the places the guest holds credit
     // at; a tap opens that Loyalty Card with Gift Credits open.
     gift: "/me/gift",
@@ -282,9 +285,7 @@ export const CONSUMER_ROUTES = {
     placeStory: "/place/:id/story",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
-    // /me/plan (MESITA-2134) is live again. /me/class left Me with Class
-    // (MESITA-4306, Pato: "LETS REMOVE THE CLASS").
-    meClass: "/me/class",
+    // /me/plan (MESITA-2134) and /me/class (MESITA-4657) are live again.
     meClassInvite: "/me/class/invite",
     meDiamond: "/me/diamond",
     meDiamondInvite: "/me/diamond/invite",
@@ -609,6 +610,7 @@ export const ROUTE_MAP = {
   meInstagram: row("/me/instagram", "me", "page", "me"),
   // Opened from Settings since the Me cell went Soon (MESITA-3855).
   mePlan: row("/me/plan", "me", "page", "meSettings"),
+  meClass: row("/me/class", "me", "page", "me"),
   meGift: row("/me/gift", "me", "page", "me"),
   // Activity's chips as Me's pages (MESITA-3855).
   meNotifications: row("/me/notifications", "me", "page", "me"),
@@ -623,7 +625,8 @@ export const ROUTE_MAP = {
   meSettingsRefunds: row("/me/settings/refunds", "me", "page", "meSettings"),
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),
   // Integrations (MESITA-3954); Calendar is also Reservations' header icon.
-  meIntegrations: row("/me/integrations", "me", "page", "me"),
+  // Inside Settings since MESITA-4657.
+  meIntegrations: row("/me/integrations", "me", "page", "meSettings"),
   meIntegrationsCalendar: row(
     "/me/integrations/calendar",
     "me",

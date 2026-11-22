@@ -115,6 +115,7 @@ export function IdentityBar({
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
             guestClass={toGuestClass(profile?.guest_class)}
+            classHref={CONSUMER_ROUTES.mePages.class}
             privacy={
               profile?.instagram_handle
                 ? instagramPrivacyLabel(profile.instagram_is_private).replace("Privacy unknown", "Unknown")
