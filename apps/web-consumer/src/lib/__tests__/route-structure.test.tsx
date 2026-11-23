@@ -684,6 +684,8 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
       "Share",
       // Gift is back beside Share (MESITA-4670); it opens Send Gift.
       "Gift",
+      // Cards (MESITA-4698): the ways to pay, moved off Pay; beside Settings.
+      "Cards",
       "Settings",
     ]);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
@@ -704,9 +706,8 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
       "Refunds",
       "Friends",
       "Diamond",
-      // Cards was a Soon cell (MESITA-3465) until MESITA-3561: saved ways to
-      // pay live on Wallet.
-      "Cards",
+      // Cards is back as a live cell (MESITA-4698), not a money door: it
+      // opens the saved ways to pay (/wallet/methods).
       "Metrics",
     ]) {
       expect(gridTitles(), gone).not.toContain(gone);

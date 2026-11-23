@@ -62,7 +62,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readCardPart, readPayBody, startOutsidePayment, startPayment } from "../_shared/pay.ts";
-import { startCardPayment } from "../_shared/pay-card.ts";
+import { billCardOff, startCardPayment } from "../_shared/pay-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
@@ -236,6 +236,9 @@ serveJson("consumer-web-start-payment", async (req) => {
     if (card.cardCents > 0) {
       const key = paymentsStripeKey();
       if (!key) return json({ ok: false, code: "no_account", error: "Payments are not available right now" }, 503);
+      // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
+      const off = billCardOff();
+      if (off) return json({ ok: false, code: off.code, error: off.error }, off.status);
       const account = await readAccount(admin, input.placeId);
       const res = await startCardPayment(admin, stripeClient(key), {
         consumerId: userId,

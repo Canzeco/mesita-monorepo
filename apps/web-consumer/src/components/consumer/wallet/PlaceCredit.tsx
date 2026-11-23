@@ -2,7 +2,7 @@
 
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Clock3, Gift, Plus, QrCode, Store } from "lucide-react";
+import { ChevronRight, Clock3, Gift, QrCode, Store, Tag } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -345,7 +345,9 @@ export function PlaceCredit({
                     the button add funds, call it View Offers. does the same
                     as bottom box, its okay that redundancy"): the same door
                     as the Offers tile under the card. */}
-                <Plus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+                {/* A TAG, NOT A + (Pato, 2026-11-22, MESITA-4698: "call it View
+                    Offers but different icon"): offers, not adding funds. */}
+                <Tag className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               View Offers
             </PushLink>

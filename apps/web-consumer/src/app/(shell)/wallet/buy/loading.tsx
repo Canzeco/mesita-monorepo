@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/shared/Skeleton";
 // edge, grey bones only: the search pill, then three place rows.
 export default function Loading() {
   return (
-    <Screen title="Prepay & Get Credits" paper flush>
+    <Screen title="Get Offers" paper flush>
       <div className="flex flex-col pt-3" aria-busy>
         <div className="px-5 pt-3 pb-2">
           <Skeleton className="h-11 w-full rounded-full" />

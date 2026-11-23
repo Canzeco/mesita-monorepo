@@ -93,7 +93,10 @@ function menu(
       // Vouchers, Gifts, Payments, Customers … you don't need credits".
       // Payments is the /money page. Customers first, Payouts its own page
       // (MESITA-4679).
-      monitor: [tab("customers"), tab("views"), tab("visits"), tab("vouchers"), tab("gifts"), tab("money"), tab("payouts")],
+      // MESITA-4698 (Pato: "Don't build payments since we don't have payments
+      // anymore ... payments only exist in vouchers"): no Payments row; Visits
+      // holds each bill and its cashback.
+      monitor: [tab("customers"), tab("views"), tab("visits"), tab("vouchers"), tab("gifts"), tab("payouts")],
       manage: [
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),

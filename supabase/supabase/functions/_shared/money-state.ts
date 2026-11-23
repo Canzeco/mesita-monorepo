@@ -24,9 +24,13 @@
 // pay off the mark and brings back the "arrives soon" notes on Business ›
 // Payments, should W2b ever be pulled.
 
-/** Card payment of the bill (W2b, MESITA-3305) is live: flipped by
- *  MESITA-3408 once W2b had merged. */
-export const CARD_BILL_PAY_LIVE = true;
+/** Card payment of the bill (W2b, MESITA-3305). OFF since MESITA-4698 (Pato,
+ *  2026-11-22: "exclude for the moment payments in the card ... only vouchers
+ *  are sold in advance with Mesita"): a bill is paid with credit and the rest
+ *  outside (cash or the place's own terminal). Card, Apple Pay and Google Pay
+ *  still buy vouchers. Every card-for-a-bill door asks this through
+ *  cardRefusal (pay-card.ts) and cardsAccepted (payments.ts). */
+export const CARD_BILL_PAY_LIVE = false;
 
 export const MONEY_VOUCHER_KEYS = [
   // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
@@ -120,7 +124,14 @@ export type VoucherReason =
 //  EVERYWHERE"): voucher_story left the catalog the same way; its purchases
 //  stay readable (the voucher is stored as text) and a buy is refused with
 //  voucher_retired (vouchers.ts RETIRED_VOUCHERS).
-export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
+//  WELCOME AND VIP ARE CASHBACK LINES NOW (Pato, 2026-11-22, MESITA-4698):
+//  vouchers are Small · Medium · Big only, the bonus by amount alone. The two
+//  keys stay in the catalog so old purchases read; every list hides them and
+//  the buy door refuses them (vouchers.ts RETIRED_VOUCHERS).
+export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
+  voucher_welcome: "off",
+  voucher_vip: "off",
+};
 
 /** VIP CLASS (MESITA-4639, Pato 2026-11-22: "RETURN VIP CLASS IF MORE THAN
  *  5000 FOLLOWERS"): a verified Instagram with MORE THAN this many

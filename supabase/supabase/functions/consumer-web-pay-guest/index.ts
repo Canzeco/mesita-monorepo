@@ -74,7 +74,7 @@ import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { readCustomer } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT, MONEY_CURRENCY } from "../_shared/money.ts";
-import { cardRefusal } from "../_shared/pay-card.ts";
+import { billCardOff, cardRefusal } from "../_shared/pay-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { callTabRpc, hashTabToken, mintTabToken, readGuestPayBody, rpcRefusal, tabUrl } from "../_shared/tab.ts";
 import { ownCard, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
@@ -134,7 +134,8 @@ serveJson("consumer-web-pay-guest", async (req) => {
       if (!rates.card_available || !account) {
         return json({ ok: false, code: "card_unavailable", error: "This place isn't taking cards right now. Pay with credit or cash." }, 409);
       }
-      const gate = cardRefusal({ account, settings, livemode, currency, cardCents: pay.cardBillCents, tipCents: pay.cardTipCents });
+      // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
+      const gate = billCardOff() ?? cardRefusal({ account, settings, livemode, currency, cardCents: pay.cardBillCents, tipCents: pay.cardTipCents });
       if (gate) return json({ ok: false, code: gate.code, error: gate.error, ...gate.detail }, gate.status);
       if (pay.express) {
         // MESITA-4386: the kill switch stops a Pay screen already open too.

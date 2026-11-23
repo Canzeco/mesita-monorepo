@@ -1,6 +1,18 @@
 "use client";
 
-// Payments (MESITA-3296; the Place states of Main §10 since MESITA-3589).
+// Offers (MESITA-3296; the Place states of Main §10 since MESITA-3589).
+// MESITA-4698 (Pato, 2026-11-22: "we must have Vouchers and we must have
+// Coupons as Offers ... New Customers · Returning Customers · VIP Customers ·
+// Wholesale Presales ... ADD STAGES IN OFFERS ... Cashbacks (activate
+// credits). Vouchers (activate credits + stripe)"): after the Stripe and
+// Credits accounts and Payments, the offers come in two stages:
+//   Stage 1 · Cashbacks  needs Credits only: New Customers (Welcome),
+//                        Returning Customers (Regular), VIP Customers (VIP),
+//                        each Off · 5 · 10 · 15 · 20 %, and a cap per bill.
+//   Stage 2 · Vouchers   needs Credits + Stripe: Wholesale Presales, App
+//                        Prepayments then Small · Medium · Big.
+// App Payments (card for the bill) left the page: the bill is paid with
+// credit and the rest outside (CARD_BILL_PAY_LIVE false).
 // SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
 //   Stripe Account   · the account (a standard pill since MESITA-4534; was large, MESITA-4024) · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
@@ -42,14 +54,14 @@
 // these; the server refuses anyone else and repeats each rule.
 
 import { useState } from "react";
-import { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
+import { moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
+  ArrowsClockwiseIcon,
   ConfettiIcon,
   CreditCardIcon,
   CrownSimpleIcon,
-  DeviceMobileIcon,
   MoneyIcon,
   PiggyBankIcon,
   SignatureIcon,
@@ -63,7 +75,9 @@ import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
+import { CASHBACK_DEFAULTS, CASHBACK_STEPS_BPS, type CashbackRates } from "@/lib/cashback";
 import {
+  setPlaceCashback,
   openPaymentDashboard,
   type LoyaltyCardsContract,
   type PaymentAccount,
@@ -117,21 +131,21 @@ const STANDARD: VoucherSeed[] = [
   { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
-// Welcome green (every offer green, MESITA-4181), the sizes green, VIP black
-// (no Story since MESITA-4641). WELCOME IS BACK (Pato, 2026-11-22,
-// MESITA-4645: "RETURN THE WELCOME BONUS. WELCOME AND THEN THE OTHER
-// BONUSES."): the specials lead, Welcome first.
-const SPECIAL: VoucherSeed[] = [
-  { key: "voucher_welcome", name: "Welcome Voucher", bps: 10000, tail: "One per guest at your place.", value: "+100%", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
-  // VIP Offers (MESITA-4640): the VIP class only, one per visit.
-  { key: "voucher_vip", name: "VIP Voucher", bps: 10000, tail: "Only guests with an Instagram with more than 5,000 followers can buy it.", value: "+100%", tone: "bg-yellow-100 text-yellow-800", icon: CrownSimpleIcon },
+// MESITA-4698: Welcome and VIP are cashback lines now (Stage 1), not vouchers.
+
+/** Stage 1 · Cashbacks: one row per solution, the line it sets. */
+const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "cap_cents">; name: string; line: string; tone: string; icon: Icon }> = [
+  { key: "welcome_bps", name: "New Customers", line: "Welcome cashback on a guest's first bill here.", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
+  { key: "regular_bps", name: "Returning Customers", line: "Cashback on every later bill, for Regular guests.", tone: "bg-green-100 text-green-700", icon: ArrowsClockwiseIcon },
+  { key: "vip_bps", name: "VIP Customers", line: "Cashback on every later bill, for VIP guests (an Instagram with more than 5,000 followers).", tone: "bg-yellow-100 text-yellow-800", icon: CrownSimpleIcon },
 ];
+const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
 function voucherProducts(currency: string): Product[] {
   const prices = VOUCHER_PRICE[currency];
   if (!prices) return [];
-  return [...SPECIAL, ...STANDARD].map(({ bps, tail, ...p }) => {
+  return STANDARD.map(({ bps, tail, ...p }) => {
     const price = prices[p.key];
     const credit = price + Math.floor((price * bps) / 10000);
     return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.${tail ? ` ${tail}` : ""}` };
@@ -148,7 +162,6 @@ const CURRENCY_NAME: Record<string, string> = {
   MXN: "Mexican pesos", USD: "US dollars", CAD: "Canadian dollars", EUR: "euros", GBP: "pounds sterling",
   BRL: "Brazilian reais", COP: "Colombian pesos", CLP: "Chilean pesos", PEN: "Peruvian soles", JPY: "Japanese yen",
 };
-const ARRIVES_SOON = "Card payment of the bill arrives soon.";
 
 /** The waiter's charge (MESITA-3306) and the staff list (MESITA-3462). */
 const VISIT_ORIGIN = "https://visit.mesita.ai";
@@ -219,10 +232,13 @@ export function PaymentsPanel({
 }) {
   const [settings, setSettings] = useState(initial.settings);
   const [cashDue, setCashDue] = useState(initial.cash_due ?? []);
+  const [cashback, setCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
+  const [savedCashback, setSavedCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
+  const [capText, setCapText] = useState(String((initial.cashback ?? CASHBACK_DEFAULTS).cap_cents / 100));
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
-  const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | null>(null);
+  const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | "cashback" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The Waiter code row sets it here, so Cash Payments unlocks without a reload.
@@ -247,6 +263,18 @@ export function PaymentsPanel({
     setBusy(null);
     if (!r.ok) return setError(r.error);
     setSettings(r.data);
+  }
+
+  const cashbackDirty = JSON.stringify(cashback) !== JSON.stringify(savedCashback);
+  async function saveCashback() {
+    setBusy("cashback");
+    setError(null);
+    const r = await setPlaceCashback(placeId, cashback);
+    setBusy(null);
+    if (!r.ok) return setError(r.error);
+    setCashback(r.data);
+    setSavedCashback(r.data);
+    setCapText(String(r.data.cap_cents / 100));
   }
 
   async function agree() {
@@ -416,52 +444,6 @@ export function PaymentsPanel({
           Credits Account · Payments, then Vouchers. Each way to pay is ONE
           row with its Accept control. */}
       <Card className={SECTION}>
-        <h2 className={HEAD}>Stripe Account</h2>
-        <ul className="divide-border divide-y">
-          <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
-            {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Stripe Account</p>
-              <p className="text-muted-foreground">
-                {ready
-                  ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
-                  : `${copy.line}${testMode ? " Sandbox." : ""}`}
-              </p>
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
-            {copy.button ? (
-              <button
-                type="button"
-                // Standard pill size (MESITA-4534, Pato: "make stripe smaller…
-                // it only matters for the onboarding"): Stripe's purple while
-                // setup is unfinished, a quiet grey link once connected.
-                className={cn(
-                  PILL_BUTTON_CLASS,
-                  "shrink-0 whitespace-nowrap",
-                  ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
-                )}
-                disabled={pending}
-                onClick={() => void stripe()}
-              >
-                {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
-              </button>
-            ) : (
-              <span />
-            )}
-          </li>
-          {switchRow({
-            key: "stripe_payments",
-            id: "accept-stripe-payments",
-            name: "Accept Stripe Payments",
-            line: "Cards, Apple Pay and Google Pay in the app. Off stops App Payments and App Prepayments.",
-            icon: CreditCardIcon,
-            tone: "bg-indigo-100 text-indigo-700",
-            stripe: true,
-          })}
-        </ul>
-      </Card>
-      <Card className={SECTION}>
         <h2 className={HEAD}>Credits Account</h2>
         <ul className="divide-border divide-y">
           <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
@@ -534,14 +516,8 @@ export function PaymentsPanel({
             tone: "bg-lime-100 text-lime-700",
             accept: { key: "cash_payments" },
           })}
-          {pairRow({
-            id: "mesita-payments",
-            name: "App Payments",
-            line: settings.pay_cards && fee.hold ? "Off until Mesita's invoice is paid." : !CARD_BILL_PAY_LIVE ? ARRIVES_SOON : `Card in the app. ${per100(currency)}`,
-            icon: DeviceMobileIcon,
-            tone: "bg-sky-100 text-sky-700",
-            accept: { key: "pay_cards", stripe: true },
-          })}
+          {/* App Payments (card for the bill) is gone while CARD_BILL_PAY_LIVE
+              is false (MESITA-4698): guests pay the rest outside. */}
           {pairRow({
             id: "credits-payments",
             name: "Credits Payments",
@@ -549,19 +525,6 @@ export function PaymentsPanel({
             icon: WalletIcon,
             tone: "bg-emerald-100 text-emerald-700",
             accept: "always",
-          })}
-          {pairRow({
-            id: "mesita-prepayments",
-            name: "App Prepayments",
-            line:
-              settings.prepayments && fee.hold
-                ? "Off until Mesita's invoice is paid."
-                : settings.prepayments && state.sell.length === 0
-                  ? "Switch on at least one voucher below to sell."
-                  : `Vouchers by card in the app. ${per100(currency)}`,
-            icon: TicketIcon,
-            tone: "bg-teal-100 text-teal-700",
-            accept: { key: "prepayments", stripe: true },
           })}
         </ul>
         {cashDue.length > 0 ? (
@@ -602,10 +565,137 @@ export function PaymentsPanel({
         </p>
       </Card>
       <Card className={SECTION}>
-        <h2 className={HEAD}>Vouchers</h2>
+        <div className={HEAD}>
+          <h2>Stage 1 · Cashbacks</h2>
+          <p className={cn(NOTE, "font-normal")}>
+            Needs Credits only. A confirmed bill earns credit here on the part not paid with credit, never the tip. It lands 3 hours later, one per guest
+            per day. Mesita takes no fee.
+          </p>
+          {!settings.loyalty_cards ? <p className={cn(BLOCKED, "font-normal")}>{contract.signed ? needsLoyaltyCards : needsContract}</p> : null}
+        </div>
+        <ul className="divide-border divide-y" data-place-state="cashbacks">
+          {CASHBACK_ROWS.map((row) => {
+            const on = settings.loyalty_cards && cashback[row.key] > 0;
+            return (
+              <li key={row.key} className={MARK_ROW} data-place-state={row.key}>
+                {mark(row.icon, on, row.tone)}
+                <div className="min-w-0">
+                  <p className="font-medium">{row.name}</p>
+                  <p className="text-muted-foreground">{row.line}</p>
+                </div>
+                <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{pct(cashback[row.key])}</p>
+                <select
+                  className="border-border bg-background rounded-full border px-3 py-1.5 text-sm"
+                  aria-label={`${row.name} cashback`}
+                  value={cashback[row.key]}
+                  disabled={pending}
+                  onChange={(e) => setCashback((c) => ({ ...c, [row.key]: Number(e.target.value) }))}
+                >
+                  {CASHBACK_STEPS_BPS.map((bps) => (
+                    <option key={bps} value={bps}>
+                      {pct(bps)}
+                    </option>
+                  ))}
+                </select>
+              </li>
+            );
+          })}
+          <li className={MARK_ROW} data-place-state="cashback_cap">
+            {mark(PiggyBankIcon, settings.loyalty_cards && cashback.cap_cents > 0, "bg-emerald-100 text-emerald-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Cap per bill</p>
+              <p className="text-muted-foreground">The most cashback one bill can earn, in {CURRENCY_NAME[currency] ?? currency}.</p>
+            </div>
+            <span />
+            <input
+              className="border-border bg-background w-28 rounded-full border px-3 py-1.5 text-right text-sm tabular-nums"
+              inputMode="numeric"
+              aria-label="Cashback cap per bill"
+              value={capText}
+              disabled={pending}
+              onChange={(e) => {
+                const t = e.target.value.replace(/[^0-9]/g, "").slice(0, 5);
+                setCapText(t);
+                setCashback((c) => ({ ...c, cap_cents: Math.min(Number(t || "0"), 10000) * 100 }));
+              }}
+            />
+          </li>
+        </ul>
+        {canEdit ? (
+          <div className="flex justify-end px-5 pb-4 sm:px-6">
+            <button type="button" className={PILL_BUTTON_CLASS} disabled={pending || !cashbackDirty} onClick={() => void saveCashback()}>
+              {busy === "cashback" ? "Saving…" : cashbackDirty ? "Save cashbacks" : "Saved"}
+            </button>
+          </div>
+        ) : null}
+      </Card>
+      <Card className={SECTION}>
+        <div className={HEAD}>
+          <h2>Stage 2 · Vouchers</h2>
+          <p className={cn(NOTE, "font-normal")}>
+            Wholesale Presales. Needs Credits and Stripe. Guests pay ahead in the app; you get the money now, minus Mesita&apos;s 5%. The bonus lands 3
+            hours later.
+          </p>
+        </div>
         <ul className="divide-border divide-y" data-place-state="vouchers">
-          {/* Welcome, VIP, Small, Medium, Big; what money-state's NOT_YET_SELLABLE
-              lists is off sale. */}
+          {/* THE STRIPE ROWS LIVE HERE (MESITA-4698, Pato: "don't complicate
+              shit"): Stripe only matters for vouchers, so its account and
+              switch sit inside Stage 2, not in a card of their own. */}
+          <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
+            {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Stripe Account</p>
+              <p className="text-muted-foreground">
+                {ready
+                  ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
+                  : `${copy.line}${testMode ? " Sandbox." : ""}`}
+              </p>
+            </div>
+            <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
+            {copy.button ? (
+              <button
+                type="button"
+                // Standard pill size (MESITA-4534, Pato: "make stripe smaller…
+                // it only matters for the onboarding"): Stripe's purple while
+                // setup is unfinished, a quiet grey link once connected.
+                className={cn(
+                  PILL_BUTTON_CLASS,
+                  "shrink-0 whitespace-nowrap",
+                  ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
+                )}
+                disabled={pending}
+                onClick={() => void stripe()}
+              >
+                {busy === "stripe" ? "Opening…" : copy.button}
+                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
+              </button>
+            ) : (
+              <span />
+            )}
+          </li>
+          {switchRow({
+            key: "stripe_payments",
+            id: "accept-stripe-payments",
+            name: "Accept Stripe Payments",
+            line: "Cards, Apple Pay and Google Pay in the app. Off stops App Payments and App Prepayments.",
+            icon: CreditCardIcon,
+            tone: "bg-indigo-100 text-indigo-700",
+            stripe: true,
+          })}
+          {pairRow({
+            id: "mesita-prepayments",
+            name: "App Prepayments",
+            line:
+              settings.prepayments && fee.hold
+                ? "Off until Mesita's invoice is paid."
+                : settings.prepayments && state.sell.length === 0
+                  ? "Switch on at least one voucher below to sell."
+                  : `Vouchers by card in the app. ${per100(currency)}`,
+            icon: TicketIcon,
+            tone: "bg-teal-100 text-teal-700",
+            accept: { key: "prepayments", stripe: true },
+          })}
+          {/* Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
           {voucherProducts(currency)
             .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])
             .map(voucherRow)}

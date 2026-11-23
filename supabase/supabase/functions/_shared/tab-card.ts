@@ -31,7 +31,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { MIN_CHARGE_CENTS, toStripeAmount } from "./money.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
-import { cardRefusal } from "./pay-card.ts";
+import { billCardOff, cardRefusal } from "./pay-card.ts";
 import { PI_TTL_MS, releasePayment, settleByPaymentIntent, settlePaidPayment, SIGN_WINDOW } from "./settle-payment.ts";
 import { refuse, type TabRefusal } from "./tab.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
@@ -50,7 +50,8 @@ export function tabCardRates(args: {
   stripeReady: boolean;
 }): { card_available: boolean; card_unavailable_code: string | null; card_minimum_cents: number } {
   const min = MIN_CHARGE_CENTS[args.currency] ?? 0;
-  const gate = cardRefusal({
+  // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
+  const gate = billCardOff() ?? cardRefusal({
     account: args.account,
     settings: args.settings,
     livemode: args.livemode,

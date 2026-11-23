@@ -11,6 +11,7 @@ import {
   Ticket,
   UserRound,
   Share2,
+  WalletCards,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -222,6 +223,16 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Gift",
     summary: "Send credit",
     href: CONSUMER_ROUTES.walletSend,
+  },
+  // CARDS (Pato, 2026-11-22, MESITA-4698: "move card to this part. Cards.
+  // remove payment method from pay page"): the saved card, Apple Pay and
+  // Google Pay (/wallet/methods), which buy vouchers; a bill is paid outside
+  // since card bill pay left. It sits beside Settings on the last row.
+  {
+    Icon: WalletCards,
+    title: "Cards",
+    summary: "Ways to pay",
+    href: CONSUMER_ROUTES.walletMethods,
   },
   // NO INTEGRATIONS CELL (Pato, 2026-11-22, MESITA-4657: "Share Settings
   // (integrations here inside)"): it is Settings' first row.

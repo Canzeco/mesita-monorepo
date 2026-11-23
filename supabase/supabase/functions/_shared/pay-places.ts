@@ -72,6 +72,9 @@ export type PayPlaceInput = {
   /** A place code is set: the waiter's charge can open here, so the guest
    *  can pay outside (MESITA-3545). */
   outside_ok: boolean;
+  /** MESITA-4698: Loyalty Cards is On, so the place has offers (cashback,
+   *  and vouchers where it sells them): Pay's Get Offers lists it. */
+  offers_ok: boolean;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
 };
 
@@ -93,7 +96,7 @@ export function payPlaces(
   const out: Array<PayPlace & { credit: boolean }> = [];
   for (const r of rows) {
     const credit = r.available_cents > 0 || r.pending_cents > 0;
-    if (!credit && !r.card_ok && !r.outside_ok) continue;
+    if (!credit && !r.card_ok && !r.outside_ok && !r.offers_ok) continue;
     const d = opts.at && r.lat !== null && r.lng !== null ? distanceM(opts.at, { lat: r.lat, lng: r.lng }) : null;
     // A place without the guest's credit (card or outside): within the radius
     // once the city is big enough; with no location, only while every such
@@ -111,6 +114,7 @@ export function payPlaces(
       available_cents: r.available_cents,
       pending_cents: r.pending_cents,
       outside_ok: r.outside_ok,
+      offers_ok: r.offers_ok,
       test_mode: opts.testMode,
       card_min_cents: opts.minCents(r.currency),
       paid_recent: r.paid_recent,

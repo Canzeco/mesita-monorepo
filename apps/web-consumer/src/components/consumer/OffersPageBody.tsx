@@ -6,6 +6,7 @@ import { ChevronLeft, Clock } from "lucide-react";
 import {
   readyClock,
   VouchersPane,
+  type OffersTab,
   type PlaceActions,
   type VoucherBasketItem,
   type VoucherBuyOutcome,
@@ -79,6 +80,13 @@ function readFromPay(): boolean {
 /** The voucher an old link asks for: `?pick=` (an old ticket link,
  *  MESITA-4647) or `?voucher=` (the Add a card round trip, MESITA-4230;
  *  Home chips before MESITA-4455). The shop picks it when it is buyable. */
+/** MESITA-4698: the tab a link asks for, `?rewards=cashback` or
+ *  `?rewards=prepayment` (the vouchers). None lets the page choose. */
+function readTab(): OffersTab | null {
+  const r = new URLSearchParams(window.location.search).get("rewards");
+  return r === "cashback" ? "cashbacks" : r === "prepayment" || r === "special" ? "vouchers" : null;
+}
+
 function readPick(): string | null {
   const q = new URLSearchParams(window.location.search);
   return q.get("pick") ?? q.get("voucher");
@@ -98,6 +106,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
   const fromPay = useSyncExternalStore(noopSubscribe, readFromPay, () => false);
   const pick = useSyncExternalStore(noopSubscribe, readPick, () => null);
+  const tab = useSyncExternalStore(noopSubscribe, readTab, () => null);
   const keep = useKeptScroll<HTMLDivElement>();
 
   // A PAID VOUCHER ENDS ON THE LOYALTY CARD (Pato, MESITA-4055: "don't
@@ -243,7 +252,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           </div>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
-          <VouchersPane place={place} actions={actions} pick={pick} />
+          <VouchersPane place={place} actions={actions} pick={pick} tab={tab} />
         </div>
       </div>
       {/* The pay-with-a-card sheet the vouchers hook owns (MESITA-3552). */}

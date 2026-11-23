@@ -10,7 +10,12 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, money: { test_mode, currency, charges_enabled, vouchers,
 //                               sell, unavailable, catalog, balance, paused },
-//            in_wallet?: boolean (MESITA-3582, signed in only) }
+//            in_wallet?: boolean (MESITA-3582, signed in only),
+//            cashback: null | { welcome_bps, regular_bps, vip_bps, cap_cents,
+//                               line: welcome|regular|vip|null } }
+//   MESITA-4698: the place's three cashback lines, null where Loyalty Cards
+//   is Off (no cashback is earned there); `line` is the one this caller's
+//   next bill falls in (null when signed out).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -21,6 +26,8 @@ import { readVoucherPlace } from "../_shared/wallet.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
 import { inWallet } from "../_shared/loyalty-cards.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+import { type CashbackLine, cashbackLine, readCashbackRates, readGuestClass, readHasPaidBill } from "../_shared/cashback.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("consumer-web-list-vouchers", async (req) => {
   const ctx = openRequest(req);
@@ -44,5 +51,21 @@ serveJson("consumer-web-list-vouchers", async (req) => {
   // Wallet (pinned or holding entries). Absent when signed out; a failed
   // read omits it rather than claim either way.
   if (card && !card.ok) console.error("[consumer-web-list-vouchers] in_wallet", JSON.stringify({ error: card.error }));
-  return json({ ok: true, money, ...(card && card.ok ? { in_wallet: card.in_wallet } : {}) });
+  // MESITA-4698: cashback, where credit can be born. A failed read shows none
+  // rather than a wrong rate.
+  let cashback: Record<string, unknown> | null = null;
+  if ((money as { loyalty_cards?: boolean }).loyalty_cards === true) {
+    try {
+      const [rates, firstBill, klass] = await Promise.all([
+        readCashbackRates(admin, placeId),
+        user ? readHasPaidBill(admin, user.id, placeId, livemode).then((paid) => !paid) : Promise.resolve(null),
+        user ? readGuestClass(admin, user.id) : Promise.resolve(null),
+      ]);
+      const line: CashbackLine | null = firstBill === null ? null : cashbackLine({ firstBill, guestClass: klass });
+      cashback = { ...rates, line };
+    } catch (err) {
+      console.error("[consumer-web-list-vouchers] cashback", JSON.stringify({ error: errorMessage(err) }));
+    }
+  }
+  return json({ ok: true, money: { ...money, cashback }, ...(card && card.ok ? { in_wallet: card.in_wallet } : {}) });
 });

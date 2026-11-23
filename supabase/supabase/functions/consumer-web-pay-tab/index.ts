@@ -42,7 +42,7 @@ import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { readCustomer } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT } from "../_shared/money.ts";
-import { cardRefusal } from "../_shared/pay-card.ts";
+import { billCardOff, cardRefusal } from "../_shared/pay-card.ts";
 import { PI_TTL_MS } from "../_shared/settle-payment.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { callTabRpc, type CardSplitArgs, readSplitBody, readTabById, rpcRefusal, splitArgs } from "../_shared/tab.ts";
@@ -87,7 +87,8 @@ serveJson("consumer-web-pay-tab", async (req) => {
       if (!rates.card_available || !account) {
         return json({ ok: false, code: "card_unavailable", error: "This place isn't taking cards right now. Pay with credits or cash." }, 409);
       }
-      const gate = cardRefusal({ account, settings, livemode, currency: tab.currency, cardCents: split.cardBillCents, tipCents: split.cardTipCents });
+      // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
+      const gate = billCardOff() ?? cardRefusal({ account, settings, livemode, currency: tab.currency, cardCents: split.cardBillCents, tipCents: split.cardTipCents });
       if (gate) return json({ ok: false, code: gate.code, error: gate.error, ...gate.detail }, gate.status);
       customer = await readCustomer(admin, userId, livemode);
       if (!(await ownCard(stripe!, customer, split.cardPmId as string))) {

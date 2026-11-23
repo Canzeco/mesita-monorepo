@@ -11,7 +11,7 @@ const minCents = (c: string) => MIN_CHARGE_CENTS[c] ?? 0;
 function row(id: string, over: Partial<PayPlaceInput> = {}): PayPlaceInput {
   return {
     place_id: id, name: id, lat: AT.lat, lng: AT.lng, tier: null, mesita_pay: true, currency: "mxn",
-    card_ok: true, available_cents: 0, pending_cents: 0, outside_ok: false, paid_recent: null, photo: null, address: null, ...over,
+    card_ok: true, available_cents: 0, pending_cents: 0, outside_ok: false, offers_ok: false, paid_recent: null, photo: null, address: null, ...over,
   };
 }
 // ~1 km and ~5 km north of AT.

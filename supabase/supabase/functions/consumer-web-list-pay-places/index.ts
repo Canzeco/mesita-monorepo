@@ -14,7 +14,9 @@
 //             distance_m | null, currency, card_ok, available_cents,
 //             pending_cents, outside_ok, test_mode, card_min_cents,
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
-//             offers: { sell } }] }
+//             offers_ok, offers: { sell } }] }
+//   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
+//   and vouchers where sold): Pay's Get Offers lists these.
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
@@ -30,7 +32,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
-import { moneyState } from "../_shared/money-state.ts";
+import { CARD_BILL_PAY_LIVE, moneyState } from "../_shared/money-state.ts";
 import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
@@ -105,7 +107,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     const s = settings.get(p.id) ?? settingsFromRow(null);
     const charges = charging.has(p.id);
     const active = p.state === "active";
-    const cardOk = charges && cardsAccepted(s) && active;
+    // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
+    const cardOk = CARD_BILL_PAY_LIVE && charges && cardsAccepted(s) && active;
     // Cash Payments (MESITA-3589): the owner's switch and the place code.
     const cashState = moneyState({ ...s, has_place_code: coded.has(p.id) }, charges ? { charges_enabled: true } : null, null);
     const outsideOk = cashState.cash && active;
@@ -127,6 +130,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       available_cents: active ? (b?.spendable_cents ?? 0) : 0,
       pending_cents: active ? (b?.pending_cents ?? 0) : 0,
       outside_ok: outsideOk,
+      offers_ok: active && s.loyalty_cards === true,
       paid_recent: paid.get(p.id) ?? null,
     });
   }

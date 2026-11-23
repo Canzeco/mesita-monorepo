@@ -24,6 +24,7 @@ import { type AccountRow, type PaymentSettings } from "./payments.ts";
 import type { PayInput, PayRefusal } from "./pay.ts";
 import { mintProofToken } from "./proof.ts";
 import { accountCurrency } from "./vouchers.ts";
+import { CARD_BILL_PAY_LIVE } from "./money-state.ts";
 import { releasePayment, settlePayment } from "./settle-payment.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
@@ -53,6 +54,13 @@ export type CardStart = {
   currency: string;
   test_mode: boolean;
 };
+
+/** MESITA-4698: card for a bill is off (CARD_BILL_PAY_LIVE). Every door
+ *  that charges a card for a bill (pay-guest, pay-tab, start-payment) asks
+ *  this first; tabCardRates and the list rows read it too. Vouchers never. */
+export function billCardOff(): PayRefusal | null {
+  return CARD_BILL_PAY_LIVE ? null : refuse(409, "Pay the rest to the place, in cash or on its own terminal", "cards_off");
+}
 
 /** Every gate before any money moves. Pure. */
 export function cardRefusal(args: {

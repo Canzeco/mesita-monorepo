@@ -27,7 +27,6 @@ import { PayHeader } from "./PayHeader";
 import { LoyaltyCardBoxSkeleton, PayFrameLoading } from "./PayFrameLoading";
 import { PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { MethodPreview } from "./MethodPreview";
 import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
@@ -297,10 +296,8 @@ export function PayPage({
   // NO "BONUS PENDING" ROWS (Pato, 2026-11-22, MESITA-4638: "the blue box
   // below mentioning that is enough"): a bonus still landing shows only on
   // its place row's blue pending box; Pending Tickets is the open bill.
-  const [methodReady, setMethodReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
-  const onMethodReady = useCallback(() => setMethodReady(true), []);
-  const allReady = walletReady && methodReady && (places !== null || placesFailed) && bill !== "loading";
+  const allReady = walletReady && (places !== null || placesFailed) && bill !== "loading";
   const [shown, setShown] = useState(false);
   if (allReady && !shown) setShown(true);
 
@@ -401,7 +398,10 @@ export function PayPage({
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
             <Plus className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          Prepay &amp; Get Bonus
+          {/* GET OFFERS (Pato, 2026-11-22, MESITA-4698: "the green box must be
+              caleld (Get Offers)"; Explore Discounts for one push): the places
+              with offers; a row opens its Cashbacks and Vouchers. */}
+          Get Offers
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
@@ -426,12 +426,9 @@ export function PayPage({
           border. The grey ground under the buttons (MESITA-4525/4532) is
           gone. */}
       <div className="mt-1 flex flex-1 flex-col pb-8" data-pay-cards>
-      <section className={SECTION_CARD} aria-label="Payment method">
-        <h2 className={SECTION_TITLE}>Payment method</h2>
-        <div className={SECTION_ROWS}>
-          <MethodPreview row onReady={onMethodReady} />
-        </div>
-      </section>
+      {/* NO PAYMENT METHOD HERE (Pato, 2026-11-22, MESITA-4698: "move card
+          to this part. Cards. remove payment method from pay page"): the
+          ways to pay live on Me › Cards; a bill is paid outside. */}
       {loc.state === "prime" ? (
         <div className="border-border bg-card mt-2 rounded-xl border p-3">
           <p className="text-sm font-semibold">See places near you</p>
