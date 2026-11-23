@@ -398,10 +398,10 @@ export function PayPage({
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
             <Plus className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          {/* EXPLORE DISCOUNTS (Pato, 2026-11-22, MESITA-4698: "rename the
-              green thing to Explore Discounts"): a place's Offers, Cashbacks
-              and Vouchers. */}
-          Explore Discounts
+          {/* GET OFFERS (Pato, 2026-11-22, MESITA-4698: "the green box must be
+              caleld (Get Offers)"; Explore Discounts for one push): the places
+              with offers; a row opens its Cashbacks and Vouchers. */}
+          Get Offers
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />

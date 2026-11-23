@@ -16,7 +16,7 @@
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
 //             offers_ok, offers: { sell } }] }
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
-//   and vouchers where sold): Pay's Explore Discounts lists these.
+//   and vouchers where sold): Pay's Get Offers lists these.
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).

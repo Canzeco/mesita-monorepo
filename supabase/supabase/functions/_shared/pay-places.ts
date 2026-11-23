@@ -73,7 +73,7 @@ export type PayPlaceInput = {
    *  can pay outside (MESITA-3545). */
   outside_ok: boolean;
   /** MESITA-4698: Loyalty Cards is On, so the place has offers (cashback,
-   *  and vouchers where it sells them): Pay's Explore Discounts lists it. */
+   *  and vouchers where it sells them): Pay's Get Offers lists it. */
   offers_ok: boolean;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
 };
