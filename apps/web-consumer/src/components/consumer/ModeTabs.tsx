@@ -39,9 +39,10 @@ export const BRAND_HEADER_CLASS =
 
 /** The header's name, set as type, not a drawn logo (MESITA-2480). */
 // A BIT TALLER (Pato, 2026-11-23, MESITA-4758: "make the mesita in home
-// header a bit taller"): 28px (24px before), in a 56px row (52px before).
+// header a bit taller"): text-3xl, 30px (text-2xl, 24px before), in a 56px
+// row (52px before). Named sizes only (the type-roles lint).
 export const HOME_WORDMARK_CLASS =
-  "text-foreground shrink-0 text-[28px] leading-none tracking-[-0.03em] select-none";
+  "text-foreground shrink-0 text-3xl leading-none tracking-[-0.03em] select-none";
 
 /** The white band with the word "Mesita", then the tab's own control (Home:
  *  the location box). */
