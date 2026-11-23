@@ -1044,13 +1044,16 @@ function OffersTabs({
   return (
     <div
       ref={barRef}
-      // FULL WIDTH (Pato, 2026-11-23, MESITA-4727: "an actual full width
-      // with the menu"): edge to edge, white, one hairline under it; no card.
-      className="bg-card border-border flex shrink-0 border-b"
+      // A SEGMENTED CONTROL (Pato, 2026-11-23, MESITA-4737: "not line ...
+      // maybe slightly gray background or something NOT in the items"): one
+      // light grey track across the page, the chosen tab a white raised pill;
+      // no underline, no hairline. Full width since MESITA-4727.
+      className="bg-card shrink-0 px-4 pb-3"
       role="tablist"
       aria-label="Offers"
       data-offers-tabs
     >
+      <div className="bg-muted flex gap-1 rounded-2xl p-1">
       {OFFERS_TABS.map(({ id, word, Icon }, i) => {
         const on = tab === id;
         // "Prepay · N" while the basket holds anything (MESITA-4710).
@@ -1077,8 +1080,8 @@ function OffersTabs({
               }
             }}
             className={cn(
-              "relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-base font-semibold transition",
-              on ? "text-foreground" : "text-muted-foreground",
+              "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl text-base font-semibold transition",
+              on ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
               !on && !locked && "hover:text-foreground",
               locked && "cursor-not-allowed",
             )}
@@ -1087,11 +1090,11 @@ function OffersTabs({
             <span className="flex" aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} />
             </span>
-            <span className="tabular-nums">{count ? `${word} · ${count}` : word}</span>
-            <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
+            <span className="truncate tabular-nums">{count ? `${word} · ${count}` : word}</span>
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -1371,12 +1374,22 @@ function CheckoutSection({
         tab="pay"
         title="Pay"
         tone={CASHBACK_TONE}
-        steps={["Pay your bill here", "Wait 1 hour", "Receive your Back as credit here"]}
+        // MORE INFO (Pato, 2026-11-23, MESITA-4737: "more info in how it
+        // works"): four steps from the bill to the credit, then the place's
+        // own rates and every rule a guest asks about.
+        steps={[
+          "When the bill comes, tap Go to Pay Bill",
+          "Pay by card, or hand the cash to the waiter",
+          "The waiter confirms your bill",
+          "1 hour later, your Back lands here as credit",
+        ]}
         good={[
+          ...rows.map((r) => `${r.title}: ${r.bps / 100}% back on ${r.line === "welcome" ? "your first bill here" : "every later bill"}.`),
           // "be clear that cashbacks don't work with pre-earned credits" (Pato,
           // MESITA-4702). No cap and no once-a-day rule (MESITA-4728).
-          "Only on what you pay by card or cash, never on credit.",
-          "It lands in 1 hour.",
+          "Back counts what you pay by card or cash, never what you pay with credit.",
+          "No minimum bill.",
+          "Spend your credit here on a later bill, or send it to a friend. It never expires.",
         ]}
       />
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
