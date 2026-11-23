@@ -677,7 +677,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       "Reservations",
       "Notifications",
       "Tickets",
-      "Cards",
+      "Card",
       // A shortcut to Home's ❤️ Saved row (MESITA-4327).
       "Saved",
       "Plan",

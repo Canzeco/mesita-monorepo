@@ -186,8 +186,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // since card bill pay left. It sits beside Settings on the last row.
   {
     // AN ACTUAL CARD (MESITA-4706: "card must be an actual card").
+    // MESITA-4742: "maybe call it card instead of cards".
     Icon: CreditCard,
-    title: "Cards",
+    title: "Card",
     summary: "Ways to pay",
     href: CONSUMER_ROUTES.walletMethods,
   },
