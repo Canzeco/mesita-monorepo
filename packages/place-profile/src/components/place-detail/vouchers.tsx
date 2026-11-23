@@ -1274,7 +1274,7 @@ function PrepaySection({
         steps={["Pay for an offer", "Wait 3 hours", "Receive what you paid plus the bonus, all at once"]}
         good={["Spend it here, or send it to a friend.", "It never expires."]}
       />
-      {/* THE PAY BAR (MESITA-4647), ALWAYS THERE ON PREPAY (Pato,
+      {/* THE PAY BAR (MESITA-4647), SHOWN ONCE A VOUCHER IS PICKED (MESITA-4763; always there under (Pato,
           2026-11-22, MESITA-4659; MESITA-4710, d2a): sticky at the bottom,
           the same lines whatever is picked — Pay, Bonus (green), then under a
           hairline the total, You get in 3 hours (MESITA-4717: all of it lands
@@ -1287,6 +1287,12 @@ function PrepaySection({
           it says "Select an offer", disabled: an empty basket charges
           nothing. The purple Go to Pay Bill moved to Checkout (MESITA-4710). */}
       {(() => {
+        // ONLY ONCE SOMETHING IS PICKED (Pato, 2026-11-23, MESITA-4763: "it is
+        // repulsive if I haven't even selected an offer and you are already
+        // displaying count at the bottom … don't do that"): an empty basket
+        // draws no bar; the first voucher picked brings it. Supersedes
+        // MESITA-4659's "always there".
+        if (count === 0) return null;
         const sum = totals ?? { price: 0, bonus: 0 };
         const amount = (cents: number) => whole(pesos(cents, currency));
         const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");
