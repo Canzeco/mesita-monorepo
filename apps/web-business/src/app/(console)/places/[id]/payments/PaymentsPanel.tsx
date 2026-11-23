@@ -21,8 +21,15 @@
 //   Instagram Stories  #instagram-stories  · Enable Story Rewards · Place Username
 //                                            (read-only, from Profile) · Story Credit
 // The rates and the story reward are one saved record (business-web-set-
-// cashback); each change saves at once. Story Rewards Off stores 0; On brings
-// back the last amount, or MX$20.
+// cashback). Story Rewards Off stores 0; On brings back the last amount, or
+// MX$20.
+// SAVE CHANGES (Pato, 2026-11-23, MESITA-4769: "don't enable to directly
+// configurate. it must have like a save changes button"): every switch and
+// pick in Visit Checkout, Prepaid Vouchers and Instagram Stories is a draft
+// until Save changes, in a bar at the foot of the screen while anything is
+// unsaved (Discard drops it). Agree and Enable on the Credits Agreement, the
+// Stripe button and cash Received stay instant: they are actions, not
+// settings.
 // A switch that can't turn on is disabled and its row says the one missing
 // step, with a link to it. Never "Mesita Pay" (Pato, 2026-11-10).
 // The Loyalty Cards Agreement is independent of Stripe (Pato, 2026-11-09). A
@@ -31,7 +38,8 @@
 // server refuses anyone else and repeats each rule. Configuration only
 // (MESITA-3596): the money and its log live on Monitor.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
@@ -49,6 +57,7 @@ import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
+import { setUnsavedEdits } from "@/lib/unsaved-edits";
 import { prepaymentsOn as prepaymentsLive, stripeTakesCards } from "@/lib/offers-state";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import {
@@ -67,6 +76,7 @@ import {
   type LoyaltyCardsContract,
   type PaymentAccount,
   type PaymentKey,
+  type PaymentSettings,
   type PlacePayments,
   type StripeStage,
   receiveGuestCash,
@@ -167,6 +177,25 @@ const VISIT_ORIGIN = "https://visit.mesita.ai";
 
 type VoucherKey = Extract<PaymentKey, `voucher_${string}`>;
 const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_");
+/** The switches Save changes writes (MESITA-4769); every other key is an action. */
+type DraftKey = "prepayments" | VoucherKey;
+
+const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
+  "welcome_bps",
+  "returning_bps",
+  "story_reward_cents",
+  "small_bonus_bps",
+  "medium_bonus_bps",
+  "big_bonus_bps",
+];
+const sameRates = (a: CashbackRates, b: CashbackRates) => CASHBACK_FIELDS.every((k) => a[k] === b[k]);
+
+/** What a Visit Checkout or Story switch comes back to when turned on again. */
+const restoreRates = (c: CashbackRates) => ({
+  welcome_bps: c.welcome_bps > 0 ? c.welcome_bps : 1000,
+  returning_bps: c.returning_bps > 0 ? c.returning_bps : 500,
+});
+const restoreStory = (c: CashbackRates) => (c.story_reward_cents > 0 ? c.story_reward_cents : 2000);
 
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
@@ -253,14 +282,18 @@ export function PaymentsPanel({
 }) {
   const [settings, setSettings] = useState(initial.settings);
   const [cashDue, setCashDue] = useState(initial.cash_due ?? []);
+  // SAVED: what the server holds. The page draws the draft over it.
   const [cashback, setCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
+  // THE DRAFT (MESITA-4769): switch edits over `settings`, and the whole
+  // cashback record once any rate, bonus or story amount is touched. An edit
+  // equal to the saved value is dropped, so "unsaved" means something differs.
+  const [edits, setEdits] = useState<Partial<Record<DraftKey, boolean>>>({});
+  const [cashbackDraft, setCashbackDraft] = useState<CashbackRates | null>(null);
+  const [saving, setSaving] = useState(false);
   // The amount Story Rewards comes back to when switched on again (Off stores 0).
-  const [lastStory, setLastStory] = useState<number>((initial.cashback?.story_reward_cents ?? 0) > 0 ? initial.cashback!.story_reward_cents : 2000);
+  const [lastStory, setLastStory] = useState<number>(() => restoreStory(initial.cashback ?? CASHBACK_DEFAULTS));
   // The rates Visit Checkout comes back to when enabled again (Off stores 0 for both; MESITA-4752).
-  const [lastRates, setLastRates] = useState(() => ({
-    welcome_bps: (initial.cashback?.welcome_bps ?? 0) > 0 ? initial.cashback!.welcome_bps : 1000,
-    returning_bps: (initial.cashback?.returning_bps ?? 0) > 0 ? initial.cashback!.returning_bps : 500,
-  }));
+  const [lastRates, setLastRates] = useState(() => restoreRates(initial.cashback ?? CASHBACK_DEFAULTS));
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
@@ -275,12 +308,98 @@ export function PaymentsPanel({
   const copy = accountCopy(account);
   const ready = account.state === "ready";
   const stage: StripeStage = account.stage ?? (ready ? "connected" : account.state === "none" ? "none" : "onboarding");
-  const pending = !canEdit || busy !== null;
+  const pending = !canEdit || busy !== null || saving;
   // Prepayments and every voucher need the Stripe Account to take cards in
   // the server's mode (MESITA-3599; the set EF and SQL refuse otherwise).
   const takesCards = stripeTakesCards(initial);
-  // The same rule the server sells and pays by (money-state, one source).
+  // What the page shows: the saved switches with the draft over them. Turning
+  // Prepaid Vouchers on also turns on `stripe_payments` at Save (MESITA-3946).
+  const view: PaymentSettings = {
+    ...settings,
+    ...edits,
+    ...(edits.prepayments ? { stripe_payments: true } : null),
+  };
+  const rates = cashbackDraft ?? cashback;
+  const draftKeys = Object.keys(edits) as DraftKey[];
+  const dirty = draftKeys.length > 0 || cashbackDraft !== null;
+  // The same rule the server sells and pays by (money-state, one source),
+  // read from what is saved: "not for sale" is about the live place.
   const state = moneyState({ ...settings, has_place_code: true }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
+
+  /** A switch into the draft; back to its saved value drops the edit. */
+  function editSwitch(key: DraftKey, on: boolean) {
+    const saved = key === "prepayments" ? prepaymentsLive(settings, takesCards) : settings[key];
+    setEdits((e) => {
+      const { [key]: _drop, ...rest } = e;
+      void _drop;
+      return on === saved ? rest : { ...rest, [key]: on };
+    });
+  }
+
+  /** The cashback record into the draft; equal to the saved one drops it. */
+  function editRates(next: CashbackRates) {
+    setCashbackDraft(sameRates(next, cashback) ? null : next);
+  }
+
+  function discard() {
+    setEdits({});
+    setCashbackDraft(null);
+    setLastRates(restoreRates(cashback));
+    setLastStory(restoreStory(cashback));
+    setError(null);
+  }
+
+  /** Save changes: the cashback record, then Prepaid Vouchers, then each
+   *  voucher. A refused step stops there and keeps what is still unsaved. */
+  async function saveAll() {
+    setSaving(true);
+    setError(null);
+    try {
+      if (cashbackDraft) {
+        const r = await setPlaceCashback(placeId, cashbackDraft);
+        if (!r.ok) return setError(r.error);
+        setCashback(r.data);
+        setCashbackDraft(null);
+        setLastRates(restoreRates(r.data));
+        setLastStory(restoreStory(r.data));
+      }
+      let saved = settings;
+      const order = [...draftKeys].sort((a, b) => Number(b === "prepayments") - Number(a === "prepayments"));
+      for (const key of order) {
+        const on = edits[key] === true;
+        if (key === "prepayments" && on && !saved.stripe_payments) {
+          const s = await setPlacePayment(placeId, "stripe_payments", true);
+          if (!s.ok) return setError(s.error);
+          saved = s.data;
+          setSettings(saved);
+        }
+        const r = await setPlacePayment(placeId, key, on);
+        if (!r.ok) return setError(r.error);
+        saved = r.data;
+        setSettings(saved);
+        setEdits((e) => {
+          const { [key]: _done, ...rest } = e;
+          void _done;
+          return rest;
+        });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Unsaved edits: the deploy watcher never reloads over them, and closing
+  // or reloading the tab asks first.
+  useEffect(() => {
+    setUnsavedEdits(dirty);
+    if (!dirty) return;
+    const ask = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", ask);
+    return () => {
+      window.removeEventListener("beforeunload", ask);
+      setUnsavedEdits(false);
+    };
+  }, [dirty]);
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -296,25 +415,6 @@ export function PaymentsPanel({
   async function refreshCreditLimit() {
     const r = await getPlacePayments(placeId);
     if (r.ok) setCreditLimit(r.data.credit_limit ?? null);
-  }
-
-  /** Accept Prepayments (MESITA-4732): one switch over `prepayments` and the
-   *  `stripe_payments` gate above it (MESITA-3946), which has no row now. */
-  async function flipPrepayments(enabled: boolean) {
-    setBusy("prepayments");
-    setError(null);
-    if (enabled && !settings.stripe_payments) {
-      const s = await setPlacePayment(placeId, "stripe_payments", true);
-      if (!s.ok) {
-        setBusy(null);
-        return setError(s.error);
-      }
-      setSettings(s.data);
-    }
-    const r = await setPlacePayment(placeId, "prepayments", enabled);
-    setBusy(null);
-    if (!r.ok) return setError(r.error);
-    setSettings(r.data);
   }
 
   /** Two picks as pills, the Story Reward's control (MESITA-4764): the picked
@@ -341,23 +441,6 @@ export function PaymentsPanel({
       })}
     </div>
   );
-
-  /** Rates and the story reward are one record; each change saves it. */
-  async function saveRates(next: CashbackRates) {
-    const before = cashback;
-    setCashback(next);
-    setBusy("cashback");
-    setError(null);
-    const r = await setPlaceCashback(placeId, next);
-    setBusy(null);
-    if (!r.ok) {
-      setCashback(before);
-      return setError(r.error);
-    }
-    setCashback(r.data);
-    if (r.data.story_reward_cents > 0) setLastStory(r.data.story_reward_cents);
-    if (r.data.welcome_bps > 0 || r.data.returning_bps > 0) setLastRates({ welcome_bps: r.data.welcome_bps, returning_bps: r.data.returning_bps });
-  }
 
   async function agree() {
     setBusy("contract");
@@ -411,13 +494,13 @@ export function PaymentsPanel({
   // Accept Prepayments is over every voucher (MESITA-4300): while it reads
   // Off, each voucher reads Off with its switch disabled and the one step; the
   // stored choice is kept and comes back when it is on.
-  const prepaymentsOn = prepaymentsLive(settings, takesCards);
+  const prepaymentsOn = prepaymentsLive(view, takesCards);
   const prepaymentsBlocked = prepaymentsOn ? null : !takesCards ? needsStripe : creditsBlock;
-  const vouchers = voucherProducts(currency, cashback).filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]);
-  const anyTierOn = vouchers.some((p) => settings[p.key]);
+  const vouchers = voucherProducts(currency, rates).filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]);
+  const anyTierOn = vouchers.some((p) => view[p.key]);
 
   const voucherRow = ({ key, name, line, field }: Product) => {
-    const on = settings[key] && prepaymentsOn;
+    const on = view[key] && prepaymentsOn;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
     const blocked = !takesCards ? needsStripe : !prepaymentsOn ? needsPrepayments : !on && !settings.loyalty_cards ? creditsBlock : null;
     const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
@@ -428,16 +511,21 @@ export function PaymentsPanel({
           <p className="text-muted-foreground">{line}</p>
           {under(blocked, note)}
         </div>
-        {picks(`${name} bonus`, VOUCHER_BONUS_PICKS_BPS[field], cashback[field], (b) => `+${pct(b)}`, pending || !!blocked, (b) =>
-          void saveRates({ ...cashback, [field]: b }),
+        {picks(`${name} bonus`, VOUCHER_BONUS_PICKS_BPS[field], rates[field], (b) => `+${pct(b)}`, pending || !!blocked, (b) =>
+          editRates({ ...rates, [field]: b }),
         )}
-        <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
+        <Switch
+          on={on}
+          pending={pending || !!blocked}
+          onClick={() => isVoucherKey(key) && editSwitch(key, !on)}
+          label={`${name}: ${on ? "on" : "off"}`}
+        />
       </li>
     );
   };
 
-  const visitOn = settings.loyalty_cards && (cashback.welcome_bps > 0 || cashback.returning_bps > 0);
-  const storyOn = cashback.story_reward_cents > 0;
+  const visitOn = settings.loyalty_cards && (rates.welcome_bps > 0 || rates.returning_bps > 0);
+  const storyOn = rates.story_reward_cents > 0;
   // A story pays only while the Credits Account is on (story_reward_grant).
   const storyLive = settings.loyalty_cards && storyOn;
 
@@ -577,7 +665,12 @@ export function PaymentsPanel({
               <Switch
                 on={visitOn}
                 pending={pending || !!creditsBlock}
-                onClick={() => void saveRates(visitOn ? { ...cashback, welcome_bps: 0, returning_bps: 0 } : { ...cashback, ...lastRates })}
+                onClick={() => {
+                  if (visitOn) {
+                    setLastRates(restoreRates(rates));
+                    editRates({ ...rates, welcome_bps: 0, returning_bps: 0 });
+                  } else editRates({ ...rates, ...lastRates });
+                }}
                 label={`Visit Checkout: ${visitOn ? "on" : "off"}`}
               />
             </li>
@@ -590,8 +683,8 @@ export function PaymentsPanel({
                     {under(creditsBlock, null)}
                   </div>
                   <span />
-                  {picks(row.name, VISIT_PICKS_BPS[row.key], visitOn ? cashback[row.key] : lastRates[row.key], pct, pending || !visitOn, (b) =>
-                    void saveRates({ ...cashback, [row.key]: b }),
+                  {picks(row.name, VISIT_PICKS_BPS[row.key], visitOn ? rates[row.key] : lastRates[row.key], pct, pending || !visitOn, (b) =>
+                    editRates({ ...rates, [row.key]: b }),
                   )}
                 </li>
               );
@@ -656,7 +749,7 @@ export function PaymentsPanel({
               <Switch
                 on={prepaymentsOn}
                 pending={pending || !!prepaymentsBlocked}
-                onClick={() => void flipPrepayments(!prepaymentsOn)}
+                onClick={() => editSwitch("prepayments", !prepaymentsOn)}
                 label={`Prepaid Vouchers: ${prepaymentsOn ? "on" : "off"}`}
               />
             </li>
@@ -685,7 +778,12 @@ export function PaymentsPanel({
               <Switch
                 on={storyLive}
                 pending={pending || !!creditsBlock}
-                onClick={() => void saveRates({ ...cashback, story_reward_cents: storyOn ? 0 : lastStory })}
+                onClick={() => {
+                  if (storyOn) {
+                    setLastStory(restoreStory(rates));
+                    editRates({ ...rates, story_reward_cents: 0 });
+                  } else editRates({ ...rates, story_reward_cents: lastStory });
+                }}
                 label={`Instagram Stories: ${storyLive ? "on" : "off"}`}
               />
             </li>
@@ -705,8 +803,8 @@ export function PaymentsPanel({
                 <p className="text-muted-foreground">What one verified story pays the guest.</p>
               </div>
               <span />
-              {picks("Story Reward", STORY_AMOUNTS, storyOn ? cashback.story_reward_cents : lastStory, (c) => wholeMoney(c, currency), pending || !storyOn, (c) =>
-                void saveRates({ ...cashback, story_reward_cents: c }),
+              {picks("Story Reward", STORY_AMOUNTS, storyOn ? rates.story_reward_cents : lastStory, (c) => wholeMoney(c, currency), pending || !storyOn, (c) =>
+                editRates({ ...rates, story_reward_cents: c }),
               )}
             </li>
           </ul>
@@ -746,6 +844,45 @@ export function PaymentsPanel({
       ) : null}
       {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
       {!canEdit ? <p className="text-muted-foreground text-sm">Only the owner can change offers.</p> : null}
+
+      {/* THE ONE SAVE (MESITA-4769), PlaceSaveBar's look: at the foot of the
+          screen while anything is unsaved, so it is reachable from every box. */}
+      {dirty || saving ? (
+        <div
+          className="pointer-events-none sticky inset-x-0 bottom-0 z-40 flex justify-center pb-4 sm:pb-6"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+          data-offers-save
+        >
+          <div className="border-border bg-card shadow-elev pointer-events-auto flex w-full flex-col gap-2 rounded-2xl border p-3 sm:flex-row sm:items-center sm:gap-4 sm:rounded-full sm:py-2.5 sm:pr-2.5 sm:pl-5">
+            <div className="flex min-w-0 flex-1 items-center gap-2.5" aria-live="polite">
+              {saving ? (
+                <Loader2 className="text-muted-foreground h-4 w-4 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <span className="bg-foreground h-2 w-2 shrink-0 animate-pulse rounded-full" aria-hidden />
+              )}
+              <span className="text-sm font-semibold">{saving ? "Saving…" : "Unsaved changes"}</span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={discard}
+                disabled={saving}
+                className="border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground inline-flex h-10 items-center rounded-full border px-4 text-sm font-semibold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveAll()}
+                disabled={saving || !canEdit}
+                className="bg-pink-gradient shadow-save inline-flex h-10 items-center gap-2 rounded-full px-5 text-sm font-semibold text-white transition hover:brightness-105 active:scale-[0.98] disabled:opacity-60"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
