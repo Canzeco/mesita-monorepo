@@ -31,7 +31,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   // A receipt, not footprints (Pato, MESITA-4682: "it should express it's
   // financial"): each bill and how it was paid.
-  visits: { label: "Visits", icon: ReceiptIcon, sub: "Every bill at your place, and how it was paid." },
+  visits: { label: "Visits", icon: ReceiptIcon, sub: "Every bill at your place, how it was paid, and the cashback it earned." },
   vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
   gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit a guest sent a friend." },
   // Payments and Payouts are two pages (MESITA-4679, Pato: "Customers, Views,
@@ -47,7 +47,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Ad spots on Home and the Map. Marked as an ad." },
   // Offers (MESITA-4530, Pato: "rename payment pages to offers"); the URL stays
   // /payments, where Stripe returns.
-  payments: { label: "Offers", icon: TagIcon, sub: "Choose how guests pay you and earn credit here. Money is on Monitor › Payments and Payouts." },
+  payments: { label: "Offers", icon: TagIcon, sub: "Cashbacks need Credits only; Vouchers need Credits and Stripe." },
   general: { label: "General", icon: GearIcon, sub: "Reservations and Settings." },
   reservations: { label: "Reservations", icon: CalendarCheckIcon, sub: "Whether guests can ask for a table here." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The

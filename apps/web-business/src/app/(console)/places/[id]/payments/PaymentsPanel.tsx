@@ -75,10 +75,8 @@ import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
+import { CASHBACK_DEFAULTS, CASHBACK_STEPS_BPS, type CashbackRates } from "@/lib/cashback";
 import {
-  CASHBACK_DEFAULTS,
-  CASHBACK_STEPS_BPS,
-  type CashbackRates,
   setPlaceCashback,
   openPaymentDashboard,
   type LoyaltyCardsContract,
@@ -446,52 +444,6 @@ export function PaymentsPanel({
           Credits Account · Payments, then Vouchers. Each way to pay is ONE
           row with its Accept control. */}
       <Card className={SECTION}>
-        <h2 className={HEAD}>Stripe Account</h2>
-        <ul className="divide-border divide-y">
-          <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
-            {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Stripe Account</p>
-              <p className="text-muted-foreground">
-                {ready
-                  ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
-                  : `${copy.line}${testMode ? " Sandbox." : ""}`}
-              </p>
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
-            {copy.button ? (
-              <button
-                type="button"
-                // Standard pill size (MESITA-4534, Pato: "make stripe smaller…
-                // it only matters for the onboarding"): Stripe's purple while
-                // setup is unfinished, a quiet grey link once connected.
-                className={cn(
-                  PILL_BUTTON_CLASS,
-                  "shrink-0 whitespace-nowrap",
-                  ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
-                )}
-                disabled={pending}
-                onClick={() => void stripe()}
-              >
-                {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
-              </button>
-            ) : (
-              <span />
-            )}
-          </li>
-          {switchRow({
-            key: "stripe_payments",
-            id: "accept-stripe-payments",
-            name: "Accept Stripe Payments",
-            line: "Cards, Apple Pay and Google Pay in the app. Off stops App Payments and App Prepayments.",
-            icon: CreditCardIcon,
-            tone: "bg-indigo-100 text-indigo-700",
-            stripe: true,
-          })}
-        </ul>
-      </Card>
-      <Card className={SECTION}>
         <h2 className={HEAD}>Credits Account</h2>
         <ul className="divide-border divide-y">
           <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
@@ -686,6 +638,50 @@ export function PaymentsPanel({
           </p>
         </div>
         <ul className="divide-border divide-y" data-place-state="vouchers">
+          {/* THE STRIPE ROWS LIVE HERE (MESITA-4698, Pato: "don't complicate
+              shit"): Stripe only matters for vouchers, so its account and
+              switch sit inside Stage 2, not in a card of their own. */}
+          <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
+            {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Stripe Account</p>
+              <p className="text-muted-foreground">
+                {ready
+                  ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
+                  : `${copy.line}${testMode ? " Sandbox." : ""}`}
+              </p>
+            </div>
+            <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
+            {copy.button ? (
+              <button
+                type="button"
+                // Standard pill size (MESITA-4534, Pato: "make stripe smaller…
+                // it only matters for the onboarding"): Stripe's purple while
+                // setup is unfinished, a quiet grey link once connected.
+                className={cn(
+                  PILL_BUTTON_CLASS,
+                  "shrink-0 whitespace-nowrap",
+                  ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
+                )}
+                disabled={pending}
+                onClick={() => void stripe()}
+              >
+                {busy === "stripe" ? "Opening…" : copy.button}
+                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
+              </button>
+            ) : (
+              <span />
+            )}
+          </li>
+          {switchRow({
+            key: "stripe_payments",
+            id: "accept-stripe-payments",
+            name: "Accept Stripe Payments",
+            line: "Cards, Apple Pay and Google Pay in the app. Off stops App Payments and App Prepayments.",
+            icon: CreditCardIcon,
+            tone: "bg-indigo-100 text-indigo-700",
+            stripe: true,
+          })}
           {pairRow({
             id: "mesita-prepayments",
             name: "App Prepayments",

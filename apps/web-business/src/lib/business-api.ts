@@ -5,6 +5,7 @@
 // server decides who may see or change a place, never these wrappers.
 
 import { efInvoke } from "@/lib/supabase-ef";
+import { CASHBACK_DEFAULTS, type CashbackRates } from "@/lib/cashback";
 import type { RefillOrigin } from "@/lib/premier-origin";
 import type { CustomerCursor, CustomersPage, MonitorCursor, MonitorFilter, MonitorKind, MonitorPage, PayoutsAnswer } from "@/lib/monitor";
 
@@ -477,10 +478,6 @@ export type PlacePayments = {
   cashback?: CashbackRates;
 };
 
-/** MESITA-4698: Offers › Stage 1 · Cashbacks. Each rate is Off · 5 · 10 · 15 · 20 %. */
-export type CashbackRates = { welcome_bps: number; regular_bps: number; vip_bps: number; cap_cents: number };
-export const CASHBACK_STEPS_BPS = [0, 500, 1000, 1500, 2000] as const;
-export const CASHBACK_DEFAULTS: CashbackRates = { welcome_bps: 1000, regular_bps: 500, vip_bps: 1000, cap_cents: 20000 };
 
 export type PlaceFee = {
   hold: boolean;
