@@ -177,7 +177,9 @@ export async function chargesEnabledByPlace(
 /** MESITA-4702: cashback_pct is the place's highest cashback line where
  *  Loyalty Cards is On (null = none earned); cashback_flat says every line
  *  is that rate. The carousel's green "Pay · Up to N% Cashback" slide. */
-export type ListRowOffers = { sell: MoneyVoucherKey[]; cashback_pct: number | null; cashback_flat: boolean };
+/** MESITA-4714: story_cents is what a verified Instagram story pays there
+ *  (Post) where Loyalty Cards is On; null = Off. The pink "Post" slide. */
+export type ListRowOffers = { sell: MoneyVoucherKey[]; cashback_pct: number | null; cashback_flat: boolean; story_cents: number | null };
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
@@ -196,7 +198,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
-  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { sell: [], cashback_pct: null, cashback_flat: false } }));
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { sell: [], cashback_pct: null, cashback_flat: false, story_cents: null } }));
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   // BUYING PAUSED SELLS NOTHING (autoplan eng E3, MESITA-4207): the admin
@@ -229,7 +231,8 @@ export async function withVouchersUpTo<T extends { id: string }>(
     const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
     const cashback_pct = top > 0 ? top / 100 : null;
     const cashback_flat = !!r && r.welcome_bps === r.returning_bps;
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell, cashback_pct, cashback_flat } };
+    const story_cents = r && r.story_reward_cents > 0 ? r.story_reward_cents : null;
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell, cashback_pct, cashback_flat, story_cents } };
   });
 }
 

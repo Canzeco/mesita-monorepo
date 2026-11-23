@@ -12,6 +12,7 @@ import { json, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { isCanonicalConsumerCode, writeConsumer } from "../_shared/consumer-doc.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+import { instagramBadge } from "../_shared/instagram-badge.ts";
 import {
   accountDeletedResponse,
   isDeletedConsumer,
@@ -24,7 +25,7 @@ serveJson("consumer-web-get-profile", async (req) => {
   const userId = user.id;
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, use_instagram_photo, instagram_handle_shown, instagram_followers_emulated, guest_class, plan, vip_partner_id, vip_until, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, use_instagram_photo, instagram_handle_shown, instagram_followers_emulated, instagram_is_private, guest_class, plan, vip_partner_id, vip_until, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -107,8 +108,17 @@ serveJson("consumer-web-get-profile", async (req) => {
 
   // MESITA-4662: Me › Instagram shows the follower emulator in Stripe test
   // mode only (the Stories emulator's gate, MESITA-4426).
+  // MESITA-4714: the yellow badge, decided here (instagram-badge.ts); the
+  // privacy flag itself stays on the server.
+  const livemode = paymentsLivemode();
+  const { instagram_is_private: _private, ...shown } = rest as typeof rest & { instagram_is_private?: boolean | null };
   return json({
     ok: true,
-    consumer: { ...rest, vip_partner: vipPartner, emulator_available: !paymentsLivemode() },
+    consumer: {
+      ...shown,
+      vip_partner: vipPartner,
+      emulator_available: !livemode,
+      instagram_badge: instagramBadge(rest as Parameters<typeof instagramBadge>[0], livemode),
+    },
   });
 });

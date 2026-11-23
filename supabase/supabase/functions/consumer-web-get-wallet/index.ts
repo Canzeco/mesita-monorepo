@@ -252,7 +252,12 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const cashbackOf = (id: string) => {
     const r = cashbackRates.get(id);
     const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
-    return { cashback_pct: top > 0 ? top / 100 : null, cashback_flat: !!r && r.welcome_bps === r.returning_bps };
+    return {
+      cashback_pct: top > 0 ? top / 100 : null,
+      cashback_flat: !!r && r.welcome_bps === r.returning_bps,
+      // MESITA-4714: the pink Post slide.
+      story_cents: r && r.story_reward_cents > 0 ? r.story_reward_cents : null,
+    };
   };
   const offerRows = await withGuestOffers(
     admin,
