@@ -15,7 +15,6 @@ import {
   BadgeCheck,
   AtSign,
   Copy,
-  Crown,
   Eye,
   ImageIcon,
   RefreshCw,
@@ -53,7 +52,6 @@ import {
   updatedAgo,
 } from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
-import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import {
   INPUT_CLASS,
@@ -298,20 +296,13 @@ const ROW_BUTTON_CLASS =
 // title and one line. (1) Activity: a server rule, not copy — others' full
 // handles show only to a guest whose own Instagram is verified and who
 // shows their own handle (every profile is public since MESITA-4690; place-activity
-// seesHandles), so a short second line says so. (2) VIP Class: the bar
-// (VIP_MIN_FOLLOWERS), any Instagram, public or private. It was one black box
+// seesHandles), so a short second line says so. It was one black box
 // (MESITA-4350); the Story box went with Stories (MESITA-4641).
 // WHY CONNECT, CLEARER (Pato, 2026-11-22, MESITA-4693: "why connect must be
-// clearer"): two perks, no numbers, each saying what you get and where you
-// stand. The activity rule is the server's (place-activity seesHandles):
-// others' handles show to a guest whose own Instagram is connected.
-const VIP_LINE = `More than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers unlocks VIP Offers: bigger bonuses, like Pay $100 · Get $200.`;
-
-/** The follower count the guest sees: the emulated one while the emulator
- *  is on (MESITA-4662/4693), else the real one. */
-function shownFollowers(real: number, emulated: number | null | undefined): { n: number; test: boolean } {
-  return emulated != null ? { n: emulated, test: true } : { n: real, test: false };
-}
+// clearer"): each perk says what you get and where you stand. The activity
+// rule is the server's (place-activity seesHandles): others' handles show to
+// a guest whose own Instagram is connected. NO VIP PERK (Pato, 2026-11-22,
+// MESITA-4709: "no more VIP"): the "Become VIP" row left; one perk stays.
 
 export function WhyConnect({ live = true }: { live?: boolean }) {
   return (
@@ -330,16 +321,6 @@ export function WhyConnect({ live = true }: { live?: boolean }) {
           </span>
           {live ? <SeeStatus /> : null}
         </li>
-        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="vip">
-          <IconChip tint="muted">
-            <Crown className="h-[18px] w-[18px] text-yellow-500" />
-          </IconChip>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">Become VIP</span>
-            <span className="text-muted-foreground type-label block">{VIP_LINE}</span>
-          </span>
-          {live ? <VipStatus /> : null}
-        </li>
       </ul>
     </section>
   );
@@ -352,22 +333,6 @@ function SeeStatus() {
   return (
     <span className={cn(STATUS_CHIP, igConnected && "bg-green-100 text-green-800")} data-why-connect-status="see">
       {igConnected ? "On" : "Off"}
-    </span>
-  );
-}
-
-function VipStatus() {
-  const { igConnected, igFollowers } = useConsumerIdentity();
-  const { data } = useConsumerProfile();
-  if (!igConnected) return null;
-  if (data?.guest_class === "vip") {
-    return <span className={cn(STATUS_CHIP, "bg-yellow-100 text-yellow-800")} data-why-connect-status="vip">You&apos;re VIP</span>;
-  }
-  const f = shownFollowers(igFollowers, data?.instagram_followers_emulated);
-  return (
-    <span className={STATUS_CHIP} data-why-connect-status="vip">
-      You have {f.n.toLocaleString("en-US")}
-      {f.test ? " (test)" : ""}
     </span>
   );
 }
@@ -1099,7 +1064,7 @@ function HandleShownRow({ pending = false }: { pending?: boolean }) {
 // for the moment add an emulator box to emulate public instagram with +x
 // followers"). Test mode only: the server sends emulator_available while
 // payments run in Stripe test mode and refuses a number otherwise
-// (emulator_live). The number stands in for the real count in the Class;
+// (emulator_live). The number stands in for the real count;
 // Reset to real writes null. Live money never reads it.
 const EMULATOR_PICKS = [320, 5001, 10000] as const;
 const EMULATOR_MAX = 100_000_000;

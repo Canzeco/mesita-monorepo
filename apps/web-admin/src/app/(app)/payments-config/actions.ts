@@ -19,7 +19,7 @@ export type VoucherPriceRow = {
 export type CurrencyRow = { code: string; country: string; small: number; big: number; selling: boolean };
 
 /** MESITA-4700: the cashback defaults (basis points; cap in cents). */
-export type CashbackDefaults = { welcome_bps: number; regular_bps: number; vip_bps: number; cap_cents: number };
+export type CashbackDefaults = { welcome_bps: number; returning_bps: number; cap_cents: number };
 
 export type VoucherPrices = {
   currencies: string[];

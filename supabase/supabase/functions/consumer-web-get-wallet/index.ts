@@ -251,8 +251,8 @@ serveJson("consumer-web-get-wallet", async (req) => {
   });
   const cashbackOf = (id: string) => {
     const r = cashbackRates.get(id);
-    const top = r ? Math.max(r.welcome_bps, r.regular_bps, r.vip_bps) : 0;
-    return { cashback_pct: top > 0 ? top / 100 : null, cashback_flat: !!r && r.welcome_bps === r.regular_bps && r.regular_bps === r.vip_bps };
+    const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
+    return { cashback_pct: top > 0 ? top / 100 : null, cashback_flat: !!r && r.welcome_bps === r.returning_bps };
   };
   const offerRows = await withGuestOffers(
     admin,

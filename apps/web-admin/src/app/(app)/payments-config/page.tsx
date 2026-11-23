@@ -56,7 +56,7 @@ export default async function PaymentsConfigPage() {
   const res = await getVoucherPrices();
   const rows: VoucherPriceRow[] = res.ok
     ? [...res.vouchers]
-        // MESITA-4698: Welcome and VIP are cashback lines now; only what sells is listed.
+        // MESITA-4698: Welcome is a cashback line now (no VIP, MESITA-4709); only what sells is listed.
         .filter((v) => v.on_sale)
         .sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key))
     : [];

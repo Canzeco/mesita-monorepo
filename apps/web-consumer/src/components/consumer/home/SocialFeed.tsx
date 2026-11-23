@@ -22,8 +22,9 @@
 // (Pato, MESITA-2608: "show the profile picture but you must also show if
 // instagram or something … if it is vip, add small bubble at right of
 // profile picture … Remember the bubble you had for the event type. well do
-// the same for the subtype of user"): Instagram bottom-left when verified,
-// a VIP crown bottom-right. The server sends the photo and the marks for
+// the same for the subtype of user"): Instagram bottom-left when verified
+// (the VIP crown bottom-right left with MESITA-4709, "no more VIP"). The
+// server sends the photo and the marks for
 // every member: every Mesita profile is public (MESITA-4690).
 // One line, ALWAYS THIRD PERSON (Pato, MESITA-3051: "never mention first
 // person, always mention all as third person, even if the event is
@@ -100,7 +101,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
   Clock,
-  Crown,
   Eye,
   Heart,
   MapPin,
@@ -222,13 +222,11 @@ const MARK_CLASS =
  *  MESITA-2608 — else THE ONE NO-PHOTO FACE, the same `DefaultAvatar` Me
  *  draws (MESITA-2620, Pato: "use same icon for me and consumer for
  *  anonymous as instagram anonymous"); anonymous or not, never an initial,
- *  never a lucide glyph. No verb badge (MESITA-2604). Two marks: Instagram
- *  bottom-left when verified, a VIP crown bottom-right (never for Regular,
- *  never Plan). */
-/** A member's face with its Instagram and VIP marks; the place screen's
- *  Social tab draws the same (MESITA-3417). */
+ *  never a lucide glyph. No verb badge (MESITA-2604). One mark: Instagram
+ *  bottom-left when verified (no VIP crown since MESITA-4709). */
+/** A member's face with its Instagram mark; the place screen's Social tab
+ *  draws the same (MESITA-3417). */
 export function Face({ person }: { person: ActivityPerson }) {
-  const vip = person.guestClass === "vip";
   return (
     <span className="relative block h-11 w-11 shrink-0">
       {person.avatarUrl ? (
@@ -259,22 +257,7 @@ export function Face({ person }: { person: ActivityPerson }) {
           <Instagram className="h-[11px] w-[11px]" strokeWidth={2.5} />
         </span>
       )}
-      {vip && (
-        <span
-          aria-hidden
-          className={cn(MARK_CLASS, "bg-foreground text-paper -right-1")}
-          data-social-mark="vip"
-        >
-          <Crown className="h-[11px] w-[11px]" strokeWidth={2.75} />
-        </span>
-      )}
-      {(person.instagram || vip) && (
-        <span className="sr-only">
-          {[person.instagram ? "On Instagram" : null, vip ? "VIP" : null]
-            .filter(Boolean)
-            .join(", ")}
-        </span>
-      )}
+      {person.instagram && <span className="sr-only">On Instagram</span>}
     </span>
   );
 }
@@ -680,14 +663,12 @@ function PersonCard({
         <div className="px-5 pt-5">
           {person ? (
             // THE ME CARD'S FORMAT (Pato, 2026-11-22, MESITA-4695): name,
-            // Class | Plan, then Instagram. A viewer without Instagram gets
+            // then Instagram (no Class or Plan since MESITA-4709). A viewer without Instagram gets
             // the add-yours box whatever this person has, so it never says
             // whether they have one; "not shared" and "none" read alike.
             <PersonModules
               name={who}
               avatarUrl={person.avatarUrl}
-              guestClass={person.guestClass}
-              guestPlan={person.plan}
               instagram={
                 !person.isYou && !igConnected ? (
                   <AddInstagramBox />

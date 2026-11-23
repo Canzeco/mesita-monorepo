@@ -358,6 +358,7 @@ function ReserveTile({ place, onReserve }: { place: PlaceDetail; onReserve?: () 
             // Caption over the big time (MESITA-4167): TODAY / 20:30.
             lead: t.day,
             pill: t.time,
+            pillShort: t.time,
             short: "",
             spoken: `${t.day} ${t.time}`,
             section: null,

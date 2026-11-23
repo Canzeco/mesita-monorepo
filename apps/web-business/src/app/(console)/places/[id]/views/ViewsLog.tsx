@@ -4,7 +4,8 @@
 // MESITA-4538, a signed-in viewer's name links to Customers, Pato: "the list of logs is super
 // important, also mentioning who say what ... based that kinda of the current
 // social feed"). Social's row without the place's photo, since the page is one
-// place: the guest's face with the same two marks, the name, the verb, and under
+// place: the guest's face with the Instagram mark (no VIP crown since
+// MESITA-4709), the name, the verb, and under
 // it their Instagram and the time. What the server sends is Social's rule: a
 // signed-out view or a guest without a verified, shown Instagram has no
 // handle; only a signed-out view has no photo (every profile is public,
@@ -12,7 +13,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Crown } from "lucide-react";
 import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Card } from "@/components/shell/Page";
@@ -49,7 +49,6 @@ function when(iso: string, timezone: string): string {
 }
 
 function Face({ person }: { person: PlaceViewEvent["person"] }) {
-  const vip = person.guestClass === "vip";
   return (
     <span className="relative block h-8 w-8 shrink-0">
       {person.avatarUrl ? (
@@ -71,12 +70,6 @@ function Face({ person }: { person: PlaceViewEvent["person"] }) {
           </svg>
         </span>
       ) : null}
-      {vip ? (
-        <span aria-hidden className={cn(MARK, "bg-foreground text-background -right-1")}>
-          <Crown className="h-2.5 w-2.5" strokeWidth={2.75} />
-        </span>
-      ) : null}
-      {vip ? <span className="sr-only">VIP</span> : null}
     </span>
   );
 }

@@ -1,8 +1,8 @@
-// Cashback (MESITA-4698, Pato 2026-11-22: "Welcome Universal · Returning
-// Regular · Returning VIP ... EASY PEASY"). Docs › Credits, the MESITA-4698
-// section.
+// Cashback (MESITA-4698; two lines since MESITA-4709, Pato 2026-11-22: "no
+// more VIP"). Docs › Credits, the MESITA-4698 section.
 //
-// A paid bill earns credit at the place: one of three lines, each Off · 5 ·
+// A paid bill earns credit at the place: Welcome (the guest's first paid bill
+// here) or Returning (every later bill), each Off · 5 ·
 // 10 · 15 · 20 %, on the part not paid with credit (never the tip), capped
 // per bill, Pending 3 hours, one per guest per place per Monterrey day, only
 // where Loyalty Cards is On. The SQL trigger pay_tabs_grant_cashback
@@ -20,21 +20,19 @@ export const CASHBACK_CAP_MAX_CENTS = 1_000_000;
 
 export const CASHBACK_WAIT_SEC = 3 * 60 * 60;
 
-export type CashbackLine = "welcome" | "regular" | "vip";
+export type CashbackLine = "welcome" | "returning";
 
 export type CashbackRates = {
   welcome_bps: number;
-  regular_bps: number;
-  vip_bps: number;
+  returning_bps: number;
   cap_cents: number;
 };
 
-/** The last fallback, 10 / 5 / 10 %, MX$200: cashback_defaults' seed and
+/** The last fallback, 10 / 5 %, MX$200: cashback_defaults' seed and
  *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
-  regular_bps: 500,
-  vip_bps: 1000,
+  returning_bps: 500,
   cap_cents: 20000,
 };
 
@@ -44,25 +42,24 @@ export function isCashbackBps(v: unknown): v is CashbackBps {
 
 /** The owner's save: every field present and allowed, or why not. Pure. */
 export function readCashbackInput(body: Record<string, unknown>): { ok: true; rates: CashbackRates } | { ok: false; error: string } {
-  const { welcome_bps, regular_bps, vip_bps, cap_cents } = body;
-  if (!isCashbackBps(welcome_bps) || !isCashbackBps(regular_bps) || !isCashbackBps(vip_bps)) {
+  const { welcome_bps, returning_bps, cap_cents } = body;
+  if (!isCashbackBps(welcome_bps) || !isCashbackBps(returning_bps)) {
     return { ok: false, error: "Each rate must be Off, 5%, 10%, 15% or 20%" };
   }
   if (typeof cap_cents !== "number" || !Number.isInteger(cap_cents) || cap_cents < 0 || cap_cents > CASHBACK_CAP_MAX_CENTS) {
     return { ok: false, error: "The cap must be a whole amount from 0 to 10,000" };
   }
-  return { ok: true, rates: { welcome_bps, regular_bps, vip_bps, cap_cents } };
+  return { ok: true, rates: { welcome_bps, returning_bps, cap_cents } };
 }
 
 /** Which line a bill falls in: Welcome when the guest has no earlier paid
- *  bill here, else the guest's Class. Pure (mirrors the SQL). */
-export function cashbackLine(args: { firstBill: boolean; guestClass: string | null | undefined }): CashbackLine {
-  if (args.firstBill) return "welcome";
-  return args.guestClass === "vip" ? "vip" : "regular";
+ *  bill here, else Returning. Pure (mirrors the SQL). */
+export function cashbackLine(firstBill: boolean): CashbackLine {
+  return firstBill ? "welcome" : "returning";
 }
 
 export function rateFor(rates: CashbackRates, line: CashbackLine): number {
-  return line === "welcome" ? rates.welcome_bps : line === "vip" ? rates.vip_bps : rates.regular_bps;
+  return line === "welcome" ? rates.welcome_bps : rates.returning_bps;
 }
 
 /** What a bill earns: the rate on the part not paid with credit (no tip),
@@ -77,7 +74,7 @@ export function cashbackCents(rates: CashbackRates, line: CashbackLine, earnCent
 export async function readCashbackRates(admin: SupabaseClient, placeId: string): Promise<CashbackRates> {
   const { data, error } = await admin
     .from("place_cashback_settings")
-    .select("welcome_bps, regular_bps, vip_bps, cap_cents")
+    .select("welcome_bps, returning_bps, cap_cents")
     .eq("place_id", placeId)
     .maybeSingle();
   if (error) throw new Error(`place_cashback_settings: ${error.message}`);
@@ -90,7 +87,7 @@ export async function readCashbackRates(admin: SupabaseClient, placeId: string):
 export async function readCashbackDefaults(admin: SupabaseClient): Promise<CashbackRates> {
   const { data, error } = await admin
     .from("cashback_defaults")
-    .select("welcome_bps, regular_bps, vip_bps, cap_cents")
+    .select("welcome_bps, returning_bps, cap_cents")
     .eq("id", true)
     .maybeSingle();
   if (error) throw new Error(`cashback_defaults: ${error.message}`);
@@ -105,25 +102,17 @@ export async function readCashbackRatesMany(admin: SupabaseClient, placeIds: str
   for (const id of placeIds) out.set(id, { ...defaults });
   const { data, error } = await admin
     .from("place_cashback_settings")
-    .select("place_id, welcome_bps, regular_bps, vip_bps, cap_cents")
+    .select("place_id, welcome_bps, returning_bps, cap_cents")
     .in("place_id", placeIds);
   if (error) throw new Error(`place_cashback_settings: ${error.message}`);
   for (const r of (data ?? []) as Array<CashbackRates & { place_id: string }>) {
-    out.set(r.place_id, { welcome_bps: r.welcome_bps, regular_bps: r.regular_bps, vip_bps: r.vip_bps, cap_cents: r.cap_cents });
+    out.set(r.place_id, { welcome_bps: r.welcome_bps, returning_bps: r.returning_bps, cap_cents: r.cap_cents });
   }
   return out;
 }
 
-/** The guest's Class (consumers.guest_class), the server's fact; null when
- *  unread. */
-export async function readGuestClass(admin: SupabaseClient, consumerId: string): Promise<string | null> {
-  const { data, error } = await admin.from("consumers").select("guest_class").eq("id", consumerId).maybeSingle();
-  if (error) throw new Error(`consumers: ${error.message}`);
-  return (data?.guest_class as string | undefined) ?? null;
-}
-
 /** A place's cashback as the guest screens read it (MESITA-4698, MESITA-4702):
- *  the three lines and the cap, and the line this caller's next bill falls in
+ *  the two lines and the cap, and the line this caller's next bill falls in
  *  (null signed out). Null where Loyalty Cards is Off (no cashback is earned
  *  there) or the read fails (logged): no rate beats a wrong one. */
 export async function placeCashbackFor(
@@ -132,12 +121,11 @@ export async function placeCashbackFor(
 ): Promise<(CashbackRates & { line: CashbackLine | null }) | null> {
   if (!args.loyaltyCards) return null;
   try {
-    const [rates, firstBill, klass] = await Promise.all([
+    const [rates, firstBill] = await Promise.all([
       readCashbackRates(admin, args.placeId),
       args.consumerId ? readHasPaidBill(admin, args.consumerId, args.placeId, args.livemode).then((paid) => !paid) : Promise.resolve(null),
-      args.consumerId ? readGuestClass(admin, args.consumerId) : Promise.resolve(null),
     ]);
-    return { ...rates, line: firstBill === null ? null : cashbackLine({ firstBill, guestClass: klass }) };
+    return { ...rates, line: firstBill === null ? null : cashbackLine(firstBill) };
   } catch (err) {
     console.error(`[${args.who}] cashback`, err instanceof Error ? err.message : String(err));
     return null;

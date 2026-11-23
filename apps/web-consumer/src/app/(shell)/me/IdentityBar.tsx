@@ -3,7 +3,6 @@
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityModules } from "@/components/consumer/IdentityCard";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
 import {
   IDENTITY_BAR_BODY_CLASS,
   IDENTITY_BAR_CLASS,
@@ -114,12 +113,8 @@ export function IdentityBar({
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
-            guestClass={toGuestClass(profile?.guest_class)}
-            classHref={CONSUMER_ROUTES.mePages.class}
-            // Plan is back on the header (MESITA-4668), the right half
-            // beside Class; it opens Me › Plan.
-            guestPlan={toGuestPlan(profile?.plan)}
-            planHref={CONSUMER_ROUTES.mePages.plan}
+            // No Class or Plan pill (MESITA-4709): the Plan tile on the grid
+            // opens Me › Plan.
           />
         )}
       </div>

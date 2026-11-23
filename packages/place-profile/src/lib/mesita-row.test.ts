@@ -37,7 +37,7 @@ describe("offerSlides", () => {
     expect(offerSlides({ sell: [], cashback_pct: 5, cashback_flat: true }).map((s) => s.pill)).toEqual(["5% Cashback"]);
     expect(offerSlides({ sell: ["voucher_200"], cashback_pct: null }).map((s) => s.lead)).toEqual(["Prepay"]);
     // The place screen's money carries the lines themselves.
-    expect(offerSlides({ sell: [], cashback: { welcome_bps: 1000, regular_bps: 500, vip_bps: 1000 } }).map((s) => s.pill)).toEqual(["Up to 10% Cashback"]);
+    expect(offerSlides({ sell: [], cashback: { welcome_bps: 1000, returning_bps: 500 } }).map((s) => s.pill)).toEqual(["Up to 10% Cashback"]);
   });
 });
 

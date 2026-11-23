@@ -157,7 +157,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   // The Rewards empty state's numbers, the server's (MESITA-4710): the best
   // cashback line, and the best bonus Prepay shows (its chip's number).
   const cashback = place.money?.cashback;
-  const cashbackPct = cashback ? Math.max(cashback.welcome_bps, cashback.regular_bps, cashback.vip_bps) / 100 || null : null;
+  const cashbackPct = cashback ? Math.max(cashback.welcome_bps, cashback.returning_bps) / 100 || null : null;
 
   // A VIP basket re-reads the follower count first when the last read is over
   // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`

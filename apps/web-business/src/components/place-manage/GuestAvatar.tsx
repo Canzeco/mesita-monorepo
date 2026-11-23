@@ -1,9 +1,9 @@
 // A guest's face on a Business list (MESITA-4554, Pato: "more friendly
-// profile picture"): the photo, or the default avatar, with Social's two
-// marks: the Instagram glyph for a verified Instagram they show, the crown
-// for VIP. Every profile is public (MESITA-4690); only a signed-out view
-// comes without a photo.
-import { Crown } from "lucide-react";
+// profile picture"): the photo, or the default avatar, with the Instagram
+// glyph for a verified Instagram they show. No VIP crown since MESITA-4709
+// (Pato: "no more VIP"); `vip` still rides the payload, unread. Every
+// profile is public (MESITA-4690); only a signed-out view comes without a
+// photo.
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { cn } from "@/lib/utils";
 
@@ -33,14 +33,6 @@ export function GuestAvatar({ face, size = 40 }: { face: GuestFace; size?: numbe
             <path d="M17.5 6.5h.01" />
           </svg>
         </span>
-      ) : null}
-      {face?.vip ? (
-        <>
-          <span aria-hidden className={cn(MARK, "bg-foreground text-background -right-0.5")}>
-            <Crown className="h-[10px] w-[10px]" strokeWidth={2.75} />
-          </span>
-          <span className="sr-only">VIP</span>
-        </>
       ) : null}
     </span>
   );

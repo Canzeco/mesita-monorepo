@@ -95,13 +95,12 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
   // MESITA-4698: the cashback lines, null where none is earned.
   const cb = m.cashback && typeof m.cashback === "object" ? (m.cashback as Record<string, unknown>) : null;
   const cashback: PlaceMoney["cashback"] =
-    cb && n(cb.welcome_bps) !== null && n(cb.regular_bps) !== null && n(cb.vip_bps) !== null && n(cb.cap_cents) !== null
+    cb && n(cb.welcome_bps) !== null && n(cb.returning_bps) !== null && n(cb.cap_cents) !== null
       ? {
           welcome_bps: n(cb.welcome_bps)!,
-          regular_bps: n(cb.regular_bps)!,
-          vip_bps: n(cb.vip_bps)!,
+          returning_bps: n(cb.returning_bps)!,
           cap_cents: n(cb.cap_cents)!,
-          line: cb.line === "welcome" || cb.line === "regular" || cb.line === "vip" ? cb.line : null,
+          line: cb.line === "welcome" || cb.line === "returning" ? cb.line : null,
         }
       : m.cashback === null
         ? null

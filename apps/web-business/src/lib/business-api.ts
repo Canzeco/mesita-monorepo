@@ -473,7 +473,7 @@ export type PlacePayments = {
   fee: PlaceFee;
   /** MESITA-4502: cash amounts waiting for Received. Not tickets. */
   cash_due?: { attempt_id: string; cash_cents: number; guest_label: string; created_at: string }[];
-  /** MESITA-4698: the three cashback lines (basis points) and the cap per
+  /** MESITA-4698: the two cashback lines (Welcome, Returning; MESITA-4709) (basis points) and the cap per
    *  bill; older servers lack it. */
   cashback?: CashbackRates;
 };
@@ -596,7 +596,7 @@ export async function setPlacePayment(placeId: string, key: PaymentKey, enabled:
   return { ok: true, data: r.data.settings };
 }
 
-/** MESITA-4698: save the place's three cashback lines and the cap per bill. */
+/** MESITA-4698: save the place's two cashback lines and the cap per bill. */
 export async function setPlaceCashback(placeId: string, rates: CashbackRates): Promise<Result<CashbackRates>> {
   const r = await efInvoke<{ cashback: CashbackRates }>("business-web-set-cashback", { place_id: placeId, ...rates });
   if (!r.ok) return fail(r);
