@@ -45,15 +45,21 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 /** THE ONE COLOUR MAP (autoplan F5, MESITA-4207): the slides, the Home chips
  *  and the Offers page rows (vouchers.tsx FACES) all read it, so the next
  *  colour call is one edit here. */
+// VOUCHERS BLUE, CASHBACK GREEN (Pato, 2026-11-22, MESITA-4701: "all
+// cashbacks same color, all prepayments same color. Cashback must be green.
+// Vouchers must be blue."): one colour per kind of offer, whatever the size
+// or class. Every offer green (MESITA-4181) and VIP yellow (MESITA-4688)
+// before.
+const BLUE = "bg-[#0A84FF] text-white";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  voucher_welcome: GREEN,
-  voucher_200: GREEN,
-  voucher_1000: GREEN,
-  voucher_5000: GREEN,
-  // Every offer green (MESITA-4181) but VIP: YELLOW (Pato, 2026-11-22,
-  // MESITA-4688: "VIP voucher must be yellow"), black ink, the crown on it.
-  voucher_vip: "bg-[#FFD60A] text-neutral-950",
+  voucher_welcome: BLUE,
+  voucher_200: BLUE,
+  voucher_1000: BLUE,
+  voucher_5000: BLUE,
+  voucher_vip: BLUE,
 };
+/** MESITA-4701: every cashback line, one green. */
+export const CASHBACK_TONE = GREEN;
 // THE WORDS (Pato, 2026-11-17, MESITA-4219): Classic, the best standard
 // voucher, leads; every pill reads "+N% Bonus" on every screen (the "+"
 // back, MESITA-4221). Prepay led with "+N%" before.

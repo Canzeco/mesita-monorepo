@@ -7,7 +7,7 @@ import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
-import { VOUCHER_TONE } from "../../lib/offers";
+import { CASHBACK_TONE, VOUCHER_TONE } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
@@ -780,17 +780,16 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
 function CashbackPanel({ cashback, currency }: { cashback: PlaceCashback | null; currency: string }) {
   if (!cashback) return null;
   const rows: { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number }[] = [
-    { line: "welcome", title: "Welcome", who: "Your first bill here", bps: cashback.welcome_bps },
-    { line: "regular", title: "Regular", who: "Every later bill", bps: cashback.regular_bps },
-    { line: "vip", title: "VIP", who: "Every later bill, VIP Class", bps: cashback.vip_bps },
+    // Pato's names (MESITA-4701): "Welcome Universal · Returning Regular ·
+    // Returning VIP".
+    { line: "welcome", title: "Welcome Universal", who: "Your first bill here, any guest", bps: cashback.welcome_bps },
+    { line: "regular", title: "Returning Regular", who: "Every later bill, Regular Class", bps: cashback.regular_bps },
+    { line: "vip", title: "Returning VIP", who: "Every later bill, VIP Class", bps: cashback.vip_bps },
   ].filter((r) => r.bps > 0) as { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number }[];
   if (rows.length === 0) return null;
   return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby="rewards-cashback" data-promos="cashback">
-      <div className="px-4 pt-3 pb-2">
-        <SectionTitle id="rewards-cashback" title="Cashback" />
-      </div>
-      <ul className="border-border divide-border divide-y border-t" data-cashback-lines>
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Cashbacks" data-promos="cashback">
+      <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
           const mine = cashback.line === r.line;
           return (
@@ -798,7 +797,7 @@ function CashbackPanel({ cashback, currency }: { cashback: PlaceCashback | null;
               <span
                 className={cn(
                   "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
-                  r.line === "vip" ? VOUCHER_TONE.voucher_vip : "bg-[#00D66F] text-neutral-950",
+                  CASHBACK_TONE,
                 )}
                 aria-hidden
               >
@@ -834,24 +833,37 @@ export type OffersTab = "cashbacks" | "vouchers";
  *  Vouchers is the shop and its Pay bar. A place with no cashback opens on
  *  Vouchers; one with no voucher on sale opens on Cashbacks. */
 function OffersTabs({ tab, onTab }: { tab: OffersTab; onTab: (t: OffersTab) => void }) {
+  // TWO SUBPAGES, PLAINLY (Pato, 2026-11-22, MESITA-4701: "it must be more
+  // obvious that there are two subpages vouchers and cashbacks"): a full-width
+  // white bar, each tab an icon over its word, the open one in ink with a 3px
+  // line under it. Vouchers first: it is what the page sells.
+  const TABS: { id: OffersTab; label: string; Icon: LucideIcon }[] = [
+    { id: "vouchers", label: "Vouchers", Icon: Ticket },
+    { id: "cashbacks", label: "Cashbacks", Icon: Repeat },
+  ];
   return (
-    <div className="bg-muted flex shrink-0 rounded-full p-1" role="tablist" aria-label="Offers" data-offers-tabs>
-      {(["cashbacks", "vouchers"] as const).map((t) => (
-        <button
-          key={t}
-          type="button"
-          role="tab"
-          aria-selected={tab === t}
-          onClick={() => onTab(t)}
-          className={cn(
-            "h-10 flex-1 rounded-full text-sm font-semibold transition",
-            tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
-          )}
-          data-offers-tab={t}
-        >
-          {t === "cashbacks" ? "Cashbacks" : "Vouchers"}
-        </button>
-      ))}
+    <div className={cn(CARD, "flex shrink-0 overflow-hidden")} role="tablist" aria-label="Offers" data-offers-tabs>
+      {TABS.map(({ id, label, Icon }) => {
+        const on = tab === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onTab(id)}
+            className={cn(
+              "relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-base font-semibold transition",
+              on ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+            data-offers-tab={id}
+          >
+            <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} aria-hidden />
+            {label}
+            <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -980,7 +992,8 @@ export function VouchersPane({
             data-cashback-pay-bill
           >
             <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-            Pay Bill
+            {/* Pato, MESITA-4701: "Go to Pay Bill maybe is clearer". */}
+            Go to Pay Bill
           </button>
         </div>
       ) : null}
@@ -993,11 +1006,9 @@ export function VouchersPane({
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
         return (
-          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby={`rewards-${g.id}`} data-promos={g.id}>
-            <div className="px-4 pt-3 pb-2">
-              <SectionTitle id={`rewards-${g.id}`} title={g.title} />
-            </div>
-            <ul className="border-border divide-border divide-y border-t" data-voucher-catalog>
+          // NO TITLE UNDER THE TAB (MESITA-4701): the tab already says Vouchers.
+          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-label={g.title} data-promos={g.id}>
+            <ul className="divide-border divide-y" data-voucher-catalog>
               {list.map((p) => {
                 const line = catalog[p.key];
                 const pay = priceValue(p, line, currency);
@@ -1025,9 +1036,7 @@ export function VouchersPane({
                         "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
                         // Each voucher's own colour: VIP yellow, the rest green
                         // (MESITA-4688); VIP keeps it while locked, the row dims.
-                        blocked && p.key !== "voucher_vip"
-                          ? "bg-muted text-muted-foreground"
-                          : ((VOUCHER_TONE as Record<string, string>)[p.key] ?? "bg-[#00D66F] text-neutral-950"),
+                        blocked ? "bg-muted text-muted-foreground" : VOUCHER_TONE[p.key],
                       )}
                       aria-hidden
                       data-offer-bonus
