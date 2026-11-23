@@ -1,7 +1,8 @@
 "use client";
 
 // Admin › Offers › Cashbacks (MESITA-4700, Pato: "Yes, editable"): the
-// defaults every place without its own saved lines reads. Three rates, each
+// defaults every place without its own saved lines reads. Two rates (Welcome,
+// Returning; no VIP line since MESITA-4709), each
 // Off · 5 · 10 · 15 · 20 %, and the cap per bill (MXN units), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
 // win; this never touches them.
@@ -14,10 +15,9 @@ import { saveCashbackDefaults, type CashbackDefaults } from "./actions";
 const STEPS = [0, 500, 1000, 1500, 2000] as const;
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
 
-const LINES: { key: "welcome_bps" | "regular_bps" | "vip_bps"; name: string; who: string }[] = [
+const LINES: { key: "welcome_bps" | "returning_bps"; name: string; who: string }[] = [
   { key: "welcome_bps", name: "New Customers", who: "Welcome: a guest's first bill at the place" },
-  { key: "regular_bps", name: "Returning Customers", who: "Every later bill, Regular Class" },
-  { key: "vip_bps", name: "VIP Customers", who: "Every later bill, VIP Class (an Instagram with more than 5,000 followers)" },
+  { key: "returning_bps", name: "Returning Customers", who: "Returning: every later bill at the place" },
 ];
 
 /** The most the cap can be, in whole units (the server's check, MX$10,000). */
