@@ -4,14 +4,14 @@ import {
   Bell,
   CalendarCheck,
   CreditCard,
-  Crown,
+  Gem,
+  Medal,
   Gift,
   Heart,
   Settings as SettingsIcon,
   Ticket,
   UserRound,
   Share2,
-  WalletCards,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -159,7 +159,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // in the boxes below … Class Plan"): /me/class, Regular or VIP and the
   // steps to VIP. It left with MESITA-4306.
   {
-    Icon: Crown,
+    // A MEDAL, NOT THE CROWN (Pato, 2026-11-22, MESITA-4706: "change the icon
+    // of the class"): the crown stays VIP's own mark on the header chip.
+    Icon: Medal,
     title: "Class",
     summary: "Regular or VIP",
     href: CONSUMER_ROUTES.mePages.class,
@@ -168,7 +170,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // again"): the cell opens /me/plan — Free 3 reservation tickets a month, Pro 10
   // at $2 a month. It read Soon under MESITA-3855.
   {
-    Icon: CreditCard,
+    // A GEM, NOT A CARD (MESITA-4706: "Plan use other thing to represent
+    // plan so it doesn't conflict"): the card is Cards' now.
+    Icon: Gem,
     title: "Plan",
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
@@ -229,7 +233,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // Google Pay (/wallet/methods), which buy vouchers; a bill is paid outside
   // since card bill pay left. It sits beside Settings on the last row.
   {
-    Icon: WalletCards,
+    // AN ACTUAL CARD (MESITA-4706: "card must be an actual card").
+    Icon: CreditCard,
     title: "Cards",
     summary: "Ways to pay",
     href: CONSUMER_ROUTES.walletMethods,

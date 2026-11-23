@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { CreditCard, Crown, User } from "lucide-react";
+import { Crown, Gem, User } from "lucide-react";
 import {
   CLASS_LABEL,
   PLAN_LABEL,
@@ -287,7 +287,7 @@ export function IdentityModules({
           aria-label={`Plan: ${PLAN_LABEL[guestPlan]} Plan`}
           data-identity-plan={guestPlan}
         >
-          <CreditCard className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
+          <Gem className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
           <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
         </PushLink>
         <PushLink
@@ -345,7 +345,7 @@ export function PersonModules({
           <span className="truncate">{CLASS_LABEL[guestClass]} Class</span>
         </span>
         <span className={cn(IDENTITY_PILL_CLASS, still)} data-identity-plan={guestPlan}>
-          <CreditCard className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
+          <Gem className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
           <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
         </span>
         <span className="col-span-2 min-w-0">{instagram}</span>
