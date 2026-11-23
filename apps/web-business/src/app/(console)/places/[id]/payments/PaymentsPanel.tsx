@@ -6,9 +6,10 @@
 // Wholesale Presales ... ADD STAGES IN OFFERS ... Cashbacks (activate
 // credits). Vouchers (activate credits + stripe)"): after the Stripe and
 // Credits accounts and Payments, the offers come in two stages:
-//   Stage 1 · Cashbacks  needs Credits only: New Customers (Welcome),
-//                        Returning Customers (Regular), VIP Customers (VIP),
-//                        each Off · 5 · 10 · 15 · 20 %, and a cap per bill.
+//   Stage 1 · Cashbacks  needs Credits only: New Customers (Welcome) and
+//                        Returning Customers (Returning), each Off · 5 · 10 ·
+//                        15 · 20 %, and a cap per bill. No VIP line since
+//                        MESITA-4709 (Pato, 2026-11-22: "no more VIP").
 //   Stage 2 · Vouchers   needs Credits + Stripe: Wholesale Presales, App
 //                        Prepayments then Small · Medium · Big.
 // App Payments (card for the bill) left the page: the bill is paid with
@@ -61,7 +62,6 @@ import {
   ArrowsClockwiseIcon,
   ConfettiIcon,
   CreditCardIcon,
-  CrownSimpleIcon,
   MoneyIcon,
   PiggyBankIcon,
   SignatureIcon,
@@ -131,13 +131,12 @@ const STANDARD: VoucherSeed[] = [
   { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
-// MESITA-4698: Welcome and VIP are cashback lines now (Stage 1), not vouchers.
+// MESITA-4698: Welcome is a cashback line now (Stage 1), not a voucher.
 
 /** Stage 1 · Cashbacks: one row per solution, the line it sets. */
 const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "cap_cents">; name: string; line: string; tone: string; icon: Icon }> = [
   { key: "welcome_bps", name: "New Customers", line: "Welcome cashback on a guest's first bill here.", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
-  { key: "regular_bps", name: "Returning Customers", line: "Cashback on every later bill, for Regular guests.", tone: "bg-green-100 text-green-700", icon: ArrowsClockwiseIcon },
-  { key: "vip_bps", name: "VIP Customers", line: "Cashback on every later bill, for VIP guests (an Instagram with more than 5,000 followers).", tone: "bg-yellow-100 text-yellow-800", icon: CrownSimpleIcon },
+  { key: "returning_bps", name: "Returning Customers", line: "Returning cashback on every later bill here.", tone: "bg-green-100 text-green-700", icon: ArrowsClockwiseIcon },
 ];
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
 
