@@ -128,10 +128,14 @@ import { useUserLocation } from "@/lib/use-user-location";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { placeHref } from "@/lib/place-route";
 import { cardPhoto, placePlaceholder } from "@/lib/place-placeholder";
+import { flagEmoji, placeCountry } from "@/lib/place-country";
 import { EmptyState, Skeleton } from "@/components/shared";
 import { goBack } from "@/lib/navigate";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { PersonInstagramPill, PersonModules } from "@/components/consumer/IdentityCard";
+import {
+  PersonInstagramPill,
+  PersonModules,
+} from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
 import { useConsumerIdentity, useViewer } from "@/lib/identity-context";
@@ -312,6 +316,22 @@ function Thumb({ place }: { place: Place }) {
   );
 }
 
+/** The place's country as a flag bubble on the photo's bottom-left, in the
+ *  face marks' shape (MESITA-4711). No known country → nothing. */
+function CountryFlag({ address }: { address: string | null }) {
+  const country = placeCountry(address);
+  if (!country) return null;
+  return (
+    <span
+      aria-hidden
+      className={cn(MARK_CLASS, "bg-card -left-1 text-xs leading-none")}
+      data-social-flag={country}
+    >
+      {flagEmoji(country)}
+    </span>
+  );
+}
+
 /** One event's identity across refreshes: who, what, where, when. */
 export function eventKey(
   item: Pick<ActivityFeedItem, "placeId" | "kind" | "at" | "person">,
@@ -407,7 +427,10 @@ function FeedRow({
         className="focus-visible:ring-ring block shrink-0 rounded-xl outline-none focus-visible:ring-2"
         data-social-place
       >
-        <Thumb place={item.place} />
+        <span className="relative block">
+          <Thumb place={item.place} />
+          <CountryFlag address={item.place.address} />
+        </span>
       </Link>
     </li>
   );
@@ -524,7 +547,6 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
     : (historyMemory.get(key) ?? null);
 }
 
-
 /** ADD YOURS TO SEE THEIRS (Pato, 2026-11-22, MESITA-4695: "for instagram
  *  of other people, mention in a yellow pink box: add your instagram to see
  *  other people's instagram, a shortcut button"): the Instagram gradient,
@@ -535,10 +557,12 @@ function AddInstagramBox() {
       className="flex w-full flex-col items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#F9CE34] via-[#EE2A7B] to-[#6228D7] px-4 py-3.5 text-center text-white"
       data-social-add-instagram
     >
-      <p className="text-sm font-semibold">Add your Instagram to see other people&apos;s Instagram</p>
+      <p className="text-sm font-semibold">
+        Add your Instagram to see other people&apos;s Instagram
+      </p>
       <PushLink
         href={CONSUMER_ROUTES.mePages.instagram}
-        className="bg-white text-neutral-950 flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold"
+        className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-neutral-950"
       >
         <InstagramGlyph className="h-4 w-4" />
         Add Instagram
@@ -671,7 +695,9 @@ function PersonCard({
                   <PersonInstagramPill
                     label={`@${person.handle}`}
                     href={igUrl}
-                    onOpen={() => trackEvent(supabase, "social_open_instagram", {})}
+                    onOpen={() =>
+                      trackEvent(supabase, "social_open_instagram", {})
+                    }
                   />
                 ) : (
                   <PersonInstagramPill label="No Instagram" />
@@ -716,8 +742,7 @@ function PersonCard({
             onTab={onTab}
           />
         </div>
-        <div className="px-5 pb-5">
-        </div>
+        <div className="px-5 pb-5"></div>
       </div>
     </div>
   );
@@ -1340,7 +1365,10 @@ function SocialFeedBody() {
         tab={cardTab}
         onTab={(t) => {
           const e = cardEvent ?? shownCard;
-          if (e) router.replace(cardHref(CONSUMER_ROUTES.homeSocial, e, t), { scroll: false });
+          if (e)
+            router.replace(cardHref(CONSUMER_ROUTES.homeSocial, e, t), {
+              scroll: false,
+            });
         }}
         onClose={() => goBack(router)}
       />
