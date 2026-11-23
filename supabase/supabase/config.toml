@@ -263,6 +263,10 @@ verify_jwt = true
 [functions.consumer-web-get-profile]
 verify_jwt = true
 
+# MESITA-4766: Me › Become VIP, a guest uses one invitation code.
+[functions.consumer-web-redeem-vip-code]
+verify_jwt = true
+
 [functions.consumer-web-update-profile]
 verify_jwt = true
 
@@ -359,14 +363,6 @@ verify_jwt = true
 [functions.consumer-web-list-vouchers]
 verify_jwt = false
 
-# MESITA-4714 (Post): the story reward at a place; signed out reads the amount.
-[functions.consumer-web-get-story-reward]
-verify_jwt = false
-
-# MESITA-4714 (Post): the test-mode story emulator.
-[functions.consumer-web-simulate-story]
-verify_jwt = true
-
 [functions.consumer-web-buy-voucher]
 verify_jwt = true
 
@@ -457,10 +453,6 @@ verify_jwt = true
 [functions.consumer-web-list-visits]
 verify_jwt = true
 
-# MESITA-4738: Me › Tickets › Stories, the guest's own Instagram stories.
-[functions.consumer-web-list-stories]
-verify_jwt = true
-
 [functions.consumer-web-pay-tab]
 verify_jwt = true
 
@@ -524,11 +516,6 @@ verify_jwt = true
 
 # MESITA-3037: weekly pg_cron refresh of the Instagram DM bot's 60-day token.
 [functions.supabase-cron-refresh-instagram-token]
-verify_jwt = true
-
-# MESITA-4714 (Post): checks Instagram story mentions every 10 minutes and pays
-# the story reward. Kill switch: select cron.unschedule('verify-stories');
-[functions.supabase-cron-verify-stories]
 verify_jwt = true
 
 [functions.supabase-edgefunc-start-smoke-enrich]

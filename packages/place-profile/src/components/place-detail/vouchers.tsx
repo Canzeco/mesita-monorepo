@@ -4,11 +4,10 @@ import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, 
 import { createPortal } from "react-dom";
 import { Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
-import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
-import { POST_TONE, VOUCHER_TONE, visitMechanismOf, visitTone, visitWord, type VisitMechanism } from "../../lib/offers";
+import { VOUCHER_TONE, visitMechanismOf, visitTone, visitWord, type VisitMechanism } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
@@ -241,8 +240,9 @@ function offerStatus(
   // VIP ONLY (MESITA-4640): the bar, then the guest's own facts, objective,
   // never "you need N more" (design review).
   if (lock === "vip") {
-    // Any Instagram counts, public or private (MESITA-4659).
-    const bar = `For VIP: an Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
+    // Any Instagram counts, public or private (MESITA-4659); an invitation
+    // code makes a VIP too (MESITA-4766).
+    const bar = `For VIP: an invitation code, or an Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
     if (!guest?.instagramLinked || guest.instagramFollowers == null) return { ok: false, text: bar };
     return { ok: false, text: `${bar} Yours: ${guest.instagramFollowers.toLocaleString("en-US")} followers.` };
   }
@@ -803,34 +803,56 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  same size"): cashback and vouchers alike. */
 const BADGE = "flex min-h-12 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-xl py-2 tabular-nums";
 
-type CashbackLineRow = { line: "welcome" | "returning"; title: string; who: string; bps: number; mech: VisitMechanism };
+export type CashbackLineRow = { line: "welcome" | "returning" | "returning_vip"; title: string; who: string; bps: number; mech: VisitMechanism };
 
-/** The place's lines that earn (rate above Off): Welcome, then Returning
- *  (MESITA-4709, Pato: "no more VIP"; three lines by Class before). */
-function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
+/** The place's lines that earn (rate above Off): Welcome, Returning, then
+ *  Returning VIP (MESITA-4766, Pato: "NOW THE PAY OFFERS ARE Welcome
+ *  Everyone, Returning Regular, Returning VIP"). A guest never reads the
+ *  word Regular: the middle line is plain Returning. Two lines under
+ *  MESITA-4709 ("no more VIP"). MESITA-4770: each carries the place's
+ *  mechanism (Discount or Cashback). */
+export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   const mech = visitMechanismOf({ cashback });
   return (
     [
-      { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps, mech },
-      { line: "returning", title: "Returning Visit", who: "Every later bill", bps: cashback.returning_bps, mech },
+      { line: "welcome", title: "Welcome", who: "Your first bill here", bps: cashback.welcome_bps, mech },
+      { line: "returning", title: "Returning", who: "Every later bill", bps: cashback.returning_bps, mech },
+      { line: "returning_vip", title: "Returning VIP", who: "Every later bill, for VIP guests", bps: cashback.returning_vip_bps ?? 0, mech },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
+}
+
+/** The row marked "You": the server's `line` for this guest's next bill,
+ *  never worked out from the guest's Class (MESITA-4766). None signed out
+ *  (`line` null) or when that line pays nothing here. */
+export function youLine(cashback: PlaceCashback | null | undefined): CashbackLineRow["line"] | null {
+  if (!cashback?.line) return null;
+  return cashbackRows(cashback).some((r) => r.line === cashback.line) ? cashback.line : null;
 }
 
 /** MESITA-4698/4702: the place's cashback on the one Offers page. Two
  *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
  *  guest's own marked Yours, each with its (i). Nothing to buy: a
  *  confirmed bill earns it, 1 hour later (MESITA-4717), with no minimum. */
-function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: (r: CashbackLineRow) => void }) {
+function CashbackPanel({
+  cashback,
+  onInfo,
+  onBecomeVip,
+}: {
+  cashback: PlaceCashback;
+  onInfo: (r: CashbackLineRow) => void;
+  onBecomeVip?: () => void;
+}) {
   const rows = cashbackRows(cashback);
+  const you = youLine(cashback);
   if (rows.length === 0) return null;
   return (
     <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Back" data-promos="cashback">
       <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
-          const mine = cashback.line === r.line;
+          const mine = you === r.line;
           return (
-            <li key={r.line} data-cashback={r.line} className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2">
+            <li key={r.line} data-cashback={r.line} className="flex min-h-[4.5rem] flex-wrap items-center gap-3 px-3.5 py-2">
               <span className={cn(BADGE, visitTone(r.mech))} aria-hidden>
                 <span className="text-lg leading-none font-bold tracking-tight">{r.bps / 100}%</span>
                 <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">{visitWord(r.mech)}</span>
@@ -855,8 +877,20 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
               </span>
               {mine ? (
                 <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
-                  Yours
+                  You
                 </span>
+              ) : null}
+              {/* HOW TO BECOME VIP (MESITA-4766): a quiet link under the VIP
+                  line, only where the host knows the guest is not VIP. */}
+              {r.line === "returning_vip" && onBecomeVip ? (
+                <button
+                  type="button"
+                  onClick={onBecomeVip}
+                  className="text-muted-foreground hover:text-foreground -mt-1 flex min-h-11 basis-full items-center pl-[5.5rem] text-left text-sm font-semibold underline underline-offset-2"
+                  data-cashback-become-vip
+                >
+                  How to become VIP
+                </button>
               ) : null}
             </li>
           );
@@ -1041,22 +1075,17 @@ function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => v
   );
 }
 
-/** THREE SUBPAGES (Pato, 2026-11-23, MESITA-4710: "THIS MUST HAVE 3
- *  SUBPAGES"), NAMED PREPAY · PAY · POST (Pato, 2026-11-23, MESITA-4714: "3
- *  ps sounds great"): Prepay sells the vouchers, Pay is paying the bill here
- *  and the cashback it earns, Post is what an Instagram story here pays (the
- *  host reads it; this package draws PostSection). What a guest earned stays
- *  on the Loyalty Card and Tickets; the Rewards list went. */
-export type OffersTab = "prepay" | "pay" | "post";
+/** TWO SUBPAGES, PREPAY · PAY (MESITA-4710; Post went with Stories,
+ *  MESITA-4766): Prepay sells the vouchers, Pay is paying the bill here and
+ *  the cashback it earns. What a guest earned stays on the Loyalty Card and
+ *  Tickets. */
+export type OffersTab = "prepay" | "pay";
 
-// THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726: "change the stupid icons
-// of prepay and pay and story"): Prepay a wallet (credit loaded ahead), Pay a
-// receipt (the bill), Post the Instagram mark (what you post). A ticket, a QR
-// code and a camera before.
+// THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay a wallet (credit
+// loaded ahead), Pay a receipt (the bill).
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
   { id: "prepay", word: "Prepay", Icon: Wallet },
   { id: "pay", word: "Pay", Icon: ReceiptIcon },
-  { id: "post", word: "Post", Icon: Instagram },
 ];
 
 /** The tab bar (MESITA-4710), MESITA-4701's last approved bar: three equal
@@ -1392,7 +1421,7 @@ function PrepaySection({
 }
 
 /** PAY (MESITA-4710; 1 hour since MESITA-4717): paying the bill here and the cashback it earns.
- *  The lines are the server's (Welcome, Returning; MESITA-4709),
+ *  The lines are the server's (Welcome, Returning, Returning VIP; MESITA-4766),
  *  then the purple Go to Pay Bill at the bottom (MESITA-4699). Nothing to
  *  buy: a confirmed bill earns it, 1 hour later, with no minimum. */
 function CheckoutSection({
@@ -1400,11 +1429,13 @@ function CheckoutSection({
   loading,
   onInfo,
   onPay,
+  onBecomeVip,
 }: {
   cashback: PlaceCashback | null;
   loading: boolean;
   onInfo: (r: CashbackLineRow) => void;
   onPay: (() => void) | undefined;
+  onBecomeVip?: () => void;
 }) {
   const rows = cashback ? cashbackRows(cashback) : [];
   return (
@@ -1412,7 +1443,7 @@ function CheckoutSection({
       {loading ? (
         <BoneRows n={2} />
       ) : cashback && rows.length > 0 ? (
-        <CashbackPanel cashback={cashback} onInfo={onInfo} />
+        <CashbackPanel cashback={cashback} onInfo={onInfo} onBecomeVip={onBecomeVip} />
       ) : (
         // No cashback here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
@@ -1459,7 +1490,6 @@ export function VouchersPane({
   pick,
   initialTab,
   onTabChange,
-  renderPost,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -1469,9 +1499,6 @@ export function VouchersPane({
   initialTab?: OffersTab | null;
   /** Called after each switch the pane accepts (the host keeps the address). */
   onTabChange?: (tab: OffersTab) => void;
-  /** The Post tab's body (MESITA-4714): the host reads the place's story
-   *  reward and draws PostSection with it. `switchTab` switches in place. */
-  renderPost?: (switchTab: (tab: OffersTab) => void) => ReactNode;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -1604,11 +1631,14 @@ export function VouchersPane({
             onInfo={setInfo}
             onPay={() => void pay()}
           />
-        ) : tab === "pay" ? (
-          <CheckoutSection cashback={cashback} loading={loading} onInfo={setCashInfo} onPay={actions?.onPay} />
         ) : (
-          // POST (MESITA-4714): the host's read, PostSection's rows.
-          renderPost?.(switchTab) ?? null
+          <CheckoutSection
+            cashback={cashback}
+            loading={loading}
+            onInfo={setCashInfo}
+            onPay={actions?.onPay}
+            onBecomeVip={actions?.guest?.guestClass === "vip" ? undefined : actions?.onBecomeVip}
+          />
         )}
       </div>
       {cashInfo && cashback ? <CashbackInfo row={cashInfo} onClose={() => setCashInfo(null)} /> : null}
@@ -1655,181 +1685,3 @@ function BasketReceipt({ receipt, onDone }: { receipt: Receipt; onDone: () => vo
     </div>
   );
 }
-
-/** What the Post tab reads (consumer-web-get-story-reward, MESITA-4714). */
-export type PostTabRead = {
-  /** What a story pays here now, in cents; 0 = Off. */
-  reward_cents: number;
-  currency: string;
-  place_handle: string | null;
-  signed_in: boolean;
-  instagram_linked: boolean;
-  instagram_handle: string | null;
-  /** Stripe test mode: "Simulate a story" shows. */
-  simulate: boolean;
-  /** When this guest can be paid here again (once every 7 days). */
-  next_at: string | null;
-  latest: {
-    id: string;
-    state: "checking" | "verified" | "rewarded" | "rejected";
-    reward_cents: number | null;
-    /** Verified: when the second check runs (MESITA-4717). */
-    recheck_at?: string | null;
-    /** The story the AI fetched (Meta's link; image stories only, MESITA-4725). */
-    image_url?: string | null;
-    available_at: string | null;
-    reason: string | null;
-    posted_at: string;
-    simulated: boolean;
-  } | null;
-};
-
-/** POST (Pato, 2026-11-23, MESITA-4714: a place pays a guest for an
- *  Instagram story, "20 OR 50, can setup in business console"): the amount,
- *  five steps (MESITA-4717), the guest's latest story here with its status, Connect
- *  Instagram when none is linked, and in test mode Simulate a story. The
- *  server decides every number; this formats them. */
-export function PostSection({
-  read,
-  loading,
-  failed,
-  onRetry,
-  onConnectInstagram,
-  onSimulate,
-  simulating,
-}: {
-  read: PostTabRead | null;
-  loading: boolean;
-  failed: boolean;
-  onRetry?: () => void;
-  onConnectInstagram?: () => void;
-  onSimulate?: () => void;
-  simulating?: boolean;
-}) {
-  if (loading && !read) return <BoneRows n={1} />;
-  if (failed && !read) {
-    return (
-      <div className={cn(CARD, "flex shrink-0 flex-col items-center gap-3 px-4 py-6 text-center")} data-post-failed>
-        <p className="text-muted-foreground text-sm">Couldn’t load this. Try again.</p>
-        {onRetry ? (
-          <button type="button" onClick={onRetry} className="border-border text-foreground h-10 rounded-full border px-4 text-sm font-semibold">
-            Retry
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-  if (!read || read.reward_cents <= 0) {
-    return (
-      <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="post">
-        This place doesn’t pay for stories yet.
-      </p>
-    );
-  }
-  const amount = whole(pesos(read.reward_cents, read.currency));
-  const tags = read.place_handle ? `@mesita and @${read.place_handle}` : "@mesita and this place";
-  // Pato's five steps, exactly (2026-11-23, MESITA-4725): the AI checks it
-  // twice, so hiding or deleting the story early does not work.
-  const steps = ["Post Story", "AI Validates Story", "Wait 10 Hours", "AI Validates Story", "Receive credits"];
-  const latest = read.latest;
-  const recheckDue = latest?.recheck_at ? Date.parse(latest.recheck_at) <= Date.now() : false;
-  const status = latest
-    ? latest.state === "checking"
-      ? { word: "AI validating", line: "The AI is checking your story." }
-      : latest.state === "verified"
-        ? {
-            word: "Validated",
-            line: recheckDue || !latest.recheck_at
-              ? "The AI is checking it again now. Keep it up."
-              : `The AI checks it again at ${readyClock(latest.recheck_at)}. Don't hide or delete it.`,
-          }
-        : latest.state === "rewarded"
-          ? {
-              word: `Received +${whole(pesos(latest.reward_cents ?? 0, read.currency))}`,
-              line: latest.available_at ? `In your credit since ${readyClock(latest.available_at)}` : "In your credit",
-            }
-          : { word: "Rejected", line: latest.reason ?? "This story didn’t qualify." }
-    : null;
-  const nextAt = read.next_at && Date.parse(read.next_at) > Date.now() ? readyClock(read.next_at) : "";
-  // JUST THE STORY, ONE BUTTON (Pato, 2026-11-23, MESITA-4751: "just list the
-  // story, and if someone wants to, add a button at the bottom to post story.
-  // since there is only one option, you don't need to select"). The tab is
-  // the story row; a story still in its checks, or turned down, is a second
-  // row in the same list (a paid one lives in Tickets). The "Your latest story
-  // here" card and the "next reward opens" line went into the one button.
-  const inFlight = latest && latest.state !== "rewarded" && status ? latest : null;
-  const BAR_BUTTON = "flex h-12 w-full items-center justify-center gap-2 rounded-full text-base font-semibold disabled:opacity-60";
-  const button = !read.signed_in ? null : !read.instagram_linked ? (
-    onConnectInstagram ? (
-      <button type="button" onClick={onConnectInstagram} className={cn(BAR_BUTTON, "bg-foreground text-paper")} data-post-connect>
-        <Instagram className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-        Connect Instagram
-      </button>
-    ) : null
-  ) : nextAt ? (
-    <button type="button" disabled className={cn(BAR_BUTTON, "bg-muted text-muted-foreground")} data-post-next>
-      Next story reward {nextAt}
-    </button>
-  ) : read.simulate && onSimulate ? (
-    // Stripe test mode (MESITA-4714): the button simulates the story.
-    <button type="button" onClick={onSimulate} disabled={simulating} className={cn(BAR_BUTTON, POST_TONE)} data-post-simulate>
-      <Instagram className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-      {simulating ? "Simulating…" : "Simulate a story"}
-    </button>
-  ) : (
-    // Instagram's story camera on a phone with the app.
-    <a href="instagram://story-camera" className={cn(BAR_BUTTON, POST_TONE)} data-post-story>
-      <Instagram className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-      Post Story
-    </a>
-  );
-  return (
-    <>
-      {/* POST IS A BOX TOO (Pato, MESITA-4725: "even if its only one offer
-          is okey … maybe in the future we add google review post"): one
-          list of rows, the Instagram story the first. */}
-      <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Post" data-promos="post">
-        <ul className="divide-border divide-y">
-          <li className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2" data-post-offer="instagram_story">
-            <span className={cn(BADGE, POST_TONE)} aria-hidden>
-              <span className="text-lg leading-none font-bold tracking-tight">{amount}</span>
-              <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Credit</span>
-            </span>
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="text-foreground truncate text-base font-semibold">Instagram Story</span>
-              <span className="text-muted-foreground truncate text-sm">Tag {tags}</span>
-            </span>
-          </li>
-          {inFlight && status ? (
-            <li className="flex items-center gap-3 px-3.5 py-3" data-post-latest={inFlight.state}>
-              <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
-                <Instagram className="h-5 w-5" strokeWidth={2.25} />
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-foreground text-sm font-semibold">
-                  Your story · {status.word}
-                  {inFlight.simulated ? <span className="text-muted-foreground font-normal"> · Simulated</span> : null}
-                </span>
-                <span className="text-muted-foreground text-sm">{status.line}</span>
-              </span>
-            </li>
-          ) : null}
-        </ul>
-      </section>
-      <HowItWorks
-        tab="post"
-        title="Post Story"
-        tone={POST_TONE}
-        steps={steps}
-        good={["Don't hide or delete the story for 10 hours.", "One story reward per place every 7 days.", "No person reviews it. An AI does, automatically."]}
-      />
-      {/* ONE BUTTON AT THE BOTTOM, sticky like Pay's Go to Pay Bill. */}
-      {button ? (
-        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-post-bar>
-          {button}
-        </div>
-      ) : null}
-    </>
-  );
-}
-

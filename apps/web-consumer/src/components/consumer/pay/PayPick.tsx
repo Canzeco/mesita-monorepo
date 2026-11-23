@@ -300,13 +300,14 @@ function Section({
 }
 
 /** Which offers a row previews (MESITA-4748): Prepay's vouchers, every kind
- *  on Explore Offers, or Pay Bill's two Back lines. */
+ *  on Explore Offers, or Pay Bill's Back lines (three since MESITA-4766). */
 type BoxKind = "vouchers" | "any" | "cashback";
 type OfferBox = { top: string; bottom: string; tone: string; key: string };
 
 /** The tints, light under black ink (MESITA-4770: Prepay blue, Discount
- *  green, Cashback red-pink, Post pink; offers.ts holds the solid tones). */
-const BOX_TINT = { prepay: "bg-[#4DA3FF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#FF5A6E]/15", post: "bg-[#FF66C4]/20" } as const;
+ *  green, Cashback red-pink; offers.ts holds the solid tones). Post's pink
+ *  left with Stories (MESITA-4766). */
+const BOX_TINT = { prepay: "bg-[#4DA3FF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#FF5A6E]/15" } as const;
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -333,16 +334,21 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
   const word = discount ? "Off" : "Back";
   const visitTint = discount ? BOX_TINT.discount : BOX_TINT.cashback;
   if (kind === "cashback") {
-    const w = o.welcome_pct ?? null;
-    const r = o.returning_pct ?? null;
-    if (w !== null && w === r) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
+    // Welcome · Returning · Returning VIP (MESITA-4766); a 0% line is Off
+    // and has no box. One rate on all three is one "Every bill" box.
+    const on = (pct: number | null | undefined) => (pct != null && pct > 0 ? pct : null);
+    const w = on(o.welcome_pct);
+    const r = on(o.returning_pct);
+    const v = on(o.returning_vip_pct);
+    if (w !== null && w === r && r === v) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
     return [
       ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% ${word}`, tone: visitTint }] : []),
       ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% ${word}`, tone: visitTint }] : []),
+      ...(v !== null ? [{ key: "returning_vip", top: "Returning VIP", bottom: `${v}% ${word}`, tone: visitTint }] : []),
     ];
   }
-  // Explore Offers: one box per kind, Prepay · Pay · Post, in offerSlides' words.
-  const order: Record<string, number> = { prepay: 0, cashback: 1, post: 2 };
+  // Explore Offers: one box per kind, Prepay · Pay, in offerSlides' words.
+  const order: Record<string, number> = { prepay: 0, cashback: 1 };
   return offerSlides(o)
     .filter((sl) => sl.key in order)
     .sort((a, b) => order[a.key] - order[b.key])
@@ -350,7 +356,7 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       key: sl.key,
       top: sl.lead,
       bottom: sl.pillShort,
-      tone: sl.key === "prepay" ? BOX_TINT.prepay : sl.key === "cashback" ? visitTint : BOX_TINT.post,
+      tone: sl.key === "prepay" ? BOX_TINT.prepay : visitTint,
     }));
 }
 
@@ -381,7 +387,7 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
         {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
       </span>
       {shown.length > 0 ? (
-        <span className={cn("mt-2.5 grid w-full gap-2", boxes === "cashback" ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+        <span className={cn("mt-2.5 grid w-full gap-2", boxes === "cashback" && shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
           {shown.map((b) => (
             <span key={b.key} className={cn("text-foreground min-w-0 rounded-xl px-2.5 py-2", b.tone)}>
               <span className="block truncate text-base leading-tight font-semibold tabular-nums">{b.top}</span>
@@ -395,16 +401,16 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
 }
 
 /** The Offers tab a place opens on (MESITA-4731, D5): its first offer,
- *  Prepay, else Pay, else Post. */
-export function firstOfferTab(p: PayPlace | undefined): "prepayment" | "cashback" | "post" | null {
+ *  Prepay, else Pay. */
+export function firstOfferTab(p: PayPlace | undefined): "prepayment" | "cashback" | null {
   const t = p ? payPlaceTabs(p) : null;
-  return !t || t.prepay ? "prepayment" : t.pay ? "cashback" : t.post ? "post" : null;
+  return !t || t.prepay ? "prepayment" : t.pay ? "cashback" : null;
 }
 
 /** Explore Offers' list: the places with any offer (MESITA-4731). */
 export function hasOffers(p: PayPlace): boolean {
   const t = payPlaceTabs(p);
-  return p.offers_ok === true && (t.prepay || t.pay || t.post);
+  return p.offers_ok === true && (t.prepay || t.pay);
 }
 
 /** PAY'S NEARBY OFFERS TAB (Pato, 2026-11-23, MESITA-4765: "nearby offers

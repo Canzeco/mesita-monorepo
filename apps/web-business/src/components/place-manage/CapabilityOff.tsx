@@ -14,27 +14,22 @@ import { placeTabHref } from "@/lib/routes";
 import { MonitorCard } from "./MonitorList";
 
 /** The Offers boxes a Monitor page can point at (ids on /places/<id>/payments). */
-export type OffersAnchor = "credits-account" | "stripe-account" | "visit-checkout" | "prepaid-vouchers" | "instagram-stories" | "credit-limit";
+export type OffersAnchor = "credits-account" | "stripe-account" | "visit-checkout" | "prepaid-vouchers" | "credit-limit";
 
 export type CapabilityOffState = { line: string; anchor: OffersAnchor };
 
 /** Why a Monitor page has nothing new to show, or null when it is on. */
-export function monitorCapabilityOff(kind: "vouchers" | "stories" | "payouts", p: PlacePayments): CapabilityOffState | null {
+export function monitorCapabilityOff(kind: "vouchers" | "payouts", p: PlacePayments): CapabilityOffState | null {
   const s = p.settings;
   if (kind === "payouts") {
     return stripeTakesCards(p) ? null : { line: "Stripe isn't connected", anchor: "stripe-account" };
   }
-  if (kind === "vouchers") {
-    // The same rule Offers draws (offers-state): Accept Prepayments on, the
-    // Stripe Account taking cards, no fee hold, and Small, Medium or Big on.
-    if (vouchersLive(p)) return null;
-    return p.fee.hold && s.prepayments
-      ? { line: "Prepaid vouchers are off until Mesita's invoice is paid", anchor: "prepaid-vouchers" }
-      : { line: "Prepaid vouchers are off", anchor: "prepaid-vouchers" };
-  }
-  // A story pays only where the Credits Account is on and the reward is not Off.
-  if (!s.loyalty_cards) return { line: "Credits Account is off", anchor: "credits-account" };
-  return (p.cashback?.story_reward_cents ?? 0) > 0 ? null : { line: "Story rewards are off", anchor: "instagram-stories" };
+  // Vouchers: the same rule Offers draws (offers-state): Accept Prepayments
+  // on, the Stripe Account taking cards, no fee hold, and Small, Medium or Big on.
+  if (vouchersLive(p)) return null;
+  return p.fee.hold && s.prepayments
+    ? { line: "Prepaid vouchers are off until Mesita's invoice is paid", anchor: "prepaid-vouchers" }
+    : { line: "Prepaid vouchers are off", anchor: "prepaid-vouchers" };
 }
 
 function offersHref(placeId: string, anchor: OffersAnchor): string {

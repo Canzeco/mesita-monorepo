@@ -1,8 +1,8 @@
 // Supabase Edge Function — admin-web-save-vip-code
 //
-// Admin › Guests › Invitation codes (MESITA-3540). Issues a VIP invitation
-// code, or revokes an unused one. Super-admin only. A guest uses a code once
-// on Me › Class; consumer_redeem_vip_invitation checks it.
+// Admin › VIP (MESITA-3540, MESITA-4766). Issues a VIP invitation code,
+// revokes an unused one, or takes a code-made VIP away. Super-admin only. A
+// guest uses a code once on Me › Become VIP (consumer-web-redeem-vip-code).
 //
 // Body: { label?, vipPartnerId? } — issue. Twelve random digits; only their
 //         SHA-256 and the last four are stored, so the code ("1234 5678 9012")
@@ -10,6 +10,8 @@
 //         is for; vipPartnerId is the partner the guest's VIP then comes
 //         through.
 //       | { id, revoke: true } — revoke an unused code.
+//       | { consumerId, removeVip: true } — clear vip_invited_at (the code
+//         stays used); 404 consumer_not_found · 409 not_code_vip.
 // Success: { ok: true, issuedCode?, issuedId?, codes } — `codes` is the list,
 // newest first (admin-web-list-guests returns the same list); null when that
 // read failed after an issue (the code is still in the answer).
@@ -41,6 +43,19 @@ serveJson("admin-web-save-vip-code", async (req) => {
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error }, parsed.status);
 
   let issued: { id: string; code: string } | null = null;
+
+  // MESITA-4766: take a code-made VIP away. Only vip_invited_at makes it; a
+  // follower VIP is automatic (409). The code stays used.
+  if (parsed.action === "removeVip") {
+    const { data, error } = await admin.rpc("admin_remove_vip", { p_consumer: parsed.consumerId });
+    if (error) return json({ ok: false, code: "save_failed", error: `save_failed: ${error.message}` }, 500);
+    if (data === "not_code_vip") {
+      return json({ ok: false, code: "not_code_vip", error: "This guest is not VIP by an invitation code." }, 409);
+    }
+    if (data !== "removed") return json({ ok: false, code: "consumer_not_found", error: "No such guest" }, 404);
+    console.log("vip_removed", JSON.stringify({ consumer: parsed.consumerId }));
+    return json({ ok: true });
+  }
 
   if (parsed.action === "revoke") {
     const { data, error } = await admin

@@ -313,7 +313,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/me/notifications", "Me"],
     ["/me/tickets/vouchers", "Me"],
     ["/me/tickets/visits/t1", "Me"],
-    ["/me/tickets/stories/s1", "Me"],
     ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
@@ -625,10 +624,10 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
-  it("Tickets has four kinds: Vouchers · Visits · Stories · Gifts; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4738)", () => {
+  it("Tickets has three kinds: Vouchers · Visits · Gifts; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4766)", () => {
     // Gifts split into Gifts-In and Gifts-Out (MESITA-3941), one list
-    // again (MESITA-4036). Stories back as a tab (MESITA-4738).
-    expect([...TICKET_KINDS]).toEqual(["vouchers", "visits", "stories", "gifts"]);
+    // again (MESITA-4036). Stories left with Instagram Stories (MESITA-4766).
+    expect([...TICKET_KINDS]).toEqual(["vouchers", "visits", "gifts"]);
   });
 
   it("no box routes into a container any more", () => {
@@ -1110,8 +1109,6 @@ describe("the route map", () => {
     expect(parentHref("/place/p1/menu/0")).toBe("/place/p1");
     expect(parentHref("/reservation/r1")).toBe("/me/reservations");
     expect(parentHref("/me/tickets/visits/t1")).toBe("/me/tickets");
-    // A story's ticket lands on the Stories tab (MESITA-4747).
-    expect(parentHref("/me/tickets/stories/s1")).toBe("/me/tickets/stories");
     expect(parentHref("/me/plan")).toBe("/me/settings");
     expect(parentHref("/me/settings/contact")).toBe("/me/settings");
     expect(parentHref("/pay/receipt/x")).toBe("/pay");

@@ -170,6 +170,8 @@ export type Entry = {
   /** The gift a gift_out, gift_in or gift_back belongs to (MESITA-4066): the
    *  entry page finds its gift by it, never by amount. */
   gift_id?: string | null;
+  /** A cashback entry's line (MESITA-4766): welcome · returning · returning_vip. */
+  reason?: string | null;
 };
 
 export type Balance = {
@@ -196,6 +198,8 @@ export type Balance = {
     purchase_id: string | null;
     /** The gift behind a gift line (MESITA-4066); null on every other row. */
     gift_id: string | null;
+    /** A cashback entry's line (MESITA-4766); null on every other row. */
+    reason: string | null;
   }>;
 };
 
@@ -244,6 +248,7 @@ export function balancesOf(
       payment_id: e.payment_id ?? null,
       purchase_id: e.purchase_id ?? null,
       gift_id: e.gift_id ?? null,
+      reason: e.reason ?? null,
     });
   }
   const out = [...byKey.values()];

@@ -1,12 +1,32 @@
 // MESITA-4698: what a bill earns is guest money; pin the arithmetic the SQL
 // trigger mirrors (pay_tab_grant_cashback) and the owner's allowed inputs.
-// Two lines since MESITA-4709: Welcome, then Returning.
+// Three lines since MESITA-4766: Welcome Everyone, Returning Regular, Returning VIP.
 import { assertEquals } from "jsr:@std/assert@1";
-import { CASHBACK_DEFAULTS, cashbackCents, cashbackLine, discountCents, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
+import { CASHBACK_DEFAULTS, cashbackCents, cashbackLine, discountCents, maxCashbackBps, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
 
-Deno.test("cashback: Welcome wins the first bill, Returning every later one", () => {
+Deno.test("cashback: Welcome Everyone wins the first bill, VIP or not; then Returning VIP or Regular (MESITA-4766)", () => {
   assertEquals(cashbackLine(true), "welcome");
+  assertEquals(cashbackLine(true, true), "welcome");
   assertEquals(cashbackLine(false), "returning");
+  assertEquals(cashbackLine(false, true), "returning_vip");
+  const rates = { ...CASHBACK_DEFAULTS, welcome_bps: 1000, returning_bps: 500, returning_vip_bps: 2000 };
+  assertEquals(cashbackCents(rates, "returning_vip", 10000), 2000);
+  assertEquals(cashbackCents(rates, "returning", 10000), 500);
+  assertEquals(cashbackCents({ ...rates, returning_vip_bps: 0 }, "returning_vip", 10000), 0);
+  assertEquals(maxCashbackBps(rates), 2000);
+});
+
+Deno.test("cashback: Returning VIP is Off, 10 or 20%, optional; a story reward is ignored (MESITA-4766)", () => {
+  const base = { welcome_bps: 1000, returning_bps: 500 };
+  const vip = readCashbackInput({ ...base, returning_vip_bps: 2000 });
+  assertEquals(vip.ok && vip.rates.returning_vip_bps, 2000);
+  assertEquals(readCashbackInput({ ...base, returning_vip_bps: 0 }).ok, true);
+  assertEquals(readCashbackInput({ ...base, returning_vip_bps: 500 }).ok, false);
+  assertEquals(readCashbackInput({ ...base, returning_vip_bps: "1000" }).ok, false);
+  const absent = readCashbackInput(base);
+  assertEquals(absent.ok && "returning_vip_bps" in absent.rates, false);
+  const story = readCashbackInput({ ...base, story_reward_cents: 2000 });
+  assertEquals(story.ok && "story_reward_cents" in story.rates, false);
 });
 
 Deno.test("cashback: rate on the part, rounded down, capped", () => {

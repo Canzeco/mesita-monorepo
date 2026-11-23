@@ -2,8 +2,9 @@
 // the stored word; anything else reads as the plain value, so a guest is
 // never shown a status they do not have.
 //
-// NO CLASS (Pato, 2026-11-22, MESITA-4709: "no more VIP"): the guest never
-// reads a Class; consumers.guest_class stays on the server only.
+// NO CLASS (Pato, 2026-11-22, MESITA-4709: "no more VIP"), then VIP BACK
+// (MESITA-4766): a VIP reads it on Me (lib/vip.ts); a non-VIP never reads
+// the word "Regular".
 
 export type GuestPlan = "free" | "premium";
 

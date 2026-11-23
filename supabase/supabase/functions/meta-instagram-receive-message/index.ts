@@ -21,14 +21,8 @@
 // Calls Meta with the weekly-refreshed token in meta_instagram_token when
 // there is one, else the META_IG_ACCESS_TOKEN seed (MESITA-3037).
 //
-// STORY MENTIONS (MESITA-4714, Post): a story that tags @mesita arrives as a
-// message attachment of type story_mention (attachment-only, so the DM-code
-// path above never sees it). Each one is recorded under its sender's
-// username (the profile lookup tried three times) and matched to the guest
-// whose verified Instagram it is (_shared/story-reward.ts), in the mode
-// payments run in; duplicates by mid are a no-op. A failed mention write
-// answers 500 so Meta retries (the unique key makes a retry safe).
-// supabase-cron-verify-stories checks the place tag and pays the reward.
+// Story mentions (MESITA-4714) were removed with Instagram Stories (MESITA-4766):
+// a story_mention attachment is acknowledged and ignored.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
@@ -49,8 +43,6 @@ import {
 import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { serveJson } from "../_shared/http.ts";
-import { headMediaKind, igUsername, parseStoryMentions, recordStoryMention } from "../_shared/story-reward.ts";
-import { paymentsLivemode } from "../_shared/stripe.ts";
 
 const GRAPH = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 
@@ -165,37 +157,6 @@ serveJson("meta-instagram-receive-message", async (req) => {
   } catch {
     return text("ok", 200);
   }
-  // Story mentions first: a failed write is the one 5xx (Meta retries).
-  const mentions = parseStoryMentions(body);
-  if (mentions.length > 0) {
-    const handles = new Map<string, string | null>();
-    for (const sm of mentions) {
-      if (!handles.has(sm.senderId)) {
-        let handle: string | null = null;
-        for (let i = 0; i < 3 && !handle; i++) {
-          handle = await igUsername(live.accessToken, sm.senderId).catch(() => null);
-        }
-        handles.set(sm.senderId, handle);
-      }
-      try {
-        const rec = await recordStoryMention(admin, {
-          handle: handles.get(sm.senderId) ?? null,
-          source: "meta",
-          storyId: sm.storyId,
-          mediaUrl: sm.url,
-          mediaKind: await headMediaKind(sm.url),
-          mentionedAt: sm.mentionedAt,
-          livemode: paymentsLivemode(),
-          senderIgsid: sm.senderId,
-        });
-        console.log("instagram_story_mention", JSON.stringify({ id: rec.id, duplicate: rec.duplicate, handle: handles.get(sm.senderId) !== null }));
-      } catch (e) {
-        console.error("ig_story_mention_failed", e instanceof Error ? e.message : e);
-        return text("story mention not saved", 500);
-      }
-    }
-  }
-
   for (const m of inboundMessages(body)) {
     const code = codeInMessage(m.text);
     // A message without a code is a normal DM to Mesita: no auto-reply.

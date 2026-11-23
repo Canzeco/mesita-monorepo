@@ -40,7 +40,7 @@ import GiftTicketLoading from "./me/tickets/gift/[giftId]/loading";
 import NotificationsLoading from "./me/notifications/loading";
 import ReservationsLoading from "./me/reservations/loading";
 import TicketsLoading from "./me/tickets/loading";
-import StoryTicketLoading from "./me/tickets/stories/[storyId]/loading";
+import VipLoading from "./me/vip/loading";
 import ShareLoading from "./share/loading";
 import IntegrationsLoading from "./me/integrations/loading";
 import CalendarLoading from "./me/integrations/calendar/loading";
@@ -89,12 +89,12 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   visit: () => <VisitLoading />,
   credit: () => <CreditLoading />,
   gift: () => <GiftTicketLoading />,
-  story: () => <StoryTicketLoading />,
   share: () => <ShareLoading />,
   me: () => <MeLoading />,
   sign: () => <SignLoading />,
   meProfile: () => <ProfileLoading />,
   meInstagram: () => <InstagramLoading />,
+  meVip: () => <VipLoading />,
   mePlan: () => <PlanLoading />,
   meGift: () => <GiftLoading />,
   meNotifications: () => <NotificationsLoading />,
@@ -102,7 +102,6 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meReservationsPast: () => <ReservationsLoading />,
   meTickets: () => <TicketsLoading />,
   meTicketsKind: () => <TicketsLoading />,
-  meTicketsStories: () => <TicketsLoading />,
   meSettings: () => <SettingsLoading />,
   meSettingsContact: () => <ContactLoading />,
   meSettingsRefunds: () => <RefundsLoading />,

@@ -136,6 +136,8 @@ const DROPPED_TABLES = [
   "staff_invites",
   "staff_whatsapp_messages",
   "staff_whatsapp_sessions",
+  // Instagram Stories left whole with MESITA-4766.
+  "story_mentions",
   "stripe_events",
   "ticket_check_events",
   "ticket_reports",

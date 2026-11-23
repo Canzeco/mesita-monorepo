@@ -14,7 +14,8 @@
 --    visit_mechanism, discount_bps, discount_cents. A later switch by the
 --    owner never changes a bill already begun.
 -- 3. pay_guest_begin (same signature) works the discount out itself: the
---    tier (Welcome = no earlier paid bill here, else Returning) on the printed
+--    tier (MESITA-4766's three lines: Welcome Everyone = no earlier paid bill
+--    here, else Returning VIP for a VIP, else Returning Regular) on the printed
 --    bill, tip excluded, rounded down. The parts (credit + cash) must add up
 --    to bill - discount; a phone that sent other numbers gets
 --    discount_changed with the right ones.
@@ -81,7 +82,7 @@ declare
   v_expires timestamptz := p_now + make_interval(mins => greatest(least(coalesce(p_window_minutes, 15), 120), 5));
   v_cur text := lower(p_currency);
   v_mech text;
-  v_welcome boolean;
+  v_line text;
   r record;
   v_disc_bps integer := 0;
   v_disc integer := 0;
@@ -112,13 +113,22 @@ begin
 
   -- MESITA-4770: the visit discount, worked out here and nowhere else.
   v_mech := public.place_visit_mechanism(p_place_id);
-  v_welcome := not exists (
+  -- The same three lines as pay_tab_grant_cashback (MESITA-4766).
+  if not exists (
     select 1 from public.pay_tabs o
      where o.consumer_id = p_consumer_id and o.place_id = p_place_id
-       and o.livemode = p_livemode and o.status = 'paid');
+       and o.livemode = p_livemode and o.status = 'paid') then
+    v_line := 'welcome';
+  elsif public.consumer_is_vip_for_money(p_consumer_id, p_livemode) then
+    v_line := 'returning_vip';
+  else
+    v_line := 'returning';
+  end if;
   if v_mech = 'discount' then
     select * into r from public.place_cashback_rates(p_place_id);
-    v_disc_bps := greatest(case when v_welcome then r.welcome_bps else r.returning_bps end, 0);
+    v_disc_bps := greatest(case v_line when 'welcome' then r.welcome_bps
+                                       when 'returning_vip' then r.returning_vip_bps
+                                       else r.returning_bps end, 0);
     v_disc := (p_bill_cents::bigint * v_disc_bps / 10000)::integer;
   end if;
   v_due := p_bill_cents - v_disc;
@@ -127,7 +137,7 @@ begin
     raise exception 'guest_refused:%', jsonb_build_object(
       'code', case when v_disc > 0 then 'discount_changed' else 'parts' end,
       'discount_bps', v_disc_bps, 'discount_cents', v_disc, 'to_pay_cents', v_due,
-      'line', case when v_welcome then 'welcome' else 'returning' end);
+      'line', v_line);
   end if;
   if p_credit_cents > v_due
      or (p_cash_tip_cents > 0 and p_card_tip_cents > 0)
@@ -282,7 +292,7 @@ $function$;
 revoke all on function public.pay_guest_insert_closed(public.guest_pay_attempts, timestamptz) from public, anon, authenticated;
 grant execute on function public.pay_guest_insert_closed(public.guest_pay_attempts, timestamptz) to service_role;
 
--- ── 5. No cashback on a discounted bill ─────────────────────────────────────
+-- ── 5. No cashback on a discounted bill (MESITA-4766's three lines kept) ──
 create or replace function public.pay_tab_grant_cashback(p_tab_id uuid, p_now timestamptz default now())
  returns integer
  language plpgsql
@@ -292,7 +302,7 @@ as $function$
 declare
   t public.pay_tabs;
   v_earn integer;
-  v_welcome boolean;
+  v_line text;
   v_bps integer;
   r record;
   v_amount integer;
@@ -322,15 +332,24 @@ begin
     return 0;
   end if;
 
-  -- Welcome: no earlier paid bill here. Otherwise Returning.
-  v_welcome := not exists (
+  -- Welcome Everyone: no earlier paid bill here (VIP or not). Otherwise
+  -- Returning VIP for a VIP (the bill's own money mode), else Returning Regular.
+  if not exists (
     select 1 from public.pay_tabs o
      where o.consumer_id = t.consumer_id and o.place_id = t.place_id
        and o.livemode = t.livemode and o.status = 'paid' and o.id <> t.id
-       and o.paid_at < coalesce(t.paid_at, p_now));
+       and o.paid_at < coalesce(t.paid_at, p_now)) then
+    v_line := 'welcome';
+  elsif public.consumer_is_vip_for_money(t.consumer_id, t.livemode) then
+    v_line := 'returning_vip';
+  else
+    v_line := 'returning';
+  end if;
 
   select * into r from public.place_cashback_rates(t.place_id);
-  v_bps := case when v_welcome then r.welcome_bps else r.returning_bps end;
+  v_bps := case v_line when 'welcome' then r.welcome_bps
+                       when 'returning_vip' then r.returning_vip_bps
+                       else r.returning_bps end;
   if v_bps <= 0 then
     return 0;
   end if;
@@ -342,12 +361,11 @@ begin
 
   insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, tab_id, livemode, available_at, reason)
   values (t.consumer_id, t.place_id, 'cashback', v_amount, lower(t.currency), t.id, t.livemode,
-          coalesce(t.paid_at, p_now) + interval '1 hour',
-          case when v_welcome then 'welcome' else 'returning' end);
+          coalesce(t.paid_at, p_now) + interval '1 hour', v_line);
   return v_amount;
 end;
 $function$;
 revoke all on function public.pay_tab_grant_cashback(uuid, timestamptz) from public, anon, authenticated;
 grant execute on function public.pay_tab_grant_cashback(uuid, timestamptz) to service_role;
 comment on function public.pay_tab_grant_cashback(uuid, timestamptz) is
-  'MESITA-4698, MESITA-4709, MESITA-4717, MESITA-4728, MESITA-4770: one paid bill''s Back: the Welcome (first paid bill here) or Returning rate of the place on cash_bill_cents + card_bill_cents, no cap, Pending 1 hour; none where Loyalty Cards is Off, on a bill recorded as discount, or on a bill that already has one. Reason = the line. Internal.';
+  'MESITA-4698, MESITA-4728, MESITA-4766, MESITA-4770: one paid bill''s Back: Welcome Everyone (first paid bill here), else Returning VIP (consumer_is_vip_for_money in the bill''s livemode) or Returning Regular, on cash_bill_cents + card_bill_cents, no cap, Pending 1 hour; none where Loyalty Cards is Off, on a bill recorded as discount, or on a bill that already has one. Reason = the line. Internal.';

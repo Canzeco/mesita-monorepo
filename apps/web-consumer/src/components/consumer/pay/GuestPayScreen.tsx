@@ -220,7 +220,7 @@ export function GuestPayScreen({
   const discountBps = serverDiscountBps ?? payPlaceDiscountBps(place);
   const discountCents = discountOf(billCents, discountBps);
   const toPayCents = billCents - discountCents;
-  const discountLabel = place?.visit_line === "returning" ? "Returning discount" : "Welcome discount";
+  const discountLabel = place?.visit_line === "returning_vip" ? "VIP discount" : place?.visit_line === "returning" ? "Returning discount" : "Welcome discount";
   const creditOn = useCredit && spendable > 0;
   const creditCents = creditOn ? Math.min(spendable, toPayCents) : 0;
   const leftCents = toPayCents - creditCents;

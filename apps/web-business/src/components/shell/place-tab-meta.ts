@@ -14,7 +14,6 @@ import {
   ReceiptIcon,
   SlidersHorizontalIcon,
   GiftIcon,
-  InstagramLogoIcon,
   MegaphoneIcon,
   ShieldCheckIcon,
   StorefrontIcon,
@@ -25,7 +24,7 @@ import {
 import type { PlaceTab } from "@/lib/routes";
 
 // Discounts left with the discount product (MESITA-3299). Monitor is
-// Customers · Views · Visits · Vouchers · Stories · Gifts · Payouts, plain
+// Customers · Views · Visits · Vouchers · Gifts · Payouts, plain
 // linked lists with no charts (MESITA-4538, MESITA-4732). General wears the gear (Pato,
 // MESITA-4534: "general icon must be a gear").
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
@@ -34,8 +33,6 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   // financial"): each bill and how it was paid.
   visits: { label: "Visits", icon: ReceiptIcon, sub: "Every bill at your place, how it was paid, and the cashback it earned." },
   vouchers: { label: "Vouchers", icon: TicketIcon, sub: "Prepayments guests bought here." },
-  // MESITA-4732: the story rewards (MESITA-4714), each story and its outcome.
-  stories: { label: "Stories", icon: InstagramLogoIcon, sub: "Instagram Stories guests posted tagging your place." },
   gifts: { label: "Gifts", icon: GiftIcon, sub: "Credit a guest sent a friend." },
   // Payments and Payouts are two pages (MESITA-4679, Pato: "Customers, Views,
   // Visits, Vouchers, Gifts, Payments, Payouts"; one page called Stripe since

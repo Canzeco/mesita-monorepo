@@ -1,5 +1,6 @@
 -- MESITA-3850 — VIP is automatic: a verified Instagram with more than 5,000
--- followers (MESITA-4639), and nothing else; privacy stopped counting
+-- followers (MESITA-4639), or an invitation code again since MESITA-4766
+-- (vip_back.test.sql); privacy stopped counting
 -- (MESITA-4659 reverses MESITA-4263). The class follows the count both ways, no
 -- one can write it, and the manual doors are closed.
 
@@ -136,9 +137,10 @@ select is(
 );
 
 select ok(
-  not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-               where n.nspname = 'public' and p.proname = 'consumer_redeem_vip_invitation'),
-  'no invitation code makes a VIP any more'
+  exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+           where n.nspname = 'public' and p.proname = 'consumer_redeem_vip_invitation')
+    and not has_function_privilege('authenticated', 'public.consumer_redeem_vip_invitation(uuid, text, boolean)', 'EXECUTE'),
+  'an invitation code makes a VIP again (MESITA-4766), through the server only'
 );
 
 -- The code tables stay as records (MESITA-3540), still EF-only.

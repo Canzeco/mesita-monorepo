@@ -4,10 +4,9 @@
 // every place without its own saved lines reads. A place's own lines
 // (place_cashback_settings) are never touched.
 //
-// MESITA-4714: and the story reward (story_reward_cents: 0 Off · 2000 · 5000,
-// optional) every place without its own row pays for a verified story.
+// MESITA-4766: and Returning VIP (returning_vip_bps 0 · 1000 · 2000, optional).
 //
-// Body: { welcome_bps, returning_bps, story_reward_cents? } (a cap_cents is ignored; MESITA-4728)
+// Body: { welcome_bps, returning_bps, returning_vip_bps? } (a cap_cents is ignored; MESITA-4728)
 // Response: { ok: true, cashback_defaults } · 400 bad input
 // Super-admins only. A change applies to the next confirmed bill; cashback
 // already earned stays as it was.

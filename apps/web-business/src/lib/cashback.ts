@@ -1,16 +1,14 @@
-// MESITA-4698: Offers › Stage 1 · Cashbacks. Each rate is Off · 5 · 10 · 15 ·
-// 20 %; no saved row reads the defaults. A plain module: business-api.ts is
-// "use server" and may export only async functions.
+// MESITA-4698: Offers › Pay · Cashbacks. No saved row reads the defaults. A
+// plain module: business-api.ts is "use server" and may export only async
+// functions.
 
-// Two lines since MESITA-4709: Welcome (the guest's first paid bill here) and
-// Returning (every later bill).
-// MESITA-4714: and Post, what a verified Instagram story pays the guest:
-// Off · 20 · 50 (cents 0 · 2000 · 5000), only while Loyalty Cards is On.
-// No cap per bill (Pato, 2026-11-23, MESITA-4728: "there is no ceiling for the
-// cashback amount").
-// TWO PICKS PER OFFER (Pato, 2026-11-23, MESITA-4764): Welcome 10 · 20 %,
-// Returning 5 · 10 %, Small voucher 10 · 20 %, Medium 20 · 40 %, Big 40 · 60 %,
-// Story MX$20 · MX$40. TWIN of supabase _shared/cashback.ts and money.ts
+// THREE LINES SINCE MESITA-4766 (Pato, 2026-11-23: "BRING BACK VIP CUSTOMERS.
+// REMOVE INSTAGRAM STORIES."): Welcome Everyone (the guest's first paid bill
+// here) Off · 10 · 20 %, Returning Regular (every later bill) Off · 5 · 10 %,
+// Returning VIP (every later bill of a VIP guest: invitation code or more than
+// 5,000 Instagram followers) Off · 10 · 20 %. No cap per bill (MESITA-4728).
+// Voucher bonuses (MESITA-4764): Small 10 · 20 %, Medium 20 · 40 %, Big
+// 40 · 60 %. TWIN of supabase _shared/cashback.ts and money.ts
 // VOUCHER_BONUS_STEPS_BPS; the server refuses anything else.
 /** MESITA-4770: how the Welcome / Returning lines pay out (Pato,
  *  2026-11-23: "YOU JUST SET THE TIER. AND THEN THE MECHANISM FOR ALL YOUR
@@ -21,14 +19,18 @@ export const VISIT_MECHANISMS: readonly VisitMechanism[] = ["discount", "cashbac
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
+  returning_vip_bps: number;
   visit_mechanism: VisitMechanism;
-  story_reward_cents: number;
   small_bonus_bps: number;
   medium_bonus_bps: number;
   big_bonus_bps: number;
 };
-export const VISIT_PICKS_BPS = { welcome_bps: [1000, 2000], returning_bps: [500, 1000] } as const;
-export const STORY_REWARD_STEPS_CENTS = [0, 2000, 4000] as const;
+export const VISIT_PICKS_BPS = {
+  welcome_bps: [0, 1000, 2000],
+  returning_bps: [0, 500, 1000],
+  returning_vip_bps: [0, 1000, 2000],
+} as const;
+export type VisitRateField = keyof typeof VISIT_PICKS_BPS;
 export const VOUCHER_BONUS_PICKS_BPS = {
   small_bonus_bps: [1000, 2000],
   medium_bonus_bps: [2000, 4000],
@@ -38,16 +40,16 @@ export type VoucherBonusField = keyof typeof VOUCHER_BONUS_PICKS_BPS;
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
+  returning_vip_bps: 1000,
   visit_mechanism: "cashback",
-  story_reward_cents: 2000,
   small_bonus_bps: 1000,
   medium_bonus_bps: 2000,
   big_bonus_bps: 4000,
 };
 
-/** A read from an older server lacks the story reward or the voucher
- *  bonuses: the defaults fill them. */
-export function withStoryReward(r: Partial<CashbackRates> & Pick<CashbackRates, "welcome_bps" | "returning_bps">): CashbackRates {
+/** The fields the server saves; anything else it sent (an older server's
+ *  story_reward_cents) is dropped, and a field it lacks reads the default. */
+export function readCashback(r: Partial<Record<keyof CashbackRates, unknown>>): CashbackRates {
   const out = { ...CASHBACK_DEFAULTS };
   for (const k of Object.keys(out) as Array<keyof CashbackRates>) {
     const v = r[k];

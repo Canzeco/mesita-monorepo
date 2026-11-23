@@ -207,6 +207,11 @@ const DEAD_LINKS_DROPPED_COLUMNS = {
   profiles: ["resy_url", "didi_food_url", "x_url", "threads_url", "reddit_url"],
 } as const satisfies Record<string, readonly string[]>;
 
+/** MESITA-4766 — Instagram Stories removed (20261123230000_vip_back_stories_out.sql). */
+const STORIES_DROPPED_COLUMNS = {
+  wallet_entries: ["story_mention_id"],
+} as const satisfies Record<string, readonly string[]>;
+
 /** Every dropping table's columns, all cuts merged. */
 const DROPPED_BY_TABLE = new Map<string, Set<string>>();
 for (
@@ -217,6 +222,7 @@ for (
     PRIMARY_TYPE_DROPPED_COLUMNS,
     PAY_WAYS_DROPPED_COLUMNS,
     DEAD_LINKS_DROPPED_COLUMNS,
+    STORIES_DROPPED_COLUMNS,
   ]
 ) {
   for (const [table, cols] of Object.entries(list)) {

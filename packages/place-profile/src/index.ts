@@ -43,8 +43,6 @@ export {
 export {
   BASKET_MAX,
   basketItems,
-  PostSection,
-  type PostTabRead,
   readyClock,
   VouchersPane,
   type OffersTab,

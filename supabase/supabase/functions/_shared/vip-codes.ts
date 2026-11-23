@@ -1,5 +1,6 @@
-// VIP invitation codes (MESITA-3540): the twelve digits an operator issues on
-// Admin › Guests and a guest types once on Me › Class. Only the SHA-256 of the
+// VIP invitation codes (MESITA-3540, back with MESITA-4766): the twelve
+// digits an operator issues on Admin › VIP and a guest types once on
+// Me › Become VIP (consumer-web-redeem-vip-code). Only the SHA-256 of the
 // digits and the last four are stored, so the operator sees a code exactly
 // once, in the answer that issued it. consumer_redeem_vip_invitation (SQL)
 // hashes the same way: sha256 of the twelve ASCII digits, lowercase hex.
@@ -30,6 +31,97 @@ export type VipCode = {
   revokedAt: string | null;
 };
 
+/** MESITA-4766: the redeem body `{ code }`: twelve digits once spaces and
+ *  dashes are stripped, kept as text (a leading zero is a digit). */
+export function readRedeemVipCodeBody(body: unknown): { ok: true; code: string } | { ok: false } {
+  const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
+  if (typeof b.code !== "string") return { ok: false };
+  const code = b.code.replace(/[\s-]/g, "");
+  return /^[0-9]{12}$/.test(code) ? { ok: true, code } : { ok: false };
+}
+
+/** MESITA-4766: the extra columns Admin › VIP reads per VIP guest. */
+export const VIP_GUEST_EXTRA_SELECT = "vip_invited_at, vip_invitation_code_id, instagram_followers_count, instagram_followers_emulated";
+
+export type VipGuestRaw = {
+  id: string;
+  guest_class?: string | null;
+  vip_invited_at?: string | null;
+  vip_invitation_code_id?: string | null;
+  instagram_followers_count?: number | null;
+  instagram_followers_emulated?: number | null;
+};
+
+export type VipGuestFacts = {
+  vipInvitedAt: string | null;
+  vipReason: "code" | "instagram" | null;
+  vipCodeLast4: string | null;
+  followers: number | null;
+  followersEmulated: number | null;
+  /** Whether a later bill pays Returning VIP now (consumer_is_vip_for_money). */
+  paidAsVip: boolean;
+};
+
+/** Admin › VIP: each VIP guest's why, followers and money status. One batched
+ *  code read; one money-rule call per VIP guest (a short list). Throws on a
+ *  failed read: a wrong "Paid as VIP" is worse than none. */
+export async function readVipGuestFacts(admin: SupabaseClient, rows: VipGuestRaw[], livemode: boolean): Promise<Map<string, VipGuestFacts>> {
+  const codeIds = [...new Set(rows.map((r) => r.vip_invitation_code_id).filter((v): v is string => typeof v === "string"))];
+  const last4 = new Map<string, string>();
+  if (codeIds.length > 0) {
+    const { data, error } = await admin.from("vip_invitation_codes").select("id, code_last4").in("id", codeIds);
+    if (error) throw new Error(`vip_invitation_codes: ${error.message}`);
+    for (const c of data ?? []) last4.set(c.id as string, c.code_last4 as string);
+  }
+  const paid = await Promise.all(rows.map(async (r) => {
+    const { data, error } = await admin.rpc("consumer_is_vip_for_money", { p_consumer: r.id, p_livemode: livemode });
+    if (error) throw new Error(`consumer_is_vip_for_money: ${error.message}`);
+    return data === true;
+  }));
+  const out = new Map<string, VipGuestFacts>();
+  rows.forEach((r, i) => {
+    out.set(String(r.id), {
+      vipInvitedAt: r.vip_invited_at ?? null,
+      vipReason: vipReason(r),
+      vipCodeLast4: r.vip_invitation_code_id ? last4.get(r.vip_invitation_code_id) ?? null : null,
+      followers: typeof r.instagram_followers_count === "number" ? r.instagram_followers_count : null,
+      followersEmulated: typeof r.instagram_followers_emulated === "number" ? r.instagram_followers_emulated : null,
+      paidAsVip: paid[i],
+    });
+  });
+  return out;
+}
+
+/** MESITA-4766: the redeem RPC's jsonb → the EF's answer. Pure. */
+export function redeemAnswer(data: unknown): { status: number; body: Record<string, unknown> } {
+  const r = (typeof data === "object" && data !== null ? data : {}) as Record<string, unknown>;
+  switch (r.outcome) {
+    case "joined":
+    case "already_vip":
+      return { status: 200, body: { ok: true, outcome: r.outcome } };
+    case "invalid":
+      return { status: 422, body: { ok: false, code: "code_invalid", error: "That code doesn't work" } };
+    case "rate_limited": {
+      const s = Number(r.retry_after_seconds);
+      return {
+        status: 429,
+        body: { ok: false, code: "too_many_tries", error: "Too many tries. Try again in an hour.", retryAfterSeconds: Number.isFinite(s) && s > 0 ? Math.ceil(s) : 3600 },
+      };
+    }
+    case "consumer_not_found":
+      return { status: 404, body: { ok: false, code: "consumer_not_found", error: "Sign in again" } };
+    default:
+      return { status: 500, body: { ok: false, code: "save_failed", error: "Couldn't check the code. Try again." } };
+  }
+}
+
+/** MESITA-4766: why this guest is VIP — 'code' when an invitation code made
+ *  them VIP, 'instagram' for a follower VIP (guest_class), null for a Regular. */
+export function vipReason(c: { guest_class?: string | null; vip_invited_at?: string | null }): "code" | "instagram" | null {
+  if (c.vip_invited_at) return "code";
+  return c.guest_class === "vip" ? "instagram" : null;
+}
+
 /** Twelve uniformly random digits. Rejection sampling keeps every digit
  *  unbiased (a byte mod 10 would favour 0..5). */
 export function newVipCode(random: (buf: Uint8Array) => Uint8Array = (b) => crypto.getRandomValues(b)): string {
@@ -56,15 +148,22 @@ export function formatVipCode(code: string): string {
 
 export type SaveVipCodeBody =
   | { action: "issue"; label: string | null; vipPartnerId: string | null }
-  | { action: "revoke"; id: string };
+  | { action: "revoke"; id: string }
+  | { action: "removeVip"; consumerId: string };
 
 export type VipCodeError = { status: number; code: string; error: string };
 
-/** The body of a save call: `{ label?, vipPartnerId? }` issues; `{ id, revoke: true }` revokes. */
+/** The body of a save call: `{ label?, vipPartnerId? }` issues; `{ id, revoke: true }` revokes;
+ *  `{ consumerId, removeVip: true }` takes a code-made VIP away (MESITA-4766). */
 export function readSaveVipCodeBody(
   body: unknown,
 ): ({ ok: true } & SaveVipCodeBody) | ({ ok: false } & VipCodeError) {
   const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
+  if (b.removeVip === true) {
+    const consumerId = typeof b.consumerId === "string" ? b.consumerId.trim().toLowerCase() : "";
+    if (!isUuid(consumerId)) return { ok: false, status: 400, code: "invalid_consumer_id", error: "consumerId must be a guest's id" };
+    return { ok: true, action: "removeVip", consumerId };
+  }
   if (b.revoke === true) {
     const id = typeof b.id === "string" ? b.id.trim().toLowerCase() : "";
     if (!isUuid(id)) return { ok: false, status: 400, code: "invalid_code_id", error: "id must be a code's id" };

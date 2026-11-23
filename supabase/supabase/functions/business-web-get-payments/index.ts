@@ -17,7 +17,7 @@
 //             code_set,    whether the place code is set: the waiter's charge
 //                          (MESITA-3306) needs it, so Payments says so
 //             fee: { hold, invoice },
-//             cashback: { welcome_bps, returning_bps, story_reward_cents } }
+//             cashback: { welcome_bps, returning_bps, returning_vip_bps, … } }
 //                          MESITA-4698: the owner's two cashback lines and
 //                          the cap per bill (defaults when never saved)  Mesita's fee invoice (MESITA-3461):
 //                          hold = cards are off until it is paid; invoice =
@@ -30,8 +30,7 @@
 //                          in this server's Stripe universe); outstanding is
 //                          wallet_place_outstanding, the voucher buy's read.
 //                          null when either read fails.
-//             instagram_url: the place profile's Instagram link (Offers ›
-//                          Instagram Stories shows it read-only), or null
+//             instagram_url: the place profile's Instagram link, or null
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";

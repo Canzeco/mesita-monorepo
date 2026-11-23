@@ -5,6 +5,9 @@
 // (MESITA-2553) and who last set the class. Closed accounts are left out.
 // Also every VIP partner (MESITA-2556), for the partner choice on a VIP row,
 // and the newest VIP invitation codes (MESITA-3540; null when that read failed).
+// MESITA-4766: `{ vipOnly: true }` lists only VIP guests, each with why
+// (vipReason, vipCodeLast4), real and emulated followers and paidAsVip (the
+// live money rule, consumer_is_vip_for_money).
 // Read-only; super-admin only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -18,21 +21,26 @@ import {
   toGuestRow,
 } from "../_shared/guest-standing.ts";
 import { loadVipPartners } from "../_shared/vip-partners.ts";
-import { loadVipCodes } from "../_shared/vip-codes.ts";
+import { loadVipCodes, readVipGuestFacts, VIP_GUEST_EXTRA_SELECT, type VipGuestFacts, type VipGuestRaw } from "../_shared/vip-codes.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("admin-web-list-guests", async (req) => {
   const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 
-  const body = await readJsonOr<{ q?: unknown }>(req, {});
+  const body = await readJsonOr<{ q?: unknown; vipOnly?: unknown }>(req, {});
   const filter = guestSearchFilter(body.q);
+  // MESITA-4766: Admin › VIP lists only VIP guests, filtered here (never a
+  // client filter over a capped page).
+  const vipOnly = body.vipOnly === true;
 
   let query = admin
     .from("consumers")
-    .select(GUEST_ROW_SELECT)
+    .select(vipOnly ? `${GUEST_ROW_SELECT}, ${VIP_GUEST_EXTRA_SELECT}` : GUEST_ROW_SELECT)
     .is("deleted_at", null);
   if (filter) query = query.or(filter);
+  if (vipOnly) query = query.or("vip_invited_at.not.is.null,guest_class.eq.vip");
   const { data, error } = await query
     .order("created_at", { ascending: false })
     .limit(GUEST_LIST_LIMIT);
@@ -69,9 +77,19 @@ serveJson("admin-web-list-guests", async (req) => {
   const codes = await loadVipCodes(admin);
   if (!codes.ok) console.warn("vip_codes_list_failed", JSON.stringify({ error: codes.error }));
 
+  const guests = rows.map((r) => toGuestRow(r, (id) => emails.get(id) ?? null));
+  let vipFacts: Map<string, VipGuestFacts> | null = null;
+  if (vipOnly) {
+    try {
+      vipFacts = await readVipGuestFacts(admin, rows as unknown as VipGuestRaw[], paymentsLivemode());
+    } catch (err) {
+      return json({ ok: false, error: `list_failed: ${err instanceof Error ? err.message : String(err)}` }, 500);
+    }
+  }
+
   return json({
     ok: true,
-    guests: rows.map((r) => toGuestRow(r, (id) => emails.get(id) ?? null)),
+    guests: vipFacts ? guests.map((g) => ({ ...g, ...vipFacts!.get(g.id) })) : guests,
     partners: partners.partners,
     vipCodes: codes.ok ? codes.codes : null,
   });

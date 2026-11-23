@@ -55,7 +55,7 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { type CashbackRates, readCashbackRatesMany } from "../_shared/cashback.ts";
 import { errorMessage } from "../_shared/errors.ts";
-import { chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { cashbackOffer, chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { readPins, withPins } from "../_shared/loyalty-cards.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
@@ -128,7 +128,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Balances ───────────────────────────────────────────────────────────
   const { data: rows, error: entriesErr } = await admin
     .from("wallet_entries")
-    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id, purchase_id, gift_id")
+    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id, purchase_id, gift_id, reason")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .order("created_at", { ascending: false })
@@ -227,18 +227,11 @@ serveJson("consumer-web-get-wallet", async (req) => {
     console.error("[consumer-web-get-wallet] cashback", errorMessage(err));
     return new Map<string, CashbackRates>();
   });
+  // MESITA-4766: the three lines, as list rows read them; MESITA-4770: a
+  // Discount shows without Loyalty Cards, cashback only where credit is born.
   const cashbackOf = (id: string) => {
     const all = cashbackRates.get(id);
-    const visit_mechanism = all?.visit_mechanism === "discount" ? "discount" : "cashback";
-    const r = all && (credits(id) || visit_mechanism === "discount") ? all : undefined;
-    const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
-    return {
-      cashback_pct: top > 0 ? top / 100 : null,
-      cashback_flat: !!r && r.welcome_bps === r.returning_bps,
-      visit_mechanism,
-      // MESITA-4714: the pink Post slide.
-      story_cents: credits(id) && all && all.story_reward_cents > 0 ? all.story_reward_cents : null,
-    };
+    return cashbackOffer(all && (credits(id) || all.visit_mechanism === "discount") ? all : undefined);
   };
   const offerRows = await withGuestOffers(
     admin,

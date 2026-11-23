@@ -182,10 +182,10 @@ const CASES: Record<string, SectionCase> = {
   },
 
   models: {
-    // An older console still sends the dead `supabase` / `ojo` keys
-    // (MESITA-2144): the save lands, and they are not written back.
+    // An older console still sends the dead `supabase` / `ojo` / `stories` keys
+    // (MESITA-2144, MESITA-4766): the save lands, and they are not written back.
     valid: {
-      config: { memo: { model: "gpt-4o" }, supabase: { model: "gpt-4o" }, ojo: { model: "gpt-4o" } },
+      config: { memo: { model: "gpt-4o" }, supabase: { model: "gpt-4o" }, ojo: { model: "gpt-4o" }, stories: { model: "gpt-4o" } },
     },
     assertSaved: (saved, row) => {
       assertEquals(((saved.config as Row).memo as Row).model, "gpt-4o");
@@ -193,9 +193,9 @@ const CASES: Record<string, SectionCase> = {
       assertEquals("updatedAt" in saved, false);
       const stored = row.models_config as Row;
       assertEquals(stored.v, 1);
-      // MESITA-4714: the Post story check's model is a fourth kept key.
-      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "stories", "v"]);
-      assertEquals(stored.stories, { model: "gpt-6-luna" });
+      // MESITA-4766: the story check's model went with Stories; a sent
+      // `stories` key is not written back either.
+      assertEquals(Object.keys(stored).sort(), ["embeddings", "enricher", "memo", "v"]);
       assertEquals(stored.enricher, { model: "gpt-6-luna" });
     },
     invalid: { config: "not an object" },

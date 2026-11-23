@@ -24,8 +24,6 @@
 //               Visit's card (one meal, one ticket); any other payment is
 //               its own ticket
 //     Vouchers  credits bought, bonuses
-//     Stories   the guest's own Instagram stories (MESITA-4738,
-//               consumer-web-list-stories): Pending · Rejected · Credited
 //     Gifts     every gift sent or received, sender → receiver
 //               (GiftTickets, MESITA-4036; Gifts-In and Gifts-Out before)
 //     Refunds   purchases refunded; its own tab again since MESITA-3949
@@ -53,7 +51,6 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { GiftTickets } from "./GiftTickets";
-import { Instagram } from "@/components/shared/instagram-icon";
 import { cn } from "@/lib/utils";
 import {
   apiListReservations,
@@ -61,7 +58,6 @@ import {
   type EFReservationRow,
 } from "@/lib/api/reservations";
 import { apiListVisits, type GuestVisit } from "@/lib/api/tab";
-import { apiListStories } from "@/lib/api/story";
 import { apiGetWallet, WALLET_CACHE_KEY, type Wallet } from "@/lib/api/wallet";
 import {
   CONSUMER_ROUTES,
@@ -75,7 +71,6 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
 import {
   join,
-  storyRows,
   visitRows,
   walletRows,
   type ListType,
@@ -216,11 +211,6 @@ const EMPTY: Record<
     title: "No vouchers yet",
     action: { label: "Find a place", href: CONSUMER_ROUTES.search },
   },
-  // The guest's Instagram stories (MESITA-4738).
-  stories: {
-    title: "No stories yet",
-    action: { label: "Find a place", href: CONSUMER_ROUTES.search },
-  },
   // One Gifts list (MESITA-4036); GiftTickets draws its own empty state.
   gifts: {
     title: "No gifts yet",
@@ -235,7 +225,7 @@ const EMPTY: Record<
 /** Tickets' tabs (MESITA-3893, Pato: "remove all. just Visits. Vouchers.
  *  Gifts"). REFUNDS IS ITS OWN TAB AGAIN (MESITA-3949, Pato: "add Refunds
  *  here ... Refunds is important in tickets"), last. */
-export type TicketTab = "visits" | "vouchers" | "stories" | "gifts";
+export type TicketTab = "visits" | "vouchers" | "gifts";
 // REFUNDS LEFT FOR SETTINGS (MESITA-4402): /me/settings/refunds, RefundsPage.
 // AN ICON ON EACH (MESITA-3900, Pato: "add icons to the top menu here"):
 // the ones the page's empty states already wear. Gifts became Gifts-In and
@@ -251,15 +241,13 @@ const TICKET_TABS: ReadonlyArray<{
   // names it.
   { kind: "vouchers", label: "Vouchers", icon: BadgeDollarSign },
   { kind: "visits", label: "Visits", icon: UtensilsCrossed },
-  // VOUCHERS · VISITS · STORIES · GIFTS (Pato, 2026-11-23, MESITA-4738).
-  { kind: "stories", label: "Stories", icon: Instagram },
+  // Stories left with Instagram Stories (MESITA-4766; MESITA-4738 added it).
   { kind: "gifts", label: "Gifts", icon: Gift },
 ];
 
 /** The tab a /me/tickets address shows: bare is Visits. */
 function ticketTabOf(seg: string | undefined): TicketTab {
   if (seg === "vouchers") return "vouchers";
-  if (seg === "stories") return "stories";
   if (seg === "gifts" || seg === "gifts-in" || seg === "gifts-out")
     return "gifts";
   return "visits";
@@ -270,7 +258,6 @@ const ICON: Record<ListType | "all", LucideIcon> = {
   all: Ticket,
   visits: UtensilsCrossed,
   vouchers: BadgeDollarSign,
-  stories: Instagram,
   gifts: Gift,
   refunds: HandCoins,
 };
@@ -401,14 +388,6 @@ export function useVisits() {
   });
 }
 
-/** The guest's own Instagram stories (MESITA-4738): Tickets' Stories tab. */
-export function useStories() {
-  const getSupabase = useLazyBrowserSupabase();
-  return useCachedQuery("activity-stories", () => apiListStories(getSupabase()), {
-    ttl: TTL,
-  });
-}
-
 /** /me/settings/refunds (MESITA-4402): the refund rows Tickets' Refunds tab
  *  listed, now a Settings page. */
 export function RefundsPage() {
@@ -501,12 +480,10 @@ export function TicketsBoard({
     { ttl: TTL },
   );
   const visits = useVisits();
-  const stories = useStories();
   useEffect(() => {
     if (visits.error) reportError("me tickets visits failed", visits.error);
     if (wallet.error) reportError("me tickets wallet failed", wallet.error);
-    if (stories.error) reportError("me tickets stories failed", stories.error);
-  }, [visits.error, wallet.error, stories.error]);
+  }, [visits.error, wallet.error]);
 
   // The place's slice of each read (MESITA-4279); everything when no place.
   const walletData = useMemo<Wallet | null>(() => {
@@ -589,16 +566,8 @@ export function TicketsBoard({
           ]
         : null,
       vouchers: of("vouchers"),
-      // The place's stories only on its card page (MESITA-4738).
-      stories: stories.data
-        ? storyRows(
-            placeId
-              ? stories.data.stories.filter((s) => s.place?.id === placeId)
-              : stories.data.stories,
-          )
-        : null,
     } satisfies Record<Exclude<TicketTab, "gifts">, Row[] | null>;
-  }, [visitList, walletData, visitCutoff, stories.data, placeId]);
+  }, [visitList, walletData, visitCutoff]);
 
   // PENDING TICKETS (MESITA-4623): bills waiting for the waiter, vouchers
   // still landing; their tab wears a dot. ON THE CARD PAGE, NO STRIP AND NO
@@ -608,7 +577,6 @@ export function TicketsBoard({
   const pending: Partial<Record<TicketTab, number>> = {
     visits: (byKind.visits ?? []).filter((r) => r.pending).length,
     vouchers: boxed ? 0 : (byKind.vouchers ?? []).filter((r) => r.landing).length,
-    stories: (byKind.stories ?? []).filter((r) => r.pending).length,
   };
 
   const walletReady = !wallet.loading;
@@ -616,19 +584,14 @@ export function TicketsBoard({
   const ready =
     kind === "visits"
       ? !visits.loading && walletReady
-      : kind === "stories"
-        ? !stories.loading
-        : walletReady;
+      : walletReady;
   const failed =
     kind === "visits"
       ? !!visits.error
-      : kind === "stories"
-        ? !!stories.error
-        : !!wallet.error;
+      : !!wallet.error;
   const retry = () => {
     if (visits.error) visits.reload();
     if (wallet.error) wallet.reload();
-    if (stories.error) stories.reload();
   };
 
   // No "Showing your latest N" line any more (MESITA-4595): Load more.

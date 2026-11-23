@@ -34,6 +34,9 @@ export type WalletEntry = {
   /** The gift behind a gift_out, gift_in or gift_back (MESITA-4066): the
    *  entry page forwards to that gift's page. Absent before MESITA-4066. */
   gift_id?: string | null;
+  /** Which Back line paid a `cashback` entry (MESITA-4766): welcome ·
+   *  returning · returning_vip. Absent on other kinds and older reads. */
+  reason?: string | null;
 };
 
 export type WalletBalance = {
@@ -484,25 +487,26 @@ export type PayPlace = {
   /** MESITA-4698: Loyalty Cards is On, so the place has offers (Get Discounts). */
   offers_ok?: boolean;
   /** What the guest can buy here now (MESITA-4519), the card's offer
-   *  slides, plus the Pay (cashback) and Post (story) offers the server
-   *  already sends (MESITA-4731). Absent from an older server reads as none. */
+   *  slides, plus the Pay (cashback) offer the server already sends
+   *  (MESITA-4731). Absent from an older server reads as none. */
   offers?: {
     sell: string[];
     cashback_pct?: number | null;
     cashback_flat?: boolean;
-    /** MESITA-4748: the two Back lines apart, for the Pay Bill sheet's boxes.
-     *  Absent from an older server reads as no boxes. */
+    /** MESITA-4748/4766: the three Back lines apart, for the Pay Bill
+     *  sheet's boxes; null = that line is Off. Absent from an older server
+     *  reads as no boxes. `cashback_pct` is the highest of the three. */
     welcome_pct?: number | null;
     returning_pct?: number | null;
-    story_cents?: number | null;
+    returning_vip_pct?: number | null;
     /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for
-     *  both lines. Absent from an older server reads as cashback. */
+     *  the three lines. Absent from an older server reads as cashback. */
     visit_mechanism?: "discount" | "cashback";
     /** MESITA-4764: each voucher's bonus here in whole percent. */
     voucher_pct?: Record<string, number>;
   };
   /** MESITA-4770: the line this guest's next bill here falls in. */
-  visit_line?: "welcome" | "returning";
+  visit_line?: "welcome" | "returning" | "returning_vip";
 };
 
 /** MESITA-4770: the visit discount this guest's next bill here gets, in
@@ -511,7 +515,7 @@ export type PayPlace = {
 export function payPlaceDiscountBps(p: PayPlace | null): number {
   const o = p?.offers;
   if (!o || o.visit_mechanism !== "discount") return 0;
-  const pct = p?.visit_line === "returning" ? o.returning_pct : o.welcome_pct;
+  const pct = p?.visit_line === "returning_vip" ? o.returning_vip_pct : p?.visit_line === "returning" ? o.returning_pct : o.welcome_pct;
   return pct && pct > 0 ? Math.round(pct * 100) : 0;
 }
 
@@ -520,13 +524,13 @@ export function discountOf(billCents: number, bps: number): number {
   return bps > 0 && billCents > 0 ? Math.floor((billCents * bps) / 10000) : 0;
 }
 
-/** Which of a place's Offers tabs have something on (MESITA-4731, D5). */
-export function payPlaceTabs(p: PayPlace): { prepay: boolean; pay: boolean; post: boolean } {
+/** Which of a place's Offers tabs have something on (MESITA-4731, D5;
+ *  Post left with Stories, MESITA-4766). */
+export function payPlaceTabs(p: PayPlace): { prepay: boolean; pay: boolean } {
   const o = p.offers;
   return {
     prepay: (o?.sell?.length ?? 0) > 0,
     pay: (o?.cashback_pct ?? 0) > 0,
-    post: (o?.story_cents ?? 0) > 0,
   };
 }
 
@@ -576,8 +580,9 @@ export const ENTRY_LABEL: Record<string, string> = {
   // MESITA-4698: earned on a paid bill, Pending 1 hour (MESITA-4717).
   // "Back", never "cashback" (Pato, MESITA-4725).
   cashback: "Back",
-  // MESITA-4714: paid at the story's recheck 10 hours after its first check, available at once (MESITA-4717).
-  story: "Story",
+  // MESITA-4714's story reward; Stories left (MESITA-4766) but paid entries
+  // stay in the guest's history under this name.
+  story: "Instagram Story credit",
   spend: "Paid",
   reversal: "Refund",
   // Credit given back on a payment (MESITA-3750: it showed the raw word).
@@ -592,14 +597,24 @@ export const ENTRY_LABEL: Record<string, string> = {
  *  purchase_id is a refunded purchase; a payment_id is a refunded bill's
  *  credit taken back. The wallet_entries CHECK requires one of the two on
  *  every reversal, so the plain "Refund" fallback is defensive only. */
-export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "payment_id">): string {
+export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "payment_id" | "reason">): string {
   if (e.kind === "reversal") {
     if (e.purchase_id) return "Purchase refunded";
     if (e.payment_id) return "Credit taken back";
     return "Refund";
   }
+  // A Back entry names its line (MESITA-4766): "Back · Returning VIP".
+  if (e.kind === "cashback" && e.reason && BACK_LINE_LABEL[e.reason]) return `${ENTRY_LABEL.cashback} · ${BACK_LINE_LABEL[e.reason]}`;
   return ENTRY_LABEL[e.kind] ?? e.kind;
 }
+
+/** The Back lines by a cashback entry's `reason` (MESITA-4766). A guest
+ *  never reads "Regular": the middle line is plain Returning. */
+export const BACK_LINE_LABEL: Record<string, string> = {
+  welcome: "Welcome",
+  returning: "Returning",
+  returning_vip: "Returning VIP",
+};
 
 // ── Sending credit to a friend (MESITA-3292) ────────────────────────────────
 
