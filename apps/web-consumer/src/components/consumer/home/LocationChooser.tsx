@@ -20,7 +20,7 @@
 // gate's `location_gate_chosen` event; no note means the device fix.
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Bookmark, Check, Loader2, MapPin, Navigation, Pencil, Plus, Search } from "lucide-react";
+import { Bookmark, Check, Loader2, LogIn, MapPin, Navigation, Pencil, Plus, Search } from "lucide-react";
 import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -40,6 +40,8 @@ import { displayName, evictionFor, useSavedLocations, type SavedLocation } from 
 import { savedLocationKey, setActiveLocation, useActiveLocation, useActiveLocationKey } from "@/lib/active-location";
 import { PIN_LIST_FULL, PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
 import { cn, errMsg } from "@/lib/utils";
+import { useViewer } from "@/lib/identity-context";
+import { signHref } from "@/lib/anonymous";
 
 /** How the guest last chose a point in any chooser (MESITA-4542): read once
  *  by Home's catalog when its point first appears. Module-level, so the
@@ -108,6 +110,12 @@ export function LocationChooser({
   flush?: boolean;
 }) {
   const cardClass = flush ? FLUSH_CARD_CLASS : CARD_CLASS;
+  // SIGNED OUT, NO DEAD ENDS (MESITA-4739): an anonymous visitor never makes
+  // the paid Google calls behind search and the pin's address (MESITA-4246),
+  // so the field only ever said "No matches yet" and Add a location never
+  // found its address. Signed out, the chooser offers what works: Use my
+  // location, then Sign in to search any place.
+  const anonymous = useViewer() === "anonymous";
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const locate = useLocateUser();
@@ -397,9 +405,18 @@ export function LocationChooser({
           ),
         }),
       )}
+      {anonymous
+        ? row({
+            key: "sign",
+            title: "Sign in to search any place",
+            sub: "Then search a city or save a spot",
+            icon: <LogIn className={ICON} strokeWidth={2.25} />,
+            onClick: () => window.location.assign(signHref(`${window.location.pathname}${window.location.search}`)),
+          })
+        : null}
       {/* The visible way to save a spot (MESITA-2945): the picker opens on
-          the device fix, else on Monterrey. */}
-      {row({
+          the device fix, else on Monterrey. Members only (MESITA-4739). */}
+      {anonymous ? null : row({
         key: "add",
         title: "Add a location",
         sub: listFull ? PIN_LIST_FULL : "Home, work — any spot on the map",
@@ -419,9 +436,9 @@ export function LocationChooser({
 
   return (
     <div className={cn("flex flex-col gap-4", bodyClassName)} data-places-location-chooser="sheet" data-places-location-sheet>
-      {search}
+      {anonymous ? null : search}
       {errorBox}
-      {typing ? matches : card}
+      {typing && !anonymous ? matches : card}
     </div>
   );
 }
