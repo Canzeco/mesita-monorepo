@@ -122,6 +122,28 @@ export async function readGuestClass(admin: SupabaseClient, consumerId: string):
   return (data?.guest_class as string | undefined) ?? null;
 }
 
+/** A place's cashback as the guest screens read it (MESITA-4698, MESITA-4702):
+ *  the three lines and the cap, and the line this caller's next bill falls in
+ *  (null signed out). Null where Loyalty Cards is Off (no cashback is earned
+ *  there) or the read fails (logged): no rate beats a wrong one. */
+export async function placeCashbackFor(
+  admin: SupabaseClient,
+  args: { placeId: string; consumerId: string | null; livemode: boolean; loyaltyCards: boolean; who: string },
+): Promise<(CashbackRates & { line: CashbackLine | null }) | null> {
+  if (!args.loyaltyCards) return null;
+  try {
+    const [rates, firstBill, klass] = await Promise.all([
+      readCashbackRates(admin, args.placeId),
+      args.consumerId ? readHasPaidBill(admin, args.consumerId, args.placeId, args.livemode).then((paid) => !paid) : Promise.resolve(null),
+      args.consumerId ? readGuestClass(admin, args.consumerId) : Promise.resolve(null),
+    ]);
+    return { ...rates, line: firstBill === null ? null : cashbackLine({ firstBill, guestClass: klass }) };
+  } catch (err) {
+    console.error(`[${args.who}] cashback`, err instanceof Error ? err.message : String(err));
+    return null;
+  }
+}
+
 /** Whether this guest has a paid bill at this place (so Welcome is spent). */
 export async function readHasPaidBill(admin: SupabaseClient, consumerId: string, placeId: string, livemode: boolean): Promise<boolean> {
   const { count, error } = await admin

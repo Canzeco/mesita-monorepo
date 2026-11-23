@@ -17,6 +17,8 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { readMoneyConfig } from "./money-config.ts";
+import { type CashbackRates, readCashbackRatesMany } from "./cashback.ts";
+import { errorMessage } from "./errors.ts";
 import { vouchersUpToPct } from "./money.ts";
 import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
@@ -178,7 +180,10 @@ export async function chargesEnabledByPlace(
 /** THE OFFER BUTTON'S SLIDES (MESITA-3467, Pato: "a carousel of offers ...
  *  whatever offers the place is offering"): the vouchers the place sells
  *  now, in moneyState's words. */
-export type ListRowOffers = { sell: MoneyVoucherKey[] };
+/** MESITA-4702: cashback_pct is the place's highest cashback line where
+ *  Loyalty Cards is On (null = none earned); cashback_flat says every line
+ *  is that rate. The carousel's green "Pay · Up to N% Cashback" slide. */
+export type ListRowOffers = { sell: MoneyVoucherKey[]; cashback_pct: number | null; cashback_flat: boolean };
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
@@ -197,7 +202,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
-  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { sell: [] } }));
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { sell: [], cashback_pct: null, cashback_flat: false } }));
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   // BUYING PAUSED SELLS NOTHING (autoplan eng E3, MESITA-4207): the admin
@@ -216,10 +221,21 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const settings = new Map<string, PaymentSettings>();
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
+  // MESITA-4702: the cashback lines of the places where credit can be born.
+  // A failed read shows no cashback slide rather than a wrong rate.
+  const earning = ids.filter((id) => settings.get(id)?.loyalty_cards === true);
+  const rates = await readCashbackRatesMany(admin, earning).catch((err) => {
+    console.error("[payments] cashback_read_failed", errorMessage(err));
+    return new Map<string, CashbackRates>();
+  });
   return places.map((p) => {
     const money = listRowMoney(settings.get(p.id), charges.has(p.id));
     const sell = config.buying_paused ? [] : money.sell;
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell } };
+    const r = rates.get(p.id);
+    const top = r ? Math.max(r.welcome_bps, r.regular_bps, r.vip_bps) : 0;
+    const cashback_pct = top > 0 ? top / 100 : null;
+    const cashback_flat = !!r && r.welcome_bps === r.regular_bps && r.regular_bps === r.vip_bps;
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell, cashback_pct, cashback_flat } };
   });
 }
 

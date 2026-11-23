@@ -162,7 +162,7 @@ function OfferWords({
             in the black box"): Prepay, then [Up To +30% Bonus], title case
             (MESITA-4663). */}
         <span className="bg-foreground text-paper shrink-0 rounded-md px-2 py-1 text-sm leading-none font-bold tabular-nums">
-          {slide.key === "prepay" ? `Up To ${slide.pill}` : slide.pill}
+          {slide.pill}
         </span>
       </span>
     );
@@ -186,7 +186,7 @@ function OfferWords({
           {/* "Up To" in the pill everywhere Prepay shows (MESITA-4676), as on
               the Loyalty Card's tile (MESITA-4661/4663). */}
           <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>
-            {slide.key === "prepay" ? `Up To ${slide.pill}` : slide.pill}
+            {slide.pill}
           </span>
         </>
       )}

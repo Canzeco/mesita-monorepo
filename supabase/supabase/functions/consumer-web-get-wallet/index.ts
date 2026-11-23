@@ -59,6 +59,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { CARD_BILL_PAY_LIVE } from "../_shared/money-state.ts";
+import { type CashbackRates, readCashbackRatesMany } from "../_shared/cashback.ts";
+import { errorMessage } from "../_shared/errors.ts";
 import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { readPins, withPins } from "../_shared/loyalty-cards.ts";
@@ -251,6 +253,19 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // that specific user, not all the offers"): withGuestOffers (MESITA-4207)
   // drops a used Welcome and what else this guest cannot buy. A failed guest read keeps the place's
   // list (withGuestOffers logs it).
+  // MESITA-4702: the Loyalty Card carousel's green "Pay · N% Cashback"
+  // slide: each place's highest cashback line where Loyalty Cards is On. A
+  // failed read shows no cashback slide rather than a wrong rate.
+  const earning = balances.map((b) => b.place_id).filter((id) => settingsFromRow(settingsById.get(id) ?? null).loyalty_cards === true);
+  const cashbackRates = await readCashbackRatesMany(admin, earning).catch((err) => {
+    console.error("[consumer-web-get-wallet] cashback", errorMessage(err));
+    return new Map<string, CashbackRates>();
+  });
+  const cashbackOf = (id: string) => {
+    const r = cashbackRates.get(id);
+    const top = r ? Math.max(r.welcome_bps, r.regular_bps, r.vip_bps) : 0;
+    return { cashback_pct: top > 0 ? top / 100 : null, cashback_flat: !!r && r.welcome_bps === r.regular_bps && r.regular_bps === r.vip_bps };
+  };
   const offerRows = await withGuestOffers(
     admin,
     userId,
@@ -260,6 +275,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
         sell: moneyConfig.buying_paused
           ? []
           : listRowMoney(settingsFromRow(settingsById.get(b.place_id) ?? null), charging?.has(b.place_id) ?? false).sell,
+        ...cashbackOf(b.place_id),
       },
     })),
   );

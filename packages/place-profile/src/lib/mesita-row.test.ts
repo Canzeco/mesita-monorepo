@@ -24,13 +24,20 @@ describe("offerSlides", () => {
     expect(offerSlides({ sell: [] })).toEqual([]);
   });
 
-  it("orders Prepay, Welcome (back, MESITA-4645), shows only the best standard bonus (MESITA-4219; no Story, MESITA-4641)", () => {
+  it("orders Pay (cashback, green) then Prepay (the best bonus, blue) (MESITA-4702)", () => {
     const slides = offerSlides({
       sell: ["voucher_200", "voucher_5000", "voucher_story", "voucher_welcome"],
+      cashback_pct: 10,
+      cashback_flat: false,
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Prepay +30% Bonus", "Welcome +100% Bonus"]);
-    expect(slides.map((s) => s.section)).toEqual(["prepayment", "special"]);
-    expect(slides.map((s) => s.voucher)).toEqual(["voucher_5000", "voucher_welcome"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Pay Up to 10% Cashback", "Prepay Up to 30% Bonus"]);
+    expect(slides.map((s) => s.section)).toEqual(["cashback", "prepayment"]);
+    expect(slides[1]?.voucher).toBe("voucher_5000");
+    // One rate on every line drops "Up to"; no cashback, no Pay slide.
+    expect(offerSlides({ sell: [], cashback_pct: 5, cashback_flat: true }).map((s) => s.pill)).toEqual(["5% Cashback"]);
+    expect(offerSlides({ sell: ["voucher_200"], cashback_pct: null }).map((s) => s.lead)).toEqual(["Prepay"]);
+    // The place screen's money carries the lines themselves.
+    expect(offerSlides({ sell: [], cashback: { welcome_bps: 1000, regular_bps: 500, vip_bps: 1000 } }).map((s) => s.pill)).toEqual(["Up to 10% Cashback"]);
   });
 });
 
