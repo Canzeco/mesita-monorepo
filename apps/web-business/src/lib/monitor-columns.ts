@@ -12,16 +12,14 @@ import {
   money,
   rowStatus,
   shortId,
-  storyCredit,
-  storyRejectReason,
   when,
   type CustomerRow,
   type MonitorKind,
   type MonitorRow,
 } from "@/lib/monitor";
 
-export type TableKind = "visits" | "vouchers" | "gifts" | "payments" | "stories";
-export const TABLE_KINDS: readonly MonitorKind[] = ["visits", "vouchers", "gifts", "payments", "stories"];
+export type TableKind = "visits" | "vouchers" | "gifts" | "payments";
+export const TABLE_KINDS: readonly MonitorKind[] = ["visits", "vouchers", "gifts", "payments"];
 
 export type Column<R> = {
   label: string;
@@ -40,12 +38,7 @@ const isSplit = (row: MonitorRow) => row.payload.split === true;
 
 /** The guest cell's words, for the CSV (the screen draws face and name). */
 export function guestText(row: MonitorRow): string {
-  return row.guest ?? unmatchedHandle(row) ?? "Deleted guest";
-}
-
-/** A story's poster no Mesita guest matched: their @handle (MESITA-4732). */
-export function unmatchedHandle(row: MonitorRow): string | null {
-  return !row.customer && typeof row.payload.ig_handle === "string" && row.payload.ig_handle ? `@${row.payload.ig_handle}` : null;
+  return row.guest ?? "Deleted guest";
 }
 
 export const MONITOR_COLUMNS: Record<TableKind, Column<MonitorRow>[]> = {
@@ -108,15 +101,6 @@ export const MONITOR_COLUMNS: Record<TableKind, Column<MonitorRow>[]> = {
         return v ? linkHref(placeId, v) : null;
       },
     },
-    { label: "ID", text: (r) => shortId(r.id) },
-  ],
-  // Every Instagram Story tied to the place (MESITA-4732): Pending, Rejected
-  // (with why) or Credited with the reward.
-  stories: [
-    { label: "When", text: (r, tz) => when(r.at, tz) },
-    { label: "Status", text: (r) => rowStatus("stories", r) },
-    { label: "Reason", text: (r) => storyRejectReason(r) ?? "—" },
-    { label: "Credit", numeric: true, text: (r) => storyCredit(r) ?? "—" },
     { label: "ID", text: (r) => shortId(r.id) },
   ],
 };

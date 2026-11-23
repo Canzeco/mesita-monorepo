@@ -27,14 +27,13 @@ describe("coerceModelsConfig", () => {
       ojo: { model: "gpt-4o" },
       enricher: { model: "gpt-4.1-mini", perplexity: "sonar" },
       memo: { model: "gpt-4o", perplexity: "sonar" },
+      stories: { model: "gpt-6-luna" },
     });
     expect(cfg).toEqual({
       v: 1,
       enricher: { model: "gpt-4.1-mini" },
       embeddings: DEFAULT_MODELS_CONFIG.embeddings,
       memo: { model: "gpt-4o" },
-      // MESITA-4535: the Story bot's model is a kept key (its default here).
-      stories: DEFAULT_MODELS_CONFIG.stories,
     });
   });
 

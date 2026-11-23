@@ -46,8 +46,6 @@ const DEFAULT = {
   enricher: { model: "gpt-6-luna" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-6-luna" },
-  // MESITA-4714: the Post story check's vision model (back from MESITA-4535).
-  stories: { model: "gpt-6-luna" },
 };
 
 function obj(v: unknown): Record<string, unknown> {
@@ -80,9 +78,6 @@ export function validateModelsConfig(
     },
     memo: {
       model: cleanModel(obj(r.memo).model, DEFAULT.memo.model),
-    },
-    stories: {
-      model: cleanModel(obj(r.stories).model, DEFAULT.stories.model),
     },
   };
   return { ok: true, config };

@@ -4,7 +4,6 @@
 
 import type { RewardsSection } from "../actions";
 import type { MoneyVoucherKey } from "../money-state";
-import { amountText } from "./money";
 
 /** One offer on the moving button (MESITA-3467). */
 export type OfferSlide = {
@@ -41,22 +40,11 @@ export type OfferInput = {
   /** Every cashback line is the same rate: the slide drops "Up to". */
   cashback_flat?: boolean;
   /** The place screen's money read carries the lines themselves (PlaceMoney). */
-  cashback?: { welcome_bps: number; returning_bps: number; story_reward_cents?: number } | null;
-  /** MESITA-4714: what a verified Instagram story pays there in cents (a
-   *  list row's field); null or absent = Off. The place screen reads
-   *  `cashback.story_reward_cents`. */
-  story_cents?: number | null;
+  cashback?: { welcome_bps: number; returning_bps: number; returning_vip_bps?: number } | null;
   /** MESITA-4764: each voucher's bonus at this place in whole percent (a
    *  list row's field, the owner's pick); absent reads STANDARD_BONUS. */
   voucher_pct?: Partial<Record<string, number>> | null;
 };
-
-/** The Post slide's amount in cents, or 0 (Off). */
-function storyOf(o: OfferInput): number {
-  if (o.story_cents != null) return o.story_cents > 0 ? o.story_cents : 0;
-  const c = o.cashback?.story_reward_cents;
-  return typeof c === "number" && c > 0 ? c : 0;
-}
 
 /** The cashback slide's number: a list row's cashback_pct, else the place
  *  screen's lines. */
@@ -64,7 +52,9 @@ function cashbackOf(o: OfferInput): { pct: number; flat: boolean } {
   if (o.cashback_pct != null) return { pct: o.cashback_pct, flat: o.cashback_flat === true };
   const c = o.cashback;
   if (!c) return { pct: 0, flat: false };
-  return { pct: Math.max(c.welcome_bps, c.returning_bps) / 100, flat: c.welcome_bps === c.returning_bps };
+  // MESITA-4766: the highest of Welcome, Returning and Returning VIP.
+  const vip = c.returning_vip_bps ?? 0;
+  return { pct: Math.max(c.welcome_bps, c.returning_bps, vip) / 100, flat: c.welcome_bps === c.returning_bps && c.returning_bps === vip };
 }
 
 // THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "ONLY SHOW THE HIGHEST
@@ -88,15 +78,9 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 // BLACK INK ON BLUE (Pato, 2026-11-22, MESITA-4702: "use black color in
 // prepayments, it gives more confidence. blue background, black letters").
 // Blue left with MESITA-4748: Prepay is green again.
-// POST IS PINK (Pato, 2026-11-23, MESITA-4714: Prepay · Pay · Post): the
-// third offer kind gets the third colour, neither blue nor green, black ink.
-// A CLEARLY PINK PINK (Pato, MESITA-4725: "MUST BE PINK, BETTER COLOR"):
-// bubblegum #FF66C4; #FF2D78 read as red beside Reserve's red.
-const PINK = "bg-[#FF66C4] text-neutral-950";
-/** MESITA-4714: the Post slide and the Post tab's mark. */
-export const POST_TONE = PINK;
+// Post's pink went with Stories (MESITA-4766).
 // ONE COLOUR PER OFFER, EVERYWHERE (Pato, 2026-11-23, MESITA-4748,
-// /plan-design-review D9): Prepay green, Pay purple, Post pink, the Wallet's
+// /plan-design-review D9): Prepay green, Pay purple, the Wallet's
 // two tiles' colours, so a colour means the same thing on Home, the place
 // screen and Pay. Vouchers blue and cashback green before (MESITA-4701/4702).
 // Pay is Stripe purple with white ink, Pay Bill's own button.
@@ -123,8 +107,6 @@ const OFFER_SLIDES: OfferSlide[] = [
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
   { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
-  // POST, THIRD (MESITA-4714): "Post · $20 Story" where a story pays.
-  { key: "post", lead: "Post", pill: "", pillShort: "", short: "Post", spoken: "Post", section: "post", tone: PINK },
   // No Welcome voucher slide since MESITA-4698: Welcome is a cashback line.
 ];
 
@@ -162,16 +144,6 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
       // renderer's own "Up To" prefix (MESITA-4676) went: the words live here.
       return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, pillShort: `${top[1]}% Bonus`, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
-    if (s.key === "post") {
-      const cents = storyOf(offers);
-      if (cents <= 0) return [];
-      // THE REWARD, NAMED (Pato, 2026-11-23, MESITA-4743: "post ($50MX
-      // Reward) or whatever is the amount"): "Post · $50MX Reward", whole
-      // pesos without cents. It read "Post Story" with no amount under
-      // MESITA-4725.
-      const reward = `$${amountText(cents)}MX Reward`;
-      return [{ ...s, pill: reward, pillShort: reward, spoken: `Post, ${reward.toLowerCase()}` }];
-    }
     return sell.has(s.key) ? [s] : [];
   });
 }

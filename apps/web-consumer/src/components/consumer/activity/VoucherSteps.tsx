@@ -6,11 +6,10 @@
 //
 //   voucher   Pay · Wait 3 hours · Get Bonus                     (CreditEntry)
 //   visit     Pay · Wait 1 hour · Get Back                      (VisitSummary)
-//   story     Post & Tag · Bot Checks · Wait 10 hours · Bot Rechecks ·
-//             Get Reward                                          (StoryTicket)
 //
-// A step can fail (a story the bot rejected): an X on grey, its title in
-// ink, the plain reason as its sub line; the steps after it stay muted.
+// The story ticket's steps left with Instagram Stories (MESITA-4766).
+// A step can fail: an X on grey, its title in ink, the plain reason as its
+// sub line; the steps after it stay muted.
 // Grey, never red: nothing on a ticket reads red (TicketParts).
 
 import type { ComponentType } from "react";

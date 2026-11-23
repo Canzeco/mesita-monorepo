@@ -100,6 +100,10 @@ export type PlaceActions = {
    *  (MESITA-4659): the host opens Me › Instagram. Absent, that row shows
    *  the locked line alone. */
   onLinkInstagram?: () => void;
+  /** "How to become VIP" under the Returning VIP line (MESITA-4766): the
+   *  host opens Me › Become VIP. The host passes it only for a signed-in
+   *  guest it knows is not VIP; absent, no link. */
+  onBecomeVip?: () => void;
 };
 
 export function inertButtonProps(live: boolean): {
@@ -119,4 +123,4 @@ export function inertButtonProps(live: boolean): {
  *  `prepayment`, the Home offer button's special slides at `special`
  *  (MESITA-3467). Both show the same one section; "payment" went
  *  with the Payments card (MESITA-4062). */
-export type RewardsSection = "prepayment" | "special" | "cashback" | "post";
+export type RewardsSection = "prepayment" | "special" | "cashback";

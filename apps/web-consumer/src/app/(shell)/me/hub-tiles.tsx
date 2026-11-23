@@ -252,10 +252,13 @@ export const ME_HUB_SETTINGS: HubTile = {
  *  `children` lands after the tiles (the fallback's status line). */
 export function MeHubFrame({
   bar,
+  lead,
   tile,
   children,
 }: {
   bar: ReactNode;
+  /** One row above the grid: VIP (MESITA-4766), or the invitation code ask. */
+  lead?: ReactNode;
   tile: (cell: HubTile, shape: DestShape) => ReactNode;
   children?: ReactNode;
 }) {
@@ -266,6 +269,7 @@ export function MeHubFrame({
       <KeptScroll className="scrollbar-thin-dark flex-1 overflow-y-auto px-4 pt-4 pb-8">
         <div className="flex flex-col gap-3">
           {bar}
+          {lead}
           <DestGrid>
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.title}>{tile(cell, "cell")}</Fragment>

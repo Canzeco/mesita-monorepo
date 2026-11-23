@@ -28,8 +28,8 @@ export async function MonitorPage({
 }) {
   const sp = await searchParams;
   const filter = { id: uuidParam(sp.id), customer: customerParam(sp.customer) };
-  // Vouchers and Stories say when their capability is off (MESITA-4732).
-  const capKind = kind === "vouchers" || kind === "stories" ? kind : null;
+  // Vouchers says when its capability is off (MESITA-4732).
+  const capKind = kind === "vouchers" ? kind : null;
   const [r, payments] = await Promise.all([listMonitor(placeId, kind, filter), capKind ? getPlacePayments(placeId) : null]);
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
   const off = capKind && payments?.ok ? monitorCapabilityOff(capKind, payments.data) : null;

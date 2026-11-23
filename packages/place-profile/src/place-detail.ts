@@ -58,15 +58,15 @@ export type PlaceMoney = {
 
 /** MESITA-4698: a paid bill's cashback here. Rates in basis points (0 = Off);
  *  Welcome is the guest's first paid bill here, Returning every later one
- *  (MESITA-4709). `line` is the one this guest's next bill falls in (null
- *  signed out). */
+ *  (MESITA-4709), Returning VIP every later one for a VIP guest (MESITA-4766).
+ *  `line` is the one this guest's next bill falls in (null signed out); the
+ *  server decides it, never the guest's Class here. */
 export type PlaceCashback = {
   welcome_bps: number;
   returning_bps: number;
-  line: "welcome" | "returning" | null;
-  /** MESITA-4714 (Post): what a verified Instagram story pays here, in cents
-   *  (0 = Off). Absent on older reads. */
-  story_reward_cents?: number;
+  /** MESITA-4766: 0 · 1000 · 2000; absent on older reads reads 0. */
+  returning_vip_bps: number;
+  line: "welcome" | "returning" | "returning_vip" | null;
 };
 
 /** The Catalog's score for one place, the server's numbers (MESITA-2379):

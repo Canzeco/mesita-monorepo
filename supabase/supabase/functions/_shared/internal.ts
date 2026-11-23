@@ -23,7 +23,6 @@
 //   supabase-cron-retry-reservations
 //   supabase-cron-settle-wallet
 //   supabase-cron-sync-premier
-//   supabase-cron-verify-stories
 //   supabase-edgefunc-discover-places
 //   supabase-edgefunc-get-memo-config
 //   supabase-edgefunc-place-reservation-call

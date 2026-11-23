@@ -50,7 +50,9 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/internal", destination: "/places" },
   { source: "/admin", destination: "/places" },
   { source: "/places/:id/internal", destination: "/places/:id/admin" },
-  // /places/:id/stories is a Monitor page again (MESITA-4732).
+  // Instagram Stories are gone (MESITA-4766): the old Monitor page sends the
+  // owner to Offers.
+  { source: "/places/:id/stories", destination: "/places/:id/payments" },
 ];
 
 // This build's identity, baked into the client bundle; DeploymentWatcher

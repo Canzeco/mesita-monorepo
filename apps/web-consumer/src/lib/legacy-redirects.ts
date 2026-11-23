@@ -167,8 +167,18 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/me/settings/refunds",
     permanent: true,
   },
-  // /me/tickets/stories/:storyId was a 308 to the tab (MESITA-4738); it is
-  // one story's ticket since MESITA-4747.
+  // Tickets › Stories and one story's ticket (MESITA-4738/4747) went with
+  // Instagram Stories (MESITA-4766): both land on Tickets.
+  {
+    source: "/me/tickets/stories/:storyId",
+    destination: ticketsHref(),
+    permanent: true,
+  },
+  {
+    source: "/me/tickets/stories",
+    destination: ticketsHref(),
+    permanent: true,
+  },
   // Gifts split into Gifts-In and Gifts-Out (MESITA-3941) and are one
   // Gifts list again (MESITA-4036): /me/tickets/gifts is live.
   {

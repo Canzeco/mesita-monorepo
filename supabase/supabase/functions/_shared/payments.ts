@@ -17,7 +17,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { type CashbackRates, readCashbackRatesMany, voucherBonusFrom } from "./cashback.ts";
+import { type CashbackRates, maxCashbackBps, readCashbackRatesMany, voucherBonusFrom } from "./cashback.ts";
 import { errorMessage } from "./errors.ts";
 import { voucherBonusBps, vouchersUpToPct } from "./money.ts";
 import { paymentsLivemode, type StripeCall } from "./stripe.ts";
@@ -177,24 +177,39 @@ export async function chargesEnabledByPlace(
 /** MESITA-4702: cashback_pct is the place's highest cashback line where
  *  Loyalty Cards is On (null = none earned); cashback_flat says every line
  *  is that rate. The carousel's green "Pay · Up to N% Cashback" slide. */
-/** MESITA-4714: story_cents is what a verified Instagram story pays there
- *  (Post) where Loyalty Cards is On; null = Off. The pink "Post" slide. */
-/** MESITA-4748: welcome_pct and returning_pct are the two lines apart (null
- *  = that line earns nothing), for the Pay Bill sheet's "Welcome N% Back" |
- *  "Returning M% Back" boxes; cashback_pct stays the higher of the two. */
+/** MESITA-4748, MESITA-4766: welcome_pct, returning_pct and
+ *  returning_vip_pct are the three lines apart (null = that line earns
+ *  nothing), for the Pay Bill sheet's Welcome | Returning | Returning VIP
+ *  boxes; cashback_pct stays the highest of the three. */
 export type ListRowOffers = {
   sell: MoneyVoucherKey[];
   cashback_pct: number | null;
   cashback_flat: boolean;
   welcome_pct: number | null;
   returning_pct: number | null;
-  story_cents: number | null;
+  returning_vip_pct: number | null;
   /** MESITA-4764: each voucher sold here and its bonus in whole percent (the
    *  owner's pick: Small 10 · 20, Medium 20 · 40, Big 40 · 60). */
   voucher_pct: Partial<Record<MoneyVoucherKey, number>>;
 };
 /** A row with nothing on offer. */
-export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, story_cents: null, voucher_pct: {} };
+export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, returning_vip_pct: null, voucher_pct: {} };
+
+/** A place's cashback lines as list rows read them (MESITA-4702, MESITA-4766):
+ *  each line in whole percent (null = earns nothing), the highest, and
+ *  whether all three are the same rate. No rates (Loyalty Cards Off or a
+ *  failed read) = no cashback. */
+export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRowOffers, "cashback_pct" | "cashback_flat" | "welcome_pct" | "returning_pct" | "returning_vip_pct"> {
+  const pct = (bps: number | undefined) => (bps && bps > 0 ? bps / 100 : null);
+  const top = r ? maxCashbackBps(r) : 0;
+  return {
+    cashback_pct: top > 0 ? top / 100 : null,
+    cashback_flat: !!r && r.welcome_bps === r.returning_bps && r.returning_bps === r.returning_vip_bps,
+    welcome_pct: pct(r?.welcome_bps),
+    returning_pct: pct(r?.returning_bps),
+    returning_vip_pct: pct(r?.returning_vip_bps),
+  };
+}
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
@@ -243,19 +258,14 @@ export async function withVouchersUpTo<T extends { id: string }>(
     const money = listRowMoney(settings.get(p.id), charges.has(p.id));
     const sell = config.buying_paused ? [] : money.sell;
     const r = rates.get(p.id);
-    const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
-    const cashback_pct = top > 0 ? top / 100 : null;
-    const cashback_flat = !!r && r.welcome_bps === r.returning_bps;
-    const welcome_pct = r && r.welcome_bps > 0 ? r.welcome_bps / 100 : null;
-    const returning_pct = r && r.returning_bps > 0 ? r.returning_bps / 100 : null;
-    const story_cents = r && r.story_reward_cents > 0 ? r.story_reward_cents : null;
+    const cashback = cashbackOffer(r);
     const bonus = voucherBonusFrom(r);
     const voucher_pct = Object.fromEntries(sell.map((k) => [k, Math.floor(voucherBonusBps(k, bonus) / 100)]));
     return {
       ...p,
       vouchers_up_to_pct: vouchersUpToPct(sell, bonus),
       mesita_pay: money.mesita_pay,
-      offers: { sell, cashback_pct, cashback_flat, welcome_pct, returning_pct, story_cents, voucher_pct },
+      offers: { sell, ...cashback, voucher_pct },
     };
   });
 }

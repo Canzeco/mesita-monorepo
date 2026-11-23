@@ -162,8 +162,8 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
 
   // A gift line whose gift the read holds is that gift's page (MESITA-4066).
   const router = useRouter();
-  // The wait step counts down from the page's first paint, like the Story
-  // and Visit tickets (MESITA-4747); coming back re-reads it.
+  // The wait step counts down from the page's first paint, like the
+  // Visit ticket (MESITA-4747); coming back re-reads it.
   const [now] = useState(() => Date.now());
   const found = wallet.data ? findEntry(wallet.data, placeId, entryKey).e : undefined;
   const gift = wallet.data && found ? giftOfEntry(wallet.data, found) : null;
