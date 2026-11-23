@@ -544,8 +544,10 @@ const TILE =
 const QUIET_ROW = "mt-2 grid grid-cols-2 gap-2 max-[359px]:grid-cols-1";
 const QUIET_BUTTON =
   "bg-muted text-foreground hover:bg-border flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold transition active:scale-[0.99]";
-/** A tile's name: one baseline across the two. */
-const TILE_TITLE = "text-lg leading-tight font-semibold";
+/** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
+ *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
+ *  size (18px before). */
+const TILE_TITLE = "text-base leading-tight font-semibold";
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
