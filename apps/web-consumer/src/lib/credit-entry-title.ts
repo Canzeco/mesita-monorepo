@@ -8,7 +8,7 @@ const TITLE: Record<string, string> = {
   voucher: "Voucher",
   prepay: "Voucher",
   bonus: "Voucher",
-  cashback: "Back",
+  cashback: "Cashback", // MESITA-4777 ("Back" before)
   // A paid story reward from before Stories left (MESITA-4766).
   story: "Instagram Story credit",
   gift_in: "Gift",

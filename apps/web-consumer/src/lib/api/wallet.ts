@@ -578,8 +578,9 @@ export const ENTRY_LABEL: Record<string, string> = {
   voucher: "Voucher",
   bonus: "Bonus",
   // MESITA-4698: earned on a paid bill, Pending 1 hour (MESITA-4717).
-  // "Back", never "cashback" (Pato, MESITA-4725).
-  cashback: "Back",
+  // "Cashback" again (Pato, 2026-11-23, MESITA-4777: "back is too complex
+  // to understand"; "Back" since MESITA-4725).
+  cashback: "Cashback",
   // MESITA-4714's story reward; Stories left (MESITA-4766) but paid entries
   // stay in the guest's history under this name.
   story: "Instagram Story credit",

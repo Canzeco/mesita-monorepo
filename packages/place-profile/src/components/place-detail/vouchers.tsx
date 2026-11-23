@@ -847,7 +847,7 @@ function CashbackPanel({
   const you = youLine(cashback);
   if (rows.length === 0) return null;
   return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Back" data-promos="cashback">
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Visit offers" data-promos="cashback">
       <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
           const mine = you === r.line;

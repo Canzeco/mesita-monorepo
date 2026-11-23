@@ -59,10 +59,11 @@ export function visitMechanismOf(o: Pick<OfferInput, "visit_mechanism" | "cashba
   return m === "discount" ? "discount" : "cashback";
 }
 
-/** "Off" for a discount, "Back" for cashback (Pato, MESITA-4725: "Back",
- *  never "cashback"). */
-export function visitWord(m: VisitMechanism): "Off" | "Back" {
-  return m === "discount" ? "Off" : "Back";
+/** The word after the rate: "Discount" or "Cashback" (Pato, 2026-11-23,
+ *  MESITA-4777: "mention cashback or discount. back is too complex to
+ *  understand"; "Back" since MESITA-4725, "Off" under MESITA-4770). */
+export function visitWord(m: VisitMechanism): "Discount" | "Cashback" {
+  return m === "discount" ? "Discount" : "Cashback";
 }
 
 /** The cashback slide's number: a list row's cashback_pct, else the place
@@ -107,19 +108,22 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 // azul", the type's name always beside the colour). Supersedes MESITA-4748's
 // Prepay green / Pay purple. Cashback's red-pink is a coral, apart from
 // Post's bubblegum #FF66C4 and Reserve's red. Black ink on all three.
+// PREPAY GREEN, CASHBACK BLUE, DISCOUNT RED (Pato, 2026-11-23, MESITA-4777:
+// "make prepay green and cashback blue and discount red"): swaps the three
+// above the same day. Black ink on all three.
 const BLUE = "bg-[#4DA3FF] text-neutral-950";
-const RED_PINK = "bg-[#FF5A6E] text-neutral-950";
+const RED = "bg-[#FF4D4D] text-neutral-950";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  voucher_welcome: BLUE,
-  voucher_200: BLUE,
-  voucher_1000: BLUE,
-  voucher_5000: BLUE,
-  voucher_vip: BLUE,
+  voucher_welcome: GREEN,
+  voucher_200: GREEN,
+  voucher_1000: GREEN,
+  voucher_5000: GREEN,
+  voucher_vip: GREEN,
 };
-/** Every cashback line, one red-pink (MESITA-4770; purple under MESITA-4748). */
-export const CASHBACK_TONE = RED_PINK;
-/** Every visit discount, one green (MESITA-4770). */
-export const DISCOUNT_TONE = GREEN;
+/** Every cashback line, one blue (MESITA-4777; red-pink under MESITA-4770). */
+export const CASHBACK_TONE = BLUE;
+/** Every visit discount, one red (MESITA-4777; green under MESITA-4770). */
+export const DISCOUNT_TONE = RED;
 /** The visit lines' colour by mechanism. */
 export function visitTone(m: VisitMechanism): string {
   return m === "discount" ? DISCOUNT_TONE : CASHBACK_TONE;
@@ -136,7 +140,7 @@ const OFFER_SLIDES: OfferSlide[] = [
   // "Prepay" on the previews since MESITA-4255 (Pato: "instead of classic use
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
-  { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: BLUE },
+  { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
   // No Welcome voucher slide since MESITA-4698: Welcome is a cashback line.
 ];
 
@@ -166,8 +170,7 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
     if (s.key === "cashback") {
       const { pct, flat } = cashbackOf(offers);
       if (pct <= 0) return [];
-      // "Back", never "cashback" (Pato, MESITA-4725); "Off" for a discount
-      // (MESITA-4770), green instead of red-pink.
+      // "Cashback" or "Discount" (MESITA-4777; "Back" / "Off" before).
       const mech = visitMechanismOf(offers);
       const word = visitWord(mech);
       const words = `${flat ? "" : "Up to "}${pct}% ${word}`;

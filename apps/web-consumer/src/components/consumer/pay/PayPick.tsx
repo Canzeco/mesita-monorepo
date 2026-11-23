@@ -307,7 +307,8 @@ type OfferBox = { top: string; bottom: string; tone: string; key: string };
 /** The tints, light under black ink (MESITA-4770: Prepay blue, Discount
  *  green, Cashback red-pink; offers.ts holds the solid tones). Post's pink
  *  left with Stories (MESITA-4766). */
-const BOX_TINT = { prepay: "bg-[#4DA3FF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#FF5A6E]/15" } as const;
+// MESITA-4777: Prepay green, Discount red, Cashback blue.
+const BOX_TINT = { prepay: "bg-[#00D66F]/15", discount: "bg-[#FF4D4D]/15", cashback: "bg-[#4DA3FF]/15" } as const;
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -331,7 +332,8 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
   // MESITA-4770: the visit lines read "Off" (Discount, green) or "Back"
   // (Cashback, red-pink).
   const discount = o.visit_mechanism === "discount";
-  const word = discount ? "Off" : "Back";
+  // MESITA-4777: the words themselves, "Discount" or "Cashback".
+  const word = discount ? "Discount" : "Cashback";
   const visitTint = discount ? BOX_TINT.discount : BOX_TINT.cashback;
   if (kind === "cashback") {
     // Welcome · Returning · Returning VIP (MESITA-4766); a 0% line is Off
