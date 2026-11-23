@@ -196,13 +196,6 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
   };
 })();
 
-function SectionTitle({ id, title }: { id: string; title: string }) {
-  return (
-    <h3 id={id} className={OFFERS_TITLE_CLASS}>
-      {title}
-    </h3>
-  );
-}
 
 /** A locked offer's status line (MESITA-3502), the sheet's reason since
  *  MESITA-4224. */
@@ -773,40 +766,74 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  Nothing is stored before the card charge answers: the basket lives in
  *  this component. Each voucher's own ticket page (MESITA-4630) went.
  *  `pick` preselects one voucher (an old link) when it is buyable. */
-/** MESITA-4698: the place's cashback, first on the Offers page. Three lines
- *  (Welcome on a first bill, then Regular or VIP by Class), the guest's own
- *  line marked. Nothing to buy: a confirmed bill earns it, 3 hours later.
- *  Not drawn where none is earned (Loyalty Cards Off, or every line Off). */
-function CashbackPanel({ cashback, currency }: { cashback: PlaceCashback | null; currency: string }) {
-  if (!cashback) return null;
-  const rows: { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number }[] = [
-    // Pato's names (MESITA-4701): "Welcome Universal · Returning Regular ·
-    // Returning VIP".
-    { line: "welcome", title: "Welcome Universal", who: "Your first bill here, any guest", bps: cashback.welcome_bps },
-    { line: "regular", title: "Returning Regular", who: "Every later bill, Regular Class", bps: cashback.regular_bps },
-    { line: "vip", title: "Returning VIP", who: "Every later bill, VIP Class", bps: cashback.vip_bps },
-  ].filter((r) => r.bps > 0) as { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number }[];
+/** One size for every offer badge (Pato, 2026-11-22, MESITA-4702: "boxes
+ *  same size"): cashback and vouchers alike. */
+const BADGE = "flex min-h-12 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-xl py-2 tabular-nums";
+
+type CashbackLineRow = { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number };
+
+/** The place's lines that earn (rate above Off), in Pato's names
+ *  (MESITA-4701: "Welcome Universal · Returning Regular · Returning VIP"). */
+function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
+  return (
+    [
+      { line: "welcome", title: "Welcome Universal", who: "Your first bill here, any guest", bps: cashback.welcome_bps },
+      { line: "regular", title: "Returning Regular", who: "Every later bill, Regular Class", bps: cashback.regular_bps },
+      { line: "vip", title: "Returning VIP", who: "Every later bill, VIP Class", bps: cashback.vip_bps },
+    ] as CashbackLineRow[]
+  ).filter((r) => r.bps > 0);
+}
+
+/** A section's head on the one Offers page (MESITA-4702): its word, its
+ *  colour chip, and one line that says when the credit lands. */
+function OfferSectionHead({ id, title, chip, tone, sub }: { id: string; title: string; chip: string; tone: string; sub: string }) {
+  return (
+    <div className="flex flex-col gap-0.5 px-1 pt-1">
+      <div className="flex items-center gap-2">
+        <h2 id={id} className="text-foreground text-lg font-bold">
+          {title}
+        </h2>
+        <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", tone)}>{chip}</span>
+      </div>
+      <p className="text-muted-foreground text-sm">{sub}</p>
+    </div>
+  );
+}
+
+/** MESITA-4698/4702: the place's cashback on the one Offers page. Three
+ *  lines (Welcome on a first bill, then Regular or VIP by Class), the
+ *  guest's own marked Yours, each with its (i). Nothing to buy: a
+ *  confirmed bill earns it, 3 hours later, with no minimum. */
+function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: (r: CashbackLineRow) => void }) {
+  const rows = cashbackRows(cashback);
   if (rows.length === 0) return null;
   return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Cashbacks" data-promos="cashback">
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby="offers-pay" data-promos="cashback">
       <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
           const mine = cashback.line === r.line;
           return (
             <li key={r.line} data-cashback={r.line} className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2">
-              <span
-                className={cn(
-                  "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
-                  CASHBACK_TONE,
-                )}
-                aria-hidden
-              >
+              <span className={cn(BADGE, CASHBACK_TONE)} aria-hidden>
                 <span className="text-lg leading-none font-bold tracking-tight">{r.bps / 100}%</span>
                 <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Back</span>
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-foreground truncate text-base font-semibold">{r.title}</span>
-                <span className="text-muted-foreground text-sm">{r.who}</span>
+                <span className="flex min-w-0 items-center gap-1">
+                  <span className="text-foreground truncate text-base font-semibold">{r.title}</span>
+                  {/* THE (i) ON CASHBACK TOO (Pato, MESITA-4702: "add the letter i in this cashbacks too"). */}
+                  <button
+                    type="button"
+                    aria-label={`How ${r.title} works`}
+                    onClick={() => onInfo(r)}
+                    className="text-muted-foreground hover:text-foreground -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                    data-cashback-info-open
+                  >
+                    <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                  </button>
+                </span>
+                {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702). */}
+                <span className="text-muted-foreground text-sm">{r.who} · lands in 3 hours</span>
               </span>
               {mine ? (
                 <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
@@ -817,62 +844,81 @@ function CashbackPanel({ cashback, currency }: { cashback: PlaceCashback | null;
           );
         })}
       </ul>
-      <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-sm">
-        Pay your bill here and get it back as credit in 3 hours. Up to {whole(pesos(cashback.cap_cents, currency))} per bill, once a day, never on the
-        tip.
-      </p>
+      {/* NO FOOTNOTE (Pato, MESITA-4702: "remove the explanations there,
+          that's why we have the i"): the cap and rules live in each (i). */}
     </section>
   );
 }
 
-export type OffersTab = "cashbacks" | "vouchers";
-
-/** MESITA-4698 (Pato, 2026-11-22: "its offers page you can see the
- *  Cashbacks and the Vouchers in two subpages below card amount"): two tabs
- *  under the balance. Cashbacks shows the place's lines, nothing to buy;
- *  Vouchers is the shop and its Pay bar. A place with no cashback opens on
- *  Vouchers; one with no voucher on sale opens on Cashbacks. */
-function OffersTabs({ tab, onTab }: { tab: OffersTab; onTab: (t: OffersTab) => void }) {
-  // TWO SUBPAGES, PLAINLY (Pato, 2026-11-22, MESITA-4701: "it must be more
-  // obvious that there are two subpages vouchers and cashbacks"): a full-width
-  // white bar, each tab an icon over its word, the open one in ink with a 3px
-  // line under it. Vouchers first: it is what the page sells.
-  const TABS: { id: OffersTab; label: string; Icon: LucideIcon }[] = [
-    { id: "vouchers", label: "Vouchers", Icon: Ticket },
-    { id: "cashbacks", label: "Cashbacks", Icon: Repeat },
+/** A cashback line's (i): how it is earned and when it lands. */
+function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  if (typeof document === "undefined") return null;
+  const host = document.getElementById("mesita-app-card");
+  const pct = `${row.bps / 100}%`;
+  const steps: Step[] = [
+    { Icon: QrCode, title: "Pay your bill here", short: "Pay", line: "Cash or the place's terminal; the waiter confirms" },
+    { Icon: Repeat, title: `Get ${pct} back`, short: "Cashback", amount: pct, line: "On what you pay in cash or by terminal" },
+    { Icon: Clock, title: "It lands in 3 hours", short: "3 hours", line: "As credit at this place", green: true },
   ];
-  return (
-    <div className={cn(CARD, "flex shrink-0 overflow-hidden")} role="tablist" aria-label="Offers" data-offers-tabs>
-      {TABS.map(({ id, label, Icon }) => {
-        const on = tab === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={on}
-            onClick={() => onTab(id)}
-            className={cn(
-              "relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-base font-semibold transition",
-              on ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-            )}
-            data-offers-tab={id}
-          >
-            <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} aria-hidden />
-            {label}
-            <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
+  const good: { Icon: LucideIcon; text: string }[] = [
+    { Icon: Utensils, text: row.who + "." },
+    { Icon: Wallet, text: "Credit you already hold earns no cashback when you spend it." },
+    { Icon: Clock, text: `Up to ${cap} per bill, once a day. No minimum.` },
+    { Icon: Gift, text: "Never on the tip. Spend it here or send it to a friend." },
+    { Icon: InfinityIcon, text: "It never expires." },
+  ];
+  return createPortal(
+    <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-cashback-info>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cashback-info-title"
+        className="bg-background flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
+          <h2 id="cashback-info-title" className="text-foreground text-base font-semibold">
+            {row.title} · {pct} Cashback
+          </h2>
+          <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
+            <X className="h-6 w-6" strokeWidth={2.25} />
           </button>
-        );
-      })}
-    </div>
+        </div>
+        <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+          <Box title="How it works">
+            <StepList steps={steps} />
+          </Box>
+          <Box title="Good to know">
+            <ul className="flex flex-col gap-2">
+              {good.map((g) => (
+                <li key={g.text} className="text-foreground flex items-start gap-2 text-sm">
+                  <g.Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                  {g.text}
+                </li>
+              ))}
+            </ul>
+          </Box>
+        </div>
+      </div>
+    </div>,
+    host ?? document.body,
   );
 }
+
+/** Kept for old links (`?rewards=`); the page is one scroll since MESITA-4702. */
+export type OffersTab = "cashbacks" | "vouchers";
 
 export function VouchersPane({
   place,
   actions,
   pick,
-  tab: askedTab,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -886,7 +932,7 @@ export function VouchersPane({
   }, [onLoad]);
 
   const co = useOfferCheckout(place, actions);
-  const [chosenTab, setTab] = useState<OffersTab | null>(null);
+  const [cashInfo, setCashInfo] = useState<CashbackLineRow | null>(null);
   const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
   // The guest's own picks; until the first tap, an asked voucher counts as one.
   const [picked, setPicked] = useState<Basket | null>(null);
@@ -960,54 +1006,53 @@ export function VouchersPane({
   const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
   const cashback = place.money?.cashback ?? null;
   const hasCashback = !!cashback && (cashback.welcome_bps > 0 || cashback.regular_bps > 0 || cashback.vip_bps > 0);
-  const tab: OffersTab =
-    chosenTab ?? askedTab ?? (pick ? "vouchers" : hasCashback || (!loading && products.length === 0) ? "cashbacks" : "vouchers");
+  // The best bonus on sale, for the Prepay chip.
+  const topBonus = products.reduce((n, p) => Math.max(n, Number.parseInt(p.bonus, 10) || 0), 0);
+  const topCashback = cashback ? Math.max(cashback.welcome_bps, cashback.regular_bps, cashback.vip_bps) / 100 : 0;
+  const flatCashback = !!cashback && cashback.welcome_bps === cashback.regular_bps && cashback.regular_bps === cashback.vip_bps;
   const infoProduct = info ? listedProducts().find((p) => p.key === info) ?? null : null;
 
   return (
     // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
     // (MESITA-4218), and the Pay bar under them, always (MESITA-4659).
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      <OffersTabs tab={tab} onTab={setTab} />
-      {tab === "cashbacks" ? (
-        hasCashback ? (
-          <CashbackPanel cashback={cashback} currency={currency} />
-        ) : (
-          <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-cashback-none>
-            {loading ? "Loading…" : "No cashback here yet."}
-          </p>
-        )
+      {/* ONE PAGE (Pato, 2026-11-22, MESITA-4702: "MAKE ALL THE SAME PAGE"):
+          Pay (cashback, green) then Prepay (vouchers, blue), each with its
+          head; one sticky bar at the bottom. The tabs of MESITA-4698/4701
+          are gone. */}
+      {hasCashback && cashback ? (
+        <>
+          <OfferSectionHead
+            id="offers-pay"
+            title="Pay"
+            chip={`${flatCashback ? "" : "Up to "}${topCashback}% Cashback`}
+            tone={CASHBACK_TONE}
+            // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
+            sub="Pay your bill here. Lands in 3 hours. Credit you spend earns none."
+          />
+          <CashbackPanel cashback={cashback} onInfo={setCashInfo} />
+        </>
       ) : null}
-      {/* PAY BILL UNDER CASHBACKS (Pato, 2026-11-22, MESITA-4699: "cashback just
-          have shortcut to Go to Pay bill at the bottom, purple color"): the
-          cashback is earned by paying the bill here, so its tab ends on that
-          door, sticky like the Vouchers tab's Pay bar. Absent onPay (admin's
-          preview), no button. */}
-      {tab === "cashbacks" && actions?.onPay ? (
-        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-cashback-pay-bar>
-          <button
-            type="button"
-            onClick={actions.onPay}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
-            data-cashback-pay-bill
-          >
-            <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-            {/* Pato, MESITA-4701: "Go to Pay Bill maybe is clearer". */}
-            Go to Pay Bill
-          </button>
-        </div>
-      ) : null}
-      {tab === "vouchers" && !loading && products.length === 0 ? (
-        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-vouchers-none>
-          No vouchers on sale here yet.
+      {!loading && products.length === 0 && !hasCashback ? (
+        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none>
+          No offers here yet.
         </p>
       ) : null}
-      {tab === "vouchers" && GROUPS.map((g) => {
+      {loading || products.length > 0 ? (
+        <OfferSectionHead
+          id="offers-prepay"
+          title="Prepay"
+          chip={topBonus > 0 ? `Up to ${topBonus}% Bonus` : "Bonus"}
+          tone={VOUCHER_TONE.voucher_200}
+          sub="Pay ahead, spend it here. Your bonus lands in 3 hours."
+        />
+      ) : null}
+      {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
         return (
           // NO TITLE UNDER THE TAB (MESITA-4701): the tab already says Vouchers.
-          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-label={g.title} data-promos={g.id}>
+          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby="offers-prepay" data-promos={g.id}>
             <ul className="divide-border divide-y" data-voucher-catalog>
               {list.map((p) => {
                 const line = catalog[p.key];
@@ -1033,7 +1078,7 @@ export function VouchersPane({
                   <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && !linkIg && "opacity-50")}>
                     <span
                       className={cn(
-                        "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
+                        BADGE,
                         // Each voucher's own colour: VIP yellow, the rest green
                         // (MESITA-4688); VIP keeps it while locked, the row dims.
                         blocked ? "bg-muted text-muted-foreground" : VOUCHER_TONE[p.key],
@@ -1099,7 +1144,21 @@ export function VouchersPane({
           the right. Every other state is the one full-width button: with
           nothing picked every line reads $0 and it says "Select an offer",
           disabled: an empty basket charges nothing. */}
-      {tab === "vouchers" && (() => {
+      {/* ONE BAR (MESITA-4702): nothing picked, the purple Go to Pay Bill
+          (where cashback is earned); a voucher picked, its Pay summary. */}
+      {count === 0 && actions?.onPay ? (
+        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-cashback-pay-bar>
+          <button
+            type="button"
+            onClick={actions.onPay}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
+            data-cashback-pay-bill
+          >
+            <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            Go to Pay Bill
+          </button>
+        </div>
+      ) : products.length > 0 && (() => {
         const sum = totals ?? { price: 0, bonus: 0 };
         const amount = (cents: number) => whole(pesos(cents, currency));
         const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");
@@ -1174,6 +1233,7 @@ export function VouchersPane({
         </div>
         );
       })()}
+      {cashInfo && cashback ? <CashbackInfo row={cashInfo} cap={whole(pesos(cashback.cap_cents, currency))} onClose={() => setCashInfo(null)} /> : null}
       {infoProduct ? (
         <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
       ) : null}

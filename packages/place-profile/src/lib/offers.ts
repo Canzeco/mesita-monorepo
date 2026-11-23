@@ -29,7 +29,23 @@ export type OfferSlide = {
  *  money read both fit. */
 export type OfferInput = {
   sell: readonly string[];
+  /** MESITA-4702: the place's highest cashback line in percent; absent or
+   *  null = no cashback earned there (Loyalty Cards Off, every line Off). */
+  cashback_pct?: number | null;
+  /** Every cashback line is the same rate: the slide drops "Up to". */
+  cashback_flat?: boolean;
+  /** The place screen's money read carries the lines themselves (PlaceMoney). */
+  cashback?: { welcome_bps: number; regular_bps: number; vip_bps: number } | null;
 };
+
+/** The cashback slide's number: a list row's cashback_pct, else the place
+ *  screen's lines. */
+function cashbackOf(o: OfferInput): { pct: number; flat: boolean } {
+  if (o.cashback_pct != null) return { pct: o.cashback_pct, flat: o.cashback_flat === true };
+  const c = o.cashback;
+  if (!c) return { pct: 0, flat: false };
+  return { pct: Math.max(c.welcome_bps, c.regular_bps, c.vip_bps) / 100, flat: c.welcome_bps === c.regular_bps && c.regular_bps === c.vip_bps };
+}
 
 // THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "ONLY SHOW THE HIGHEST
 // STANDARD VOUCHER"). Pay reads "5% Back" with no "+" (MESITA-3871).
@@ -50,7 +66,9 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 // Vouchers must be blue."): one colour per kind of offer, whatever the size
 // or class. Every offer green (MESITA-4181) and VIP yellow (MESITA-4688)
 // before.
-const BLUE = "bg-[#0A84FF] text-white";
+// BLACK INK ON BLUE (Pato, 2026-11-22, MESITA-4702: "use black color in
+// prepayments, it gives more confidence. blue background, black letters").
+const BLUE = "bg-[#0A84FF] text-neutral-950";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
   voucher_welcome: BLUE,
   voucher_200: BLUE,
@@ -63,14 +81,17 @@ export const CASHBACK_TONE = GREEN;
 // THE WORDS (Pato, 2026-11-17, MESITA-4219): Classic, the best standard
 // voucher, leads; every pill reads "+N% Bonus" on every screen (the "+"
 // back, MESITA-4221). Prepay led with "+N%" before.
+// PAY, THEN PREPAY (Pato, 2026-11-22, MESITA-4702: "blue for prepayments
+// and green for cashbacks · Pay (X% Cashback) · Prepay (Up to X% Bonus)"):
+// a green Pay slide where a bill earns cashback, then the blue Prepay slide.
 const OFFER_SLIDES: OfferSlide[] = [
+  { key: "cashback", lead: "Pay", pill: "", short: "Pay", spoken: "Pay", section: "cashback", tone: GREEN },
   // The best standard voucher on sale (offerSlides picks it).
   // "Prepay" on the previews since MESITA-4255 (Pato: "instead of classic use
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
-  { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
-  // Welcome is back (MESITA-4645): pay $100, get $200.
-  { key: "voucher_welcome", lead: "Welcome", pill: "+100% Bonus", short: "Welcome", spoken: "Welcome, 100% bonus", section: "special", tone: VOUCHER_TONE.voucher_welcome, bonus: 100, voucher: "voucher_welcome" },
+  { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: BLUE },
+  // No Welcome voucher slide since MESITA-4698: Welcome is a cashback line.
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase
@@ -88,8 +109,16 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
   const standard = Object.entries(STANDARD_BONUS).filter(([key]) => sell.has(key));
   const top = standard.reduce<[string, number] | null>((a, b) => (a && a[1] >= b[1] ? a : b), null);
   return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
+    if (s.key === "cashback") {
+      const { pct, flat } = cashbackOf(offers);
+      if (pct <= 0) return [];
+      const words = `${flat ? "" : "Up to "}${pct}% Cashback`;
+      return [{ ...s, pill: words, spoken: `Pay, ${words.toLowerCase()}` }];
+    }
     if (s.key === "prepay")
-      return top ? [{ ...s, pill: `+${top[1]}% Bonus`, spoken: `Prepay, ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
+      // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
+      // renderer's own "Up To" prefix (MESITA-4676) went: the words live here.
+      return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
     return sell.has(s.key) ? [s] : [];
   });
 }

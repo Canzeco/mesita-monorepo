@@ -24,6 +24,7 @@ import {
 import { isUuid } from "../_shared/place-id.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+import { placeCashbackFor } from "../_shared/cashback.ts";
 import { readReservable } from "../_shared/place-reservable.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
@@ -116,6 +117,17 @@ serveJson("consumer-web-get-place", async (req) => {
     // rides it. A failed read leaves the tile to the client's own rule.
     readReservable(admin, placeId).then((r) => (r.error ? null : r.reservable)),
   ]);
+  // MESITA-4702: the place screen's Offers tile shows the green "Pay · N%
+  // Cashback" slide beside the blue Prepay one (placeCashbackFor).
+  const cashback = money && typeof money === "object"
+    ? await placeCashbackFor(admin, {
+      placeId,
+      consumerId: user?.id ?? null,
+      livemode: paymentsLivemode(),
+      loyaltyCards: (money as { loyalty_cards?: boolean }).loyalty_cards === true,
+      who: "consumer-web-get-place",
+    })
+    : null;
   const request = placeRequestState({
     requestCount: Number(row.request_count) || 0,
     threshold,
@@ -130,7 +142,7 @@ serveJson("consumer-web-get-place", async (req) => {
     profile_stats: profileStats,
     // Overview's Mesita Families box (MESITA-2924): the keys, named.
     families: familyChips(row.family_keys),
-    money,
+    money: money && typeof money === "object" ? { ...money, cashback } : money,
     reservable,
   };
 

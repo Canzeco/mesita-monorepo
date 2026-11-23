@@ -26,8 +26,7 @@ import { readVoucherPlace } from "../_shared/wallet.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
 import { inWallet } from "../_shared/loyalty-cards.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
-import { type CashbackLine, cashbackLine, readCashbackRates, readGuestClass, readHasPaidBill } from "../_shared/cashback.ts";
-import { errorMessage } from "../_shared/errors.ts";
+import { placeCashbackFor } from "../_shared/cashback.ts";
 
 serveJson("consumer-web-list-vouchers", async (req) => {
   const ctx = openRequest(req);
@@ -51,21 +50,13 @@ serveJson("consumer-web-list-vouchers", async (req) => {
   // Wallet (pinned or holding entries). Absent when signed out; a failed
   // read omits it rather than claim either way.
   if (card && !card.ok) console.error("[consumer-web-list-vouchers] in_wallet", JSON.stringify({ error: card.error }));
-  // MESITA-4698: cashback, where credit can be born. A failed read shows none
-  // rather than a wrong rate.
-  let cashback: Record<string, unknown> | null = null;
-  if ((money as { loyalty_cards?: boolean }).loyalty_cards === true) {
-    try {
-      const [rates, firstBill, klass] = await Promise.all([
-        readCashbackRates(admin, placeId),
-        user ? readHasPaidBill(admin, user.id, placeId, livemode).then((paid) => !paid) : Promise.resolve(null),
-        user ? readGuestClass(admin, user.id) : Promise.resolve(null),
-      ]);
-      const line: CashbackLine | null = firstBill === null ? null : cashbackLine({ firstBill, guestClass: klass });
-      cashback = { ...rates, line };
-    } catch (err) {
-      console.error("[consumer-web-list-vouchers] cashback", JSON.stringify({ error: errorMessage(err) }));
-    }
-  }
+  // MESITA-4698: cashback, where credit can be born (placeCashbackFor).
+  const cashback = await placeCashbackFor(admin, {
+    placeId,
+    consumerId: user?.id ?? null,
+    livemode,
+    loyaltyCards: (money as { loyalty_cards?: boolean }).loyalty_cards === true,
+    who: "consumer-web-list-vouchers",
+  });
   return json({ ok: true, money: { ...money, cashback }, ...(card && card.ok ? { in_wallet: card.in_wallet } : {}) });
 });

@@ -250,7 +250,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             data-offers-balance
           >
             <span className="flex items-center justify-between gap-3">
-              <span className="text-paper/70 text-sm font-semibold">Loyalty Card</span>
+              {/* "instead of loyalty card say Current Balance" (Pato, MESITA-4702). */}
+              <span className="text-paper/70 text-sm font-semibold">Current Balance</span>
               <span className="text-base font-bold tabular-nums">{credit.ready}</span>
             </span>
             {credit.pending ? (
