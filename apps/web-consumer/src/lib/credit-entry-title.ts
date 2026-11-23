@@ -8,6 +8,7 @@ const TITLE: Record<string, string> = {
   voucher: "Voucher",
   prepay: "Voucher",
   bonus: "Voucher",
+  cashback: "Cashback",
   gift_in: "Gift",
   gift_out: "Gift",
   gift_back: "Gift",

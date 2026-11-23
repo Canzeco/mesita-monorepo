@@ -67,9 +67,11 @@ export function prepayReturnHref(placeIdOrSlug: string): string {
 export function BuyCreditsPage() {
   const router = useRouter();
   return (
-    <Screen title="Prepay & Get Credits" paper flush>
+    // EXPLORE DISCOUNTS (MESITA-4698): the places with offers; a row opens
+    // its Offers page, which picks Cashbacks or Vouchers itself.
+    <Screen title="Explore Discounts" paper flush>
       <div className="flex min-h-0 flex-1 flex-col pt-3 pb-8">
-        <PlacePickBody prepay onPick={(id) => navigateTo(router, prepayHref(id), { motion: "drill" })} />
+        <PlacePickBody prepay onPick={(id) => navigateTo(router, `${placeHref(id)}/offers`, { motion: "drill" })} />
       </div>
     </Screen>
   );

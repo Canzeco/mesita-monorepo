@@ -76,7 +76,9 @@ export function PlacePickBody({
 }) {
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places: all, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
-  const places = prepay && all ? all.filter((p) => p.card_ok) : all;
+  // MESITA-4698: Explore Discounts lists the places with offers (Loyalty
+  // Cards On); an older server without offers_ok falls back to card_ok.
+  const places = prepay && all ? all.filter((p) => p.offers_ok ?? p.card_ok) : all;
   const [query, setQuery] = useState("");
 
   return (

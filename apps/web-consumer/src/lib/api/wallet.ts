@@ -562,6 +562,8 @@ export type PayPlace = {
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
   /** Cash Payments is on here (the owner's switch and a waiter code). */
   outside_ok?: boolean;
+  /** MESITA-4698: Loyalty Cards is On, so the place has offers (Explore Discounts). */
+  offers_ok?: boolean;
   /** What the guest can buy here now (MESITA-4519), the card's offer
    *  slides. Absent from an older server reads as none. */
   offers?: { sell: string[] };
@@ -612,6 +614,8 @@ export const ENTRY_LABEL: Record<string, string> = {
   bonus: "Bonus",
   // Legacy extra credit some guests hold (MESITA-4191, MESITA-4194): said plainly.
   extra: "Credit",
+  // MESITA-4698: earned on a paid bill, Pending 3 hours.
+  cashback: "Cashback",
   spend: "Paid",
   reversal: "Refund",
   // Credit given back on a payment (MESITA-3750: it showed the raw word).
