@@ -38,15 +38,17 @@ export const BRAND_HEADER_CLASS =
   "border-border bg-card text-foreground sticky top-0 z-20 shrink-0 border-b";
 
 /** The header's name, set as type, not a drawn logo (MESITA-2480). */
+// A BIT TALLER (Pato, 2026-11-23, MESITA-4758: "make the mesita in home
+// header a bit taller"): 28px (24px before), in a 56px row (52px before).
 export const HOME_WORDMARK_CLASS =
-  "text-foreground shrink-0 text-2xl leading-none tracking-[-0.03em] select-none";
+  "text-foreground shrink-0 text-[28px] leading-none tracking-[-0.03em] select-none";
 
 /** The white band with the word "Mesita", then the tab's own control (Home:
  *  the location box). */
 export function BrandHeader({ children }: { children?: ReactNode }) {
   return (
     <div className={BRAND_HEADER_CLASS}>
-      <div className="flex h-[52px] items-center gap-3 px-4" data-home-header>
+      <div className="flex h-14 items-center gap-3 px-4" data-home-header>
         <span
           className={`${wordmarkFont.className} ${HOME_WORDMARK_CLASS}`}
           data-home-wordmark
