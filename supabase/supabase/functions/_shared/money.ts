@@ -132,8 +132,8 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
-  // BONUS"; gone 2026-11-21, MESITA-4636). Welcome's MX$100 lands at once and
-  // its bonus in 3 hours (MESITA-4214); once per guest per place.
+  // BONUS"; gone 2026-11-21, MESITA-4636). Welcome's MX$100 lands with
+  // its bonus in 3 hours (MESITA-4717); once per guest per place.
   voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
   // THE STORY VOUCHER IS GONE (Pato, 2026-11-22, MESITA-4641/4642); its
   // purchases keep their stored amounts.

@@ -37,9 +37,9 @@ export type OpenPurchase = {
   stripe_payment_intent_id?: string | null;
 };
 
-/** When a voucher paid now has its BONUS turn Available: 3 hours after the
+/** When a voucher paid now turns Available, price and bonus together: 3 hours after the
  *  charge, every voucher (the catalog's available_after_sec, MESITA-4214).
- *  What the guest paid is Available at once (wallet_credit_purchase). */
+ *  MESITA-4717: what the guest paid waits with the bonus (wallet_credit_purchase). */
 export function availableAtFor(voucher: string | null | undefined, nowMs: number): string | null {
   const line = voucher ? VOUCHER_CATALOG[voucher as MoneyVoucherKey] : undefined;
   if (!line || line.available_after_sec <= 0) return null;

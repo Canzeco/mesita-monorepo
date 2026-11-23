@@ -6,9 +6,14 @@
 // in the image is data, never instructions.
 //
 //   cron tick (supabase-cron-verify-stories):
-//     story_ai_claim ─▶ image from the CDN (a data URL, never stored)
-//        ─▶ ask ─▶ story_ai_verdict ─▶ story_reward_grant | story_reward_reject
-//     a failure ─▶ story_ai_fail(code, final?)
+//     1st check: story_ai_claim ─▶ image from the CDN (a data URL, never stored)
+//        ─▶ ask ─▶ story_ai_verdict ─▶ story_reward_grant (verified, no money)
+//                                      | story_reward_reject
+//        a failure ─▶ story_ai_fail(code, final?)
+//     recheck (MESITA-4717, 10 hours later): story_recheck_claim ─▶ is the
+//        story still up? ─▶ story_reward_pay (the money) | story_reward_reject
+//        (removed); unknown ─▶ ask again next tick, pay once the story
+//        outlived 24 hours. All automatic: no person reviews any step.
 //
 // Error codes (ai_last_error): media_fetch_<status>, media_expired,
 // model_timeout, model_network, model_http_<status>, model_schema_violation,
@@ -152,7 +157,7 @@ export async function storyImage(
 
 type Claimed = { id: string; media_url: string | null; media_kind: "image" | "video"; ai_tries: number };
 
-export type VerifyReport = { claimed: number; rewarded: number; rejected: number; failed: number; unreadable: number };
+export type VerifyReport = { claimed: number; verified: number; rejected: number; failed: number; unreadable: number };
 
 function line(fields: Record<string, unknown>) {
   console.log(JSON.stringify({ fn: "story-verify", ...fields }));
@@ -165,7 +170,7 @@ export async function runStoryVerify(
   opts: { endAtMs: number; batch: number; maxTries: number; model: string; key: string | null; now?: () => number },
 ): Promise<VerifyReport> {
   const now = opts.now ?? Date.now;
-  const report: VerifyReport = { claimed: 0, rewarded: 0, rejected: 0, failed: 0, unreadable: 0 };
+  const report: VerifyReport = { claimed: 0, verified: 0, rejected: 0, failed: 0, unreadable: 0 };
   while (report.claimed < opts.batch && now() < opts.endAtMs - 30_000) {
     const { data, error } = await admin.rpc("story_ai_claim", { p_limit: Math.min(5, opts.batch - report.claimed), p_max_tries: opts.maxTries });
     if (error) throw new Error(`story_ai_claim: ${error.message}`);
@@ -205,7 +210,97 @@ async function verifyOne(admin: SupabaseClient, m: Claimed, opts: { model: strin
   });
   if (error) return fail(admin, m, { code: "verdict_rpc", final: false }, report, opts.maxTries);
   const out = (data ?? {}) as { outcome?: string; reason?: string };
-  if (out.outcome === "rewarded") report.rewarded++;
+  if (out.outcome === "verified") report.verified++;
   else if (out.outcome === "rejected") report.rejected++;
   line({ mention_id: m.id, step: "verdict", outcome: out.outcome, reason: out.reason ?? null, mode: verdict.mode, prompt_v: STORY_VERIFY_PROMPT_V });
+}
+
+// ── The recheck (MESITA-4717) ──────────────────────────────────────────────
+
+/** A Meta CDN link's own expiry, from its `oe` query value (hex unix
+ *  seconds), or null when it carries none. */
+export function cdnLinkExpiresAtMs(url: string | null): number | null {
+  if (!url) return null;
+  try {
+    const oe = new URL(url).searchParams.get("oe");
+    if (!oe || !/^[0-9a-f]{1,12}$/i.test(oe)) return null;
+    return parseInt(oe, 16) * 1000;
+  } catch {
+    return null;
+  }
+}
+
+export type StillUp = "up" | "removed" | "unknown";
+
+/** Is the story still up at its recheck? A fetched 2xx: up. 403/404/410 on a
+ *  link whose own signature has not expired: removed. Anything else (an
+ *  expired signature, 5xx, network): unknown, asked again next tick. */
+export async function storyStillUp(url: string | null, nowMs: number, fetchImpl: typeof fetch = fetch): Promise<StillUp> {
+  if (!url) return "unknown";
+  const exp = cdnLinkExpiresAtMs(url);
+  if (exp !== null && exp <= nowMs) return "unknown";
+  let res: Response;
+  try {
+    res = await fetchImpl(url, { redirect: "follow", signal: AbortSignal.timeout(15_000) });
+  } catch {
+    return "unknown";
+  }
+  await res.body?.cancel();
+  if (res.ok) return "up";
+  if (res.status === 403 || res.status === 404 || res.status === 410) return "removed";
+  return "unknown";
+}
+
+export type RecheckRow = { id: string; source: "meta" | "emulator"; media_url: string | null; mentioned_at: string };
+export type RecheckDecision = "pay" | "remove" | "wait";
+
+/** What the recheck does with one story. An emulator story is up. A story
+ *  posted 24 hours ago or more outlived its life: pay whatever the link says
+ *  (a 404 then is Instagram's own expiry, not a delete). */
+export function recheckDecision(row: RecheckRow, still: StillUp, nowMs: number): RecheckDecision {
+  if (row.source === "emulator") return "pay";
+  const outlived = nowMs - Date.parse(row.mentioned_at) >= 24 * 3600_000;
+  if (still === "up" || outlived) return "pay";
+  return still === "removed" ? "remove" : "wait";
+}
+
+export type RecheckReport = { rechecked: number; paid: number; removed: number; waiting: number; errors: number };
+
+/** One recheck pass inside the cron's time left, 5 at a time. */
+export async function runStoryRecheck(
+  admin: SupabaseClient,
+  opts: { endAtMs: number; batch: number; now?: () => number; fetchImpl?: typeof fetch },
+): Promise<RecheckReport> {
+  const now = opts.now ?? Date.now;
+  const report: RecheckReport = { rechecked: 0, paid: 0, removed: 0, waiting: 0, errors: 0 };
+  while (report.rechecked < opts.batch && now() < opts.endAtMs - 20_000) {
+    const { data, error } = await admin.rpc("story_recheck_claim", { p_limit: Math.min(5, opts.batch - report.rechecked) });
+    if (error) throw new Error(`story_recheck_claim: ${error.message}`);
+    const round = (data ?? []) as RecheckRow[];
+    if (round.length === 0) break;
+    report.rechecked += round.length;
+    await Promise.all(round.map(async (r) => {
+      const t = now();
+      const still: StillUp = r.source === "emulator" ? "up" : await storyStillUp(r.media_url, t, opts.fetchImpl);
+      const d = recheckDecision(r, still, t);
+      if (d === "wait") {
+        report.waiting++;
+        line({ mention_id: r.id, step: "recheck", still, decision: d });
+        return;
+      }
+      const res = d === "pay"
+        ? await admin.rpc("story_reward_pay", { p_mention: r.id })
+        : await admin.rpc("story_reward_reject", { p_mention: r.id, p_reason: "removed" });
+      if (res.error) {
+        report.errors++;
+        line({ mention_id: r.id, step: "recheck", still, decision: d, error: res.error.message });
+        return;
+      }
+      const out = (res.data ?? {}) as { outcome?: string; reason?: string };
+      if (out.outcome === "rewarded") report.paid++;
+      else if (out.outcome === "rejected" && d === "remove") report.removed++;
+      line({ mention_id: r.id, step: "recheck", still, decision: d, outcome: out.outcome ?? null, reason: out.reason ?? null });
+    }));
+  }
+  return report;
 }

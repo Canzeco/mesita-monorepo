@@ -3,9 +3,12 @@
 // voucher: the guest posts a story tagging @mesita and the place; Meta's
 // story_mention webhook (meta-instagram-receive-message) records it here;
 // supabase-cron-verify-stories asks the model which place is tagged
-// (_shared/story-verify.ts); story_reward_grant (SQL, the one writer) pays the
-// place's story_reward_cents, Pending 3 hours, one per guest per place per 7
-// days, only where Loyalty Cards is On. In Stripe test mode a guest can
+// (_shared/story-verify.ts); story_reward_grant (SQL) marks it verified with
+// no money; 10 hours later the same cron checks the story is still up
+// (runStoryRecheck) and story_reward_pay (SQL, the one money writer) pays the
+// place's story_reward_cents, available at once, one per guest per place per
+// 7 days, only where Loyalty Cards is On (MESITA-4717, Pato: "Check Story,
+// Wait 10 hours, Recheck Story, Receive credits. ALL AUTOMATIC"). In Stripe test mode a guest can
 // simulate a story from the Post tab (consumer-web-simulate-story); live
 // money never reads the emulator.
 //
@@ -18,8 +21,13 @@ import { META_GRAPH_VERSION, readDmProfile } from "./instagram-dm.ts";
 
 // ── The rules (story_reward_grant mirrors them) ─────────────────────────────
 
-/** Verified → the credit turns Available. */
-export const STORY_REWARD_WAIT_SEC = 3 * 60 * 60;
+/** First check → recheck (MESITA-4717). */
+export const STORY_RECHECK_SEC = 10 * 60 * 60;
+/** The recheck never runs later than this after posting, while an honest
+ *  story is still up. */
+export const STORY_RECHECK_LATEST_SEC = 23 * 60 * 60;
+/** Test mode: an emulator story rechecks after 2 minutes. */
+export const STORY_EMULATOR_RECHECK_SEC = 2 * 60;
 /** At most one reward per guest per place in this window. */
 export const STORY_REWARD_WINDOW_SEC = 7 * 24 * 60 * 60;
 /** A story lives 24 hours; one still checking after that is closed. */
@@ -34,30 +42,41 @@ export type StoryRejectReason =
   | "unreadable"
   | "off"
   | "repeat"
-  | "expired";
+  | "expired"
+  | "removed";
 
 export type StoryRewardDecision =
-  | { pay: true; cents: number; availableAtMs: number }
+  | { pay: true; cents: number; recheckAtMs: number }
   | { pay: false; reason: Extract<StoryRejectReason, "no_guest" | "off" | "repeat"> };
 
-/** What one verified story at one place pays, pure (story_reward_grant's
- *  order): no verified guest → no_guest; Loyalty Cards Off or the reward Off
- *  → off; a reward to this guest here in the last 7 days → repeat; else the
- *  place's reward now, Available 3 hours later. */
+/** What one story that passed its first check at one place promises, pure
+ *  (story_reward_grant's order): no verified guest → no_guest; Loyalty Cards
+ *  Off or the reward Off → off; a story of this guest here paid or waiting in
+ *  the last 7 days → repeat; else the place's reward now, paid at the recheck
+ *  (10 hours later, never past the story's 23rd hour; emulator 2 minutes). */
 export function storyRewardDecision(args: {
   guestMatched: boolean;
   loyaltyCards: boolean;
   rewardCents: number;
-  /** The guest's latest story reward at this place (same mode), or null. */
+  /** The guest's latest story at this place paid or waiting (same mode), or null. */
   lastRewardAtMs: number | null;
   nowMs: number;
+  /** When the story was posted (defaults to now). */
+  postedAtMs?: number;
+  emulator?: boolean;
 }): StoryRewardDecision {
   if (!args.guestMatched) return { pay: false, reason: "no_guest" };
   if (!args.loyaltyCards || !(args.rewardCents > 0)) return { pay: false, reason: "off" };
   if (args.lastRewardAtMs != null && args.nowMs - args.lastRewardAtMs < STORY_REWARD_WINDOW_SEC * 1000) {
     return { pay: false, reason: "repeat" };
   }
-  return { pay: true, cents: args.rewardCents, availableAtMs: args.nowMs + STORY_REWARD_WAIT_SEC * 1000 };
+  return { pay: true, cents: args.rewardCents, recheckAtMs: storyRecheckAtMs(args.nowMs, args.postedAtMs ?? args.nowMs, args.emulator === true) };
+}
+
+/** When the second check runs (story_reward_grant mirrors it). */
+export function storyRecheckAtMs(checkedAtMs: number, postedAtMs: number, emulator: boolean): number {
+  if (emulator) return checkedAtMs + STORY_EMULATOR_RECHECK_SEC * 1000;
+  return Math.min(checkedAtMs + STORY_RECHECK_SEC * 1000, postedAtMs + STORY_RECHECK_LATEST_SEC * 1000);
 }
 
 /** When this guest can be paid for a story here again (null = now). */
@@ -78,6 +97,7 @@ export const STORY_REJECT_WORDS: Record<StoryRejectReason, string> = {
   off: "This place doesn't pay for stories",
   repeat: "One story reward per place every 7 days",
   expired: "It expired before we could check it",
+  removed: "The story was gone when we checked again",
 };
 
 // ── Meta's webhook ──────────────────────────────────────────────────────────
@@ -244,21 +264,26 @@ export function emulatorStoryId(consumerId: string, nowMs: number): string {
 
 // ── What the guest sees ─────────────────────────────────────────────────────
 
+export type StoryState = "checking" | "verified" | "rewarded" | "rejected";
+
 export type StoryMentionRow = {
   id: string;
-  state: "checking" | "rewarded" | "rejected";
+  state: StoryState;
   reject_reason: StoryRejectReason | null;
   reward_cents: number | null;
   decided_at: string | null;
+  recheck_at: string | null;
   mentioned_at: string;
   source: "meta" | "emulator";
 };
 
 export type StoryView = {
   id: string;
-  state: "checking" | "rewarded" | "rejected";
+  state: StoryState;
   reward_cents: number | null;
-  /** When a reward turns Available (decided + 3 hours). */
+  /** Verified: when the second check runs. */
+  recheck_at: string | null;
+  /** Rewarded: when the credit landed (the recheck, MESITA-4717). */
   available_at: string | null;
   reason: string | null;
   posted_at: string;
@@ -270,9 +295,8 @@ export function storyView(r: StoryMentionRow): StoryView {
     id: r.id,
     state: r.state,
     reward_cents: r.reward_cents,
-    available_at: r.state === "rewarded" && r.decided_at
-      ? new Date(Date.parse(r.decided_at) + STORY_REWARD_WAIT_SEC * 1000).toISOString()
-      : null,
+    recheck_at: r.state === "verified" ? r.recheck_at : null,
+    available_at: r.state === "rewarded" ? r.decided_at : null,
     reason: r.state === "rejected" && r.reject_reason ? STORY_REJECT_WORDS[r.reject_reason] ?? null : null,
     posted_at: r.mentioned_at,
     simulated: r.source === "emulator",
@@ -288,7 +312,7 @@ export function instagramHandleOfUrl(url: string | null | undefined): string | n
   return m ? m[1].toLowerCase() : null;
 }
 
-export const STORY_MENTION_COLUMNS = "id, state, reject_reason, reward_cents, decided_at, mentioned_at, source";
+export const STORY_MENTION_COLUMNS = "id, state, reject_reason, reward_cents, decided_at, recheck_at, mentioned_at, source";
 
 export type PostRead = {
   /** What a story pays here now; 0 = Off (or Loyalty Cards Off). */
@@ -357,7 +381,12 @@ export async function readPost(
       .find((r) => r.place_id === args.placeId || (r.state === "checking" && r.place_id == null));
     latest = row ? storyView(row) : null;
     const last = (lastRes.data ?? [])[0] as { created_at: string } | undefined;
-    nextAt = nextStoryRewardAt(last ? Date.parse(last.created_at) : null, args.nowMs);
+    // A story here still waiting for its recheck counts too (MESITA-4717).
+    const waiting = ((mentionRes.data ?? []) as unknown as Array<StoryMentionRow & { place_id: string | null }>)
+      .filter((r) => r.place_id === args.placeId && (r.state === "verified" || r.state === "rewarded"))
+      .map((r) => Date.parse(r.mentioned_at));
+    const times = [...waiting, ...(last ? [Date.parse(last.created_at)] : [])].filter(Number.isFinite);
+    nextAt = nextStoryRewardAt(times.length ? Math.max(...times) : null, args.nowMs);
   }
   const place = placeRes.data as { currency: string | null; instagram_url: string | null };
   return {
