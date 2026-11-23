@@ -9,7 +9,8 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyText } from "./pay.ts";
-import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
+import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, type VoucherBonusBps, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
+import { readCashbackRates, voucherBonusFrom } from "./cashback.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, VIP_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
@@ -58,16 +59,18 @@ export type VoucherOffer = {
 };
 
 /** The catalog in one currency (MESITA-3914); a currency without voucher
- *  prices gets the pesos' lines, and buyRefusal refuses every buy there. */
-export function catalogLines(currency: string = MONEY_CURRENCY): Record<MoneyVoucherKey, VoucherCatalogLine> {
+ *  prices gets the pesos' lines, and buyRefusal refuses every buy there.
+ *  `bonus`: the place's picked bonus per voucher (MESITA-4764); absent, the
+ *  catalog's defaults. */
+export function catalogLines(currency: string = MONEY_CURRENCY, bonus?: VoucherBonusBps | null): Record<MoneyVoucherKey, VoucherCatalogLine> {
   const cur = voucherPriceCents("voucher_200", currency) === null ? MONEY_CURRENCY : currency;
   return Object.fromEntries(
     MONEY_VOUCHER_KEYS.map((k) => {
       const price = voucherPriceCents(k, cur) ?? 0;
       return [k, {
         price_cents: price,
-        bonus_cents: voucherBonusCents(k, cur),
-        credit_cents: price + voucherBonusCents(k, cur),
+        bonus_cents: voucherBonusCents(k, cur, bonus),
+        credit_cents: price + voucherBonusCents(k, cur, bonus),
         available_after_sec: VOUCHER_CATALOG[k].available_after_sec,
       }];
     }),
@@ -98,6 +101,8 @@ export type OfferInput = {
   perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>>;
   /** The place has a place code, so the waiter's charge can open (MESITA-3545). */
   hasPlaceCode?: boolean;
+  /** The place's picked voucher bonuses (MESITA-4764); absent reads the defaults. */
+  voucherBonus?: VoucherBonusBps;
 };
 
 /** This guest's own block on one voucher at one place, or null: Welcome
@@ -144,7 +149,7 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     vouchers,
     sell,
     unavailable,
-    catalog: catalogLines(i.currency),
+    catalog: catalogLines(i.currency, i.voucherBonus),
     balance: i.balance,
     paused: i.paused,
   };
@@ -301,7 +306,7 @@ export async function voucherOffer(
   livemode: boolean,
 ): Promise<VoucherOffer> {
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
-  const [settings, account, config, balance, welcomeUsed, perVisitUsed, code] = await Promise.all([
+  const [settings, account, config, balance, welcomeUsed, perVisitUsed, code, rates] = await Promise.all([
     readSettings(admin, place.id),
     readAccount(admin, place.id),
     readMoneyConfig(admin),
@@ -309,6 +314,7 @@ export async function voucherOffer(
     readWelcomeUsed(admin, consumerId, place.id),
     readPerVisitUsed(admin, consumerId, place.id),
     admin.from("place_codes").select("place_id").eq("place_id", place.id).maybeSingle(),
+    readCashbackRates(admin, place.id),
   ]);
   // A failed read reads no code: Offers never advertises 2% it cannot honour.
   if (code.error) console.error("[vouchers] place_code_read", JSON.stringify({ place_id: place.id, error: code.error.message }));
@@ -322,6 +328,7 @@ export async function voucherOffer(
     welcomeUsed,
     perVisitUsed,
     hasPlaceCode: !code.error && !!code.data,
+    voucherBonus: voucherBonusFrom(rates),
   });
 }
 
@@ -451,6 +458,9 @@ export function voucherMetadata(args: {
   followers?: readonly MoneyVoucherKey[];
   /** The place's currency (MESITA-3914); pesos when left out. */
   currency?: string;
+  /** The rows' stored bonus in total (the place's pick, MESITA-4764); absent,
+   *  the catalog's defaults. */
+  bonusCents?: number;
 }): Record<string, string> {
   const units = [args.voucher, ...(args.followers ?? [])];
   const lines = catalogLines(args.currency);
@@ -461,7 +471,7 @@ export function voucherMetadata(args: {
     consumer_id: args.consumerId,
     voucher: args.voucher,
     amount_cents: String(units.reduce((sum, k) => sum + lines[k].price_cents, 0)),
-    bonus_cents: String(units.reduce((sum, k) => sum + lines[k].bonus_cents, 0)),
+    bonus_cents: String(args.bonusCents ?? units.reduce((sum, k) => sum + lines[k].bonus_cents, 0)),
   };
   if (units.length > 1) {
     meta.basket = String(units.length);
@@ -577,10 +587,11 @@ export function overCreditLimit(
   voucher: MoneyVoucherKey | readonly MoneyVoucherKey[],
   limitCents: number | null,
   currency: string = MONEY_CURRENCY,
+  bonus?: VoucherBonusBps | null,
 ): boolean {
   if (limitCents === null) return true;
   const keys: readonly MoneyVoucherKey[] = typeof voucher === "string" ? [voucher] : voucher;
-  const lines = catalogLines(currency);
+  const lines = catalogLines(currency, bonus);
   return outstandingCents + keys.reduce((sum, k) => sum + lines[k].credit_cents, 0) > limitCents;
 }
 
@@ -624,17 +635,20 @@ export async function openPurchaseRow(
   },
 ): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
   const pay = args.paySource === "express" ? { pay_source: "express", pay_with: "express" } : { pay_source: "card" };
-  const lines = catalogLines(args.currency);
-  const line = lines[args.voucher];
   const followers = args.followers ?? [];
   // The Credits Limit (MESITA-3947): read once, no lock. Two taps at
   // once can each pass it by one basket; the limit is a safety margin, not
-  // an exact ceiling.
-  const [outstanding, limit] = await Promise.all([
+  // an exact ceiling. The bonus is the place's pick now (MESITA-4764),
+  // stored on the row, so a later change never moves a bought voucher.
+  const [outstanding, limit, rates] = await Promise.all([
     readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode),
     readPlaceCreditLimit(admin, args.place.id),
+    readCashbackRates(admin, args.place.id),
   ]);
-  if (overCreditLimit(outstanding, [args.voucher, ...followers], limit, args.currency)) {
+  const bonus = voucherBonusFrom(rates);
+  const lines = catalogLines(args.currency, bonus);
+  const line = lines[args.voucher];
+  if (overCreditLimit(outstanding, [args.voucher, ...followers], limit, args.currency, bonus)) {
     return { ok: false, status: 409, code: "place_cap", error: "This place can't take more credit for now. Try again later." };
   }
   const { data: row, error: insertErr } = await admin

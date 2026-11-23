@@ -17,9 +17,9 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { type CashbackRates, readCashbackRatesMany } from "./cashback.ts";
+import { type CashbackRates, readCashbackRatesMany, voucherBonusFrom } from "./cashback.ts";
 import { errorMessage } from "./errors.ts";
-import { vouchersUpToPct } from "./money.ts";
+import { voucherBonusBps, vouchersUpToPct } from "./money.ts";
 import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
@@ -189,9 +189,12 @@ export type ListRowOffers = {
   welcome_pct: number | null;
   returning_pct: number | null;
   story_cents: number | null;
+  /** MESITA-4764: each voucher sold here and its bonus in whole percent (the
+   *  owner's pick: Small 10 · 20, Medium 20 · 40, Big 40 · 60). */
+  voucher_pct: Partial<Record<MoneyVoucherKey, number>>;
 };
 /** A row with nothing on offer. */
-export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, story_cents: null };
+export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, story_cents: null, voucher_pct: {} };
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
@@ -246,11 +249,13 @@ export async function withVouchersUpTo<T extends { id: string }>(
     const welcome_pct = r && r.welcome_bps > 0 ? r.welcome_bps / 100 : null;
     const returning_pct = r && r.returning_bps > 0 ? r.returning_bps / 100 : null;
     const story_cents = r && r.story_reward_cents > 0 ? r.story_reward_cents : null;
+    const bonus = voucherBonusFrom(r);
+    const voucher_pct = Object.fromEntries(sell.map((k) => [k, Math.floor(voucherBonusBps(k, bonus) / 100)]));
     return {
       ...p,
-      vouchers_up_to_pct: vouchersUpToPct(sell),
+      vouchers_up_to_pct: vouchersUpToPct(sell, bonus),
       mesita_pay: money.mesita_pay,
-      offers: { sell, cashback_pct, cashback_flat, welcome_pct, returning_pct, story_cents },
+      offers: { sell, cashback_pct, cashback_flat, welcome_pct, returning_pct, story_cents, voucher_pct },
     };
   });
 }

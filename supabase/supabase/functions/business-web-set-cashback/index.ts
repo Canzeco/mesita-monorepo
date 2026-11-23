@@ -11,8 +11,13 @@
 // 0 Off · 2000 · 5000; optional, absent keeps the saved one). It pays only
 // while Loyalty Cards is On (story_reward_grant checks).
 //
-// Body: { place_id, welcome_bps, returning_bps, story_reward_cents? } (a cap_cents is ignored; no ceiling since MESITA-4728)
-// Response: { ok: true, cashback: { welcome_bps, returning_bps, story_reward_cents } }
+// MESITA-4764: two picks per offer. Welcome 0 · 1000 · 2000, Returning
+// 0 · 500 · 1000, story 0 · 2000 · 4000, and the voucher bonuses
+// small_bonus_bps 1000 · 2000, medium_bonus_bps 2000 · 4000, big_bonus_bps
+// 4000 · 6000 (optional; absent keeps the saved one).
+//
+// Body: { place_id, welcome_bps, returning_bps, story_reward_cents?, small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; no ceiling since MESITA-4728)
+// Response: { ok: true, cashback: { welcome_bps, returning_bps, story_reward_cents, small_bonus_bps, medium_bonus_bps, big_bonus_bps } }
 //   400 (bad input) · 403 owner_only
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

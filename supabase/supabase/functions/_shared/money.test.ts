@@ -18,13 +18,16 @@ Deno.test("the fee rates are 5% each", () => {
 
 Deno.test("the catalog's bonuses and fees, in centavos", () => {
   // MESITA-4152: Small MX$200 / US$20 +10%; Medium MX$1,000 / US$100 +20%;
-  // Big MX$5,000 / US$500 +30%.
+  // Big MX$5,000 / US$500, +40% by default since MESITA-4764 (+30% before).
   assertEquals(voucherPriceCents("voucher_200"), 200_00);
   assertEquals(voucherBonusCents("voucher_200"), 20_00);
   assertEquals(voucherPriceCents("voucher_1000"), 1_000_00);
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
   assertEquals(voucherPriceCents("voucher_5000"), 5_000_00);
-  assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
+  assertEquals(voucherBonusCents("voucher_5000"), 2_000_00);
+  // MESITA-4764: the place's pick wins over the default.
+  assertEquals(voucherBonusCents("voucher_5000", "mxn", { voucher_5000: 6000 }), 3_000_00);
+  assertEquals(voucherBonusCents("voucher_200", "mxn", { voucher_5000: 6000 }), 20_00);
   assertEquals(voucherBonusCents("voucher_200", "usd"), 2_00);
   assertEquals(voucherBonusCents("voucher_1000", "usd"), 20_00);
   assertEquals(voucherPriceCents("voucher_200", "usd"), 20_00);
@@ -61,7 +64,10 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   assertEquals(countryForCurrency("cad"), "CA");
   for (const r of VOUCHER_CURRENCY_LIST) assertEquals(String(r.small)[0], "1");
   assertEquals(voucherBonusCents("voucher_1000"), 200_00);
-  assertEquals(voucherBonusCents("voucher_5000"), 1_500_00);
+  assertEquals(voucherBonusCents("voucher_5000"), 2_000_00);
+  // MESITA-4764: the place's pick wins over the default.
+  assertEquals(voucherBonusCents("voucher_5000", "mxn", { voucher_5000: 6000 }), 3_000_00);
+  assertEquals(voucherBonusCents("voucher_200", "mxn", { voucher_5000: 6000 }), 20_00);
   // VIP is back (MESITA-4640): MX$100 → +100%. Welcome is back
   // (MESITA-4645): MX$100 → +100%, its bonus in 3 hours.
   assertEquals(voucherBonusCents("voucher_vip"), 100_00);
@@ -79,7 +85,8 @@ Deno.test("the Home tile's line is the best bonus among what the place sells (ME
   assertEquals(vouchersUpToPct([]), null);
   assertEquals(vouchersUpToPct(["voucher_200"]), 10);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000"]), 20);
-  assertEquals(vouchersUpToPct(["voucher_200", "voucher_5000"]), 30);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_5000"]), 40);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_5000"], { voucher_5000: 6000 }), 60);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_vip"]), 100);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 100);
 });
