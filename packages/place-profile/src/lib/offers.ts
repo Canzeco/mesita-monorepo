@@ -40,7 +40,14 @@ export type OfferInput = {
   /** Every cashback line is the same rate: the slide drops "Up to". */
   cashback_flat?: boolean;
   /** The place screen's money read carries the lines themselves (PlaceMoney). */
-  cashback?: { welcome_bps: number; returning_bps: number; returning_vip_bps?: number; visit_mechanism?: VisitMechanism } | null;
+  cashback?: {
+    welcome_bps: number;
+    returning_bps: number;
+    returning_vip_bps?: number;
+    visit_mechanism?: VisitMechanism;
+    /** The line this guest's next bill falls in (null signed out). */
+    line?: "welcome" | "returning" | "returning_vip" | null;
+  } | null;
   /** MESITA-4770: how the visit lines pay out (a list row's field); absent
    *  reads `cashback.visit_mechanism`, else cashback. */
   visit_mechanism?: VisitMechanism | null;
@@ -74,6 +81,10 @@ function cashbackOf(o: OfferInput): { pct: number; flat: boolean } {
   if (!c) return { pct: 0, flat: false };
   // MESITA-4766: the highest of Welcome, Returning and Returning VIP.
   const vip = c.returning_vip_bps ?? 0;
+  // MESITA-4781: the guest's own line when the server knows it (one line
+  // applies to a bill).
+  const mine = c.line === "welcome" ? c.welcome_bps : c.line === "returning" ? c.returning_bps : c.line === "returning_vip" ? vip : 0;
+  if (mine > 0) return { pct: mine / 100, flat: true };
   return { pct: Math.max(c.welcome_bps, c.returning_bps, vip) / 100, flat: c.welcome_bps === c.returning_bps && c.returning_bps === vip };
 }
 
@@ -173,7 +184,10 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       // "Cashback" or "Discount" (MESITA-4777; "Back" / "Off" before).
       const mech = visitMechanismOf(offers);
       const word = visitWord(mech);
-      const words = `${flat ? "" : "Up to "}${pct}% ${word}`;
+      // NO "UP TO" (Pato, 2026-11-23, MESITA-4781: "in pay it only applies
+      // one offer"): the guest's own line, else the highest one.
+      void flat;
+      const words = `${pct}% ${word}`;
       return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${word}`, spoken: `Pay, ${words.toLowerCase()}` }];
     }
     if (s.key === "prepay")
