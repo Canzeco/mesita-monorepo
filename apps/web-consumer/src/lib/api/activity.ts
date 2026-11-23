@@ -28,7 +28,7 @@ export type ActivityPerson = {
   /** A verified Instagram (MESITA-2608): the Instagram mark on the face,
    *  on anonymous rows too. */
   instagram: boolean;
-  /** MESITA-4714: the followers badge (blue since MESITA-4721) beside the handle (more than 1,000
+  /** MESITA-4714: the followers badge (a yellow disc, MESITA-4722) beside the handle (more than 1,000
    *  followers, public account), decided by the server. Optional (older EF
    *  payloads read as none). */
   instagramBadge?: boolean;
