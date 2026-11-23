@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 // 20px yellow disc with a dark check, the same shape and size as the
 // Instagram gradient chip on the handle's other side. Never blue
 // (MESITA-4721's blue seal read as Instagram's own verification).
+// PINK, NOT YELLOW (Pato, 2026-11-23, MESITA-4734: "make the checker pink.
+// yellow looks like a warning"): Post's pink #FF66C4 with a white check.
 export const FOLLOWERS_BADGE_LABEL =
   "More than 1,000 followers, public account";
 
@@ -24,13 +26,13 @@ export function FollowersBadge({ className }: { className?: string }) {
       aria-label={FOLLOWERS_BADGE_LABEL}
       title={FOLLOWERS_BADGE_LABEL}
       className={cn(
-        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FFC400]",
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#FF66C4]",
         className,
       )}
       data-followers-badge
     >
       <Check
-        className="h-3 w-3 text-neutral-950"
+        className="h-3 w-3 text-white"
         strokeWidth={3.5}
         aria-hidden
       />
