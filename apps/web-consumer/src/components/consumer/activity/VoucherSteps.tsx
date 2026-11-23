@@ -3,7 +3,7 @@
 // A VOUCHER'S STEPS (MESITA-4627, Pato 2026-11-21): one vertical list, the
 // current step lit in ink, the done ones ticked green, the rest muted.
 //
-//   voucher   Pay · Credits · Wait 3 hours · Bonus      (CreditEntry)
+//   voucher   Pay · Wait 3 hours · Receive it all      (CreditEntry, MESITA-4717)
 
 import type { ComponentType } from "react";
 import { Check } from "lucide-react";

@@ -1,13 +1,14 @@
 // MESITA-4714 (Post): a verified story is guest money. Pin the rules
 // story_reward_grant mirrors (Off, no guest, once per guest per place per 7
-// days, Pending 3 hours), the owner's allowed amounts, and the webhook parse.
+// days, the recheck 10 hours later; MESITA-4717), the owner's allowed amounts,
+// and the webhook parse.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   emulatorRefusal,
   instagramHandleOfUrl,
   nextStoryRewardAt,
   parseStoryMentions,
-  STORY_REWARD_WAIT_SEC,
+  STORY_RECHECK_SEC,
   STORY_REWARD_WINDOW_SEC,
   storyRewardDecision,
 } from "./story-reward.ts";
@@ -16,9 +17,13 @@ import { readCashbackInput } from "./cashback.ts";
 const NOW = Date.parse("2026-11-23T18:00:00Z");
 const DAY = 24 * 3600 * 1000;
 
-Deno.test("story reward: pays the place's amount, Available 3 hours later", () => {
+Deno.test("story reward: promises the place's amount, paid at the recheck 10 hours later (MESITA-4717)", () => {
   const d = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW });
-  assertEquals(d, { pay: true, cents: 2000, availableAtMs: NOW + STORY_REWARD_WAIT_SEC * 1000 });
+  assertEquals(d, { pay: true, cents: 2000, recheckAtMs: NOW + STORY_RECHECK_SEC * 1000 });
+  const late = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW, postedAtMs: NOW - 20 * 3600_000 });
+  assertEquals(late.pay && late.recheckAtMs, NOW + 3 * 3600_000, "never past the story's 23rd hour");
+  const emu = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW, emulator: true });
+  assertEquals(emu.pay && emu.recheckAtMs, NOW + 120_000, "test mode rechecks after 2 minutes");
   const big = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 5000, lastRewardAtMs: null, nowMs: NOW });
   assertEquals(big.pay && big.cents, 5000);
 });

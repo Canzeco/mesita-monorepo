@@ -308,22 +308,28 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           dim={e.kind === "reversal" || refund !== undefined}
         />
 
-        {/* THE CLASSIC VOUCHER'S STEPS (Pato, 2026-11-21, MESITA-4627: "1.
-            Pay 2. Credits 3. Wait 3 hours 4. Bonus"): only when the
-            purchase came with a bonus; a refunded one has none to wait for. */}
+        {/* THE VOUCHER'S STEPS (Pato, 2026-11-23, MESITA-4717: "1. Pay X
+            2. Wait 3 hours 3. Receive Y (all in one run)"): only when the
+            purchase came with a bonus; a refunded one has none to wait for.
+            Four steps (Pay · Credits · Wait · Bonus) were MESITA-4627. */}
         {bought && bonus && !refund ? (
           <VoucherSteps
             steps={[
               { key: "pay", Icon: BadgeDollarSign, title: "Pay", amount: m(amount), state: "done" },
-              { key: "credits", Icon: BadgeDollarSign, title: "Credits", amount: m(amount), state: e.pending ? "current" : "done" },
               {
                 key: "wait",
                 Icon: Clock3,
                 title: "Wait 3 hours",
                 sub: bonus.pending && bonus.available_at ? `Ready ${entryDate(bonus.available_at)}` : null,
-                state: e.pending ? undefined : bonus.pending ? "current" : "done",
+                state: e.pending || bonus.pending ? "current" : "done",
               },
-              { key: "bonus", Icon: Gift, title: "Bonus", amount: `+${m(bonus.amount_cents)}`, state: bonus.pending ? undefined : "done" },
+              {
+                key: "receive",
+                Icon: Gift,
+                title: "Receive it all",
+                amount: m(amount + bonus.amount_cents),
+                state: e.pending || bonus.pending ? undefined : "done",
+              },
             ]}
           />
         ) : null}

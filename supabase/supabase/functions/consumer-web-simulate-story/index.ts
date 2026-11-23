@@ -4,11 +4,12 @@
 // arrives; while payments run in Stripe test mode a guest with a linked
 // Instagram can simulate one from a place's Post tab. It records an
 // `emulator` mention for this guest at this place (test mode, never live
-// money) and settles it at once through story_reward_grant, the one writer:
-// the place's story reward, Pending 3 hours, or a rejection (off, repeat).
+// money) and runs its first check at once through story_reward_grant:
+// verified (no money yet; the cron rechecks it 2 minutes later and pays,
+// MESITA-4717) or a rejection (off, repeat).
 //
 // Body: { place_id: uuid }
-// Response: { ok: true, outcome: rewarded|rejected, story: StoryView }
+// Response: { ok: true, outcome: verified|rejected, story: StoryView }
 //   409 not_test_mode · 409 no_instagram
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

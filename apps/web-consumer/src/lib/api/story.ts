@@ -15,8 +15,10 @@ export async function apiGetStoryReward(client: SupabaseClient, placeId: string)
 export async function apiSimulateStory(
   client: SupabaseClient,
   placeId: string,
-): Promise<{ outcome: "rewarded" | "rejected"; story: NonNullable<PostTabRead["latest"]> }> {
-  return await invokeEF<{ outcome: "rewarded" | "rejected"; story: NonNullable<PostTabRead["latest"]> }>(
+): Promise<{ outcome: "verified" | "rejected"; story: NonNullable<PostTabRead["latest"]> }> {
+  // MESITA-4717: the simulator runs the first check only; the cron rechecks
+  // and pays a couple of minutes later.
+  return await invokeEF<{ outcome: "verified" | "rejected"; story: NonNullable<PostTabRead["latest"]> }>(
     client,
     "consumer-web-simulate-story",
     { place_id: placeId },

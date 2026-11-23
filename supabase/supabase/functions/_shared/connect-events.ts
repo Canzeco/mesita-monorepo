@@ -605,9 +605,9 @@ async function voucherIntent(
   return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "released", ...basket } };
 }
 
-/** When a voucher's BONUS turns Available: the catalog's wait from the
+/** When a voucher (price and bonus, MESITA-4717) turns Available: the catalog's wait from the
  *  charge, here the event's time (MESITA-4214, every voucher 3 hours; what
- *  the guest paid is Available at once in wallet_credit_purchase). It reads
+ *  the guest paid lands with the bonus since MESITA-4717). It reads
  *  the same rule as the read path (wallet.ts availableAtFor), so the two
  *  never disagree; it hard-coded an hour before. */
 function availableAtFromSession(session: Record<string, unknown>, createdSec?: number, voucher?: string | null): string | null {

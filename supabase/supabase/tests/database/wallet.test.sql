@@ -1,5 +1,5 @@
 -- MESITA-3302 — Wallet on Connect: the ledger credits a paid purchase once
--- (voucher plus bonus, Pending until available_at), refunds apply a
+-- (voucher plus bonus, both Pending until available_at), refunds apply a
 -- cumulative amount in any order and never push a balance below zero, the
 -- new statuses and entry kinds hold their shape, Welcome is once per guest
 -- per place, a place's open charge codes are unique, and nobody but the EFs
@@ -85,14 +85,14 @@ select is(
 
 select is(
   (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now())),
-  20000,
-  'what the guest paid is Available at once (MESITA-4214)'
+  0,
+  'what the guest paid waits with the bonus (MESITA-4717; it was Available at once since MESITA-4214)'
 );
 
 select is(
   (select pending_cents from wallet_balance('00000000-0000-4000-8000-0000000a3302', '00000000-0000-4000-8000-000000003302', 'mxn', false, now())),
-  2000,
-  'the bonus is Pending until its 3 hours pass'
+  22000,
+  'price and bonus are Pending until their 3 hours pass'
 );
 
 select is(

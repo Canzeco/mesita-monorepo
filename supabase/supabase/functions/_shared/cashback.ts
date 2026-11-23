@@ -4,7 +4,7 @@
 // A paid bill earns credit at the place: Welcome (the guest's first paid bill
 // here) or Returning (every later bill), each Off · 5 ·
 // 10 · 15 · 20 %, on the part not paid with credit (never the tip), capped
-// per bill, Pending 3 hours, one per guest per place per Monterrey day, only
+// per bill, Pending 1 hour (3 until MESITA-4717), one per guest per place per Monterrey day, only
 // where Loyalty Cards is On. The SQL trigger pay_tabs_grant_cashback
 // (20261123010000_cashback_mvp) is the one writer; this file reads and
 // validates the owner's lines and says what a bill would earn.
@@ -18,7 +18,7 @@ export type CashbackBps = (typeof CASHBACK_STEPS_BPS)[number];
 /** The cap per bill an owner can type, in cents (MX$0 to MX$10,000). */
 export const CASHBACK_CAP_MAX_CENTS = 1_000_000;
 
-export const CASHBACK_WAIT_SEC = 3 * 60 * 60;
+export const CASHBACK_WAIT_SEC = 60 * 60;
 
 export type CashbackLine = "welcome" | "returning";
 

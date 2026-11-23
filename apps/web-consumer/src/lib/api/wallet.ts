@@ -537,9 +537,9 @@ export const ENTRY_LABEL: Record<string, string> = {
   bonus: "Bonus",
   // Legacy extra credit some guests hold (MESITA-4191, MESITA-4194): said plainly.
   extra: "Credit",
-  // MESITA-4698: earned on a paid bill, Pending 3 hours.
+  // MESITA-4698: earned on a paid bill, Pending 1 hour (MESITA-4717).
   cashback: "Cashback",
-  // MESITA-4714: paid for a verified Instagram story, Pending 3 hours.
+  // MESITA-4714: paid at the story's recheck 10 hours after its first check, available at once (MESITA-4717).
   story: "Story",
   spend: "Paid",
   reversal: "Refund",

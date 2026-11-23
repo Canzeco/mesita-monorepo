@@ -10,7 +10,7 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, post: { reward_cents, currency, place_handle,
 //             signed_in, instagram_linked, instagram_handle, simulate,
-//             next_at, latest: null | { id, state: checking|rewarded|rejected,
+//             next_at, latest: null | { id, state: checking|verified|rewarded|rejected, recheck_at,
 //             reward_cents, available_at, reason, posted_at, simulated } } }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
