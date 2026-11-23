@@ -49,9 +49,10 @@ export const MONITOR_COLUMNS: Record<TableKind, Column<MonitorRow>[]> = {
   visits: [
     { label: "When", text: (r, tz) => when(r.at, tz) },
     { label: "Status", text: (r) => (isSplit(r) ? `Split · ${n(r, "shares")}` : rowStatus("visits", r)) },
-    { label: "Card", group: "Bill", numeric: true, text: (r) => (isSplit(r) ? "—" : dash(n(r, "card_cents"))) },
-    // Cash or the place's own card terminal (MESITA-4682 d1).
-    { label: "Outside", group: "Bill", numeric: true, text: (r) => (isSplit(r) ? "—" : dash(n(r, "outside_cents"))) },
+    // CREDIT OR CASH, NEVER CARD (Pato, 2026-11-22, MESITA-4703: "credits or
+    // cash, but never mesita pay, mesita pay only for vouchers"): no Card
+    // column; Cash is what was paid outside (cash or the place's terminal).
+    { label: "Cash", group: "Bill", numeric: true, text: (r) => (isSplit(r) ? "—" : dash(n(r, "outside_cents"))) },
     { label: "Credit", group: "Bill", numeric: true, text: (r) => (isSplit(r) ? "—" : dash(n(r, "credit_cents"))) },
     { label: "Tip", numeric: true, text: (r) => dash(n(r, "tip_cents")) },
     {
@@ -64,16 +65,10 @@ export const MONITOR_COLUMNS: Record<TableKind, Column<MonitorRow>[]> = {
             ? "—"
             : money(n(r, "bill_cents") + n(r, "tip_cents")),
     },
+    // The credit this bill earned (MESITA-4698), from the bill's cashback entry.
+    { label: "Cashback", numeric: true, text: (r) => dash(n(r, "cashback_cents")) },
     { label: "Ticket", text: (r) => (r.payload.ticket ? String(r.payload.ticket) : "—") },
     { label: "Waiter", text: (r) => (r.payload.waiter_name ? String(r.payload.waiter_name) : "—") },
-    {
-      label: "Payment",
-      text: (r) => r.links.filter((l) => l.kind === "payment").map(linkLabel).join(" ") || "—",
-      href: (r, placeId) => {
-        const p = r.links.find((l) => l.kind === "payment");
-        return p ? linkHref(placeId, p) : null;
-      },
-    },
     { label: "ID", text: (r) => shortId(r.id) },
   ],
   vouchers: [
