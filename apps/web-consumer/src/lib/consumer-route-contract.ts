@@ -111,6 +111,10 @@ export const CONSUMER_ROUTES = {
   // /me/tickets/gift/<giftId>, the gift found by its id in the wallet read;
   // a gift line's credit page forwards there.
   gift: { prefix: "/me/tickets/gift/" },
+  // ONE STORY, ONE TICKET (MESITA-4747, Pato: "Story 1. Post & Tag 2. Bot
+  // Checks 3. Wait 10 hours 4. Bot Rechecks 5. Get Reward"): a Stories row
+  // opens /me/tickets/stories/<storyId>. It was a 308 to the tab (MESITA-4738).
+  story: { prefix: "/me/tickets/stories/" },
   // PAY AND WALLET, TWO TABS (Pato, 2026-11-14, MESITA-3886: "separate pay
   // and wallet again. only pay and only wallet"): each its own bar tab and
   // page, no switch between them. They were two halves of the Pay tab under
@@ -275,9 +279,7 @@ export const CONSUMER_ROUTES = {
     // Refunds left Tickets for Settings (MESITA-4402).
     meTicketsRefunds: "/me/tickets/refunds",
     // No Stories at all (MESITA-4641): a place's Story offer lands on its
-    // Offers. The Stories tab is live again (MESITA-4738, a ticket kind);
-    // one Story's old screen lands on it.
-    meTicketsStoryPrefix: "/me/tickets/stories/",
+    // Offers. One story's ticket is live again (MESITA-4747).
     placeStory: "/place/:id/story",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
@@ -431,6 +433,11 @@ export function giftTicketPath(giftId: string): string {
   return `${CONSUMER_ROUTES.gift.prefix}${giftId}`;
 }
 
+/** One Instagram story's ticket (MESITA-4747), by its story_mentions id. */
+export function storyTicketPath(storyId: string): string {
+  return `${CONSUMER_ROUTES.story.prefix}${storyId}`;
+}
+
 /** A paid bill's proof. */
 export function payReceiptPath(paymentId: string): string {
   return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
@@ -567,6 +574,9 @@ export const ROUTE_MAP = {
   // A gift's ticket (MESITA-4637): Send · Receive · Receipt in the ticket
   // frame, no bar, like a voucher's ticket.
   gift: row("/me/tickets/gift/:giftId", "me", "page", "meTickets", false),
+  // One story's ticket (MESITA-4747), opened from Tickets › Stories, where
+  // a cold Back lands. No bar, like a gift's ticket.
+  story: row("/me/tickets/stories/:storyId", "me", "page", "meTicketsStories", false),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
@@ -617,6 +627,9 @@ export const ROUTE_MAP = {
   meTickets: row("/me/tickets", "me", "page", "me"),
   // One kind of ticket, /me/tickets/<kind>: the same page, chip picked.
   meTicketsKind: row("/me/tickets/:kind", "me", "page", "me"),
+  // The Stories tab named on its own (MESITA-4747), so a story's ticket has
+  // a parent to land Back on: the same [kind] page, chip picked.
+  meTicketsStories: row("/me/tickets/stories", "me", "page", "me"),
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
   meSettingsRefunds: row("/me/settings/refunds", "me", "page", "meSettings"),

@@ -167,13 +167,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/me/settings/refunds",
     permanent: true,
   },
-  // No Stories (MESITA-4641), then Stories is a live tab again (MESITA-4738):
-  // /me/tickets/stories is the page; one Story's old screen lands on it.
-  {
-    source: "/me/tickets/stories/:storyId",
-    destination: ticketsHref("stories"),
-    permanent: true,
-  },
+  // /me/tickets/stories/:storyId was a 308 to the tab (MESITA-4738); it is
+  // one story's ticket since MESITA-4747.
   // Gifts split into Gifts-In and Gifts-Out (MESITA-3941) and are one
   // Gifts list again (MESITA-4036): /me/tickets/gifts is live.
   {

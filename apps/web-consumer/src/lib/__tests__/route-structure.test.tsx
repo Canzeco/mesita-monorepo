@@ -313,6 +313,7 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/me/notifications", "Me"],
     ["/me/tickets/vouchers", "Me"],
     ["/me/tickets/visits/t1", "Me"],
+    ["/me/tickets/stories/s1", "Me"],
     ["/reservation/r1", "Me"],
     ["/me", "Me"],
   ];
@@ -1109,6 +1110,8 @@ describe("the route map", () => {
     expect(parentHref("/place/p1/menu/0")).toBe("/place/p1");
     expect(parentHref("/reservation/r1")).toBe("/me/reservations");
     expect(parentHref("/me/tickets/visits/t1")).toBe("/me/tickets");
+    // A story's ticket lands on the Stories tab (MESITA-4747).
+    expect(parentHref("/me/tickets/stories/s1")).toBe("/me/tickets/stories");
     expect(parentHref("/me/plan")).toBe("/me/settings");
     expect(parentHref("/me/settings/contact")).toBe("/me/settings");
     expect(parentHref("/pay/receipt/x")).toBe("/pay");

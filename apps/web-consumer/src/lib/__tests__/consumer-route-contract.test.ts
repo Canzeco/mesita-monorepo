@@ -108,6 +108,7 @@ function liveAddresses(): Set<string> {
     `${CONSUMER_ROUTES.visit.prefix}:id`,
     `${CONSUMER_ROUTES.credit.prefix}:id/:id`,
     `${CONSUMER_ROUTES.gift.prefix}:id`,
+    `${CONSUMER_ROUTES.story.prefix}:id`,
     ...Object.values(CONSUMER_ROUTES.mePages),
     `${CONSUMER_ROUTES.place.prefix}:id`,
     // A place's Offers page, where its retired Story page lands (MESITA-4641).
@@ -147,6 +148,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       visit: { prefix: "/me/tickets/visits/" },
       credit: { prefix: "/me/tickets/credit/" },
       gift: { prefix: "/me/tickets/gift/" },
+      story: { prefix: "/me/tickets/stories/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/place/" },
@@ -242,8 +244,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meTicketsGiftsIn: "/me/tickets/gifts-in",
         meTicketsGiftsOut: "/me/tickets/gifts-out",
         meTicketsRefunds: "/me/tickets/refunds",
-        // One Story's old screen lands on the live Stories tab (MESITA-4738).
-        meTicketsStoryPrefix: "/me/tickets/stories/",
         placeStory: "/place/:id/story",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
@@ -546,11 +546,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       {
         source: "/me/tickets/refunds",
         destination: "/me/settings/refunds",
-        permanent: true,
-      },
-      {
-        source: "/me/tickets/stories/:storyId",
-        destination: "/me/tickets/stories",
         permanent: true,
       },
       {
