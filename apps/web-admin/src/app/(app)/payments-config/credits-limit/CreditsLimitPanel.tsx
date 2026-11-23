@@ -42,18 +42,38 @@ export function usedPct(outstanding: number, limit: number | null): number {
 
 const pctText = (pct: number) => (pct === Infinity ? "Over" : `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%`);
 
-/** One limit: a whole-units input and Save; a place also gets Use default. */
+/** The tier's words (MESITA-4733): what earns the limit. */
+export function tierText(tier: LimitPlace["tier_name"] | LimitPlace["tier"]): string {
+  switch (tier) {
+    case "none":
+      return "Credits Account off";
+    case "credits":
+      return "Credits Account";
+    case "stripe":
+      return "Credits + Stripe";
+    case "default":
+      return "Currency default";
+    case "custom":
+      return "Own limit";
+    default:
+      return "";
+  }
+}
+
+/** One limit: a whole-units input and Save; a place also gets Use tier. */
 function LimitEditor({
   cents,
   currency,
   onSave,
   onClear,
+  clearLabel = "Use default",
   placeholder,
 }: {
   cents: number | null;
   currency: string;
   onSave: (cents: number) => Promise<string | null>;
   onClear?: () => Promise<string | null>;
+  clearLabel?: string;
   placeholder?: string;
 }) {
   const [draft, setDraft] = useState(cents === null ? "" : units(cents));
@@ -90,7 +110,7 @@ function LimitEditor({
         </Button>
         {onClear && cents !== null ? (
           <Button size="sm" tone="secondary" pending={pending} onClick={() => run(onClear)}>
-            Use default
+            {clearLabel}
           </Button>
         ) : null}
       </div>
@@ -152,7 +172,12 @@ export function CreditsLimitPanel({
                 {rows.map((r) => {
                   const hot = r.pct >= WATCH_PCT;
                   const href = businessPlaceHref(r.place_id, "admin");
-                  const fallback = defaultFor.get(r.currency);
+                  // THE TIER, NOT THE MXN DEFAULT (MESITA-4733): a Mexican
+                  // place earns 0 · MX$10,000 · MX$50,000 (MESITA-4732);
+                  // older servers send no tier_limit_cents and fall back to
+                  // the currency's default.
+                  const fallback = r.tier_limit_cents !== undefined ? r.tier_limit_cents : defaultFor.get(r.currency);
+                  const fallbackName = tierText(r.tier_name) || "default";
                   return (
                     <Tr
                       key={r.place_id}
@@ -170,7 +195,10 @@ export function CreditsLimitPanel({
                         )}
                         {!r.loyalty_cards ? <span className="text-muted-foreground block text-xs">Loyalty Cards off</span> : null}
                       </Td>
-                      <Td className="text-muted-foreground">{r.currency}</Td>
+                      <Td className="text-muted-foreground">
+                        {r.currency}
+                        {r.tier ? <span className="block text-xs">{tierText(r.tier)}</span> : null}
+                      </Td>
                       <Td numeric className="whitespace-nowrap">
                         {moneyLabel(r.outstanding_cents, r.currency)}
                       </Td>
@@ -182,9 +210,10 @@ export function CreditsLimitPanel({
                           key={`${r.override_cents}`}
                           cents={r.override_cents}
                           currency={r.currency}
-                          placeholder={fallback !== undefined ? `${units(fallback)} default` : "No default"}
+                          placeholder={fallback !== undefined && fallback !== null ? `${units(fallback)} · ${fallbackName}` : "No default"}
                           onSave={async (c) => after(await savePlaceLimit(r.place_id, c))}
                           onClear={async () => after(await savePlaceLimit(r.place_id, null))}
+                          clearLabel={r.tier_name && r.tier_name !== "default" ? "Use tier" : "Use default"}
                         />
                       </Td>
                     </Tr>
@@ -199,7 +228,7 @@ export function CreditsLimitPanel({
       <SectionCard
         icon={<CoinsIcon aria-hidden />}
         title="Defaults"
-        subtitle="The limit for every place in that currency, unless the place has its own. Whole units. A lower limit never touches credit already owed; it only refuses the next voucher buy that would pass it."
+        subtitle="The limit for every place in that currency, unless the place has its own. Mexican places use tiers instead (MESITA-4732): 0 while the Credits Account is off, MX$10,000 once it is on, MX$50,000 once Stripe can also charge; the MXN row here no longer binds. Whole units. A lower limit never touches credit already owed; it only refuses the next voucher buy that would pass it."
       >
         <div className="mt-4">
           <Table className="min-w-[480px]" data-admin-credits-defaults>
@@ -214,7 +243,9 @@ export function CreditsLimitPanel({
                 <Tr key={d.currency} data-currency={d.currency}>
                   <Td className="font-semibold">
                     {d.currency}
-                    <span className="text-muted-foreground block text-xs font-normal">{moneyLabel(d.limit_cents, d.currency)}</span>
+                    <span className="text-muted-foreground block text-xs font-normal">
+                      {d.currency === "MXN" ? "Not used: Mexican places use the tiers" : moneyLabel(d.limit_cents, d.currency)}
+                    </span>
                   </Td>
                   <Td>
                     <LimitEditor
