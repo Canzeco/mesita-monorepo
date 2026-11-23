@@ -6,16 +6,17 @@
 // Off · 5 · 10 · 15 · 20 % (no cap per bill since MESITA-4728), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
 // win; this never touches them. MESITA-4714: and the Post story reward
-// (Off · $20 · $50), what a verified Instagram story pays a guest.
+// (Off · $20 · $40), what a verified Instagram story pays a guest.
 
 import { useState, useTransition } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { Button, Notice, SectionCard, SelectField, TBody, THead, Table, Td, Th, Tr } from "@/components/admin-ui";
 import { saveCashbackDefaults, type CashbackDefaults } from "./actions";
 
-const STEPS = [0, 500, 1000, 1500, 2000] as const;
+// MESITA-4764: two picks each, as Business › Offers (Welcome 10 · 20, Returning 5 · 10).
+const STEPS = { welcome_bps: [0, 1000, 2000], returning_bps: [0, 500, 1000] } as const;
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
-const STORY_STEPS = [0, 2000, 5000] as const;
+const STORY_STEPS = [0, 2000, 4000] as const;
 const storyWord = (cents: number) => (cents === 0 ? "Off" : `$${cents / 100}`);
 
 const LINES: { key: "welcome_bps" | "returning_bps"; name: string; who: string }[] = [
@@ -74,7 +75,7 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
                       disabled={pending}
                       onChange={(v) => setDraft({ ...draft, [l.key]: Number(v) })}
                     >
-                      {STEPS.map((bps) => (
+                      {STEPS[l.key].map((bps) => (
                         <option key={bps} value={bps}>
                           {pct(bps)}
                         </option>

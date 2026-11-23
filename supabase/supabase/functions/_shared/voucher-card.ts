@@ -248,6 +248,8 @@ async function openExpressIntent(
     voucher: MoneyVoucherKey;
     publishableKey: string | null;
     amount: number;
+    /** The rows' stored bonus, summed (the place's pick at buy time, MESITA-4764). */
+    bonus: number;
     count: number;
     followerKeys: MoneyVoucherKey[];
   },
@@ -271,6 +273,7 @@ async function openExpressIntent(
           consumerId: args.consumerId,
           voucher: args.voucher,
           currency: args.currency,
+          bonusCents: args.bonus,
           ...(args.followerKeys.length > 0 ? { followers: args.followerKeys } : {}),
         }),
         mesita_pay_with: "express",
@@ -345,6 +348,7 @@ export async function runVoucherCard(
   // MESITA-4384: the lead's pay_source decides the path, never the body.
   const express = row.pay_source === "express";
   const amount = all.reduce((sum, r) => sum + r.amount_cents, 0);
+  const bonus = all.reduce((sum, r) => sum + (r.bonus_cents ?? 0), 0);
   const expressDone = (step: ExpressStep): ExpressBuyOk => ({ ok: true, purchase_id: row.id, express: step });
 
   if (row.stripe_payment_intent_id) {
@@ -378,7 +382,7 @@ export async function runVoucherCard(
     return closed();
   }
   const followerKeys = followers.map((f) => f.voucher as MoneyVoucherKey);
-  if (express) return await openExpressIntent(store, stripe, ref, { ...args, amount, count: all.length, followerKeys });
+  if (express) return await openExpressIntent(store, stripe, ref, { ...args, amount, bonus, count: all.length, followerKeys });
   if (!args.customer || !args.platformPm) throw new Error("card_source_missing");
 
   let pi: Record<string, unknown>;
@@ -399,6 +403,7 @@ export async function runVoucherCard(
         consumerId: args.consumerId,
         voucher: args.voucher,
         currency: args.currency,
+        bonusCents: bonus,
         ...(followerKeys.length > 0 ? { followers: followerKeys } : {}),
       }),
     }, { stripeAccount: account, idempotencyKey: `vouchercard-pi:${row.id}` });

@@ -46,6 +46,9 @@ export type OfferInput = {
    *  list row's field); null or absent = Off. The place screen reads
    *  `cashback.story_reward_cents`. */
   story_cents?: number | null;
+  /** MESITA-4764: each voucher's bonus at this place in whole percent (a
+   *  list row's field, the owner's pick); absent reads STANDARD_BONUS. */
+  voucher_pct?: Partial<Record<string, number>> | null;
 };
 
 /** The Post slide's amount in cents, or 0 (Off). */
@@ -125,20 +128,27 @@ const OFFER_SLIDES: OfferSlide[] = [
   // No Welcome voucher slide since MESITA-4698: Welcome is a cashback line.
 ];
 
-/** The standard vouchers' bonuses: the server's catalog (supabase
- *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +30%; MESITA-4152).
- *  Pay's Prepay list draws one box per voucher from it (MESITA-4748). */
+/** The standard vouchers' default bonuses: the server's catalog (supabase
+ *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +40%;
+ *  MESITA-4764). Each place picks its own (Small 10 · 20, Medium 20 · 40,
+ *  Big 40 · 60): `voucherPct` reads the row's pick first. */
 export const STANDARD_BONUS: Record<string, number> = {
   voucher_200: 10,
   voucher_1000: 20,
-  voucher_5000: 30,
+  voucher_5000: 40,
 };
+
+/** A voucher's bonus at this place in whole percent: the row's pick, else
+ *  the catalog default. */
+export function voucherPct(offers: Pick<OfferInput, "voucher_pct"> | null | undefined, key: string): number {
+  return offers?.voucher_pct?.[key] ?? STANDARD_BONUS[key] ?? 0;
+}
 
 /** The place's slides, in the fixed order; none = nothing to show. */
 export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[] {
   if (!offers) return [];
   const sell = new Set(offers.sell);
-  const standard = Object.entries(STANDARD_BONUS).filter(([key]) => sell.has(key));
+  const standard = Object.keys(STANDARD_BONUS).filter((key) => sell.has(key)).map((key): [string, number] => [key, voucherPct(offers, key)]);
   const top = standard.reduce<[string, number] | null>((a, b) => (a && a[1] >= b[1] ? a : b), null);
   return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
     if (s.key === "cashback") {

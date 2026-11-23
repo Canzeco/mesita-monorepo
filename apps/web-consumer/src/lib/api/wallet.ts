@@ -495,6 +495,8 @@ export type PayPlace = {
     welcome_pct?: number | null;
     returning_pct?: number | null;
     story_cents?: number | null;
+    /** MESITA-4764: each voucher's bonus here in whole percent. */
+    voucher_pct?: Record<string, number>;
   };
 };
 

@@ -8,12 +8,39 @@
 // Off · 20 · 50 (cents 0 · 2000 · 5000), only while Loyalty Cards is On.
 // No cap per bill (Pato, 2026-11-23, MESITA-4728: "there is no ceiling for the
 // cashback amount").
-export type CashbackRates = { welcome_bps: number; returning_bps: number; story_reward_cents: number };
-export const CASHBACK_STEPS_BPS = [0, 500, 1000, 1500, 2000] as const;
-export const STORY_REWARD_STEPS_CENTS = [0, 2000, 5000] as const;
-export const CASHBACK_DEFAULTS: CashbackRates = { welcome_bps: 1000, returning_bps: 500, story_reward_cents: 2000 };
+// TWO PICKS PER OFFER (Pato, 2026-11-23, MESITA-4764): Welcome 10 · 20 %,
+// Returning 5 · 10 %, Small voucher 10 · 20 %, Medium 20 · 40 %, Big 40 · 60 %,
+// Story MX$20 · MX$40. TWIN of supabase _shared/cashback.ts and money.ts
+// VOUCHER_BONUS_STEPS_BPS; the server refuses anything else.
+export type CashbackRates = {
+  welcome_bps: number;
+  returning_bps: number;
+  story_reward_cents: number;
+  small_bonus_bps: number;
+  medium_bonus_bps: number;
+  big_bonus_bps: number;
+};
+export const VISIT_PICKS_BPS = { welcome_bps: [1000, 2000], returning_bps: [500, 1000] } as const;
+export const STORY_REWARD_STEPS_CENTS = [0, 2000, 4000] as const;
+export const VOUCHER_BONUS_PICKS_BPS = {
+  small_bonus_bps: [1000, 2000],
+  medium_bonus_bps: [2000, 4000],
+  big_bonus_bps: [4000, 6000],
+} as const;
+export type VoucherBonusField = keyof typeof VOUCHER_BONUS_PICKS_BPS;
+export const CASHBACK_DEFAULTS: CashbackRates = {
+  welcome_bps: 1000,
+  returning_bps: 500,
+  story_reward_cents: 2000,
+  small_bonus_bps: 1000,
+  medium_bonus_bps: 2000,
+  big_bonus_bps: 4000,
+};
 
-/** A read from before Post carries no story reward: the default. */
-export function withStoryReward(r: Partial<CashbackRates> & Omit<CashbackRates, "story_reward_cents">): CashbackRates {
-  return { ...r, story_reward_cents: typeof r.story_reward_cents === "number" ? r.story_reward_cents : CASHBACK_DEFAULTS.story_reward_cents };
+/** A read from an older server lacks the story reward or the voucher
+ *  bonuses: the defaults fill them. */
+export function withStoryReward(r: Partial<CashbackRates> & Pick<CashbackRates, "welcome_bps" | "returning_bps">): CashbackRates {
+  const out = { ...CASHBACK_DEFAULTS };
+  for (const k of Object.keys(out) as Array<keyof CashbackRates>) if (typeof r[k] === "number") out[k] = r[k];
+  return out;
 }

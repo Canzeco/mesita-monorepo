@@ -130,7 +130,10 @@ export type VoucherEntry = {
 export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
-  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
+  // THE OWNER PICKS THE BONUS (Pato, 2026-11-23, MESITA-4762: "small: 10%
+  // 20% · mid 20 40 · big 40 60"): bonus_bps here is each size's default;
+  // the place's pick lives on place_cashback_settings (VOUCHER_BONUS_STEPS_BPS).
+  voucher_5000: { price_cents: 5_000_00, bonus_bps: 4000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
   // BONUS"; gone 2026-11-21, MESITA-4636). Welcome's MX$100 lands with
   // its bonus in 3 hours (MESITA-4717); once per guest per place.
@@ -187,8 +190,26 @@ export function voucherPriceCents(key: MoneyVoucherKey, currency: string = MONEY
   return VOUCHER_PRICE_CENTS[currency.toLowerCase()]?.[key] ?? null;
 }
 
-export function voucherBonusCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number {
-  return bps(voucherPriceCents(key, currency) ?? 0, VOUCHER_CATALOG[key].bonus_bps);
+/** MESITA-4762: the two bonuses an owner can pick per size, in basis points;
+ *  the first is the default (VOUCHER_CATALOG's bonus_bps). */
+export const VOUCHER_BONUS_STEPS_BPS = {
+  voucher_200: [1000, 2000],
+  voucher_1000: [2000, 4000],
+  voucher_5000: [4000, 6000],
+} as const;
+export type PickedVoucherKey = keyof typeof VOUCHER_BONUS_STEPS_BPS;
+
+/** A place's picked bonus per voucher, in basis points; a missing key reads
+ *  the catalog's default. */
+export type VoucherBonusBps = Partial<Record<MoneyVoucherKey, number>>;
+
+/** The bonus this place gives on this voucher, in basis points. */
+export function voucherBonusBps(key: MoneyVoucherKey, bonus?: VoucherBonusBps | null): number {
+  return bonus?.[key] ?? VOUCHER_CATALOG[key].bonus_bps;
+}
+
+export function voucherBonusCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY, bonus?: VoucherBonusBps | null): number {
+  return bps(voucherPriceCents(key, currency) ?? 0, voucherBonusBps(key, bonus));
 }
 
 export function voucherFeeCents(key: MoneyVoucherKey, currency: string = MONEY_CURRENCY): number {
@@ -198,8 +219,8 @@ export function voucherFeeCents(key: MoneyVoucherKey, currency: string = MONEY_C
 /** The best bonus among the vouchers a place sells now, as a whole percent
  *  for the Home tile's one line ("Up to 30% extra credit", MESITA-3312);
  *  null when it sells none. The client prints it, never computes it. */
-export function vouchersUpToPct(sell: readonly MoneyVoucherKey[]): number | null {
+export function vouchersUpToPct(sell: readonly MoneyVoucherKey[], bonus?: VoucherBonusBps | null): number | null {
   let best = 0;
-  for (const key of sell) best = Math.max(best, VOUCHER_CATALOG[key].bonus_bps);
+  for (const key of sell) best = Math.max(best, voucherBonusBps(key, bonus));
   return best > 0 ? Math.floor(best / 100) : null;
 }

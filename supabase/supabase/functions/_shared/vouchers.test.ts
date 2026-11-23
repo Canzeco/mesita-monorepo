@@ -215,6 +215,8 @@ function fakeAdmin(opts: {
   outstanding?: number;
   /** place_credit_limit; undefined = MX$100,000, the MXN default. */
   limit?: number | null;
+  /** The place's saved offers row (MESITA-4764); undefined = none, the defaults. */
+  rates?: Record<string, number> | null;
 }): Fake {
   const inserts: Fake["inserts"] = [];
   const updates: Fake["updates"] = [];
@@ -225,6 +227,14 @@ function fakeAdmin(opts: {
       return Promise.resolve({ data: opts.outstanding ?? 0, error: null });
     },
     from: (table: string) => {
+      if (table === "place_cashback_settings" || table === "cashback_defaults") {
+        const chain = {
+          select: () => chain,
+          eq: () => chain,
+          maybeSingle: () => Promise.resolve({ data: table === "place_cashback_settings" ? opts.rates ?? null : null, error: null }),
+        };
+        return chain;
+      }
       assertEquals(table, "wallet_purchases");
       return {
         insert: (row: Record<string, unknown>) => {
