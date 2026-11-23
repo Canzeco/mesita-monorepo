@@ -37,13 +37,12 @@ export type Row = ActivityItem & {
 };
 
 /** What one payment moved in the guest's credit, in cents (all positive):
- *  credits spent, legacy extra credit it earned (`extra`, nothing new writes
- *  it), credit taken back when the bill was refunded (a `reversal`), credit
- *  given back (a `refund`). */
+ *  credits spent, credit taken back when the bill was refunded (a
+ *  `reversal`), credit given back (a `refund`). The legacy `extra` kind is
+ *  gone (MESITA-4720). */
 export type PayFacts = {
   currency: string;
   credits: number;
-  extra: number;
   takenBack: number;
   givenBack: number;
 };
@@ -109,7 +108,6 @@ function visitFacts(
   return {
     currency: list[0].currency,
     credits: list.reduce((n, f) => n + f.credits, 0),
-    extra: list.reduce((n, f) => n + f.extra, 0),
     takenBack: list.reduce((n, f) => n + f.takenBack, 0),
     givenBack: list.reduce((n, f) => n + f.givenBack, 0),
   };
@@ -195,27 +193,12 @@ export function walletRows(w: Wallet): Row[] {
     const byPayment = new Map<string, WalletEntry[]>();
     const bonuses = b.entries.filter((e) => e.kind === "bonus");
     const usedBonus = new Set<WalletEntry>();
-    // A voucher's legacy extra credit (an `extra` with a purchase id and no
-    // payment id) folds into its voucher row (MESITA-4003); with no voucher
-    // row to take it, it stays a row of its own.
-    const boughtIds = new Set(
-      b.entries
-        .filter((e) => BOUGHT_KINDS.has(e.kind) && e.purchase_id)
-        .map((e) => e.purchase_id as string),
-    );
     const refundSeen = new Set<string>();
-    const folds = (e: WalletEntry) =>
-      e.kind === "extra" &&
-      !e.payment_id &&
-      !!e.purchase_id &&
-      boughtIds.has(e.purchase_id);
 
     b.entries.forEach((e, i) => {
-      if (folds(e)) return;
       if (
         e.payment_id &&
         (e.kind === "spend" ||
-          e.kind === "extra" ||
           e.kind === "reversal" ||
           // Credit given back on a payment folds into it (MESITA-4001); the
           // CHECK gives every `refund` entry a payment id.
@@ -226,7 +209,7 @@ export function walletRows(w: Wallet): Row[] {
         byPayment.set(e.payment_id, g);
         return;
       }
-      if (e.kind === "spend" || e.kind === "extra") {
+      if (e.kind === "spend") {
         // An entry from before payments had ids: no receipt to open.
         out.push(
           paymentRow(
@@ -354,20 +337,17 @@ export function paymentRow(
   const facts: PayFacts = {
     currency: cur,
     credits: total("spend"),
-    extra: total("extra"),
     takenBack: total("reversal"),
     givenBack: total("refund"),
   };
   const at = g.map((e) => e.at).sort()[0]!;
-  const cash = g.some((e) => e.kind === "extra" && e.confirmed_by === "waiter");
   const refunded = facts.takenBack > 0 || facts.givenBack > 0;
   const spent = facts.credits > 0;
-  const backOnly = !spent && facts.extra > 0;
   return {
     key,
     type: "visits",
     kind: "payment",
-    sign: spent ? "−" : backOnly ? "+" : null,
+    sign: spent ? "−" : null,
     paymentId,
     payFacts: facts,
     at,
@@ -377,14 +357,10 @@ export function paymentRow(
     status: refunded
       ? { label: "Refunded", tone: "grey" }
       : { label: "Paid", tone: "green" },
-    big: spent
-      ? money(facts.credits, cur)
-      : backOnly
-        ? money(facts.extra, cur)
-        : "Paid in cash",
+    big: spent ? money(facts.credits, cur) : "Paid in cash",
     money: true,
     line: join(
-      cash ? "Cash" : spent ? "Credits" : backOnly ? "Credit" : null,
+      spent ? "Credits" : null,
       ...foldedNotes(facts),
       g.some((e) => e.pending) && "pending",
     ),

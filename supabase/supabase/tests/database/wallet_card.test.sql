@@ -11,7 +11,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(37);
+select plan(35);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3305'),
@@ -221,35 +221,6 @@ select is(
   wallet_refund_payment((select (r ->> 'payment_id')::uuid from hold), 1500) ->> 'outcome',
   'already_applied',
   'the same cumulative amount again applies nothing'
-);
-
--- A legacy extra credit on a payment (MESITA-4194), already spent: a later
--- refund no longer claws it back, so nothing is uncovered. The entries table
--- is append-only, so the paid payment and its extra entry (Available an hour
--- ago) are written directly, then the extra is spent before the refund arrives.
-insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, tip_cents, currency, status,
-                                    stripe_account_id, request_id, paid_at)
-values ('00000000-0000-4000-8000-0000000e3305', '00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305',
-        10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3305', '00000000-0000-4000-8000-00000000b001', now() - interval '2 hours');
-insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, payment_id, livemode, available_at)
-values ('00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305', 'extra', 500, 'mxn',
-        '00000000-0000-4000-8000-0000000e3305', false, now() - interval '1 hour');
-do $$ begin
-  perform wallet_pay_credit('00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305', 500, 'mxn', false,
-                            '00000000-0000-4000-8000-00000000b002', 'bbbbbbbbbbbbbbbbbbbbb1', null);
-end $$;
-
-select is(
-  wallet_refund_payment('00000000-0000-4000-8000-0000000e3305', 10000),
-  jsonb_build_object('ok', true, 'outcome', 'applied', 'delta_cents', 10000, 'card_refunded_cents', 10000, 'tip_refunded_cents', 0,
-                     'reversed_cents', 0, 'uncovered_cents', 0, 'status', 'refunded'),
-  'a full refund leaves the spent legacy extra alone: nothing uncovered, refunded'
-);
-
-select is(
-  (select available_cents from wallet_balance('00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305', 'mxn', false)),
-  0,
-  'and the balance never goes below zero'
 );
 
 -- ━━━ The cron''s give-up and the operator''s reopen ━━━━━━━━━━━━━━━━━━━━━━━━━━━

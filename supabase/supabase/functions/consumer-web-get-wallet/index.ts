@@ -24,13 +24,9 @@
 //               offers: { sell } (MESITA-4262, what Home's offer button says),
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, pinned,
-//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id, gift_id }] }],
+//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, purchase_id, gift_id }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
-//   confirmed_by (MESITA-3554) rides an 'extra' entry (legacy credit,
-//   MESITA-4194) with a payment:
-//   'credit' | 'stripe' | 'waiter' from wallet_payments, so Transactions
-//   can name a cash bill the waiter confirmed. Null on every other entry.
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
 //   payments, from wallet_balances: what the Pay tab can spend there now.
 //   place.boost_tier is Premier's stored tier and place.mesita_pay the
@@ -147,27 +143,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   for (const r of (sums ?? []) as Array<{ place_id: string; currency: string; spendable_cents: number }>) {
     spendable.set(balanceKey(r.place_id, r.currency), r.spendable_cents);
   }
-  // WHO CONFIRMED AN EXTRA CREDIT'S PAYMENT (MESITA-3554): one read of the
-  // payments behind the 'extra' entries. A failed read leaves confirmed_by
-  // null; the money is unaffected.
   const entries = (rows ?? []) as Entry[];
-  const extraPayments = [
-    ...new Set(entries.filter((e) => e.kind === "extra" && e.payment_id).map((e) => e.payment_id as string)),
-  ];
-  if (extraPayments.length > 0) {
-    const { data: payRows, error: payErr } = await admin
-      .from("wallet_payments")
-      .select("id, confirmed_by")
-      .eq("consumer_id", userId)
-      .in("id", extraPayments);
-    if (payErr) console.error(`[consumer-web-get-wallet] confirmed_by read: ${payErr.message}`);
-    const confirmedBy = new Map(
-      ((payErr ? [] : payRows) ?? []).map((p: { id: string; confirmed_by: Entry["confirmed_by"] }) => [p.id, p.confirmed_by]),
-    );
-    for (const e of entries) {
-      if (e.kind === "extra" && e.payment_id) e.confirmed_by = confirmedBy.get(e.payment_id) ?? null;
-    }
-  }
   // PINNED LOYALTY CARDS (MESITA-3582): a place the guest added by hand with
   // no entries reads as a $0 card after the ones holding money, never twice.
   const pinsRes = await readPins(admin, userId);

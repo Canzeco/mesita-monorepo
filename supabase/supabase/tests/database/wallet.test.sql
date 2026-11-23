@@ -166,16 +166,15 @@ values ('00000000-0000-4000-8000-0000000e3302', '00000000-0000-4000-8000-0000000
 
 select lives_ok(
   $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, payment_id, livemode)
-    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'extra', 500, 'mxn', '00000000-0000-4000-8000-0000000e3302', false),
-           ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'spend', -5000, 'mxn', '00000000-0000-4000-8000-0000000e3302', false)$$,
-  'a legacy extra and a spend entry hang off a payment'
+    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'spend', -5000, 'mxn', '00000000-0000-4000-8000-0000000e3302', false)$$,
+  'a spend entry hangs off a payment'
 );
 
 select throws_ok(
   $$insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, purchase_id, payment_id, livemode)
-    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'extra', 500, 'mxn', '00000000-0000-4000-8000-0000000d3302', '00000000-0000-4000-8000-0000000e3302', false)$$,
+    values ('00000000-0000-4000-8000-0000000c3302', '00000000-0000-4000-8000-000000003302', 'extra', 500, 'mxn', null, '00000000-0000-4000-8000-0000000e3302', false)$$,
   '23514', null,
-  'a legacy extra entry names a payment or a purchase, never both (MESITA-3827)'
+  'the legacy extra kind is gone (MESITA-4720)'
 );
 
 select throws_ok(
