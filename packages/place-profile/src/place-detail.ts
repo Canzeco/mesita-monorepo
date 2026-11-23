@@ -67,6 +67,9 @@ export type PlaceCashback = {
   /** MESITA-4766: 0 · 1000 · 2000; absent on older reads reads 0. */
   returning_vip_bps: number;
   line: "welcome" | "returning" | "returning_vip" | null;
+  /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for all
+   *  three lines. Absent on older reads = cashback. */
+  visit_mechanism?: "discount" | "cashback";
 };
 
 /** The Catalog's score for one place, the server's numbers (MESITA-2379):

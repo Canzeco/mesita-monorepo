@@ -30,7 +30,8 @@
 //   400 bad_request | amount_required | parts | tip_by_credit |
 //   ticket_invalid · 401 sign_in · 404 gone · 409 parts | insufficient
 //   (+spendable_cents) | too_many_open | ticket_paid | ticket_paid_by_you
-//   (+paid_tab_id) | cash_off | cards_off
+//   (+paid_tab_id) | cash_off | cards_off | discount_changed (MESITA-4770:
+//   the parts must add up to bill - discount; + discount_cents, to_pay_cents)
 
 // MESITA-4524 (no zombie tickets): the tap opens a TICKET (guest_pay_attempts)
 // that always ends: closed (paid) or released with one reason. Cash and
@@ -154,6 +155,10 @@ serveJson("consumer-web-pay-guest", async (req) => {
       token,
       qr_url: tabUrl(token),
       expires_at: r.expires_at ?? null,
+      // MESITA-4770: the visit discount the server took off the bill.
+      visit_mechanism: r.visit_mechanism ?? null,
+      discount_bps: typeof r.discount_bps === "number" ? r.discount_bps : 0,
+      discount_cents: typeof r.discount_cents === "number" ? r.discount_cents : 0,
       test_mode: !livemode,
     });
   } catch (err) {

@@ -102,6 +102,8 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
           // MESITA-4766: VIP's later bills; an older read without it is Off.
           returning_vip_bps: n(cb.returning_vip_bps) ?? 0,
           line: cb.line === "welcome" || cb.line === "returning" || cb.line === "returning_vip" ? cb.line : null,
+          // MESITA-4770: Discount or Cashback.
+          visit_mechanism: cb.visit_mechanism === "discount" ? "discount" : "cashback",
         }
       : m.cashback === null
         ? null

@@ -75,8 +75,8 @@ export function BuyCreditsPage() {
       {/* A BANNER THAT SAYS WHAT THIS IS (Pato, 2026-11-23, MESITA-4748:
           "between header and searchbar add banner … like prepay and get
           bonus … really short text"; /plan-design-review D6): one line, full
-          bleed, Link green, the Prepay tile's colour. */}
-      <p role="note" className="flex shrink-0 items-center gap-2.5 bg-[#00D66F] px-4 py-2.5 text-base font-semibold text-neutral-950" data-list-banner>
+          bleed, the Prepay tile's blue (MESITA-4770; Link green before). */}
+      <p role="note" className="flex shrink-0 items-center gap-2.5 bg-[#4DA3FF] px-4 py-2.5 text-base font-semibold text-neutral-950" data-list-banner>
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white" aria-hidden>
           <BadgePercent className="h-4 w-4" strokeWidth={2.5} />
         </span>

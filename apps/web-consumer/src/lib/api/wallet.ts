@@ -499,10 +499,30 @@ export type PayPlace = {
     welcome_pct?: number | null;
     returning_pct?: number | null;
     returning_vip_pct?: number | null;
+    /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for
+     *  the three lines. Absent from an older server reads as cashback. */
+    visit_mechanism?: "discount" | "cashback";
     /** MESITA-4764: each voucher's bonus here in whole percent. */
     voucher_pct?: Record<string, number>;
   };
+  /** MESITA-4770: the line this guest's next bill here falls in. */
+  visit_line?: "welcome" | "returning" | "returning_vip";
 };
+
+/** MESITA-4770: the visit discount this guest's next bill here gets, in
+ *  basis points (0 = none: cashback, Off, or an older server). The server
+ *  (pay_guest_begin) decides the same and has the last word. */
+export function payPlaceDiscountBps(p: PayPlace | null): number {
+  const o = p?.offers;
+  if (!o || o.visit_mechanism !== "discount") return 0;
+  const pct = p?.visit_line === "returning_vip" ? o.returning_vip_pct : p?.visit_line === "returning" ? o.returning_pct : o.welcome_pct;
+  return pct && pct > 0 ? Math.round(pct * 100) : 0;
+}
+
+/** A printed bill's discount, rounded down (pay_guest_begin's sum). */
+export function discountOf(billCents: number, bps: number): number {
+  return bps > 0 && billCents > 0 ? Math.floor((billCents * bps) / 10000) : 0;
+}
 
 /** Which of a place's Offers tabs have something on (MESITA-4731, D5;
  *  Post left with Stories, MESITA-4766). */

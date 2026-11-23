@@ -67,10 +67,14 @@ export type AttemptRow = {
   ending_at: string | null;
   ending_reason: EndReason | null;
   needs_review_at: string | null;
+  /** MESITA-4770: what applied to this bill; the discount came off bill_cents. */
+  visit_mechanism?: "cashback" | "discount" | null;
+  discount_bps?: number;
+  discount_cents?: number;
 };
 
 const ATTEMPT_COLUMNS =
-  "id, consumer_id, place_id, request_id, bill_cents, tip_cents, credit_cents, cash_cents, card_cents, currency, livemode, tender, status, payment_id, tab_id, token_hash, prev_token_hash, prev_token_until, expires_at, created_at, end_reason, held_at, charging_at, ending_at, ending_reason, needs_review_at";
+  "id, consumer_id, place_id, request_id, bill_cents, tip_cents, credit_cents, cash_cents, card_cents, currency, livemode, tender, status, payment_id, tab_id, token_hash, prev_token_hash, prev_token_until, expires_at, created_at, end_reason, held_at, charging_at, ending_at, ending_reason, needs_review_at, visit_mechanism, discount_bps, discount_cents";
 
 export type Phase = "placing_hold" | "live" | "charging" | "closed" | "released";
 
@@ -180,6 +184,9 @@ export function attemptAsTab(a: AttemptRow): TabRow {
     verified_at: null,
     end_reason: a.end_reason ? TAB_END_REASON[a.end_reason] : null,
     signing_at: a.status === "opening" || a.status === "due" ? a.charging_at : null,
+    visit_mechanism: a.visit_mechanism ?? null,
+    discount_bps: a.discount_bps ?? 0,
+    discount_cents: a.discount_cents ?? 0,
   };
 }
 

@@ -10,10 +10,17 @@
 // Voucher bonuses (MESITA-4764): Small 10 · 20 %, Medium 20 · 40 %, Big
 // 40 · 60 %. TWIN of supabase _shared/cashback.ts and money.ts
 // VOUCHER_BONUS_STEPS_BPS; the server refuses anything else.
+/** MESITA-4770: how the Welcome / Returning lines pay out (Pato,
+ *  2026-11-23: "YOU JUST SET THE TIER. AND THEN THE MECHANISM FOR ALL YOUR
+ *  VISIT TIERS"). Discount = off this bill, no Credits Agreement; Cashback =
+ *  credit for the next visit, needs Loyalty Cards. */
+export type VisitMechanism = "discount" | "cashback";
+export const VISIT_MECHANISMS: readonly VisitMechanism[] = ["discount", "cashback"];
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
   returning_vip_bps: number;
+  visit_mechanism: VisitMechanism;
   small_bonus_bps: number;
   medium_bonus_bps: number;
   big_bonus_bps: number;
@@ -34,6 +41,7 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
   returning_vip_bps: 1000,
+  visit_mechanism: "cashback",
   small_bonus_bps: 1000,
   medium_bonus_bps: 2000,
   big_bonus_bps: 4000,
@@ -45,7 +53,11 @@ export function readCashback(r: Partial<Record<keyof CashbackRates, unknown>>): 
   const out = { ...CASHBACK_DEFAULTS };
   for (const k of Object.keys(out) as Array<keyof CashbackRates>) {
     const v = r[k];
-    if (typeof v === "number") out[k] = v;
+    if (k === "visit_mechanism") {
+      if (v === "discount" || v === "cashback") out.visit_mechanism = v;
+    } else if (typeof v === "number") {
+      (out as Record<string, unknown>)[k] = v;
+    }
   }
   return out;
 }

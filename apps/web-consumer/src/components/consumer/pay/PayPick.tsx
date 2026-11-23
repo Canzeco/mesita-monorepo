@@ -304,9 +304,10 @@ function Section({
 type BoxKind = "vouchers" | "any" | "cashback";
 type OfferBox = { top: string; bottom: string; tone: string; key: string };
 
-/** The tints: Prepay green, Pay purple (D9), light under black ink. Post's
- *  pink left with Stories (MESITA-4766). */
-const BOX_TINT = { prepay: "bg-[#00D66F]/15", pay: "bg-[#635BFF]/12" } as const;
+/** The tints, light under black ink (MESITA-4770: Prepay blue, Discount
+ *  green, Cashback red-pink; offers.ts holds the solid tones). Post's pink
+ *  left with Stories (MESITA-4766). */
+const BOX_TINT = { prepay: "bg-[#4DA3FF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#FF5A6E]/15" } as const;
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -327,6 +328,11 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       tone: BOX_TINT.prepay,
     }));
   }
+  // MESITA-4770: the visit lines read "Off" (Discount, green) or "Back"
+  // (Cashback, red-pink).
+  const discount = o.visit_mechanism === "discount";
+  const word = discount ? "Off" : "Back";
+  const visitTint = discount ? BOX_TINT.discount : BOX_TINT.cashback;
   if (kind === "cashback") {
     // Welcome · Returning · Returning VIP (MESITA-4766); a 0% line is Off
     // and has no box. One rate on all three is one "Every bill" box.
@@ -334,11 +340,11 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
     const w = on(o.welcome_pct);
     const r = on(o.returning_pct);
     const v = on(o.returning_vip_pct);
-    if (w !== null && w === r && r === v) return [{ key: "every", top: "Every bill", bottom: `${w}% Back`, tone: BOX_TINT.pay }];
+    if (w !== null && w === r && r === v) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
     return [
-      ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% Back`, tone: BOX_TINT.pay }] : []),
-      ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% Back`, tone: BOX_TINT.pay }] : []),
-      ...(v !== null ? [{ key: "returning_vip", top: "Returning VIP", bottom: `${v}% Back`, tone: BOX_TINT.pay }] : []),
+      ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% ${word}`, tone: visitTint }] : []),
+      ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% ${word}`, tone: visitTint }] : []),
+      ...(v !== null ? [{ key: "returning_vip", top: "Returning VIP", bottom: `${v}% ${word}`, tone: visitTint }] : []),
     ];
   }
   // Explore Offers: one box per kind, Prepay · Pay, in offerSlides' words.
@@ -350,7 +356,7 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       key: sl.key,
       top: sl.lead,
       bottom: sl.pillShort,
-      tone: sl.key === "prepay" ? BOX_TINT.prepay : BOX_TINT.pay,
+      tone: sl.key === "prepay" ? BOX_TINT.prepay : visitTint,
     }));
 }
 
