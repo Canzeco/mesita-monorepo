@@ -164,6 +164,9 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   );
 
   const actions: PlaceActions = {
+    // MESITA-4699: the Cashbacks tab's purple Pay Bill, a push to this place's
+    // bill; Back returns here.
+    onPay: () => navigateTo(router, payPlacePath(fetched.id), { motion: "drill" }),
     onBuyVoucher: buyChecked,
     onOfferOpened: vouchers.opened,
     onOffersDone: finish,

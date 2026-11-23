@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -965,6 +965,24 @@ export function VouchersPane({
             {loading ? "Loading…" : "No cashback here yet."}
           </p>
         )
+      ) : null}
+      {/* PAY BILL UNDER CASHBACKS (Pato, 2026-11-22, MESITA-4699: "cashback just
+          have shortcut to Go to Pay bill at the bottom, purple color"): the
+          cashback is earned by paying the bill here, so its tab ends on that
+          door, sticky like the Vouchers tab's Pay bar. Absent onPay (admin's
+          preview), no button. */}
+      {tab === "cashbacks" && actions?.onPay ? (
+        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-cashback-pay-bar>
+          <button
+            type="button"
+            onClick={actions.onPay}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
+            data-cashback-pay-bill
+          >
+            <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            Pay Bill
+          </button>
+        </div>
       ) : null}
       {tab === "vouchers" && !loading && products.length === 0 ? (
         <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-vouchers-none>
