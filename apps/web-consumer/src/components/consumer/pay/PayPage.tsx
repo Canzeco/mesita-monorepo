@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Plus, QrCode } from "lucide-react";
+import { BadgePercent, ChevronRight, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -396,12 +396,13 @@ export function PayPage({
           {/* A BLACK CIRCLE (Pato, 2026-11-21, MESITA-4590: "Buy credits in a
               black circle", Pay Bill's stays white). */}
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
-            <Plus className="h-5 w-5" strokeWidth={2.5} />
+            {/* A PERCENT BADGE, NOT A + (Pato, 2026-11-22, MESITA-4704: "change icon of get offers. name it Get Discounts"). */}
+            <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          {/* GET OFFERS (Pato, 2026-11-22, MESITA-4698: "the green box must be
-              caleld (Get Offers)"; Explore Discounts for one push): the places
+          {/* GET DISCOUNTS (Pato, 2026-11-22, MESITA-4704: "name it Get
+              Discounts"; Explore Discounts, then Get Offers before): the places
               with offers; a row opens its Cashbacks and Vouchers. */}
-          Get Offers
+          Get Discounts
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
