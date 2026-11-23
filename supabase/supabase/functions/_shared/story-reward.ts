@@ -275,6 +275,8 @@ export type StoryMentionRow = {
   recheck_at: string | null;
   mentioned_at: string;
   source: "meta" | "emulator";
+  media_url?: string | null;
+  media_kind?: "image" | "video" | null;
 };
 
 export type StoryView = {
@@ -285,6 +287,10 @@ export type StoryView = {
   recheck_at: string | null;
   /** Rewarded: when the credit landed (the recheck, MESITA-4717). */
   available_at: string | null;
+  /** The story the AI fetched (MESITA-4725): Meta's signed link for an
+   *  image story; null for a video, a simulated story or no link. The guest
+   *  only ever reads their own. The link expires; the page falls back. */
+  image_url: string | null;
   reason: string | null;
   posted_at: string;
   simulated: boolean;
@@ -297,6 +303,7 @@ export function storyView(r: StoryMentionRow): StoryView {
     reward_cents: r.reward_cents,
     recheck_at: r.state === "verified" ? r.recheck_at : null,
     available_at: r.state === "rewarded" ? r.decided_at : null,
+    image_url: r.source === "meta" && r.media_kind !== "video" ? r.media_url ?? null : null,
     reason: r.state === "rejected" && r.reject_reason ? STORY_REJECT_WORDS[r.reject_reason] ?? null : null,
     posted_at: r.mentioned_at,
     simulated: r.source === "emulator",
@@ -312,7 +319,7 @@ export function instagramHandleOfUrl(url: string | null | undefined): string | n
   return m ? m[1].toLowerCase() : null;
 }
 
-export const STORY_MENTION_COLUMNS = "id, state, reject_reason, reward_cents, decided_at, recheck_at, mentioned_at, source";
+export const STORY_MENTION_COLUMNS = "id, state, reject_reason, reward_cents, decided_at, recheck_at, mentioned_at, source, media_url, media_kind";
 
 export type PostRead = {
   /** What a story pays here now; 0 = Off (or Loyalty Cards Off). */
