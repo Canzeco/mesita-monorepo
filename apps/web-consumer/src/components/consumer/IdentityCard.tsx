@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { User } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
+import { FollowersBadge } from "@/components/shared/followers-badge";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,9 @@ export type IdentityInstagram = {
   connected?: boolean;
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
+  /** MESITA-4714: the yellow badge right of the handle (the server's
+   *  instagram_badge: more than 1,000 followers, public account). */
+  badge?: boolean;
 };
 
 function InstagramBadge({ connected = true }: { connected?: boolean }) {
@@ -127,12 +131,14 @@ function InstagramLine({ instagram }: { instagram: IdentityInstagram }) {
     >
       <InstagramBadge connected={instagram.connected} />
       <span className="truncate">{instagram.label}</span>
+      {instagram.badge ? <FollowersBadge /> : null}
     </PushLink>
   ) : (
     <span className={IDENTITY_INSTAGRAM_CLASS} data-identity-instagram>
       <InstagramBadge connected={instagram.connected} />
       <span className="sr-only">Instagram:</span>
       <span className="truncate">{instagram.label}</span>
+      {instagram.badge ? <FollowersBadge /> : null}
     </span>
   );
 }
@@ -253,6 +259,7 @@ export function IdentityModules({
           <InstagramBadge connected={instagram.connected} />
           {/* No Instagram linked: says so plainly (MESITA-4691). */}
           <span className="truncate">{instagram.connected ? handle : "No Instagram"}</span>
+          {instagram.connected && instagram.badge ? <FollowersBadge /> : null}
         </PushLink>
       </span>
     </div>
@@ -302,16 +309,20 @@ export function PersonInstagramPill({
   label,
   href,
   onOpen,
+  badge,
 }: {
   label: string;
   href?: string | null;
   /** Counts the tap (social_open_instagram). */
   onOpen?: () => void;
+  /** MESITA-4714: the server's yellow badge, right of the handle. */
+  badge?: boolean;
 }) {
   const body = (
     <>
       <InstagramBadge connected={label.startsWith("@")} />
       <span className="truncate">{label}</span>
+      {badge && label.startsWith("@") ? <FollowersBadge /> : null}
     </>
   );
   return href ? (

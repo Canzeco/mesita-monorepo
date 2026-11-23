@@ -5,7 +5,8 @@
 // Returning; no VIP line since MESITA-4709), each
 // Off · 5 · 10 · 15 · 20 %, and the cap per bill (MXN units), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
-// win; this never touches them.
+// win; this never touches them. MESITA-4714: and the Post story reward
+// (Off · $20 · $50), what a verified Instagram story pays a guest.
 
 import { useState, useTransition } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
@@ -14,6 +15,8 @@ import { saveCashbackDefaults, type CashbackDefaults } from "./actions";
 
 const STEPS = [0, 500, 1000, 1500, 2000] as const;
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
+const STORY_STEPS = [0, 2000, 5000] as const;
+const storyWord = (cents: number) => (cents === 0 ? "Off" : `$${cents / 100}`);
 
 const LINES: { key: "welcome_bps" | "returning_bps"; name: string; who: string }[] = [
   { key: "welcome_bps", name: "New Customers", who: "Welcome: a guest's first bill at the place" },
@@ -87,6 +90,25 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
                   </Td>
                 </Tr>
               ))}
+              <Tr data-cashback-line="story_reward">
+                <Td className="font-semibold">Post · Instagram story</Td>
+                <Td className="text-muted-foreground">A guest&apos;s story tagging @mesita and the place, once every 7 days</Td>
+                <Td numeric>
+                  <SelectField
+                    aria-label="Instagram story reward default"
+                    className="ml-auto w-28"
+                    value={String(draft.story_reward_cents)}
+                    disabled={pending}
+                    onChange={(v) => setDraft({ ...draft, story_reward_cents: Number(v) })}
+                  >
+                    {STORY_STEPS.map((cents) => (
+                      <option key={cents} value={cents}>
+                        {storyWord(cents)}
+                      </option>
+                    ))}
+                  </SelectField>
+                </Td>
+              </Tr>
               <Tr data-cashback-line="cap">
                 <Td className="font-semibold">Cap per bill</Td>
                 <Td className="text-muted-foreground">The most one bill can earn, in the place&apos;s currency (up to 10,000)</Td>

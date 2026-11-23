@@ -175,6 +175,7 @@ Deno.test("toPerson carries no account id", () => {
     "handle",
     "handleLocked",
     "instagram",
+    "instagramBadge",
     "isYou",
     "name",
     "plan",
@@ -214,6 +215,7 @@ Deno.test("a row without a handle is named by first name, with a face but no han
     guestClass: "vip",
     plan: "premium",
     instagram: true,
+    instagramBadge: false,
     anonymous: true,
   });
   // A row without a photo (none uploaded) stays without one; nothing here invents one.
@@ -229,6 +231,9 @@ Deno.test("a row without a handle is named by first name, with a face but no han
   // The guest's own anonymous row still reads as them.
   assertEquals(toPerson(row({ anonymous: true, consumer_id: "z" }), "z").isYou, true);
   assertEquals(toPerson(row({}), "z").anonymous, false);
+  // MESITA-4714: the yellow badge rides only where a handle shows.
+  assertEquals(toPerson(row({ anonymous: true, instagram_badge: true }), "z").instagramBadge, false);
+  assertEquals(toPerson(row({ instagram_badge: true }), "z").instagramBadge, true);
 });
 
 // MESITA-4246: an anonymous visitor sees a first name and Class, and the day.
@@ -246,6 +251,7 @@ Deno.test("an anonymous visitor sees a first name and Class, nothing else", () =
     guestClass: "vip",
     plan: "free",
     instagram: false,
+    instagramBadge: false,
     anonymous: true,
   });
 });

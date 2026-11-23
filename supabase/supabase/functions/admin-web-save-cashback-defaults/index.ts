@@ -4,14 +4,17 @@
 // every place without its own saved lines reads. A place's own lines
 // (place_cashback_settings) are never touched.
 //
-// Body: { welcome_bps, returning_bps, cap_cents }
+// MESITA-4714: and the story reward (story_reward_cents: 0 Off · 2000 · 5000,
+// optional) every place without its own row pays for a verified story.
+//
+// Body: { welcome_bps, returning_bps, cap_cents, story_reward_cents? }
 // Response: { ok: true, cashback_defaults } · 400 bad input
 // Super-admins only. A change applies to the next confirmed bill; cashback
 // already earned stays as it was.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
-import { readCashbackInput } from "../_shared/cashback.ts";
+import { CASHBACK_RATE_COLUMNS, readCashbackInput } from "../_shared/cashback.ts";
 
 serveJson("admin-web-save-cashback-defaults", async (req) => {
   const ctx = await requireAdminRequest(req);
@@ -24,7 +27,7 @@ serveJson("admin-web-save-cashback-defaults", async (req) => {
   const { data, error } = await ctx.admin
     .from("cashback_defaults")
     .upsert({ id: true, ...input.rates, updated_at: new Date().toISOString(), updated_by: by }, { onConflict: "id" })
-    .select("welcome_bps, returning_bps, cap_cents")
+    .select(CASHBACK_RATE_COLUMNS)
     .single();
   if (error) return json({ ok: false, error: `cashback_defaults: ${error.message}` }, 500);
   console.log("[admin-web-save-cashback-defaults]", JSON.stringify({ ...input.rates, by }));

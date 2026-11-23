@@ -25,6 +25,8 @@
 // viewer shows their own (MESITA-2594, seesHandles).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { withInstagramBadges } from "../_shared/instagram-badge.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { anonClient } from "../_shared/auth.ts";
@@ -109,7 +111,8 @@ serveJson("consumer-web-get-person", async (req) => {
     viewerSeesHandles(admin, viewerId),
   ]);
   if (histRes.error) return json({ ok: false, error: `history: ${histRes.error.message}` }, 500);
-  const rows = (histRes.data ?? []) as ActivityRow[];
+  // MESITA-4714: the yellow badge, decided here.
+  const rows = await withInstagramBadges(admin, (histRes.data ?? []) as ActivityRow[], paymentsLivemode());
   if (rows.length === 0) return json({ ok: true, person: null, items: [] });
   // One member, every row the same: the person comes from the first.
   const person = toPerson(rows[0], viewerId, canSee);

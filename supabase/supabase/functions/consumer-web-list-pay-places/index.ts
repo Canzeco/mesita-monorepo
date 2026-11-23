@@ -144,6 +144,6 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   const offers = new Map(withOffers.map((r) => [r.id, r.offers]));
   return json({
     ok: true,
-    places: listed.map((p) => ({ ...p, offers: offers.get(p.place_id) ?? { sell: [], cashback_pct: null, cashback_flat: false } })),
+    places: listed.map((p) => ({ ...p, offers: offers.get(p.place_id) ?? { sell: [], cashback_pct: null, cashback_flat: false, story_cents: null } })),
   });
 });

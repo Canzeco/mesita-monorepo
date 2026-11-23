@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Clock } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import {
+  PostSection,
+  type PostTabRead,
   readyClock,
-  voucherOffers,
   VouchersPane,
   type OffersTab,
   type PlaceActions,
@@ -13,8 +14,8 @@ import {
   type VoucherBuyOutcome,
 } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
-import { OffersRewards, useRewardsRead } from "@/components/consumer/OffersRewards";
 import { money } from "@/lib/api/wallet";
+import { apiGetStoryReward, apiSimulateStory } from "@/lib/api/story";
 import { apiSyncInstagram } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -32,8 +33,9 @@ import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
- *  part with the time the next of it turns on. The server's cents,
- *  formatted, never added. Null when no balance was read (signed out). */
+ *  part with the time the next of it lands (MESITA-4714: "+$X lands at
+ *  <time>"). The server's cents, formatted, never added. Null when no
+ *  balance was read (signed out). */
 function creditHere(place: PlaceDetail): { label: string; ready: string; pending: string | null } | null {
   const balance = place.money?.balance;
   if (!balance) return null;
@@ -41,9 +43,9 @@ function creditHere(place: PlaceDetail): { label: string; ready: string; pending
   const ready = money(balance.spendable_cents, currency);
   const at = balance.next_ready_at ? readyClock(balance.next_ready_at) : "";
   const pending = balance.pending_cents > 0
-    ? `Pending ${money(balance.pending_cents, currency)}${at ? ` · ready ${at}` : ""}`
+    ? `+${money(balance.pending_cents, currency)} ${at ? `lands at ${at}` : "lands soon"}`
     : null;
-  return { label: `Ready now ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
+  return { label: `Balance ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
 }
 
 /** VIP IS CHECKED AT CLAIM (Pato, 2026-11-22, MESITA-4659: "verify that
@@ -82,16 +84,59 @@ function readFromPay(): boolean {
 /** THE TAB IS IN THE ADDRESS (MESITA-4710): `?rewards=` names it, so a
  *  reload or Back from Pay Bill returns to the same tab. `prepayment` and
  *  `special` (the carousel's and the Wallet's links) open Prepay, `cashback`
- *  Checkout, `earned` Rewards; anything else, or none, Prepay. An asked
- *  voucher opens Prepay whatever this says (the pane decides that). */
+ *  Pay, `post` Post (MESITA-4714; the old `earned` of the retired Rewards
+ *  tab opens Post too); anything else, or none, Prepay. An asked voucher
+ *  opens Prepay whatever this says (the pane decides that). */
 function tabOf(rewards: string | null): OffersTab {
-  if (rewards === "cashback") return "checkout";
-  if (rewards === "earned") return "rewards";
+  if (rewards === "cashback") return "pay";
+  if (rewards === "post" || rewards === "earned") return "post";
   return "prepay";
 }
 
 /** The `?rewards=` value a tab writes back. */
-const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", checkout: "cashback", rewards: "earned" };
+const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", pay: "cashback", post: "post" };
+
+/** POST'S READ (MESITA-4714): consumer-web-get-story-reward, the first time
+ *  the tab opens in a visit (on load too); Retry reads again. Simulate (test
+ *  mode) posts a story through the emulator and reads again. */
+function usePostRead(placeId: string, open: boolean) {
+  const supabase = useBrowserSupabase();
+  const [read, setRead] = useState<PostTabRead | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [simulating, setSimulating] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setFailed(false);
+    try {
+      setRead(await apiGetStoryReward(supabase, placeId));
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [supabase, placeId]);
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!open || asked.current) return;
+    asked.current = true;
+    void load();
+  }, [open, load]);
+  const simulate = useCallback(async () => {
+    setSimulating(true);
+    try {
+      const r = await apiSimulateStory(supabase, placeId);
+      if (r.outcome === "rewarded") toast.success("Story simulated. Your reward is on its way.");
+      else toast.error(r.story.reason ?? "This story didn’t qualify.");
+      await load();
+    } catch (err) {
+      toast.error(errMsg(err, "Couldn’t simulate a story. Try again."));
+    } finally {
+      setSimulating(false);
+    }
+  }, [supabase, placeId, load]);
+  return { read, loading: loading || (open && !read && !failed), failed, reload: load, simulate, simulating };
+}
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
 // fuck are you showing me that … why it needs to pass across that page"):
@@ -114,9 +159,9 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const params = useSearchParams();
   const [initialTab] = useState<OffersTab>(() => tabOf(params?.get("rewards") ?? null));
   const [pick] = useState<string | null>(() => params?.get("pick") ?? params?.get("voucher") ?? null);
-  // Rewards reads the wallet the first time its tab opens in a visit.
-  const [rewardsOpened, setRewardsOpened] = useState(initialTab === "rewards");
-  const rewards = useRewardsRead(rewardsOpened);
+  // Post reads the place's story reward the first time its tab opens.
+  const [postOpened, setPostOpened] = useState(initialTab === "post");
+  const post = usePostRead(fetched.id, postOpened);
   // A switch rewrites `?rewards=` in place (no push, no server round trip),
   // keeps `from=` and drops `pick=`/`voucher=`.
   const onTabChange = useCallback((t: OffersTab) => {
@@ -125,7 +170,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     q.delete("pick");
     q.delete("voucher");
     replaceAddress(`${window.location.pathname}?${q.toString()}`);
-    if (t === "rewards") setRewardsOpened(true);
+    if (t === "post") setPostOpened(true);
   }, []);
   const keep = useKeptScroll<HTMLDivElement>();
 
@@ -154,10 +199,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   );
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const credit = creditHere(place);
-  // The Rewards empty state's numbers, the server's (MESITA-4710): the best
-  // cashback line, and the best bonus Prepay shows (its chip's number).
-  const cashback = place.money?.cashback;
-  const cashbackPct = cashback ? Math.max(cashback.welcome_bps, cashback.returning_bps) / 100 || null : null;
 
   // A VIP basket re-reads the follower count first when the last read is over
   // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`
@@ -222,9 +263,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
   };
 
-  const bonusPct =
-    voucherOffers(place.money, actions.guest).reduce((n, o) => Math.max(n, Number.parseInt(o.bonus.replace(/\D/g, ""), 10) || 0), 0) || null;
-
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-offers-route>
       {/* ONE LINE (Pato, 2026-11-17, MESITA-4224: "the header must only have
@@ -253,60 +291,47 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         className="scrollbar-thin-dark bg-background flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4"
       >
         {/* READY NOW, PENDING AND WHEN (Pato, 2026-11-17, MESITA-4224, D3).
-            Signed out there is no balance and no box (D6). */}
+            Signed out there is no balance and no card (D6).
+            THE AMOUNT ONLY, NO LINK (MESITA-4633): Offers never opens the
+            Loyalty Card, so the two can't stack.
+            A WHITE CARD (MESITA-4714, "a better design" than MESITA-4701's
+            dark strip): a small muted "Balance" over the amount in large bold
+            ink, one muted "+$X lands at <time>" while anything waits; the tab
+            bar sits directly under it, one card with a shared border. */}
         {credit ? (
-          // ONE DARK BOX (Pato, 2026-11-18, MESITA-4381: "just one box at the
-          // top mentioning current balance"): the Loyalty Card's ink panel,
-          // the balance and, while anything waits, the pending line
-          // (pending_cents counts pending cashback and bonuses alike).
-          //
-          // THE AMOUNT ONLY, NO LINK (Pato, 2026-11-21, MESITA-4633: "to
-          // avoid infinitely nested routes, just cut the hyperlink … just
-          // indicate amount but don't redirect to that card … block the card
-          // to offers path"): no chevron, no tap. The card opens Offers; Offers
-          // never opens the card, so Back from Offers lands on the card and
-          // the two can't stack. It pushed the card since MESITA-4601.
-          //
-          // ONE SMALL LINE (Pato, 2026-11-22, MESITA-4701: "current credit
-          // smaller and menu more obvious"): the balance at the right of one
-          // dark strip, the pending line under it only while anything waits
-          // (a bonus or cashback), so the tabs below lead the page.
           <div
-            className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-0.5 rounded-xl px-4 py-2.5"
+            className="bg-card border-border flex w-full shrink-0 flex-col gap-1 rounded-t-2xl border px-4 pt-4 pb-3"
             role="group"
             aria-label={credit.label}
             data-offers-balance
           >
-            <span className="flex items-center justify-between gap-3">
-              {/* "instead of loyalty card say Current Balance" (Pato, MESITA-4702). */}
-              <span className="text-paper/70 text-sm font-semibold">Current Balance</span>
-              <span className="text-base font-bold tabular-nums">{credit.ready}</span>
-            </span>
+            <span className="text-muted-foreground text-sm font-semibold">Balance</span>
+            <span className="text-foreground text-2xl leading-tight font-bold tabular-nums">{credit.ready}</span>
             {credit.pending ? (
-              <span className="text-paper/70 flex items-center gap-1.5 text-xs tabular-nums" data-offers-pending>
-                <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
-                <span className="truncate">{credit.pending}</span>
+              <span className="text-muted-foreground truncate text-sm tabular-nums" data-offers-pending>
+                {credit.pending}
               </span>
             ) : null}
           </div>
         ) : null}
-        <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
+        <div className="flex flex-1 shrink-0 flex-col">
           <VouchersPane
             place={place}
             actions={actions}
             pick={pick}
             initialTab={initialTab}
             onTabChange={onTabChange}
-            renderRewards={(switchTab) => (
-              <OffersRewards
-                placeId={fetched.id}
-                photo={place.profilePhoto ?? null}
-                read={rewards}
-                cashbackPct={cashbackPct}
-                bonusPct={bonusPct}
-                profileFailed={profileRead.error != null && profileRead.data == null}
-                onRetryProfile={profileRead.reload}
-                switchTab={switchTab}
+            attached={credit != null}
+            renderPost={() => (
+              <PostSection
+                read={post.read}
+                loading={post.loading}
+                failed={post.failed}
+                onRetry={() => void post.reload()}
+                // "Connect Instagram" (MESITA-4714): a push to Me › Instagram; Back returns here.
+                onConnectInstagram={() => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" })}
+                onSimulate={() => void post.simulate()}
+                simulating={post.simulating}
               />
             )}
           />

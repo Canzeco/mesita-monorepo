@@ -109,6 +109,8 @@ export function IdentityBar({
               label: instagramLabel,
               connected: instagramConnected,
               href: CONSUMER_ROUTES.mePages.instagram,
+              // MESITA-4714: the server's yellow badge (instagram_badge).
+              badge: profile?.instagram_badge === true,
             }}
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).

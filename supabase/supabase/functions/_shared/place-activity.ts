@@ -52,6 +52,10 @@ export type ActivityPerson = {
   /** A verified Instagram (MESITA-2608): the Instagram mark on the face.
    *  Carried on anonymous rows too; the handle itself is not. */
   instagram: boolean;
+  /** MESITA-4714: the yellow badge beside the handle (more than 1,000
+   *  followers, public account; _shared/instagram-badge.ts). Only where a
+   *  handle shows: never on an anonymous row. */
+  instagramBadge: boolean;
   /** No handle on this row: a member without a verified Instagram
    *  (MESITA-2580) or any view in the feed (MESITA-2594).
    *  The FIRST NAME still shows (MESITA-2612: "A member" is gone), and so do
@@ -135,6 +139,8 @@ export type ActivityRow = {
   anonymous?: boolean | null;
   /** place_activity_feed only (MESITA-2608): a verified Instagram. */
   instagram?: boolean | null;
+  /** MESITA-4714: set by withInstagramBadges before the rows are shaped. */
+  instagram_badge?: boolean;
   /** place_activity_feed only (MESITA-2853): where the event happened. */
   lat?: number | null;
   lng?: number | null;
@@ -163,6 +169,7 @@ export function toPerson(
       guestClass: toClass(row.guest_class),
       plan: toPlan(row.plan),
       instagram: row.instagram === true,
+      instagramBadge: false,
       anonymous: true,
     };
   }
@@ -186,6 +193,7 @@ export function toPerson(
     // place_activity_people (the line under a place) has no flag; a named
     // row there always has a verified handle.
     instagram: row.instagram ?? handle != null,
+    instagramBadge: handle != null && row.instagram_badge === true,
     anonymous: false,
   };
 }
@@ -278,6 +286,7 @@ export function anonymousPerson(row: ActivityRow): ActivityPerson {
     guestClass: toClass(row.guest_class),
     plan: "free",
     instagram: false,
+    instagramBadge: false,
     anonymous: true,
   };
 }

@@ -62,6 +62,7 @@ import {
   ArrowsClockwiseIcon,
   ConfettiIcon,
   CreditCardIcon,
+  InstagramLogoIcon,
   MoneyIcon,
   PiggyBankIcon,
   SignatureIcon,
@@ -75,7 +76,7 @@ import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { CASHBACK_DEFAULTS, CASHBACK_STEPS_BPS, type CashbackRates } from "@/lib/cashback";
+import { CASHBACK_DEFAULTS, CASHBACK_STEPS_BPS, type CashbackRates, STORY_REWARD_STEPS_CENTS } from "@/lib/cashback";
 import {
   setPlaceCashback,
   openPaymentDashboard,
@@ -133,8 +134,13 @@ const STANDARD: VoucherSeed[] = [
 
 // MESITA-4698: Welcome is a cashback line now (Stage 1), not a voucher.
 
+/** MESITA-4714: a story reward's word: Off, $20, $50 (the place's currency units). */
+function storyWord(cents: number): string {
+  return cents > 0 ? `$${cents / 100}` : "Off";
+}
+
 /** Stage 1 · Cashbacks: one row per solution, the line it sets. */
-const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "cap_cents">; name: string; line: string; tone: string; icon: Icon }> = [
+const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "cap_cents" | "story_reward_cents">; name: string; line: string; tone: string; icon: Icon }> = [
   { key: "welcome_bps", name: "New Customers", line: "Welcome cashback on a guest's first bill here.", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
   { key: "returning_bps", name: "Returning Customers", line: "Returning cashback on every later bill here.", tone: "bg-green-100 text-green-700", icon: ArrowsClockwiseIcon },
 ];
@@ -618,6 +624,33 @@ export function PaymentsPanel({
                 setCashback((c) => ({ ...c, cap_cents: Math.min(Number(t || "0"), 10000) * 100 }));
               }}
             />
+          </li>
+          {/* POST (Pato, 2026-11-23, MESITA-4714: "20 OR 50, can setup in
+              business console"): what a verified Instagram story tagging
+              @mesita and this place pays the guest, as credit here 3 hours
+              later, once per guest every 7 days. Saved with the cashbacks. */}
+          <li className={MARK_ROW} data-place-state="story_reward">
+            {mark(InstagramLogoIcon, settings.loyalty_cards && cashback.story_reward_cents > 0, "bg-pink-100 text-pink-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Post · Instagram story</p>
+              <p className="text-muted-foreground">Credit for a guest&apos;s story tagging @mesita and this place, once every 7 days.</p>
+            </div>
+            <p className={cn("font-semibold whitespace-nowrap tabular-nums", !(settings.loyalty_cards && cashback.story_reward_cents > 0) && "text-muted-foreground")}>
+              {storyWord(cashback.story_reward_cents)}
+            </p>
+            <select
+              className="border-border bg-background rounded-full border px-3 py-1.5 text-sm"
+              aria-label="Instagram story reward"
+              value={cashback.story_reward_cents}
+              disabled={pending}
+              onChange={(e) => setCashback((c) => ({ ...c, story_reward_cents: Number(e.target.value) }))}
+            >
+              {STORY_REWARD_STEPS_CENTS.map((cents) => (
+                <option key={cents} value={cents}>
+                  {storyWord(cents)}
+                </option>
+              ))}
+            </select>
           </li>
         </ul>
         {canEdit ? (

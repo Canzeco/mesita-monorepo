@@ -263,6 +263,10 @@ export function ModelsConfigClient({
             <dt className="text-sm">Enricher sorting and tagging</dt>
             <dd className="font-mono text-sm">{cfg ? cfg.enricher.model : UNAVAILABLE}</dd>
           </div>
+          <div className="flex items-center justify-between gap-4 py-2">
+            <dt className="text-sm">Post: checks the place tag on each Instagram story</dt>
+            <dd className="font-mono text-sm">{cfg ? cfg.stories.model : UNAVAILABLE}</dd>
+          </div>
         </dl>
       </SectionCard>
 

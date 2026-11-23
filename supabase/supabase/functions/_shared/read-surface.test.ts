@@ -203,6 +203,9 @@ Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the a
 });
 
 const PROFILES_READ_ALLOWLIST = [
+  // Post (MESITA-4714): one place's currency and Instagram URL (its handle
+  // in the steps). Read-only, error checked.
+  "_shared/story-reward.ts",
   "_shared/name-pipeline.ts",
   // The Name pipeline's Google I/O: the Mesita row a Google hit resolves
   // onto, and its card (split out of name-pipeline.ts, MESITA-2987).
@@ -340,6 +343,15 @@ const CONSUMER_READ_ALLOWLIST = [
   // way to pay. Read-only, error logged (null falls back to the card).
   // Writes go through the consumer_set_pay_method RPC.
   "_shared/cards.ts",
+  // Post (MESITA-4714): the caller's OWN instagram_handle and verified time,
+  // to show their latest story and the Connect Instagram line, and to gate
+  // the test-mode emulator. Read-only, error checked.
+  "_shared/story-reward.ts",
+  "consumer-web-simulate-story/index.ts",
+  // The yellow Instagram badge (MESITA-4714): verified time, follower counts
+  // and the privacy flag of the members a Social list shows, one batched
+  // read; only the boolean leaves the server. Read-only, error logged.
+  "_shared/instagram-badge.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

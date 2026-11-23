@@ -65,6 +65,9 @@ export type PlaceCashback = {
   returning_bps: number;
   cap_cents: number;
   line: "welcome" | "returning" | null;
+  /** MESITA-4714 (Post): what a verified Instagram story pays here, in cents
+   *  (0 = Off). Absent on older reads. */
+  story_reward_cents?: number;
 };
 
 /** The Catalog's score for one place, the server's numbers (MESITA-2379):

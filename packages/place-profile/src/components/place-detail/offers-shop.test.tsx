@@ -130,18 +130,18 @@ describe("the Offers shop's charge (MESITA-4647)", () => {
   });
 
   // MESITA-4710: the tabs never touch the basket. A basket picked on Prepay
-  // survives a trip to Checkout and back, no tab switches while the charge
+  // survives a trip to Pay and back, no tab switches while the charge
   // is out, and Pay charges exactly the steppers' items, once.
-  it("a basket survives a switch to Checkout and back, no switch while the charge is out, one charge (MESITA-4710)", async () => {
+  it("a basket survives a switch to Pay and back, no switch while the charge is out, one charge (MESITA-4710)", async () => {
     let answer: (v: VoucherBuyOutcome) => void = () => {};
     const buy = vi.fn((_items: VoucherBasketItem[], _card: string | null) => new Promise<VoucherBuyOutcome>((r) => (answer = r)));
-    mount({ onBuyVoucher: buy, payCards: { state: "ready", cards: CARDS }, payCardId: "pm_pick" }, { pick: "voucher_200", initialTab: "checkout" });
+    mount({ onBuyVoucher: buy, payCards: { state: "ready", cards: CARDS }, payCardId: "pm_pick" }, { pick: "voucher_200", initialTab: "pay" });
     const tab = (id: OffersTab) => q(`[data-offers-tab="${id}"]`)!;
     // An asked voucher opens Prepay whatever the link's tab says.
     expect(tab("prepay").getAttribute("aria-selected")).toBe("true");
     expect(q('[data-voucher="voucher_200"] [data-offer-qty]')!.textContent).toBe("1");
-    act(() => tab("checkout").click());
-    expect(tab("checkout").getAttribute("aria-selected")).toBe("true");
+    act(() => tab("pay").click());
+    expect(tab("pay").getAttribute("aria-selected")).toBe("true");
     expect(q("[data-offer-pay]")).toBeNull();
     act(() => tab("prepay").click());
     expect(q('[data-voucher="voucher_200"] [data-offer-qty]')!.textContent).toBe("1");
@@ -150,7 +150,7 @@ describe("the Offers shop's charge (MESITA-4647)", () => {
       q("[data-offer-pay]")!.click();
     });
     // The charge is out: the switch is refused and Prepay stays open.
-    act(() => tab("checkout").click());
+    act(() => tab("pay").click());
     expect(tab("prepay").getAttribute("aria-selected")).toBe("true");
     expect(q("[data-offer-pay]")).not.toBeNull();
     await act(async () => answer("paid"));
