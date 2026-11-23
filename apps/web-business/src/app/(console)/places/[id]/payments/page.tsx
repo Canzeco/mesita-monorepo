@@ -21,7 +21,8 @@ export default async function PaymentsPage({
   const [{ id }, { stripe }] = await Promise.all([params, searchParams]);
   const payments = await getPlacePayments(id);
   return (
-    <div className="flex flex-col gap-4 pb-8">
+    // NOT THAT WIDE (Pato, 2026-11-23, MESITA-4756): one centred column.
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 pb-8">
       {payments.ok ? (
         <PaymentsPanel placeId={id} initial={payments.data} back={stripe === "return" ? "return" : stripe === "refresh" ? "refresh" : null} />
       ) : (
