@@ -484,9 +484,20 @@ export type PayPlace = {
   /** MESITA-4698: Loyalty Cards is On, so the place has offers (Get Discounts). */
   offers_ok?: boolean;
   /** What the guest can buy here now (MESITA-4519), the card's offer
-   *  slides. Absent from an older server reads as none. */
-  offers?: { sell: string[] };
+   *  slides, plus the Pay (cashback) and Post (story) offers the server
+   *  already sends (MESITA-4731). Absent from an older server reads as none. */
+  offers?: { sell: string[]; cashback_pct?: number | null; story_cents?: number | null };
 };
+
+/** Which of a place's Offers tabs have something on (MESITA-4731, D5). */
+export function payPlaceTabs(p: PayPlace): { prepay: boolean; pay: boolean; post: boolean } {
+  const o = p.offers;
+  return {
+    prepay: (o?.sell?.length ?? 0) > 0,
+    pay: (o?.cashback_pct ?? 0) > 0,
+    post: (o?.story_cents ?? 0) > 0,
+  };
+}
 
 /** The places, credit first then nearest. `at` is rounded by the caller and
  *  never stored by the server. A `bad_location` answer is retried once

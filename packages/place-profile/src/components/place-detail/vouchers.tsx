@@ -102,9 +102,9 @@ const STANDARD: Product[] = [
   // MX$500 +20% (the voucher_5000 key), MX$1,000 +30%. EACH KEY ITS PRICE
   // (Pato, 2026-11-16, MESITA-4152): Small MX$200 +10%, Medium MX$1,000 +20%
   // (voucher_1000), Big MX$5,000 +30% (voucher_5000).
-  { key: "voucher_200", name: "Small", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
@@ -798,8 +798,8 @@ type CashbackLineRow = { line: "welcome" | "returning"; title: string; who: stri
 function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   return (
     [
-      { line: "welcome", title: "Welcome", who: "Your first bill here", bps: cashback.welcome_bps },
-      { line: "returning", title: "Returning", who: "Every later bill", bps: cashback.returning_bps },
+      { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps },
+      { line: "returning", title: "Returning Visit", who: "Every later bill", bps: cashback.returning_bps },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }

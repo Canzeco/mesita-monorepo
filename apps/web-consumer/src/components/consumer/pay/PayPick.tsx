@@ -7,7 +7,7 @@ import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
-import type { PayPlace } from "@/lib/api/wallet";
+import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
 import { PlacePhoto } from "./pay-common";
 import { TicketHeader } from "./pay-flow";
 import { distanceText, type Loc, usePayLocation } from "./pay-location";
@@ -65,20 +65,32 @@ function PayPickBody({ onPick, onClose }: { onPick: (placeId: string) => void; o
 const NEAR_SHOWN = 3;
 
 export function PlacePickBody({
-  onPick,
+  onPick: onPickId,
   onClose,
   prepay = false,
+  offers = "any",
 }: {
-  onPick: (placeId: string) => void;
+  onPick: (placeId: string, place?: PayPlace) => void;
   /** Pay Bill's ✕ (MESITA-4598): closes the flow. */
   onClose?: () => void;
   prepay?: boolean;
+  /** /wallet/buy's list (MESITA-4731, D5): `vouchers` keeps the places that
+   *  sell a voucher (Pay's Prepay), `any` the places with any offer
+   *  (Explore Offers). */
+  offers?: "vouchers" | "any";
 }) {
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places: all, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // MESITA-4698: Get Discounts lists the places with offers (Loyalty
   // Cards On). MESITA-4708: no card_ok fallback (a bill has no card part).
-  const places = prepay && all ? all.filter((p) => p.offers_ok === true) : all;
+  const places =
+    prepay && all
+      ? all.filter((p) => {
+          const t = payPlaceTabs(p);
+          return offers === "vouchers" ? t.prepay : p.offers_ok === true && (t.prepay || t.pay || t.post);
+        })
+      : all;
+  const onPick = (id: string) => onPickId(id, all?.find((p) => p.place_id === id));
   const [query, setQuery] = useState("");
 
   return (

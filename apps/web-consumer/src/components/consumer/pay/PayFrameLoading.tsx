@@ -12,29 +12,22 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   if (body === "list") {
     // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
     // page"): the page as MESITA-4559 draws it. The white Mesita Wallet header
-    // with its Tickets icon, green Get Discounts | purple Pay Bill, half and half
-    // (MESITA-4587), then the Payment method and Loyalty Cards cards on white.
+    // with its Tickets button, Pay Bill · Prepay | Send Gift · Explore Offers
+    // (MESITA-4731), then the Loyalty Cards card on white.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
+        {/* GREY BONES ONLY (Pato, 2026-11-21, MESITA-4596): no colour and no
+            words while the page reads. The shape is MESITA-4731's: Pay Bill
+            across, Prepay | Send Gift, the quiet Explore Offers row (Pato,
+            2026-11-23: "also update the placeholders"). */}
+        <Skeleton className="mt-2 h-24 w-full rounded-xl" aria-hidden />
         <div className="mt-2 grid grid-cols-2 gap-2">
-          {/* GREY BONES ONLY (Pato, 2026-11-21, MESITA-4596: "don't show word
-              payment method nor loyalty wallet, use placeholders. and the
-              buttons must be gray, not green and purple"): no colour and no
-              words while the page reads; the titles are bars in their place. */}
-          <Skeleton className="h-24 min-w-0 rounded-xl" aria-hidden />
-          <Skeleton className="h-24 min-w-0 rounded-xl" aria-hidden />
+          <Skeleton className="h-20 min-w-0 rounded-xl" aria-hidden />
+          <Skeleton className="h-20 min-w-0 rounded-xl" aria-hidden />
         </div>
+        <Skeleton className="mt-2 h-12 w-full rounded-xl" aria-hidden />
         <div className="mt-1 flex flex-1 flex-col pb-8">
-          <section className={SECTION_CARD}>
-            <div className={SECTION_TITLE} aria-hidden>
-              <Skeleton className="h-6 w-36 rounded" />
-            </div>
-            <span className={PAY_ROW}>
-              <Skeleton className={PAY_THUMB} />
-              <Skeleton className="h-4 w-28 rounded" />
-            </span>
-          </section>
           <section className={SECTION_CARD}>
             <div className={SECTION_TITLE} aria-hidden>
               <Skeleton className="h-6 w-32 rounded" />

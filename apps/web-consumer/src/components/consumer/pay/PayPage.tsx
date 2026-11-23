@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { BadgePercent, ChevronRight, QrCode } from "lucide-react";
+import { BadgePercent, ChevronRight, Gift, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -362,65 +362,64 @@ export function PayPage({
           </div>
         </section>
       ) : null}
-      {/* ADD FUNDS ACROSS THE TOP, THEN HALF AND HALF (Pato, 2026-11-21,
-          MESITA-4582: "ADD FUNDS, GET A BONUS AT THE TOP. THEN BELOW, HALF
-          AND HALF. Pay Bill and Send Gift at the bottom"): a two-column
-          grid; the green tile spans both columns and says the whole "Add
-          Funds, Get a Bonus"; Pay Bill and Send Gift share the second row.
-          Every tile 88px, the glyph over the word. Three in one row for one
-          deploy (MESITA-4579). TWO BUTTONS, HALF AND HALF (Pato, 2026-11-21,
-          MESITA-4584: "for the moment don't mention send gift there … Add
-          Funds get a bonus at the left, Pay bill at the right. lets keep it
-          simple"): green "Add Funds, Get a Bonus" left (two lines), purple
-          Pay Bill right. Send Gift is off Pay; /wallet/send and the Loyalty
-          Card's Send Gift stay. THE GRID AGAIN (Pato, 2026-11-21, MESITA-4586:
-          "return to the previous grid: Add Funds Add Funds / Send Gift, Pay
-          Bill. that grid was better"): green "Add Funds, Get a Bonus" across
-          both columns, then black Send Gift left and purple Pay Bill right,
-          in his order; every icon in its white circle. BUY CREDITS | PAY BILL
-          (Pato, 2026-11-21, MESITA-4587: "better for the moment the buttons
-          must only say Buy Credits. Pay Bill. Keep shit clean."): two equal
-          tiles, green "Buy Credits" left, purple Pay Bill right; Send Gift
-          is off Pay again. PREPAY & GET BONUS, A BIT LARGER (Pato,
-          2026-11-21, MESITA-4593: "Prepay & Get Bonus / Pay Bill … make
-          green a bit larger"): the green tile took 3fr for one deploy.
-          HALF AND HALF (Pato, MESITA-4594: "both buttons msut be 50%, if
-          not enough space, make letter a bit smaller, just a bit"): two
-          equal tiles, the words one step down (16px to text-sm) so the green one fits on a phone. */}
+      {/* PAY BILL, THEN PREPAY | SEND GIFT, THEN EXPLORE OFFERS (Pato,
+          2026-11-23, MESITA-4731: "Pay Bill … bigger"; "Prepay … Get bonus
+          credit"; "a button to send gifts"; "explore offers, even if it's kind
+          of redundant"). Pay Bill is the one full-width purple button; Prepay
+          (green) and Send Gift (black) share the second row; Explore Offers is
+          a quiet full-width row. Prepay lists places that sell vouchers and
+          lands on their Prepay tab; Explore Offers lists places with any offer
+          and lands on their first one (D5). History: Get Discounts | Pay Bill
+          half and half (MESITA-4587 … 4704). */}
+      {payBusy ? (
+        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+      ) : (
+        <button
+          type="button"
+          className={cn(TILE, "mt-2 w-full bg-[#635BFF] text-white hover:bg-[#5249e6]")}
+          aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
+          onClick={paySelected}
+          data-pay-bill
+        >
+          <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
+            <QrCode className="h-5 w-5" strokeWidth={2.25} />
+          </span>
+          Pay Bill
+        </button>
+      )}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
-          href={CONSUMER_ROUTES.walletBuy}
-          className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
-          data-add-funds
+          href={`${CONSUMER_ROUTES.walletBuy}?offers=vouchers`}
+          className={cn(TILE_HALF, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+          data-prepay
         >
-          {/* A BLACK CIRCLE (Pato, 2026-11-21, MESITA-4590: "Buy credits in a
-              black circle", Pay Bill's stays white). */}
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
-            {/* A PERCENT BADGE, NOT A + (Pato, 2026-11-22, MESITA-4704: "change icon of get offers. name it Get Discounts"). */}
             <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          {/* GET DISCOUNTS (Pato, 2026-11-22, MESITA-4704: "name it Get
-              Discounts"; Explore Discounts, then Get Offers before): the places
-              with offers; a row opens its Cashbacks and Vouchers. */}
-          Get Discounts
+          <span className="flex flex-col">
+            <span>Prepay</span>
+            <span className="text-sm font-normal opacity-80">Get bonus credit</span>
+          </span>
         </PushLink>
-        {payBusy ? (
-          <Skeleton className="h-24 min-w-0 rounded-xl bg-[#635BFF]/40" aria-hidden />
-        ) : (
-          <button
-            type="button"
-            className={cn(TILE, "bg-[#635BFF] text-white hover:bg-[#5249e6]")}
-            aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
-            onClick={paySelected}
-            data-pay-bill
-          >
-            <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
-              <QrCode className="h-5 w-5" strokeWidth={2.25} />
-            </span>
-            Pay Bill
-          </button>
-        )}
+        <PushLink
+          href={CONSUMER_ROUTES.walletSend}
+          className={cn(TILE_HALF, "bg-neutral-950 text-white hover:bg-neutral-800")}
+          data-send-gift
+        >
+          <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
+            <Gift className="h-5 w-5" strokeWidth={2.25} />
+          </span>
+          Send Gift
+        </PushLink>
       </div>
+      <PushLink
+        href={`${CONSUMER_ROUTES.walletBuy}?offers=any`}
+        className="border-border bg-card hover:bg-muted mt-2 flex h-12 w-full items-center justify-between rounded-xl border px-4 text-base font-semibold"
+        data-explore-offers
+      >
+        Explore Offers
+        <ChevronRight className="text-muted-foreground h-5 w-5" aria-hidden />
+      </PushLink>
 
       {/* ALL WHITE (Pato, 2026-11-21, MESITA-4574: "MAKE ALL BACKGROUND
           WHITE"): the cards sit on the page's own white, each with its
@@ -527,9 +526,12 @@ function PlaceRows({
   );
 }
 
-/** Pay's three buttons, side by side (MESITA-4579): one size. */
+/** Pay Bill, full width (MESITA-4731). */
 const TILE =
-  "flex h-24 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-sm leading-tight font-semibold whitespace-nowrap transition active:scale-[0.99]";
+  "flex h-24 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-base leading-tight font-semibold whitespace-nowrap transition active:scale-[0.99]";
+/** Prepay and Send Gift, half and half under it: the icon left of the words. */
+const TILE_HALF =
+  "flex h-20 min-w-0 items-center gap-3 rounded-xl px-3 text-left text-base leading-tight font-semibold transition active:scale-[0.99]";
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
