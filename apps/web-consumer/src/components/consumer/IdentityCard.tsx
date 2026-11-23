@@ -68,7 +68,7 @@ export type IdentityInstagram = {
   connected?: boolean;
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
-  /** MESITA-4714: the followers badge (a yellow disc, MESITA-4722) right of the handle (the server's
+  /** MESITA-4714: the followers badge (a pink disc, MESITA-4734) right of the handle (the server's
    *  instagram_badge: more than 1,000 followers, public account). */
   badge?: boolean;
 };
@@ -315,7 +315,7 @@ export function PersonInstagramPill({
   href?: string | null;
   /** Counts the tap (social_open_instagram). */
   onOpen?: () => void;
-  /** MESITA-4714: the server's followers badge (a yellow disc, MESITA-4722), right of the handle. */
+  /** MESITA-4714: the server's followers badge (a pink disc, MESITA-4734), right of the handle. */
   badge?: boolean;
 }) {
   const body = (

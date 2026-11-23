@@ -372,7 +372,7 @@ export function PayPage({
           and lands on their first one (D5). History: Get Discounts | Pay Bill
           half and half (MESITA-4587 … 4704). */}
       {payBusy ? (
-        <Skeleton className="mt-2 h-24 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-20 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
       ) : (
         <button
           type="button"
@@ -526,9 +526,10 @@ function PlaceRows({
   );
 }
 
-/** Pay Bill, full width (MESITA-4731). */
+/** Pay Bill, full width (MESITA-4731), as tall as Prepay and Send Gift
+ *  (Pato, MESITA-4734: "purple and bottom buttons must be same height"). */
 const TILE =
-  "flex h-24 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-base leading-tight font-semibold whitespace-nowrap transition active:scale-[0.99]";
+  "flex h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-base leading-tight font-semibold whitespace-nowrap transition active:scale-[0.99]";
 /** Prepay and Send Gift, half and half under it: the icon left of the words. */
 const TILE_HALF =
   "flex h-20 min-w-0 items-center gap-3 rounded-xl px-3 text-left text-base leading-tight font-semibold transition active:scale-[0.99]";

@@ -21,7 +21,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
             words while the page reads. The shape is MESITA-4731's: Pay Bill
             across, Prepay | Send Gift, the quiet Explore Offers row (Pato,
             2026-11-23: "also update the placeholders"). */}
-        <Skeleton className="mt-2 h-24 w-full rounded-xl" aria-hidden />
+        <Skeleton className="mt-2 h-20 w-full rounded-xl" aria-hidden />
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Skeleton className="h-20 min-w-0 rounded-xl" aria-hidden />
           <Skeleton className="h-20 min-w-0 rounded-xl" aria-hidden />
