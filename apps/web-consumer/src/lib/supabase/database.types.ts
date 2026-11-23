@@ -176,6 +176,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cashback_defaults: {
+        Row: {
+          cap_cents: number
+          id: boolean
+          returning_bps: number
+          story_reward_cents: number
+          updated_at: string
+          updated_by: string | null
+          welcome_bps: number
+        }
+        Insert: {
+          cap_cents?: number
+          id?: boolean
+          returning_bps?: number
+          story_reward_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+          welcome_bps?: number
+        }
+        Update: {
+          cap_cents?: number
+          id?: boolean
+          returning_bps?: number
+          story_reward_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+          welcome_bps?: number
+        }
+        Relationships: []
+      }
       catalog_membership: {
         Row: {
           enabled: boolean
@@ -346,7 +376,9 @@ export type Database = {
           guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
+          instagram_followers_emulated: number | null
           instagram_handle: string | null
+          instagram_handle_shown: boolean | null
           instagram_is_private: boolean | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
@@ -383,7 +415,9 @@ export type Database = {
           guest_class_set_by?: string | null
           id: string
           instagram_followers_count?: number | null
+          instagram_followers_emulated?: number | null
           instagram_handle?: string | null
+          instagram_handle_shown?: boolean | null
           instagram_is_private?: boolean | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
@@ -420,7 +454,9 @@ export type Database = {
           guest_class_set_by?: string | null
           id?: string
           instagram_followers_count?: number | null
+          instagram_followers_emulated?: number | null
           instagram_handle?: string | null
+          instagram_handle_shown?: boolean | null
           instagram_is_private?: boolean | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
@@ -981,6 +1017,44 @@ export type Database = {
             foreignKeyName: "place_backings_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_cashback_settings: {
+        Row: {
+          cap_cents: number
+          place_id: string
+          returning_bps: number
+          story_reward_cents: number
+          updated_at: string
+          updated_by: string | null
+          welcome_bps: number
+        }
+        Insert: {
+          cap_cents?: number
+          place_id: string
+          returning_bps?: number
+          story_reward_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+          welcome_bps?: number
+        }
+        Update: {
+          cap_cents?: number
+          place_id?: string
+          returning_bps?: number
+          story_reward_cents?: number
+          updated_at?: string
+          updated_by?: string | null
+          welcome_bps?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_cashback_settings_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
@@ -2975,222 +3049,93 @@ export type Database = {
           },
         ]
       }
-      stories: {
+      story_mentions: {
         Row: {
-          approved_at: string | null
-          approved_device_hash: string | null
-          bonus_cents: number
+          ai_checked_at: string | null
+          ai_claimed_at: string | null
+          ai_last_error: string | null
+          ai_model: string | null
+          ai_tries: number
+          ai_verdict: Json | null
           consumer_id: string | null
           created_at: string
-          deadline_at: string
           decided_at: string | null
-          first_bound_at: string | null
           id: string
+          ig_handle: string | null
+          ig_story_id: string
           livemode: boolean
-          mention_id: string | null
+          media_kind: string
+          media_url: string | null
+          mentioned_at: string
           place_id: string | null
-          purchase_id: string | null
           recheck_at: string | null
-          recheck_tries: number
+          reject_reason: string | null
+          reward_cents: number | null
+          sender_igsid: string | null
+          source: string
           state: string
-          updated_at: string
-          void_reason: string | null
-          wait_sec: number | null
         }
         Insert: {
-          approved_at?: string | null
-          approved_device_hash?: string | null
-          bonus_cents: number
+          ai_checked_at?: string | null
+          ai_claimed_at?: string | null
+          ai_last_error?: string | null
+          ai_model?: string | null
+          ai_tries?: number
+          ai_verdict?: Json | null
           consumer_id?: string | null
           created_at?: string
-          deadline_at: string
           decided_at?: string | null
-          first_bound_at?: string | null
           id?: string
+          ig_handle?: string | null
+          ig_story_id: string
           livemode: boolean
-          mention_id?: string | null
+          media_kind?: string
+          media_url?: string | null
+          mentioned_at?: string
           place_id?: string | null
-          purchase_id?: string | null
           recheck_at?: string | null
-          recheck_tries?: number
+          reject_reason?: string | null
+          reward_cents?: number | null
+          sender_igsid?: string | null
+          source: string
           state?: string
-          updated_at?: string
-          void_reason?: string | null
-          wait_sec?: number | null
         }
         Update: {
-          approved_at?: string | null
-          approved_device_hash?: string | null
-          bonus_cents?: number
+          ai_checked_at?: string | null
+          ai_claimed_at?: string | null
+          ai_last_error?: string | null
+          ai_model?: string | null
+          ai_tries?: number
+          ai_verdict?: Json | null
           consumer_id?: string | null
           created_at?: string
-          deadline_at?: string
           decided_at?: string | null
-          first_bound_at?: string | null
           id?: string
+          ig_handle?: string | null
+          ig_story_id?: string
           livemode?: boolean
-          mention_id?: string | null
+          media_kind?: string
+          media_url?: string | null
+          mentioned_at?: string
           place_id?: string | null
-          purchase_id?: string | null
           recheck_at?: string | null
-          recheck_tries?: number
+          reject_reason?: string | null
+          reward_cents?: number | null
+          sender_igsid?: string | null
+          source?: string
           state?: string
-          updated_at?: string
-          void_reason?: string | null
-          wait_sec?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "stories_consumer_id_fkey"
+            foreignKeyName: "story_mentions_consumer_id_fkey"
             columns: ["consumer_id"]
             isOneToOne: false
             referencedRelation: "consumers"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stories_mention_id_fkey"
-            columns: ["mention_id"]
-            isOneToOne: true
-            referencedRelation: "story_mentions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stories_place_id_fkey"
+            foreignKeyName: "story_mentions_place_id_fkey"
             columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "stories_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "wallet_purchases"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      story_mentions: {
-        Row: {
-          ai_checked_at: string | null
-          ai_claimed_at: string | null
-          ai_last_error: string | null
-          ai_media_path: string | null
-          ai_model: string | null
-          ai_outcome: string | null
-          ai_reason: string | null
-          ai_reviewed_at: string | null
-          ai_tries: number
-          ai_verdict: Json | null
-          created_at: string
-          deleted_at: string | null
-          handle_tries: number
-          id: string
-          ig_handle: string | null
-          ig_story_id: string
-          livemode: boolean
-          media_kind: string
-          media_purged_at: string | null
-          media_url: string | null
-          mentioned_at: string
-          probed_at: string | null
-          purchase_id: string | null
-          reachable_at_bonus: boolean | null
-          review: string | null
-          review_device_hash: string | null
-          review_place_id: string | null
-          review_token: string | null
-          reviewed_at: string | null
-          sender_igsid: string | null
-          source: string
-          tagged_place_id: string | null
-        }
-        Insert: {
-          ai_checked_at?: string | null
-          ai_claimed_at?: string | null
-          ai_last_error?: string | null
-          ai_media_path?: string | null
-          ai_model?: string | null
-          ai_outcome?: string | null
-          ai_reason?: string | null
-          ai_reviewed_at?: string | null
-          ai_tries?: number
-          ai_verdict?: Json | null
-          created_at?: string
-          deleted_at?: string | null
-          handle_tries?: number
-          id?: string
-          ig_handle?: string | null
-          ig_story_id: string
-          livemode: boolean
-          media_kind?: string
-          media_purged_at?: string | null
-          media_url?: string | null
-          mentioned_at?: string
-          probed_at?: string | null
-          purchase_id?: string | null
-          reachable_at_bonus?: boolean | null
-          review?: string | null
-          review_device_hash?: string | null
-          review_place_id?: string | null
-          review_token?: string | null
-          reviewed_at?: string | null
-          sender_igsid?: string | null
-          source: string
-          tagged_place_id?: string | null
-        }
-        Update: {
-          ai_checked_at?: string | null
-          ai_claimed_at?: string | null
-          ai_last_error?: string | null
-          ai_media_path?: string | null
-          ai_model?: string | null
-          ai_outcome?: string | null
-          ai_reason?: string | null
-          ai_reviewed_at?: string | null
-          ai_tries?: number
-          ai_verdict?: Json | null
-          created_at?: string
-          deleted_at?: string | null
-          handle_tries?: number
-          id?: string
-          ig_handle?: string | null
-          ig_story_id?: string
-          livemode?: boolean
-          media_kind?: string
-          media_purged_at?: string | null
-          media_url?: string | null
-          mentioned_at?: string
-          probed_at?: string | null
-          purchase_id?: string | null
-          reachable_at_bonus?: boolean | null
-          review?: string | null
-          review_device_hash?: string | null
-          review_place_id?: string | null
-          review_token?: string | null
-          reviewed_at?: string | null
-          sender_igsid?: string | null
-          source?: string
-          tagged_place_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_mentions_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: true
-            referencedRelation: "wallet_purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_mentions_review_place_id_fkey"
-            columns: ["review_place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_mentions_tagged_place_id_fkey"
-            columns: ["tagged_place_id"]
             isOneToOne: false
             referencedRelation: "places"
             referencedColumns: ["id"]
@@ -3381,6 +3326,8 @@ export type Database = {
           place_id: string
           purchase_id: string | null
           reason: string | null
+          story_mention_id: string | null
+          tab_id: string | null
         }
         Insert: {
           amount_cents: number
@@ -3396,6 +3343,8 @@ export type Database = {
           place_id: string
           purchase_id?: string | null
           reason?: string | null
+          story_mention_id?: string | null
+          tab_id?: string | null
         }
         Update: {
           amount_cents?: number
@@ -3411,6 +3360,8 @@ export type Database = {
           place_id?: string
           purchase_id?: string | null
           reason?: string | null
+          story_mention_id?: string | null
+          tab_id?: string | null
         }
         Relationships: [
           {
@@ -3446,6 +3397,20 @@ export type Database = {
             columns: ["purchase_id"]
             isOneToOne: false
             referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_entries_story_mention_id_fkey"
+            columns: ["story_mention_id"]
+            isOneToOne: false
+            referencedRelation: "story_mentions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_entries_tab_id_fkey"
+            columns: ["tab_id"]
+            isOneToOne: false
+            referencedRelation: "pay_tabs"
             referencedColumns: ["id"]
           },
         ]
@@ -3904,13 +3869,6 @@ export type Database = {
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "wallet_purchases_story_mention_id_fkey"
-            columns: ["story_mention_id"]
-            isOneToOne: false
-            referencedRelation: "story_mentions"
-            referencedColumns: ["id"]
-          },
         ]
       }
       wallet_refund_attempts: {
@@ -4091,7 +4049,9 @@ export type Database = {
           guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
+          instagram_followers_emulated: number | null
           instagram_handle: string | null
+          instagram_handle_shown: boolean | null
           instagram_is_private: boolean | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
@@ -4148,7 +4108,9 @@ export type Database = {
           guest_class_set_by: string | null
           id: string
           instagram_followers_count: number | null
+          instagram_followers_emulated: number | null
           instagram_handle: string | null
+          instagram_handle_shown: boolean | null
           instagram_is_private: boolean | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
@@ -4515,6 +4477,10 @@ export type Database = {
         Returns: Json
       }
       pay_tab_finish_signing: { Args: { p_payment_id: string }; Returns: Json }
+      pay_tab_grant_cashback: {
+        Args: { p_now?: string; p_tab_id: string }
+        Returns: number
+      }
       pay_tab_guest_end: {
         Args: { p_now?: string; p_tab_id: string }
         Returns: boolean
@@ -4728,6 +4694,15 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
         Returns: boolean
       }
+      place_cashback_rates: {
+        Args: { p_place_id: string }
+        Returns: {
+          cap_cents: number
+          returning_bps: number
+          story_reward_cents: number
+          welcome_bps: number
+        }[]
+      }
       place_charges_sweep: { Args: never; Returns: number }
       place_code_check: {
         Args: { p_hash: string; p_place_id: string }
@@ -4804,6 +4779,10 @@ export type Database = {
           p_place_id: string
         }
         Returns: Json
+      }
+      place_shown_handle: {
+        Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
+        Returns: string
       }
       place_take_code_try: {
         Args: { p_consumer_id: string; p_max: number; p_place_id: string }
@@ -4885,6 +4864,29 @@ export type Database = {
           instagram_handle: string
           kind: string
           plan: string
+        }[]
+      }
+      place_visit_rows: {
+        Args: { p_livemode: boolean; p_place_id: string }
+        Returns: {
+          at: string
+          bill_cents: number
+          card_bill_cents: number
+          card_tip_cents: number
+          cash_bill_cents: number
+          cash_tip_cents: number
+          consumer_id: string
+          credit_cents: number
+          id: string
+          parent_tab_id: string
+          refunded_cents: number
+          shares: number
+          shares_total_cents: number
+          split_at: string
+          status: string
+          ticket: string
+          tip_cents: number
+          waiter_name: string
         }[]
       }
       premier_add_days: {
@@ -4991,6 +4993,45 @@ export type Database = {
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
+      story_ai_claim: {
+        Args: { p_limit: number; p_max_tries: number }
+        Returns: {
+          ai_tries: number
+          id: string
+          media_kind: string
+          media_url: string
+        }[]
+      }
+      story_ai_fail: {
+        Args: { p_error: string; p_final: boolean; p_mention: string }
+        Returns: Json
+      }
+      story_ai_verdict: {
+        Args: { p_mention: string; p_model: string; p_verdict: Json }
+        Returns: Json
+      }
+      story_mentions_expire: { Args: { p_now?: string }; Returns: number }
+      story_recheck_claim: {
+        Args: { p_limit: number }
+        Returns: {
+          id: string
+          media_url: string
+          mentioned_at: string
+          source: string
+        }[]
+      }
+      story_reward_grant: {
+        Args: { p_mention: string; p_now?: string; p_place: string }
+        Returns: Json
+      }
+      story_reward_pay: {
+        Args: { p_mention: string; p_now?: string }
+        Returns: Json
+      }
+      story_reward_reject: {
+        Args: { p_mention: string; p_now?: string; p_reason: string }
+        Returns: Json
+      }
       unstick_enriching_places: {
         Args: { older_than?: string }
         Returns: number
