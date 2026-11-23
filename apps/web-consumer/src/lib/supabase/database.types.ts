@@ -1898,7 +1898,6 @@ export type Database = {
           voucher_1000: boolean
           voucher_200: boolean
           voucher_5000: boolean
-          voucher_story: boolean
           voucher_vip: boolean
           voucher_welcome: boolean
         }
@@ -1914,7 +1913,6 @@ export type Database = {
           voucher_1000?: boolean
           voucher_200?: boolean
           voucher_5000?: boolean
-          voucher_story?: boolean
           voucher_vip?: boolean
           voucher_welcome?: boolean
         }
@@ -1930,7 +1928,6 @@ export type Database = {
           voucher_1000?: boolean
           voucher_200?: boolean
           voucher_5000?: boolean
-          voucher_story?: boolean
           voucher_vip?: boolean
           voucher_welcome?: boolean
         }
@@ -3741,17 +3738,6 @@ export type Database = {
           request_id: string | null
           settle_tries: number
           status: string
-          story_activated_at: string | null
-          story_bonus: string | null
-          story_bonus_decided_at: string | null
-          story_bonus_void_reason: string | null
-          story_mention_id: string | null
-          story_recheck_at: string | null
-          story_recheck_tries: number
-          story_review: string | null
-          story_reviewed_at: string | null
-          story_reviewed_by_device: string | null
-          story_token: string | null
           stripe_account_id: string
           stripe_checkout_session_id: string | null
           stripe_error: string | null
@@ -3781,17 +3767,6 @@ export type Database = {
           request_id?: string | null
           settle_tries?: number
           status?: string
-          story_activated_at?: string | null
-          story_bonus?: string | null
-          story_bonus_decided_at?: string | null
-          story_bonus_void_reason?: string | null
-          story_mention_id?: string | null
-          story_recheck_at?: string | null
-          story_recheck_tries?: number
-          story_review?: string | null
-          story_reviewed_at?: string | null
-          story_reviewed_by_device?: string | null
-          story_token?: string | null
           stripe_account_id: string
           stripe_checkout_session_id?: string | null
           stripe_error?: string | null
@@ -3821,17 +3796,6 @@ export type Database = {
           request_id?: string | null
           settle_tries?: number
           status?: string
-          story_activated_at?: string | null
-          story_bonus?: string | null
-          story_bonus_decided_at?: string | null
-          story_bonus_void_reason?: string | null
-          story_mention_id?: string | null
-          story_recheck_at?: string | null
-          story_recheck_tries?: number
-          story_review?: string | null
-          story_reviewed_at?: string | null
-          story_reviewed_by_device?: string | null
-          story_token?: string | null
           stripe_account_id?: string
           stripe_checkout_session_id?: string | null
           stripe_error?: string | null
