@@ -9,6 +9,7 @@ import {
   MapDisplayBox,
   MixingBox,
   RankingBox,
+  ScoreOverlayBox,
   SearchbarsBox,
   SocialDiscoveryBox,
 } from "./PipelineBoxes";
@@ -16,7 +17,7 @@ import {
 // Discovery: ONE page, no subpages (MESITA-2327). Numbers first since
 // MESITA-4694 (Pato: "make it cleaner … simpler"): a pinned jump row, then
 // the sections in the order the guest meets them: Home (Ranking, Mixing,
-// Social), then Search (Map, Search bars), and last the explanation, closed.
+// Social, Score overlay), then Search (Map, Search bars), and last the explanation, closed.
 // Consumer Deep (Soon) and Premier Prices left the page (MESITA-3828); their
 // stored settings stay on the config blob.
 export default async function DiscoveryPage() {
@@ -37,6 +38,7 @@ export default async function DiscoveryPage() {
           <RankingBox {...seed} />
           <MixingBox {...seed} />
           <SocialDiscoveryBox {...seed} />
+          <ScoreOverlayBox {...seed} />
           <MapDisplayBox {...seed} />
           <SearchbarsBox {...seed} />
           <HowRankedCard />

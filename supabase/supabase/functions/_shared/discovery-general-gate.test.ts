@@ -10,8 +10,8 @@ import {
   normalizeDiscoveryConfig, normalizeMapConfig,
 } from "./discovery-config.ts";
 
-const OFF: GeneralConfig = { requireActive: false };
-const ACTIVE_ONLY: GeneralConfig = { requireActive: true };
+const OFF: GeneralConfig = { requireActive: false, showScores: true };
+const ACTIVE_ONLY: GeneralConfig = { requireActive: true, showScores: true };
 
 Deno.test("Active is Google's OPERATIONAL, nothing else", () => {
   assert(isOperational("OPERATIONAL"));
@@ -38,7 +38,7 @@ Deno.test("no reviews floor: general.minReviews and map.googleMinReviews are dro
     general: { requireActive: true, minReviews: 10 },
     map: { googleMinReviews: 100 },
   });
-  assertEquals(cfg.general, { requireActive: true });
+  assertEquals(cfg.general, { requireActive: true, showScores: true });
   // The typed map has no such knob; the blob keeps an untyped key until a
   // migration deletes it (H-2, MESITA-4454) and nothing reads it.
   assertEquals("googleMinReviews" in normalizeMapConfig({ googleMinReviews: 100 }), false);

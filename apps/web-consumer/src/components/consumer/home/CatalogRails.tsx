@@ -799,6 +799,11 @@ export function CatalogRails() {
     </div>
   );
 
+  // The score overlay follows Discovery's switch (MESITA-4757), read off the
+  // last rank answer; Saved rows follow the same answer. No answer yet, or
+  // one from an older EF: shown, as before the switch.
+  const showScores = pool?.showScores !== false;
+
   // PLACES' ROWS (MESITA-3662, Places since MESITA-3789): the ranked
   // places, one row each, drawn as PlaceRowCard.
   // A row is an ad only in an ad slot (MESITA-4454, H4): its id is in the
@@ -817,6 +822,7 @@ export function CatalogRails() {
             place={withUserDistance(place, coords)}
             ad={ranked ? ranked.adIds.includes(place.id) : false}
             rank={ranked ? { pre: ranked.preShuffle[place.id] ?? null, shown: i + 1 } : null}
+            showScores={showScores}
             saved={cards.isSaved(place)}
             table={tables.get(place.id) ?? null}
             onToggle={() => cards.toggle(place, i + 1)}

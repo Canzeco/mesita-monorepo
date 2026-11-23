@@ -395,6 +395,13 @@ export type GeneralConfig = {
    * open has not.
    */
   requireActive: boolean;
+  /**
+   * Home's temporary score overlay on each row's photo (MESITA-4449) is
+   * drawn (MESITA-4757, Pato: "toggle if show score data on top of images
+   * or if not"). Display only: it changes no rank. The catalog EF sends it
+   * on every rank answer as `showScores`.
+   */
+  showScores: boolean;
   // `minReviews` retired (MESITA-2702), and `map.googleMinReviews` with it
   // (MESITA-2721): both dropped on the next Save, never renamed.
 };
@@ -536,6 +543,8 @@ export const DEFAULT_GENERAL: GeneralConfig = {
   // result, and the live blob predates the key — so the default is what
   // every surface reads until the operator says otherwise.
   requireActive: true,
+  // ON: the overlay was always drawn before the switch (MESITA-4757).
+  showScores: true,
 };
 
 /** The signal numbers. A blob with no `params` reads these. */
@@ -618,6 +627,7 @@ export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   return {
     requireActive: bool(r.requireActive, DEFAULT_GENERAL.requireActive),
+    showScores: bool(r.showScores, DEFAULT_GENERAL.showScores),
   };
 }
 

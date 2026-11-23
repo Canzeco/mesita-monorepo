@@ -139,6 +139,9 @@ export type GeneralConfig = {
    * clear it. Mirrors `_shared/discovery-general-gate.ts`.
    */
   requireActive: boolean;
+  /** Home draws the temporary score overlay on each row's photo
+   *  (MESITA-4757). Display only. Mirrors GeneralConfig.showScores. */
+  showScores: boolean;
   // `minReviews` retired (MESITA-2702), `map.googleMinReviews` too (MESITA-2721).
 };
 
@@ -376,6 +379,7 @@ export const DEFAULT_NAME: NameConfig = {
 
 export const DEFAULT_GENERAL: GeneralConfig = {
   requireActive: true,
+  showScores: true,
 };
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
@@ -561,6 +565,8 @@ function coerceGeneral(raw: unknown): GeneralConfig {
       typeof g.requireActive === "boolean"
         ? g.requireActive
         : DEFAULT_GENERAL.requireActive,
+    showScores:
+      typeof g.showScores === "boolean" ? g.showScores : DEFAULT_GENERAL.showScores,
   };
 }
 
