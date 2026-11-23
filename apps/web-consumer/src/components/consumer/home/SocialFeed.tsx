@@ -1413,13 +1413,16 @@ function SocialFeedBody() {
       {/* THE NEW-EVENTS BANNER (Pato, MESITA-4715: "below social maybe a
           blue banner that says 0 new events … and button to reload"): always
           drawn between the tabs and the rows, sticky. Reload lays the held
-          events in and goes to the top; with none held it reads again. */}
+          events in and goes to the top; with none held it reads again.
+          NEUTRAL, NOT BLUE (Pato, 2026-11-23, MESITA-4761: "that blue to
+          reload is repulsive"): white with a hairline, muted words and a grey
+          pill; new events waiting turn the words ink and the pill black. */}
       <div
-        className="sticky top-0 z-10 flex h-11 items-center gap-3 border-b border-blue-100 bg-blue-50 pr-2 pl-5"
+        className="bg-card border-border sticky top-0 z-10 flex h-11 items-center gap-3 border-b pr-2 pl-5"
         data-social-new-banner
       >
         <p
-          className="min-w-0 flex-1 truncate text-sm font-semibold text-blue-700"
+          className={cn("min-w-0 flex-1 truncate text-sm font-semibold", pendingNew === 0 ? "text-muted-foreground" : "text-foreground")}
           aria-live="polite"
         >
           {pendingNew === 0
@@ -1433,7 +1436,10 @@ function SocialFeedBody() {
             else if (!refreshing) refresh();
             scroller()?.scrollTo({ top: 0 });
           }}
-          className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3.5 text-sm font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+          className={cn(
+            "focus-visible:ring-ring flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold outline-none focus-visible:ring-2",
+            pendingNew === 0 ? "bg-muted text-foreground hover:bg-border" : "bg-foreground text-background",
+          )}
         >
           <RotateCw
             className={cn("h-4 w-4", refreshing && "animate-spin")}
