@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Gift, QrCode, Wallet as WalletIcon } from "lucide-react";
+import { BadgePercent, ChevronRight, CreditCard, Gift, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -564,12 +564,14 @@ const PENDING_ROW =
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
 
-/** PAY'S SWITCH (MESITA-4765, D1): the Offers page's segmented control
- *  (MESITA-4737), one light grey track, the chosen tab a white raised pill,
- *  48px, 16px semibold. Arrow keys move between the two. */
-const PAY_TABS: { id: PayTab; word: string }[] = [
-  { id: "offers", word: "Nearby Offers" },
-  { id: "cards", word: "Loyalty Cards" },
+/** PAY'S MENU (Pato, 2026-11-23, MESITA-4778: "nearby offers and loyalty
+ *  cards must look more like menu to select"): Me › Tickets' strip, two
+ *  halves, a little icon and the word, a bottom hairline, the chosen one ink
+ *  over a 3px ink line, the other grey. A grey segmented switch before
+ *  (MESITA-4765, D1). Arrow keys move between the two. */
+const PAY_TABS: { id: PayTab; word: string; icon: LucideIcon }[] = [
+  { id: "offers", word: "Nearby Offers", icon: BadgePercent },
+  { id: "cards", word: "Loyalty Cards", icon: CreditCard },
 ];
 
 function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
@@ -580,9 +582,8 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
     refs.current[to]?.focus();
   };
   return (
-    // MESITA-4778: a 36px switch, 14px words (48px and 16px before).
-    <div className="bg-muted flex gap-1 rounded-xl p-0.5" role="tablist" aria-label="Pay" data-pay-tabs>
-      {PAY_TABS.map(({ id, word }, i) => {
+    <div className="border-border grid grid-cols-2 border-b" role="tablist" aria-label="Pay" data-pay-tabs>
+      {PAY_TABS.map(({ id, word, icon: Icon }, i) => {
         const on = tab === id;
         return (
           <button
@@ -604,11 +605,12 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
               }
             }}
             className={cn(
-              "flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg px-2 text-sm font-semibold transition",
-              on ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              "-mb-px flex min-w-0 items-center justify-center gap-1.5 border-b-[3px] px-1 py-2.5 text-sm whitespace-nowrap transition",
+              on ? "border-foreground text-foreground font-bold" : "text-muted-foreground hover:text-foreground border-transparent font-semibold",
             )}
             data-pay-tab={id}
           >
+            <Icon className="h-4 w-4 shrink-0" strokeWidth={on ? 2.5 : 2} aria-hidden />
             <span className="truncate">{word}</span>
           </button>
         );
