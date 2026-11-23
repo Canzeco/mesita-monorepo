@@ -28,6 +28,10 @@ export type ActivityPerson = {
   /** A verified Instagram (MESITA-2608): the Instagram mark on the face,
    *  on anonymous rows too. */
   instagram: boolean;
+  /** MESITA-4714: the yellow badge beside the handle (more than 1,000
+   *  followers, public account), decided by the server. Optional (older EF
+   *  payloads read as none). */
+  instagramBadge?: boolean;
   /** No handle on this row: a member without Instagram (MESITA-2580), a
    *  view in the feed (MESITA-2594) or a hidden handle. The first name
    *  still shows (MESITA-2612), and the face (MESITA-2608): photo, Class and

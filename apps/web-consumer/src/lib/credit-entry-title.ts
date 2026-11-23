@@ -9,6 +9,7 @@ const TITLE: Record<string, string> = {
   prepay: "Voucher",
   bonus: "Voucher",
   cashback: "Cashback",
+  story: "Story",
   gift_in: "Gift",
   gift_out: "Gift",
   gift_back: "Gift",

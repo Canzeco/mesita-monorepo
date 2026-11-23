@@ -539,6 +539,8 @@ export const ENTRY_LABEL: Record<string, string> = {
   extra: "Credit",
   // MESITA-4698: earned on a paid bill, Pending 3 hours.
   cashback: "Cashback",
+  // MESITA-4714: paid for a verified Instagram story, Pending 3 hours.
+  story: "Story",
   spend: "Paid",
   reversal: "Refund",
   // Credit given back on a payment (MESITA-3750: it showed the raw word).

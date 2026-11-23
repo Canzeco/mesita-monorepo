@@ -41,6 +41,10 @@ export type ConsumerProfile = {
   // (older EF payloads read as off).
   instagram_followers_emulated?: number | null;
   emulator_available?: boolean;
+  // MESITA-4714: the yellow badge right of the @handle (verified, more than
+  // 1,000 followers, public account; the emulated count in test mode only).
+  // The server decides it. Optional (older EF payloads read as none).
+  instagram_badge?: boolean;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;

@@ -52,6 +52,7 @@ import {
   updatedAgo,
 } from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
+import { FollowersBadge } from "@/components/shared/followers-badge";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import {
   INPUT_CLASS,
@@ -964,7 +965,10 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   const { igHandle: handle, igFollowers } = useConsumerIdentity();
   const profile = useServerProfile();
   // The emulated count while the emulator is on (MESITA-4693).
-  const emulated = useConsumerProfile().data?.instagram_followers_emulated ?? null;
+  const own = useConsumerProfile().data;
+  const emulated = own?.instagram_followers_emulated ?? null;
+  // MESITA-4714: the server's yellow badge, right of the handle.
+  const badge = own?.instagram_badge === true && !pending;
   const now = useSyncExternalStore(
     minuteClock.subscribe,
     minuteClock.now,
@@ -982,21 +986,24 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
         <Instagram className="h-[18px] w-[18px]" />
       </IconChip>
       <div className="min-w-0 flex-1">
-        {handle && !pending ? (
-          <a
-            href={`https://www.instagram.com/${handle}/`}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`View @${handle} on Instagram`}
-            className="block truncate text-sm font-semibold hover:underline"
-          >
-            @{handle}
-          </a>
-        ) : (
-          <p className="truncate text-sm font-semibold">
-            {handle ? `@${handle}` : "Instagram connected"}
-          </p>
-        )}
+        <div className="flex min-w-0 items-center gap-1.5">
+          {handle && !pending ? (
+            <a
+              href={`https://www.instagram.com/${handle}/`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`View @${handle} on Instagram`}
+              className="block truncate text-sm font-semibold hover:underline"
+            >
+              @{handle}
+            </a>
+          ) : (
+            <p className="truncate text-sm font-semibold">
+              {handle ? `@${handle}` : "Instagram connected"}
+            </p>
+          )}
+          {badge && handle ? <FollowersBadge /> : null}
+        </div>
         <p className="text-muted-foreground type-label truncate">
           {emulated != null ? `${followersLabel(emulated)} (test)` : followersLabel(igFollowers)}
           {ago ? ` · Updated ${ago}` : ""}
@@ -1066,7 +1073,8 @@ function HandleShownRow({ pending = false }: { pending?: boolean }) {
 // payments run in Stripe test mode and refuses a number otherwise
 // (emulator_live). The number stands in for the real count;
 // Reset to real writes null. Live money never reads it.
-const EMULATOR_PICKS = [320, 5001, 10000] as const;
+// 320 · 1,001 · 10,000 (MESITA-4714): either side of the badge's 1,000.
+const EMULATOR_PICKS = [320, 1001, 10000] as const;
 const EMULATOR_MAX = 100_000_000;
 
 function FollowerEmulatorBox({ pending = false }: { pending?: boolean }) {
@@ -1147,7 +1155,7 @@ function FollowerEmulatorBox({ pending = false }: { pending?: boolean }) {
         </button>
       </div>
       <p className="text-muted-foreground type-label">
-        Test mode only. Changes your Class here, never real money.
+        Test mode only. Changes your follower count here, never real money.
       </p>
     </div>
   );
