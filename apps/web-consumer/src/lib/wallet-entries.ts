@@ -9,7 +9,7 @@
 //   voucher + bonus (same purchase_id)   ─► two rows, Bonus right above its
 //                                            purchase in History (it lands
 //                                            after), right under it in Pending
-//   spend + extra (same at)              ─► two rows
+//   spend + reversal (same at)           ─► two rows
 //   pending purchase with a reversal on its id ─► both rows refunded: History
 //
 // MESITA-3750 folded the bonus into one "includes $X bonus" row until then.

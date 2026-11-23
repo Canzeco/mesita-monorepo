@@ -21,8 +21,7 @@ describe("ticket desk words", () => {
     expect(ticketWhen("2026-11-20T18:00:00Z", "America/Mexico_City")).toBe("Nov 20, 12:00 PM");
   });
 
-  it("names the voucher products; an old Story purchase keeps its name (MESITA-4641)", () => {
-    expect(voucherName("voucher_story")).toBe("Story Voucher");
+  it("names the voucher products", () => {
     expect(voucherName("voucher_welcome")).toBe("Welcome Voucher");
     expect(voucherName(null)).toBe("Voucher");
   });

@@ -37,10 +37,8 @@ const only = (rows: Row[]) => {
 };
 
 describe("payment rows (Visits tab)", () => {
-  it("credits spent read minus, with legacy extra credit beside them", () => {
-    const r = only(
-      walletRows(wallet([e("spend", -11000, { payment_id: "p1" }), e("extra", 300, { payment_id: "p1" })])),
-    );
+  it("credits spent read minus", () => {
+    const r = only(walletRows(wallet([e("spend", -11000, { payment_id: "p1" })])));
     expect(r.type).toBe("visits");
     expect(r.kind).toBe("payment");
     expect(KIND_WORD[r.kind!]).toBe("Payment");
@@ -48,19 +46,14 @@ describe("payment rows (Visits tab)", () => {
     expect(r.status.label).toBe("Paid");
   });
 
-  it("legacy extra credit alone reads plus", () => {
-    const r = only(walletRows(wallet([e("extra", 300, { payment_id: "p1" })])));
-    expect(r.sign).toBe("+");
-  });
-
-  it("a cash payment with neither credits nor extra credit has no sign", () => {
+  it("a cash payment with no credits has no sign", () => {
     const r = only(walletRows(wallet([e("reversal", -300, { payment_id: "p1" })])));
     expect(r.sign).toBeNull();
   });
 
-  it("an extra-credit reversal folds into its payment, which reads Refunded", () => {
+  it("a credit reversal folds into its payment, which reads Refunded", () => {
     const r = only(
-      walletRows(wallet([e("extra", 300, { payment_id: "p1" }), e("reversal", -300, { payment_id: "p1" })])),
+      walletRows(wallet([e("spend", -300, { payment_id: "p1" }), e("reversal", -300, { payment_id: "p1" })])),
     );
     expect(r.type).toBe("visits");
     expect(r.status.label).toBe("Refunded");
@@ -97,7 +90,7 @@ describe("visit rows", () => {
 
   it("a paid visit is unsigned", () => {
     const facts = new Map([
-      ["p1", { currency: "MXN", credits: 0, extra: 300, takenBack: 0, givenBack: 0 }],
+      ["p1", { currency: "MXN", credits: 0, takenBack: 0, givenBack: 0 }],
     ]);
     const r = only(visitRows([visit()], facts));
     expect(r.type).toBe("visits");
@@ -108,16 +101,10 @@ describe("visit rows", () => {
 });
 
 describe("voucher rows (MESITA-4003)", () => {
-  it("a purchase reads plus and folds its legacy extra credit into the row", () => {
-    const r = only(
-      walletRows(wallet([e("prepay", 50000, { purchase_id: "u1" }), e("extra", 2500, { purchase_id: "u1" })])),
-    );
+  it("a purchase reads plus", () => {
+    const r = only(walletRows(wallet([e("prepay", 50000, { purchase_id: "u1" })])));
     expect(r.kind).toBe("voucher");
     expect(r.sign).toBe("+");
-  });
-
-  it("an extra credit with no voucher beside it stays a row of its own", () => {
-    expect(walletRows(wallet([e("extra", 2500, { purchase_id: "u9" })]))).toHaveLength(1);
   });
 
 
@@ -141,7 +128,6 @@ describe("every other kind lands on its tab with its kind", () => {
     const rows = walletRows(
       wallet([
         e("prepay", 50000, { purchase_id: "u1" }),
-        e("extra", 2500, { purchase_id: "u1" }),
         e("reversal", -30000, { purchase_id: "u1" }),
         e("reversal", -20000, { purchase_id: "u1" }),
       ]),

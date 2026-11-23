@@ -206,8 +206,6 @@ export function creditLabel(row: MonitorRow): string {
       return "Cashback on a bill";
     case "story":
       return "Story reward";
-    case "extra":
-      return "Extra credit";
     case "spend":
       return "Spent on a visit";
     case "refund":

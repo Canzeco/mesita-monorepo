@@ -27,10 +27,6 @@ export type WalletEntry = {
   available_at?: string | null;
   /** A spend's payment (MESITA-3304): the Wallet links it to its proof. */
   payment_id?: string | null;
-  /** Who confirmed an extra credit's payment (MESITA-3554): 'waiter' is a bill
-   *  paid in cash at the table. Null on other entries; absent from a server
-   *  before MESITA-3554. */
-  confirmed_by?: string | null;
   /** The purchase behind a voucher, prepay, bonus or purchase reversal
    *  (MESITA-3750); null on payment and gift rows; absent from a server
    *  before MESITA-3750. */
@@ -535,8 +531,6 @@ export const ENTRY_LABEL: Record<string, string> = {
   // "Credits received" for an hour, then Pato: "Yes, say Voucher" (MESITA-4261).
   voucher: "Voucher",
   bonus: "Bonus",
-  // Legacy extra credit some guests hold (MESITA-4191, MESITA-4194): said plainly.
-  extra: "Credit",
   // MESITA-4698: earned on a paid bill, Pending 1 hour (MESITA-4717).
   cashback: "Cashback",
   // MESITA-4714: paid at the story's recheck 10 hours after its first check, available at once (MESITA-4717).
@@ -553,7 +547,7 @@ export const ENTRY_LABEL: Record<string, string> = {
 
 /** An entry's label (MESITA-3750). A reversal reads from what it carries: a
  *  purchase_id is a refunded purchase; a payment_id is a refunded bill's
- *  extra credit taken back. The wallet_entries CHECK requires one of the two on
+ *  credit taken back. The wallet_entries CHECK requires one of the two on
  *  every reversal, so the plain "Refund" fallback is defensive only. */
 export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "payment_id">): string {
   if (e.kind === "reversal") {

@@ -209,9 +209,6 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
       const refund = reversals[0] ?? e;
       const refunded = reversals.reduce((n, x) => n + Math.abs(x.amount_cents), 0) || amount;
       const original = b.entries.find((x) => BOUGHT.has(x.kind) && x.purchase_id === pid);
-      const takenBack = b.entries
-        .filter((x) => x.kind === "extra" && !x.payment_id && x.purchase_id === pid)
-        .reduce((n, x) => n + x.amount_cents, 0);
       return (
         <TicketPage data-credit-entry>
           <TicketHero
@@ -233,7 +230,6 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           />
           <TicketPanel title="Refund">
             <TicketLine label="Refunded amount" value={m(refunded)} />
-            {takenBack > 0 ? <TicketLine label="Credit taken back" value={`−${m(takenBack)}`} /> : null}
             <TicketLine label="Refunded on" value={entryDate(refund.at)} />
             {original ? (
               <TicketLine
@@ -265,14 +261,6 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
     const bonus = bought
       ? b.entries.find((x) => x.kind === "bonus" && (e.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at))
       : undefined;
-    // The legacy extra credit this purchase earned (an `extra` with its
-    // purchase id and no payment id, MESITA-4003).
-    const extra =
-      bought && e.purchase_id
-        ? b.entries
-            .filter((x) => x.kind === "extra" && !x.payment_id && x.purchase_id === e.purchase_id)
-            .reduce((n, x) => n + x.amount_cents, 0)
-        : 0;
     // The refund of this purchase: its largest reversal.
     const refund = bought && e.purchase_id
       ? b.entries
@@ -338,9 +326,8 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           <TicketPanel title="Your credit">
             <TicketLine label="Bought" value={m(amount)} />
             {bonus ? <TicketLine label="Bonus" value={`+${m(bonus.amount_cents)}`} /> : null}
-            {extra > 0 ? <TicketLine label="Extra credit" value={`+${m(extra)}`} /> : null}
-            {bonus || extra > 0 ? (
-              <TicketLine label="Total credit" value={m(amount + (bonus?.amount_cents ?? 0) + extra)} strong />
+            {bonus ? (
+              <TicketLine label="Total credit" value={m(amount + bonus.amount_cents)} strong />
             ) : null}
           </TicketPanel>
         ) : (
