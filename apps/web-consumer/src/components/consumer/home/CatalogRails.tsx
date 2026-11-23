@@ -57,7 +57,6 @@ import {
 } from "react";
 import { Compass, Heart, LayoutGrid, Store, Users, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Instagram } from "@/components/shared/instagram-icon";
 import {
   apiFillAreaPool,
   apiListAreaPool,
@@ -255,7 +254,7 @@ export function placesChips(): { key: string; label: string; emoji: string }[] {
     // A HEART, AND THE WORD IS SAVED, never Favorites (Pato, MESITA-3718).
     { key: SAVED_CHIP, label: SAVED_LABEL, emoji: "❤️" },
     // Social after Saved (MESITA-4758): the feed, not a pool.
-    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "" },
+    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "😊" },
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
@@ -656,18 +655,10 @@ export function CatalogRails() {
             isSpecial(c.key) && CAT_SQUARE,
           )}
         >
-          {/* SOCIAL WEARS THE INSTAGRAM MARK (Pato, 2026-11-23, MESITA-4761:
-              "add the instagram icon instead of those ugly people"): pink on
-              the white circle, white on the chosen black one. */}
-          {c.key === SOCIAL_CHIP ? (
-            <Instagram
-              className={cn("h-6 w-6", on && "text-card")}
-              style={on ? undefined : { color: "#E1306C" }}
-              strokeWidth={2.25}
-            />
-          ) : (
-            c.emoji
-          )}
+          {/* SOCIAL IS A HAPPY FACE (Pato, 2026-11-23, MESITA-4768: "change
+              the icon of social for a happy face"; the Instagram mark of
+              MESITA-4761 before): an emoji like every other chip. */}
+          {c.emoji}
         </span>
         <span
           className={cn(
