@@ -770,16 +770,15 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  same size"): cashback and vouchers alike. */
 const BADGE = "flex min-h-12 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-xl py-2 tabular-nums";
 
-type CashbackLineRow = { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number };
+type CashbackLineRow = { line: "welcome" | "returning"; title: string; who: string; bps: number };
 
-/** The place's lines that earn (rate above Off), in Pato's names
- *  (MESITA-4701: "Welcome Universal · Returning Regular · Returning VIP"). */
+/** The place's lines that earn (rate above Off): Welcome, then Returning
+ *  (MESITA-4709, Pato: "no more VIP"; three lines by Class before). */
 function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   return (
     [
-      { line: "welcome", title: "Welcome Universal", who: "Your first bill here, any guest", bps: cashback.welcome_bps },
-      { line: "regular", title: "Returning Regular", who: "Every later bill, Regular Class", bps: cashback.regular_bps },
-      { line: "vip", title: "Returning VIP", who: "Every later bill, VIP Class", bps: cashback.vip_bps },
+      { line: "welcome", title: "Welcome", who: "Your first bill here", bps: cashback.welcome_bps },
+      { line: "returning", title: "Returning", who: "Every later bill", bps: cashback.returning_bps },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }
@@ -802,8 +801,8 @@ function OfferSectionHead({ title, chip, tone, sub }: { title?: string; chip: st
   );
 }
 
-/** MESITA-4698/4702: the place's cashback on the one Offers page. Three
- *  lines (Welcome on a first bill, then Regular or VIP by Class), the
+/** MESITA-4698/4702: the place's cashback on the one Offers page. Two
+ *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
  *  guest's own marked Yours, each with its (i). Nothing to buy: a
  *  confirmed bill earns it, 3 hours later, with no minimum. */
 function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: (r: CashbackLineRow) => void }) {
@@ -1246,7 +1245,7 @@ function PrepaySection({
 }
 
 /** CHECKOUT (MESITA-4710): paying the bill here and the cashback it earns.
- *  The lines are the server's (removing the VIP line is MESITA-4709's job),
+ *  The lines are the server's (Welcome, Returning; MESITA-4709),
  *  then the purple Go to Pay Bill at the bottom (MESITA-4699). Nothing to
  *  buy: a confirmed bill earns it, 3 hours later, with no minimum. */
 function CheckoutSection({

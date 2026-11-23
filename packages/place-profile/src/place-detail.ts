@@ -57,13 +57,14 @@ export type PlaceMoney = {
 };
 
 /** MESITA-4698: a paid bill's cashback here. Rates in basis points (0 = Off);
- *  `line` is the one this guest's next bill falls in (null signed out). */
+ *  Welcome is the guest's first paid bill here, Returning every later one
+ *  (MESITA-4709). `line` is the one this guest's next bill falls in (null
+ *  signed out). */
 export type PlaceCashback = {
   welcome_bps: number;
-  regular_bps: number;
-  vip_bps: number;
+  returning_bps: number;
   cap_cents: number;
-  line: "welcome" | "regular" | "vip" | null;
+  line: "welcome" | "returning" | null;
 };
 
 /** The Catalog's score for one place, the server's numbers (MESITA-2379):

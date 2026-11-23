@@ -178,7 +178,8 @@ function OfferWords({
         // +30%, TODAY / 20:30.
         <span className="flex min-w-0 flex-col items-center leading-none">
           {slide.lead ? <span className="mb-0.5 max-w-full truncate type-meta font-bold tracking-wider uppercase opacity-75">{slide.lead}</span> : null}
-          <span className="max-w-full truncate">{slide.pill}</span>
+          {/* No "Up to" in the small tile (MESITA-4709): "10% Cashback". */}
+          <span className="max-w-full truncate">{slide.pillShort}</span>
         </span>
       ) : (
         <>
@@ -186,7 +187,8 @@ function OfferWords({
           {/* "Up To" in the pill everywhere Prepay shows (MESITA-4676), as on
               the Loyalty Card's tile (MESITA-4661/4663). */}
           <span className={cn(OFFER_PILL, !slide.lead && "truncate")}>
-            {slide.pill}
+            {/* The narrow card drops "Up to" (MESITA-4709). */}
+            {short ? slide.pillShort : slide.pill}
           </span>
         </>
       )}
