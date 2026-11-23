@@ -88,7 +88,8 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     // location gate (MESITA-4589), and no families row.
     const body = rails.slice(rails.indexOf("if (chip === SAVED_CHIP) {"));
     expect(body.indexOf("if (noPoint) return shell(waiting);")).toBeGreaterThan(-1);
-    expect(rails).toContain('{tab === "places" && here !== null ? strip : null}');
+    // MESITA-4758: no tab strip; the chips show on Places and Social alike.
+    expect(rails).toContain("{here !== null ? strip : null}");
     // The gate covers Home and Search (only) until a point exists.
     const gateSrc = src("components/consumer/LocationGate.tsx");
     expect(gateSrc).toContain("const asking = here && answered && !hasPoint;");

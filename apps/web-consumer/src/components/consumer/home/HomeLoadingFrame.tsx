@@ -3,8 +3,8 @@ import { RowFallback } from "@/components/consumer/home/DiscoverFallback";
 import { Skeleton } from "@/components/shared";
 
 // Home's loading frame: CatalogRails' bands, block for block — the white
-// header, the white tab strip with its hairline (Places · Social), then
-// Places' family row (Uber Eats' emoji over name) over full-width rows (MESITA-4410; a grey
+// header (no tab strip since MESITA-4758), then
+// the family row (Uber Eats' emoji over name) over full-width rows (MESITA-4410; a grey
 // emoji rail beside them since MESITA-3781 before). Drawn by every frame that can stand before Home lands (the
 // discovery group, the shell, a full page load), so a tap on Home never
 // shows a spinner first (MESITA-2840).
@@ -17,13 +17,7 @@ export function HomeLoadingFrame() {
       <BrandHeader>
         <Skeleton className="ml-auto h-8 w-36 rounded-full" />
       </BrandHeader>
-      <div className="border-border bg-card flex shrink-0 border-b">
-        {[0, 1].map((i) => (
-          <div key={i} className="flex flex-1 justify-center py-3">
-            <Skeleton className="h-5 w-14" />
-          </div>
-        ))}
-      </div>
+      {/* No Places · Social strip since MESITA-4758: Social is a chip. */}
       <div className="bg-card border-border flex shrink-0 flex-col overflow-hidden border-b pt-2.5 pb-1.5">
         <div className="flex gap-0.5 px-2">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (

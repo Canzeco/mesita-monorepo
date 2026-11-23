@@ -56,8 +56,7 @@ import {
   type ReactNode,
 } from "react";
 import { Compass, Heart, LayoutGrid, Store, Users, X } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   apiFillAreaPool,
   apiListAreaPool,
@@ -190,7 +189,7 @@ const CAT_NAME = "relative w-full truncate text-center";
 /** Saved, Near and Top: not families, so the Categories modal lists them
  *  first, apart (MESITA-4417, Near since MESITA-4423). */
 function isSpecial(key: string): boolean {
-  return key === SAVED_CHIP || key === NEAR_CHIP || key === ALL_CHIP;
+  return key === SAVED_CHIP || key === SOCIAL_CHIP || key === NEAR_CHIP || key === ALL_CHIP;
 }
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -212,6 +211,13 @@ export const SAVED_LABEL = "Saved";
  *  `near`. It shared Top's pool and order before. */
 export const NEAR_CHIP = "near";
 export const NEAR_LABEL = "Nearby";
+
+/** SOCIAL IS A CHIP (Pato, 2026-11-23, MESITA-4758: "remove the places/social
+ *  banner on top … add social as an extra special category: Menu Saved Social
+ *  Nearby Popular"): the feed keeps its own address, /home/social, so person
+ *  cards, sign intents and redirects still land on it. */
+export const SOCIAL_CHIP = "social";
+export const SOCIAL_LABEL = "Social";
 
 /** Top and Near are every family; any other row is one family. */
 export function isEveryFamily(chip: string): boolean {
@@ -247,6 +253,8 @@ export function placesChips(): { key: string; label: string; emoji: string }[] {
   return [
     // A HEART, AND THE WORD IS SAVED, never Favorites (Pato, MESITA-3718).
     { key: SAVED_CHIP, label: SAVED_LABEL, emoji: "❤️" },
+    // Social after Saved (MESITA-4758): the feed, not a pool.
+    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "👥" },
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
@@ -328,9 +336,13 @@ export function CatalogRails() {
   // The tab is the address (MESITA-2597); this component lives in Home's
   // layout, so the chip, the pool and the scroll survive a tab switch.
   const tab = homeTabOf(usePathname() ?? CONSUMER_ROUTES.home);
+  const router = useRouter();
   // HOME OPENS ON NEARBY (Pato, MESITA-4467: "the default must be nearby
   // not popular"); Popular before. With no location Nearby asks for it.
   const [chip, setChip] = useState<string>(NEAR_CHIP);
+  // The last chip that reads a pool (MESITA-2438): Saved and the Social tab
+  // read none, so they keep it and never spend a request.
+  const [poolChip, setPoolChip] = useState<string>(NEAR_CHIP);
   // ?row=saved OPENS ON SAVED (MESITA-4327): Me's Saved box is a shortcut
   // to this row, not a page of its own. Read during render (React's
   // prop-to-state pattern), once per ask, so a tap on another row after
@@ -340,10 +352,13 @@ export function CatalogRails() {
   if (rowAsk !== lastRowAsk) {
     setLastRowAsk(rowAsk);
     if (rowAsk === SAVED_CHIP) setChip(SAVED_CHIP);
+    // HOME OPENS ON A DRAW (MESITA-4758): the page sends ?row=near or
+    // ?row=all (or Social's address); the row opens with its pool.
+    if (rowAsk === NEAR_CHIP || rowAsk === ALL_CHIP) {
+      setChip(rowAsk);
+      setPoolChip(rowAsk);
+    }
   }
-  // The last chip that reads a pool (MESITA-2438): Saved and the Social tab
-  // read none, so they keep it and never spend a request.
-  const [poolChip, setPoolChip] = useState<string>(NEAR_CHIP);
   const families = useMemo(() => chipFamilies(poolChip), [poolChip]);
   // The question (MESITA-4454): Nearby, Popular or this family.
   const rankMode = rankModeForChip(poolChip);
@@ -567,57 +582,6 @@ export function CatalogRails() {
   // and the lateral bark darker"; MESITA-2530/2531 had a grey of its own).
   // No "new" dot on Social (MESITA-4044, Pato: "of course there are always
   // new events"): MESITA-2536's dot and its one-minute poll are gone.
-  const tabs = (
-    <nav
-      aria-label="Home"
-      className="border-border bg-card flex shrink-0 border-b"
-      data-home-tabs
-    >
-      {HOME_TABS.map((t) => {
-        const on = tab === t.key;
-        return (
-          <Link
-            key={t.key}
-            href={t.href}
-            replace
-            scroll={false}
-            aria-current={on ? "page" : undefined}
-            onClick={() => {
-              if (!on)
-                trackEvent(supabase, "home_mode_view", { mode: t.label });
-            }}
-            className={cn(
-              // 16px, the app's body step (MESITA-4046, Pato: "looks so
-              // fucking small the selected place … make it bigger"); 14px
-              // before. Both words semibold, the chosen one ink, the other grey: weight
-              // never marks the choice, so the word keeps its width (MESITA-4447).
-              "relative flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
-              on ? "text-foreground font-semibold" : "text-muted-foreground font-semibold",
-            )}
-          >
-            <span className="relative flex items-center gap-1.5 py-3">
-              <t.Icon
-                aria-hidden
-                className="h-[18px] w-[18px] shrink-0"
-                strokeWidth={on ? 2.5 : 2}
-              />
-              {t.label}
-            </span>
-            {on ? (
-              <span
-                aria-hidden
-                // THE LINE IS THE WHOLE HALF (Pato, 2026-11-18, MESITA-4440:
-                // "do the place selector full width of its box, like 50% the
-                // line below places"): 3px ink across the tab's cell, on the
-                // strip's hairline. It was as wide as the word (MESITA-4046).
-                className="bg-foreground absolute inset-x-0 bottom-0 h-[3px]"
-              />
-            ) : null}
-          </Link>
-        );
-      })}
-    </nav>
-  );
 
   // NO SAVED FOR ANONYMOUS (Pato, 2026-11-17, MESITA-4288: "anonymous users
   // cannot save places. don't show that option"): the rail starts at Top.
@@ -625,7 +589,18 @@ export function CatalogRails() {
     (c) => viewer !== "anonymous" || c.key !== SAVED_CHIP,
   );
   const selectFamily = (key: string) => {
-    if (chip === key) return;
+    if (key === SOCIAL_CHIP) {
+      if (tab !== "social") {
+        trackEvent(supabase, "home_mode_view", { mode: SOCIAL_LABEL });
+        router.replace(CONSUMER_ROUTES.homeSocial, { scroll: false });
+      }
+      return;
+    }
+    if (tab === "social") {
+      // Back to the rows with this one asked (MESITA-4758).
+      router.replace(`${CONSUMER_ROUTES.home}?row=${encodeURIComponent(key)}`, { scroll: false });
+    }
+    if (chip === key && tab !== "social") return;
     const c = chips.find((x) => x.key === key);
     if (c) trackEvent(supabase, "home_mode_view", { mode: c.label });
     // EACH ROW KEEPS ITS PLACE (MESITA-4454, H3): the offset it was left at
@@ -655,7 +630,8 @@ export function CatalogRails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hereKey]);
   const pill = (c: { key: string; label: string; emoji: string }, inMenu: boolean) => {
-    const on = chip === c.key;
+    // On Social the Social chip is the one lit (MESITA-4758).
+    const on = (tab === "social" ? SOCIAL_CHIP : chip) === c.key;
     return (
       <button
         key={c.key}
@@ -780,12 +756,11 @@ export function CatalogRails() {
         onConfirm={cards.confirmRemove}
         onCancel={cards.cancelRemove}
       />
-      {tabs}
       {/* NO LOCATION, NO FAMILIES (Pato, 2026-11-21, MESITA-4589: "if no
           location, don't even show the families carousel"). */}
-      {tab === "places" && here !== null ? strip : null}
+      {here !== null ? strip : null}
       <div className="relative flex min-h-0 flex-1">
-        {tab === "places" && here !== null ? menu : null}
+        {here !== null ? menu : null}
         {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
             card's stretched link, MESITA-3797) stays inside this pane. */}
         <div
