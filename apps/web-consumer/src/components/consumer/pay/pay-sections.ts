@@ -35,3 +35,8 @@ export const PAY_THUMB = "flex h-8 w-12 shrink-0 items-center justify-center ove
 export const PAY_ROW_TEXT = "text-foreground text-base font-semibold";
 /** The row's secondary words: a distance, a note. */
 export const PAY_ROW_META = "text-muted-foreground text-sm";
+
+/** Pay's two tabs (MESITA-4765): Nearby Offers, then Loyalty Cards. The
+ *  address carries `?tab=cards` while Loyalty Cards is chosen (D6). */
+export type PayTab = "offers" | "cards";
+export const PAY_TAB_PARAM = "tab";

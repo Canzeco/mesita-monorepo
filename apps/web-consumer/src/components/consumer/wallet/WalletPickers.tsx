@@ -31,8 +31,7 @@ function AddCreditsCardRow() {
 }
 
 import { type ReactNode, useState } from "react";
-import { BadgePercent, Gift, Tag } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { BadgePercent, Gift } from "lucide-react";
 import { ListLocationBox } from "./ListLocationBox";
 
 import { Screen } from "@/components/consumer/nav/Screen";
@@ -41,7 +40,6 @@ import { navigateTo } from "@/lib/navigate";
 import { PlacePickBody } from "@/components/consumer/pay/PayPick";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { CONSUMER_ROUTES, placeOffersPath, walletSendPath } from "@/lib/consumer-route-contract";
-import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
 import { placeHref } from "@/lib/place-route";
 import { useWallet } from "./use-wallet";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
@@ -66,46 +64,26 @@ export function prepayReturnHref(placeIdOrSlug: string): string {
  *  no balance, no Add row; a place opens its Offers at Prepayments, where the
  *  buying happens. A bordered "Places" list with balances and an Add row
  *  before. */
-export function BuyCreditsPage({ offers = "any" }: { offers?: "vouchers" | "any" }) {
+export function BuyCreditsPage() {
   const router = useRouter();
-  // TWO DOORS, ONE LIST (MESITA-4731, D5): Pay's Prepay opens it as
-  // `?offers=vouchers` (places that sell a voucher, landing on their Prepay
-  // tab); Explore Offers as `?offers=any` (places with any offer, landing on
-  // their first: Prepay, else Pay, else Post).
-  const open = (id: string, p?: PayPlace) => {
-    const t = p ? payPlaceTabs(p) : null;
-    const tab = offers === "vouchers" || !t || t.prepay ? "prepayment" : t.pay ? "cashback" : t.post ? "post" : null;
-    navigateTo(router, placeOffersPath(id, tab), { motion: "drill" });
-  };
-  const vouchers = offers === "vouchers";
+  // PREPAY ONLY (MESITA-4765): the places that sell a voucher, landing on
+  // their Prepay tab. Explore Offers (`?offers=any`, MESITA-4731) is Pay's
+  // Nearby Offers tab now.
+  const open = (id: string) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" });
   return (
-    <Screen title={vouchers ? "Prepay" : "Explore Offers"} paper flush action={<ListLocationBox title={vouchers ? "short" : "long"} />}>
+    <Screen title="Prepay" paper flush action={<ListLocationBox title="short" />}>
       {/* A BANNER THAT SAYS WHAT THIS IS (Pato, 2026-11-23, MESITA-4748:
           "between header and searchbar add banner … like prepay and get
           bonus … really short text"; /plan-design-review D6): one line, full
-          bleed. Prepay's is Link green, the Wallet tile's colour; Explore
-          Offers' is grey with the tag in a green disc. */}
-      <p
-        role="note"
-        className={cn(
-          "flex shrink-0 items-center gap-2.5 px-4 py-2.5 text-base font-semibold",
-          vouchers ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground border-border border-b",
-        )}
-        data-list-banner
-      >
-        <span
-          className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-            vouchers ? "bg-neutral-950 text-white" : "bg-[#00D66F] text-neutral-950",
-          )}
-          aria-hidden
-        >
-          {vouchers ? <BadgePercent className="h-4 w-4" strokeWidth={2.5} /> : <Tag className="h-4 w-4" strokeWidth={2.5} />}
+          bleed, Link green, the Prepay tile's colour. */}
+      <p role="note" className="flex shrink-0 items-center gap-2.5 bg-[#00D66F] px-4 py-2.5 text-base font-semibold text-neutral-950" data-list-banner>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-950 text-white" aria-hidden>
+          <BadgePercent className="h-4 w-4" strokeWidth={2.5} />
         </span>
-        <span className="min-w-0">{vouchers ? "Prepay and get bonus credit" : "Prepay, pay or post and earn credit"}</span>
+        <span className="min-w-0">Prepay and get bonus credit</span>
       </p>
       <div className="flex min-h-0 flex-1 flex-col pb-8">
-        <PlacePickBody prepay offers={offers} onPick={open} />
+        <PlacePickBody prepay onPick={open} />
       </div>
     </Screen>
   );

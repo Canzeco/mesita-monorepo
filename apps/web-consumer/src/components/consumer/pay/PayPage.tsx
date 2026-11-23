@@ -2,9 +2,9 @@
 
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Gift, QrCode, Tag, Wallet as WalletIcon } from "lucide-react";
+import { ChevronRight, Gift, QrCode, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -14,20 +14,19 @@ import { billRead, payHere, type BillRead } from "@/lib/pay-wallet";
 import { pendingTicket, readDraft } from "@/lib/guest-pay-draft";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payBillPath, payPlacePath, placePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payBillPath, payPlacePath, placeOffersPath } from "@/lib/consumer-route-contract";
 import { markPanelExit, navigateTo, previousEntryPath, replaceAddress } from "@/lib/navigate";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
-import { PlaceActionRow } from "./PlaceActionRow";
-import { distanceText, usePayLocation } from "./pay-location";
+import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
-import { LoyaltyCardBoxSkeleton, PayFrameLoading } from "./PayFrameLoading";
-import { PayPickSheet } from "./PayPick";
+import { PayFrameLoading } from "./PayFrameLoading";
+import { firstOfferTab, NearbyOffers, PayPickSheet } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
+import { PAY_TAB_PARAM, type PayTab, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
@@ -90,20 +89,32 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 export function PayPage({
   giftToken = null,
   pick = false,
+  tab: firstTab = "offers",
 }: {
   /** /wallet/gift/<token>: a friend's credit link opens over Pay. */
   giftToken?: string | null;
   /** /pay?pick=1: Choose another place, or /pay/pick, opens the sheet. */
   pick?: boolean;
+  /** /pay?tab=cards: the tab the guest left (MESITA-4765, D6). */
+  tab?: PayTab;
 } = {}) {
   const router = useRouter();
+  // NEARBY OFFERS | LOYALTY CARDS (Pato, 2026-11-23, MESITA-4765,
+  // /plan-design-review D2, D6): the page opens on Nearby Offers; a switch
+  // replaces the address (/pay?tab=cards), so Back from a place lands on the
+  // tab the guest left, while a fresh Pay tap opens Nearby Offers.
+  const [tab, setTab] = useState<PayTab>(firstTab);
+  const chooseTab = (next: PayTab) => {
+    setTab(next);
+    replaceAddress(next === "cards" ? `${CONSUMER_ROUTES.pay}?${PAY_TAB_PARAM}=cards` : CONSUMER_ROUTES.pay);
+  };
   const getSupabase = useLazyBrowserSupabase();
   const [pickerOpen, setPickerOpen] = useState(false);
   const pickDismissed = useRef(false);
   // Pay never asks for the location (the picker does); a fix the browser
   // already grants names the place the guest is at (MESITA-4232, D5).
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
-  const { places, failed: placesFailed, loading: placesLoading, refresh: refreshPlaces } = usePayPlaces(loc.state === "on" ? loc.at : null);
+  const { places, failed: placesFailed, refresh: refreshPlaces } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // null while the open payment is still being looked for.
   const [openTabs, setOpenTabs] = useState<GuestTab[] | null>(null);
   const [billFacts, setBillFacts] = useState<{ visitsOk: boolean; missed: boolean } | null>(null);
@@ -251,12 +262,6 @@ export function PayPage({
   const shownPlaces = [...(places ?? [])].sort((x, y) =>
     x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m,
   );
-  // Every place listed with Pay: its Loyalty Card is not
-  // drawn again. null while the places load; none when they failed.
-  const placeIds = useMemo(
-    () => (places === null && !placesFailed ? null : new Set((places ?? []).map((p) => p.place_id))),
-    [places, placesFailed],
-  );
   const payBusy = payHere(bill) === "wait";
   const checkBill = () => {
     setBillFacts(null);
@@ -381,7 +386,7 @@ export function PayPage({
           nothing is cut. */}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
-          href={`${CONSUMER_ROUTES.walletBuy}?offers=vouchers`}
+          href={CONSUMER_ROUTES.walletBuy}
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-prepay
         >
@@ -413,121 +418,52 @@ export function PayPage({
           </button>
         )}
       </div>
-      {/* EXPLORE OFFERS LEFT, SEND GIFT RIGHT, BLACK (Pato, 2026-11-23,
-          MESITA-4753: "explore offers at the left, send gift at the right";
-          grey boxes, "black boxes or something … or gray boxes"). */}
-      <div className={QUIET_ROW}>
-        <PushLink href={`${CONSUMER_ROUTES.walletBuy}?offers=any`} className={QUIET_BUTTON} data-explore-offers>
-          <Tag className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">Explore Offers</span>
-        </PushLink>
-        <PushLink href={CONSUMER_ROUTES.walletSend} className={QUIET_BUTTON} data-send-gift>
-          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">Send Gift</span>
-        </PushLink>
-      </div>
+      {/* SEND GIFT, FULL WIDTH, BLACK (Pato, 2026-11-23, MESITA-4765: "Send
+          gift below in dark 100%"; /plan-design-review D4): one 56px black
+          bar under the two tiles. Explore Offers' button is gone: its list is
+          the Nearby Offers tab below. Grey Explore Offers | Send Gift boxes
+          before (MESITA-4753). */}
+      <PushLink href={CONSUMER_ROUTES.walletSend} className={SEND_GIFT} data-send-gift>
+        <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className="truncate">Send Gift</span>
+      </PushLink>
 
-      {/* ALL WHITE (Pato, 2026-11-21, MESITA-4574: "MAKE ALL BACKGROUND
-          WHITE"): the cards sit on the page's own white, each with its
-          border. The grey ground under the buttons (MESITA-4525/4532) is
-          gone. */}
-      <div className="mt-1 flex flex-1 flex-col pb-8" data-pay-cards>
-      {/* NO PAYMENT METHOD HERE (Pato, 2026-11-22, MESITA-4698: "move card
-          to this part. Cards. remove payment method from pay page"): the
-          ways to pay live on Me › Cards; a bill is paid outside. */}
-      {loc.state === "prime" ? (
-        <div className="border-border bg-card mt-2 rounded-xl border p-3">
-          <p className="text-sm font-semibold">See places near you</p>
-          <div className="mt-2 flex gap-2">
-            <button type="button" className="bg-foreground text-background h-11 flex-1 rounded-xl text-sm" onClick={askLocation}>
-              Use my location
-            </button>
-            <button type="button" className="border-border h-11 flex-1 rounded-xl border text-sm" onClick={notNow}>
-              Not now
-            </button>
+      {/* ONE MENU, TWO SECTIONS (Pato, 2026-11-23, MESITA-4765: "one menu
+          with two sections (Nearby Offers) (Loyalty Cards)"; D1): the Offers
+          page's grey switch (MESITA-4737), then the chosen tab's rows in one
+          white bordered box. ALL WHITE (MESITA-4574): the box sits on the
+          page's own white. */}
+      <div className="mt-2 flex flex-1 flex-col pb-8" data-pay-cards>
+        <PayTabs tab={tab} onTab={chooseTab} />
+        <div
+          role="tabpanel"
+          id={`pay-panel-${tab}`}
+          aria-labelledby={`pay-tab-${tab}`}
+          className={SECTION_CARD}
+          data-pay-panel={tab}
+        >
+          {/* Both stay mounted, so each read runs and the page paints whole
+              (MESITA-4586); the other is hidden. */}
+          <div hidden={tab !== "offers"}>
+            <NearbyOffers
+              places={places === null && !placesFailed ? null : shownPlaces}
+              failed={placesFailed}
+              loc={loc}
+              onUseLocation={askLocation}
+              onNotNow={notNow}
+              onRefresh={refreshPlaces}
+              onPick={(id) =>
+                navigateTo(router, placeOffersPath(id, firstOfferTab(places?.find((p) => p.place_id === id))), { motion: "drill" })
+              }
+            />
+          </div>
+          <div hidden={tab !== "cards"}>
+            <WalletSection onReady={onWalletReady} giftToken={giftToken} />
           </div>
         </div>
-      ) : null}
-
-      {/* One panel (MESITA-4497): these place rows, then the Wallet's cards. */}
-      <WalletSection
-        onReady={onWalletReady}
-        hidePending
-        giftToken={giftToken}
-        leadIds={placeIds}
-        leadCount={shownPlaces.length}
-        leadSettled={places !== null && !placesFailed}
-        lead={
-          <PlaceRows
-            places={shownPlaces}
-            failed={placesFailed}
-            loading={placesLoading && places === null}
-            onRefresh={refreshPlaces}
-            located={loc.state === "on"}
-          />
-        }
-      />
       </div>
       <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />
     </KeptScroll>
-    </>
-  );
-}
-
-/** The places under Pay (MESITA-4519): a card each, none selected until
- *  a tap. The offers half opens the place. */
-function PlaceRows({
-  places,
-  failed,
-  loading,
-  onRefresh,
-  located,
-}: {
-  places: PayPlace[];
-  failed: boolean;
-  loading: boolean;
-  onRefresh: () => void;
-  located: boolean;
-}) {
-  const router = useRouter();
-  if (failed) {
-    return (
-      <p className="text-muted-foreground px-4 py-4 text-sm" role="alert" data-error="pay_places_unavailable">
-        Couldn&apos;t load the places.
-        <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={onRefresh}>
-          Try again
-        </button>
-      </p>
-    );
-  }
-  if (loading) {
-    return (
-      <>
-        <LoyaltyCardBoxSkeleton />
-        <LoyaltyCardBoxSkeleton />
-        <LoyaltyCardBoxSkeleton />
-      </>
-    );
-  }
-  return (
-    <>
-      {places.map((p) => {
-        const name = p.name ?? "A Mesita place";
-        return (
-          <PlaceActionRow
-            key={p.place_id}
-            name={name}
-            photo={p.photo}
-            amount={p.available_cents > 0 ? money(p.available_cents, p.currency) : null}
-            distance={located && p.distance_m !== null ? distanceText(p.distance_m) : null}
-            pending={p.pending_cents > 0 ? money(p.pending_cents, p.currency) : null}
-            placeId={p.place_id}
-            onOpen={() =>
-              navigateTo(router, p.available_cents > 0 || p.pending_cents > 0 ? walletPlacePath(p.place_id) : placePath(p.place_id), { motion: "drill" })
-            }
-          />
-        );
-      })}
     </>
   );
 }
@@ -540,13 +476,10 @@ function PlaceRows({
 // must be centered"): the icon disc and the name sit on the tile's middle line.
 const TILE =
   "flex h-28 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-center transition active:scale-[0.99]";
-/** Explore Offers | Send Gift (MESITA-4748; order and grey since
- *  MESITA-4753, Pato: "make them black boxes or something … or gray boxes"):
- *  two 48px grey boxes without a border, icon then word, side by side;
- *  stacked under 360px (the Me card's rule). Outlined white before. */
-const QUIET_ROW = "mt-2 grid grid-cols-2 gap-2 max-[359px]:grid-cols-1";
-const QUIET_BUTTON =
-  "bg-muted text-foreground hover:bg-border flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold transition active:scale-[0.99]";
+/** Send Gift (MESITA-4765, D4): full width, 56px, black, white icon and
+ *  word at the tiles' 16px. */
+const SEND_GIFT =
+  "mt-2 flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-3 text-base font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]";
 /** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
  *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
  *  size (18px before). */
@@ -628,3 +561,55 @@ const PENDING_ROW =
   "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
+
+/** PAY'S SWITCH (MESITA-4765, D1): the Offers page's segmented control
+ *  (MESITA-4737), one light grey track, the chosen tab a white raised pill,
+ *  48px, 16px semibold. Arrow keys move between the two. */
+const PAY_TABS: { id: PayTab; word: string }[] = [
+  { id: "offers", word: "Nearby Offers" },
+  { id: "cards", word: "Loyalty Cards" },
+];
+
+function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const move = (from: number) => {
+    const to = (from + 1) % PAY_TABS.length;
+    onTab(PAY_TABS[to].id);
+    refs.current[to]?.focus();
+  };
+  return (
+    <div className="bg-muted flex gap-1 rounded-2xl p-1" role="tablist" aria-label="Pay" data-pay-tabs>
+      {PAY_TABS.map(({ id, word }, i) => {
+        const on = tab === id;
+        return (
+          <button
+            key={id}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`pay-tab-${id}`}
+            aria-selected={on}
+            aria-controls={`pay-panel-${id}`}
+            tabIndex={on ? 0 : -1}
+            onClick={() => onTab(id)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                e.preventDefault();
+                move(i);
+              }
+            }}
+            className={cn(
+              "flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl px-2 text-base font-semibold transition",
+              on ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+            )}
+            data-pay-tab={id}
+          >
+            <span className="truncate">{word}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}

@@ -3,7 +3,7 @@ import { GuestPayLoading } from "./GuestPayScreen";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";
-import { PAY_ROW, PAY_THUMB, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
+import { PAY_ROW, PAY_THUMB, SECTION_CARD, SECTION_ROWS } from "./pay-sections";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -21,21 +21,17 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
             words while the page reads. The shape is MESITA-4731's: Pay Bill
             across, Prepay | Send Gift (all 112px since MESITA-4735), the quiet Explore
             Offers row (Pato, 2026-11-23: "also update the placeholders"). */}
-        {/* MESITA-4748: Prepay | Pay Bill, then Send Gift | Explore Offers
-            (stacked under 360px, as the page). */}
+        {/* MESITA-4748: Prepay | Pay Bill. */}
         <div className="mt-2 grid grid-cols-2 gap-2">
           <Skeleton className="h-28 min-w-0 rounded-2xl" aria-hidden />
           <Skeleton className="h-28 min-w-0 rounded-2xl" aria-hidden />
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 max-[359px]:grid-cols-1">
-          <Skeleton className="h-12 min-w-0 rounded-xl" aria-hidden />
-          <Skeleton className="h-12 min-w-0 rounded-xl" aria-hidden />
-        </div>
-        <div className="mt-1 flex flex-1 flex-col pb-8">
+        {/* MESITA-4765: the black Send Gift bar, then the Nearby Offers |
+            Loyalty Cards switch over one box of rows. */}
+        <Skeleton className="mt-2 h-14 w-full rounded-xl" aria-hidden />
+        <div className="mt-2 flex flex-1 flex-col pb-8">
+          <Skeleton className="h-14 w-full rounded-2xl" aria-hidden />
           <section className={SECTION_CARD}>
-            <div className={SECTION_TITLE} aria-hidden>
-              <Skeleton className="h-6 w-32 rounded" />
-            </div>
             <div className={SECTION_ROWS}>
               <LoyaltyCardBoxSkeleton />
               <LoyaltyCardBoxSkeleton />

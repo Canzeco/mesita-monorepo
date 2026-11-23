@@ -72,16 +72,12 @@ export function PlacePickBody({
   onPick: onPickId,
   onClose,
   prepay = false,
-  offers = "any",
 }: {
   onPick: (placeId: string, place?: PayPlace) => void;
   /** Pay Bill's ✕ (MESITA-4598): closes the flow. */
   onClose?: () => void;
+  /** /wallet/buy: the places that sell a voucher (MESITA-4731, D5). */
   prepay?: boolean;
-  /** /wallet/buy's list (MESITA-4731, D5): `vouchers` keeps the places that
-   *  sell a voucher (Pay's Prepay), `any` the places with any offer
-   *  (Explore Offers). */
-  offers?: "vouchers" | "any";
 }) {
   // THE LIST SORTS FROM THE HEADER'S BOX (MESITA-4748, D7): on /wallet/buy
   // a saved location wins, else the phone's fix; no priming card there (the
@@ -92,16 +88,10 @@ export function PlacePickBody({
   const phone = loc.state === "on" ? loc.at : null;
   const at = prepay ? (active ? roundLocation(active) : fix ? roundLocation(fix) : phone) : phone;
   const { places: all, failed, refresh } = usePayPlaces(at);
-  const boxes: BoxKind = prepay ? offers : "cashback";
+  const boxes: BoxKind = prepay ? "vouchers" : "cashback";
   // MESITA-4698: Get Discounts lists the places with offers (Loyalty
   // Cards On). MESITA-4708: no card_ok fallback (a bill has no card part).
-  const places =
-    prepay && all
-      ? all.filter((p) => {
-          const t = payPlaceTabs(p);
-          return offers === "vouchers" ? t.prepay : p.offers_ok === true && (t.prepay || t.pay || t.post);
-        })
-      : all;
+  const places = prepay && all ? all.filter((p) => payPlaceTabs(p).prepay) : all;
   const onPick = (id: string) => onPickId(id, all?.find((p) => p.place_id === id));
   const [query, setQuery] = useState("");
 
@@ -398,11 +388,99 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
   );
 }
 
-function RowsSkeleton({ boxes = 0 }: { boxes?: number }) {
+/** The Offers tab a place opens on (MESITA-4731, D5): its first offer,
+ *  Prepay, else Pay, else Post. */
+export function firstOfferTab(p: PayPlace | undefined): "prepayment" | "cashback" | "post" | null {
+  const t = p ? payPlaceTabs(p) : null;
+  return !t || t.prepay ? "prepayment" : t.pay ? "cashback" : t.post ? "post" : null;
+}
+
+/** Explore Offers' list: the places with any offer (MESITA-4731). */
+export function hasOffers(p: PayPlace): boolean {
+  const t = payPlaceTabs(p);
+  return p.offers_ok === true && (t.prepay || t.pay || t.post);
+}
+
+/** PAY'S NEARBY OFFERS TAB (Pato, 2026-11-23, MESITA-4765: "nearby offers
+ *  you are going to display that feed from explore offers but below in the
+ *  paypage"; /plan-design-review D3, D5): Explore Offers' rows, every place
+ *  with an offer, nearest first, each with its offer boxes; a row opens its
+ *  Offers. No search bar, no location box, no Loyalty Cards section (the other
+ *  tab). The location card sits on top until the guest answers it. */
+export function NearbyOffers({
+  places,
+  failed,
+  loc,
+  onUseLocation,
+  onNotNow,
+  onRefresh,
+  onPick,
+}: {
+  /** Nearest first; null while they load. */
+  places: PayPlace[] | null;
+  failed: boolean;
+  loc: Loc;
+  onUseLocation: () => void;
+  onNotNow: () => void;
+  onRefresh: () => void;
+  onPick: (placeId: string) => void;
+}) {
+  const offers = (places ?? []).filter(hasOffers);
   return (
-    <div className="mt-3" aria-busy>
-      <Skeleton className="mx-5 mb-2 h-3 w-20" />
-      <div className="border-border divide-border divide-y border-y">
+    <div className="flex flex-col" data-nearby-offers>
+      {loc.state === "prime" ? (
+        <div className="border-border border-b p-3" data-nearby-offers-location>
+          <p className="flex items-center gap-2 text-base font-semibold">
+            <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+            See offers near you
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button className="min-h-11 flex-1 font-semibold" onClick={onUseLocation}>
+              Use my location
+            </Button>
+            <button
+              type="button"
+              className="border-border bg-card hover:bg-muted min-h-11 flex-1 rounded-xl border px-4 text-sm font-semibold transition"
+              onClick={onNotNow}
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : loc.state === "blocked" ? (
+        <p className="text-muted-foreground border-border border-b px-4 py-3 text-sm">
+          Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
+        </p>
+      ) : null}
+      {failed ? (
+        <p className="text-muted-foreground px-4 py-4 text-sm" role="alert" data-error="pay_places_unavailable">
+          Couldn&apos;t load the places.
+          <button type="button" className="text-foreground ml-2 font-semibold underline" onClick={onRefresh}>
+            Try again
+          </button>
+        </p>
+      ) : places === null || loc.state === "asking" ? (
+        <RowsSkeleton boxes={3} bare />
+      ) : offers.length === 0 ? (
+        <p className="text-muted-foreground px-4 py-4 text-sm" data-nearby-offers-empty>
+          {loc.state === "on" ? "No offers near you yet" : "Turn on location to see offers near you"}
+        </p>
+      ) : (
+        <div className="divide-border flex flex-col divide-y">
+          {offers.map((p) => (
+            <PlaceRow key={p.place_id} p={p} onPick={onPick} boxes="any" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RowsSkeleton({ boxes = 0, bare = false }: { boxes?: number; bare?: boolean }) {
+  return (
+    <div className={bare ? undefined : "mt-3"} aria-busy>
+      {bare ? null : <Skeleton className="mx-5 mb-2 h-3 w-20" />}
+      <div className={cn("divide-border divide-y", bare ? null : "border-border border-y")}>
       {[0, 1, 2].map((i) => (
         <Fragment key={i}>
           <div className="px-4 py-3">
