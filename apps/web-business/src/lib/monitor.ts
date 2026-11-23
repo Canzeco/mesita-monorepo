@@ -184,6 +184,7 @@ const STORY: Record<string, string> = { checking: "Pending", verified: "Pending"
 /** Why a story paid nothing (story_mentions.reject_reason). */
 const STORY_REJECT: Record<string, string> = {
   no_guest: "Not a Mesita guest",
+  no_badge: "Under 1,000 followers or private",
   no_tag: "Place not tagged",
   several_places: "Several places tagged",
   not_a_story: "Not a story",

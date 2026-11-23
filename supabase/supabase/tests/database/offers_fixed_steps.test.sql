@@ -10,7 +10,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(22);
+select plan(23);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4717'),
@@ -19,6 +19,14 @@ insert into auth.users (id) values
 insert into public.consumers (id) values
   ('00000000-0000-4000-8000-0000000a4717'),
   ('00000000-0000-4000-8000-0000000b4717');
+-- MESITA-4746: a story pays only a guest with the followers badge (public,
+-- more than 1,000 followers). Both story guests wear it; d does not.
+update public.consumers
+   set instagram_verified_at = now(), instagram_is_private = false, instagram_followers_count = 5000
+ where id in ('00000000-0000-4000-8000-0000000a4717', '00000000-0000-4000-8000-0000000b4717');
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000d4747');
+insert into public.consumers (id, instagram_verified_at, instagram_is_private, instagram_followers_count)
+values ('00000000-0000-4000-8000-0000000d4747', now(), false, 500);
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000014717', 'Steps Probe');
 insert into public.places (id, slug, state, content_state, currency)
@@ -159,6 +167,15 @@ select is(
 select is(
   story_reward_reject('00000000-0000-4000-8000-000000a34717', 'removed') ->> 'outcome',
   'rejected', 'a story gone at the recheck is rejected (removed), no money');
+
+-- MESITA-4746: a guest without the followers badge (500 followers) is refused at
+-- the first check, before any reward is promised.
+insert into public.story_mentions (id, source, ig_story_id, consumer_id, mentioned_at, livemode)
+values ('00000000-0000-4000-8000-000000a44747', 'meta', 'story-4746-d', '00000000-0000-4000-8000-0000000d4747', now(), false);
+
+select is(
+  story_reward_grant('00000000-0000-4000-8000-000000a44747', '00000000-0000-4000-8000-000000014717') ->> 'reason',
+  'no_badge', 'a guest under 1,000 followers (or private) gets no story reward');
 
 select * from finish();
 rollback;
