@@ -178,24 +178,36 @@ export type Database = {
       }
       cashback_defaults: {
         Row: {
+          big_bonus_bps: number
           id: boolean
+          medium_bonus_bps: number
           returning_bps: number
+          returning_vip_bps: number
+          small_bonus_bps: number
           story_reward_cents: number
           updated_at: string
           updated_by: string | null
           welcome_bps: number
         }
         Insert: {
+          big_bonus_bps?: number
           id?: boolean
+          medium_bonus_bps?: number
           returning_bps?: number
+          returning_vip_bps?: number
+          small_bonus_bps?: number
           story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
           welcome_bps?: number
         }
         Update: {
+          big_bonus_bps?: number
           id?: boolean
+          medium_bonus_bps?: number
           returning_bps?: number
+          returning_vip_bps?: number
+          small_bonus_bps?: number
           story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
@@ -393,6 +405,8 @@ export type Database = {
           reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
+          vip_invitation_code_id: string | null
+          vip_invited_at: string | null
           vip_partner_id: string | null
           vip_until: string | null
         }
@@ -432,6 +446,8 @@ export type Database = {
           reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
+          vip_invitation_code_id?: string | null
+          vip_invited_at?: string | null
           vip_partner_id?: string | null
           vip_until?: string | null
         }
@@ -471,10 +487,19 @@ export type Database = {
           reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
+          vip_invitation_code_id?: string | null
+          vip_invited_at?: string | null
           vip_partner_id?: string | null
           vip_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "consumers_vip_invitation_code_id_fkey"
+            columns: ["vip_invitation_code_id"]
+            isOneToOne: false
+            referencedRelation: "vip_invitation_codes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "consumers_vip_partner_id_fkey"
             columns: ["vip_partner_id"]
@@ -1021,24 +1046,36 @@ export type Database = {
       }
       place_cashback_settings: {
         Row: {
+          big_bonus_bps: number
+          medium_bonus_bps: number
           place_id: string
           returning_bps: number
+          returning_vip_bps: number
+          small_bonus_bps: number
           story_reward_cents: number
           updated_at: string
           updated_by: string | null
           welcome_bps: number
         }
         Insert: {
+          big_bonus_bps?: number
+          medium_bonus_bps?: number
           place_id: string
           returning_bps?: number
+          returning_vip_bps?: number
+          small_bonus_bps?: number
           story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
           welcome_bps?: number
         }
         Update: {
+          big_bonus_bps?: number
+          medium_bonus_bps?: number
           place_id?: string
           returning_bps?: number
+          returning_vip_bps?: number
+          small_bonus_bps?: number
           story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
@@ -3040,99 +3077,6 @@ export type Database = {
           },
         ]
       }
-      story_mentions: {
-        Row: {
-          ai_checked_at: string | null
-          ai_claimed_at: string | null
-          ai_last_error: string | null
-          ai_model: string | null
-          ai_tries: number
-          ai_verdict: Json | null
-          consumer_id: string | null
-          created_at: string
-          decided_at: string | null
-          id: string
-          ig_handle: string | null
-          ig_story_id: string
-          livemode: boolean
-          media_kind: string
-          media_url: string | null
-          mentioned_at: string
-          place_id: string | null
-          recheck_at: string | null
-          reject_reason: string | null
-          reward_cents: number | null
-          sender_igsid: string | null
-          source: string
-          state: string
-        }
-        Insert: {
-          ai_checked_at?: string | null
-          ai_claimed_at?: string | null
-          ai_last_error?: string | null
-          ai_model?: string | null
-          ai_tries?: number
-          ai_verdict?: Json | null
-          consumer_id?: string | null
-          created_at?: string
-          decided_at?: string | null
-          id?: string
-          ig_handle?: string | null
-          ig_story_id: string
-          livemode: boolean
-          media_kind?: string
-          media_url?: string | null
-          mentioned_at?: string
-          place_id?: string | null
-          recheck_at?: string | null
-          reject_reason?: string | null
-          reward_cents?: number | null
-          sender_igsid?: string | null
-          source: string
-          state?: string
-        }
-        Update: {
-          ai_checked_at?: string | null
-          ai_claimed_at?: string | null
-          ai_last_error?: string | null
-          ai_model?: string | null
-          ai_tries?: number
-          ai_verdict?: Json | null
-          consumer_id?: string | null
-          created_at?: string
-          decided_at?: string | null
-          id?: string
-          ig_handle?: string | null
-          ig_story_id?: string
-          livemode?: boolean
-          media_kind?: string
-          media_url?: string | null
-          mentioned_at?: string
-          place_id?: string | null
-          recheck_at?: string | null
-          reject_reason?: string | null
-          reward_cents?: number | null
-          sender_igsid?: string | null
-          source?: string
-          state?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_mentions_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "story_mentions_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       stripe_connect_events: {
         Row: {
           account: string | null
@@ -3317,7 +3261,6 @@ export type Database = {
           place_id: string
           purchase_id: string | null
           reason: string | null
-          story_mention_id: string | null
           tab_id: string | null
         }
         Insert: {
@@ -3334,7 +3277,6 @@ export type Database = {
           place_id: string
           purchase_id?: string | null
           reason?: string | null
-          story_mention_id?: string | null
           tab_id?: string | null
         }
         Update: {
@@ -3351,7 +3293,6 @@ export type Database = {
           place_id?: string
           purchase_id?: string | null
           reason?: string | null
-          story_mention_id?: string | null
           tab_id?: string | null
         }
         Relationships: [
@@ -3388,13 +3329,6 @@ export type Database = {
             columns: ["purchase_id"]
             isOneToOne: false
             referencedRelation: "wallet_purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "wallet_entries_story_mention_id_fkey"
-            columns: ["story_mention_id"]
-            isOneToOne: false
-            referencedRelation: "story_mentions"
             referencedColumns: ["id"]
           },
           {
@@ -3965,6 +3899,7 @@ export type Database = {
         Returns: Json
       }
       admin_credit_limits: { Args: { p_livemode: boolean }; Returns: Json }
+      admin_remove_vip: { Args: { p_consumer: string }; Returns: string }
       admin_repick_family_keys: {
         Args: {
           p_actor: string
@@ -4027,6 +3962,8 @@ export type Database = {
           reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
+          vip_invitation_code_id: string | null
+          vip_invited_at: string | null
           vip_partner_id: string | null
           vip_until: string | null
         }[]
@@ -4086,6 +4023,8 @@ export type Database = {
           reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
+          vip_invitation_code_id: string | null
+          vip_invited_at: string | null
           vip_partner_id: string | null
           vip_until: string | null
         }[]
@@ -4201,6 +4140,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      consumer_is_vip_for_money: {
+        Args: { p_consumer: string; p_livemode: boolean }
+        Returns: boolean
+      }
       consumer_plan_sync: {
         Args: {
           p_cancel_at_period_end: boolean
@@ -4218,6 +4161,10 @@ export type Database = {
           plan_stripe_subscription: string
           reservation_cap_override: number
         }[]
+      }
+      consumer_redeem_vip_invitation: {
+        Args: { p_code: string; p_consumer: string; p_livemode: boolean }
+        Returns: Json
       }
       consumer_set_pay_method: {
         Args: { p_consumer_id: string; p_method: string }
@@ -4270,7 +4217,6 @@ export type Database = {
         Args: { a: Database["public"]["Tables"]["guest_pay_attempts"]["Row"] }
         Returns: string
       }
-      instagram_handle_of_url: { Args: { p_url: string }; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
       jsonb_fill_absent: {
         Args: { p_defaults: Json; p_target: Json }
@@ -4656,7 +4602,7 @@ export type Database = {
         Args: { p_place_id: string }
         Returns: {
           returning_bps: number
-          story_reward_cents: number
+          returning_vip_bps: number
           welcome_bps: number
         }[]
       }
@@ -4668,6 +4614,14 @@ export type Database = {
       place_country: { Args: { p_place_id: string }; Returns: string }
       place_country_from_address: { Args: { p_address: Json }; Returns: string }
       place_credit_limit: { Args: { p_place_id: string }; Returns: number }
+      place_credit_limit_info: {
+        Args: { p_livemode: boolean; p_place_id: string }
+        Returns: Json
+      }
+      place_credit_limit_tier: {
+        Args: { p_livemode: boolean; p_place_id: string }
+        Returns: Json
+      }
       place_currency_open: { Args: { p_place_id: string }; Returns: boolean }
       place_customer_key: {
         Args: { p_consumer_id: string; p_place_id: string }
@@ -4950,45 +4904,6 @@ export type Database = {
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
-      story_ai_claim: {
-        Args: { p_limit: number; p_max_tries: number }
-        Returns: {
-          ai_tries: number
-          id: string
-          media_kind: string
-          media_url: string
-        }[]
-      }
-      story_ai_fail: {
-        Args: { p_error: string; p_final: boolean; p_mention: string }
-        Returns: Json
-      }
-      story_ai_verdict: {
-        Args: { p_mention: string; p_model: string; p_verdict: Json }
-        Returns: Json
-      }
-      story_mentions_expire: { Args: { p_now?: string }; Returns: number }
-      story_recheck_claim: {
-        Args: { p_limit: number }
-        Returns: {
-          id: string
-          media_url: string
-          mentioned_at: string
-          source: string
-        }[]
-      }
-      story_reward_grant: {
-        Args: { p_mention: string; p_now?: string; p_place: string }
-        Returns: Json
-      }
-      story_reward_pay: {
-        Args: { p_mention: string; p_now?: string }
-        Returns: Json
-      }
-      story_reward_reject: {
-        Args: { p_mention: string; p_now?: string; p_reason: string }
-        Returns: Json
-      }
       unstick_enriching_places: {
         Args: { older_than?: string }
         Returns: number
