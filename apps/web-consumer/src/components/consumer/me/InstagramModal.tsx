@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   BadgeCheck,
   AtSign,
+  Camera,
   Copy,
   Eye,
   ImageIcon,
@@ -304,6 +305,9 @@ const ROW_BUTTON_CLASS =
 // rule is the server's (place-activity seesHandles): others' handles show to
 // a guest whose own Instagram is connected. NO VIP PERK (Pato, 2026-11-22,
 // MESITA-4709: "no more VIP"): the "Become VIP" row left; one perk stays.
+// TWO PERKS AGAIN (Pato, 2026-11-23, MESITA-4723: "See other people · story
+// rewards"): Story rewards is the Post offer (MESITA-4714), which needs a
+// connected Instagram, so its chip reads the same On/Off.
 
 export function WhyConnect({ live = true }: { live?: boolean }) {
   return (
@@ -318,6 +322,18 @@ export function WhyConnect({ live = true }: { live?: boolean }) {
             <span className="block text-sm font-semibold">See other people&apos;s Instagram</span>
             <span className="text-muted-foreground type-label block">
               On Social, tap anyone to see their @handle. Only guests who connect see others&apos;.
+            </span>
+          </span>
+          {live ? <SeeStatus /> : null}
+        </li>
+        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="story">
+          <IconChip tint="instagram">
+            <Camera className="h-[18px] w-[18px]" />
+          </IconChip>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">Story rewards</span>
+            <span className="text-muted-foreground type-label block">
+              Post a story tagging a place and get credits there. Checked automatically.
             </span>
           </span>
           {live ? <SeeStatus /> : null}
