@@ -937,9 +937,10 @@ function HowItWorks({
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-start px-1 text-sm font-semibold"
+        className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-center px-1 text-sm font-semibold"
         data-how-it-works={tab}
       >
+        {/* CENTRED (Pato, 2026-11-23, MESITA-4779: "how it works button maybe be centered"). */}
         <Info className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
         How it works
       </button>
@@ -1457,7 +1458,7 @@ function CheckoutSection({
           type="button"
           onClick={() => onInfo(rows.find((r) => r.line === cashback?.line) ?? rows[0])}
           aria-haspopup="dialog"
-          className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-start px-1 text-sm font-semibold"
+          className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-center px-1 text-sm font-semibold"
           data-how-it-works="pay"
         >
           <Info className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
