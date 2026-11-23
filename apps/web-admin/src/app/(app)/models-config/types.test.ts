@@ -33,6 +33,8 @@ describe("coerceModelsConfig", () => {
       enricher: { model: "gpt-4.1-mini" },
       embeddings: DEFAULT_MODELS_CONFIG.embeddings,
       memo: { model: "gpt-4o" },
+      // MESITA-4535: the Story bot's model is a kept key (its default here).
+      stories: DEFAULT_MODELS_CONFIG.stories,
     });
   });
 
