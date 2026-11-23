@@ -294,34 +294,35 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             Signed out there is no balance and no card (D6).
             THE AMOUNT ONLY, NO LINK (MESITA-4633): Offers never opens the
             Loyalty Card, so the two can't stack.
-            A WHITE CARD (MESITA-4714, "a better design" than MESITA-4701's
-            dark strip): a small muted "Balance" over the amount in large bold
-            ink, one muted "+$X lands at <time>" while anything waits; the tab
-            bar sits directly under it, one card with a shared border. */}
+            A BLACK CARD (Pato, 2026-11-23, MESITA-4725: "better design for
+            the shitty box there. maybe a black box"): the page's one anchor,
+            a full card, not MESITA-4701's thin strip nor MESITA-4714's white
+            card joined to the tabs. "Balance" at 70% white over the amount in
+            large bold white, one 70% "+$X lands at <time>" while anything
+            waits; the tab bar is its own card 12px under it. */}
         {credit ? (
           <div
-            className="bg-card border-border flex w-full shrink-0 flex-col gap-1 rounded-t-2xl border px-4 pt-4 pb-3"
+            className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-1 rounded-2xl p-4"
             role="group"
             aria-label={credit.label}
             data-offers-balance
           >
-            <span className="text-muted-foreground text-sm font-semibold">Balance</span>
-            <span className="text-foreground text-2xl leading-tight font-bold tabular-nums">{credit.ready}</span>
+            <span className="text-paper/70 text-sm font-semibold">Balance</span>
+            <span className="text-3xl leading-tight font-bold tabular-nums">{credit.ready}</span>
             {credit.pending ? (
-              <span className="text-muted-foreground truncate text-sm tabular-nums" data-offers-pending>
+              <span className="text-paper/70 truncate text-sm tabular-nums" data-offers-pending>
                 {credit.pending}
               </span>
             ) : null}
           </div>
         ) : null}
-        <div className="flex flex-1 shrink-0 flex-col">
+        <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
           <VouchersPane
             place={place}
             actions={actions}
             pick={pick}
             initialTab={initialTab}
             onTabChange={onTabChange}
-            attached={credit != null}
             renderPost={() => (
               <PostSection
                 read={post.read}

@@ -178,7 +178,7 @@ function OfferWords({
         // +30%, TODAY / 20:30.
         <span className="flex min-w-0 flex-col items-center leading-none">
           {slide.lead ? <span className="mb-0.5 max-w-full truncate type-meta font-bold tracking-wider uppercase opacity-75">{slide.lead}</span> : null}
-          {/* No "Up to" in the small tile (MESITA-4709): "10% Cashback". */}
+          {/* No "Up to" in the small tile (MESITA-4709): "10% Back"; "Back", never "cashback", since MESITA-4725. */}
           <span className="max-w-full truncate">{slide.pillShort}</span>
         </span>
       ) : (
