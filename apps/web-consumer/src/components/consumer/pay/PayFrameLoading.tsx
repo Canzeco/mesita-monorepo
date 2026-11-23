@@ -19,12 +19,12 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
         <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
         {/* GREY BONES ONLY (Pato, 2026-11-21, MESITA-4596): no colour and no
             words while the page reads. The shape is MESITA-4731's: Pay Bill
-            across, Prepay | Send Gift, the quiet Explore Offers row (Pato,
-            2026-11-23: "also update the placeholders"). */}
-        <Skeleton className="mt-2 h-20 w-full rounded-xl" aria-hidden />
+            across, Prepay | Send Gift (all 112px since MESITA-4735), the quiet Explore
+            Offers row (Pato, 2026-11-23: "also update the placeholders"). */}
+        <Skeleton className="mt-2 h-28 w-full rounded-2xl" aria-hidden />
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <Skeleton className="h-20 min-w-0 rounded-xl" aria-hidden />
-          <Skeleton className="h-20 min-w-0 rounded-xl" aria-hidden />
+          <Skeleton className="h-28 min-w-0 rounded-2xl" aria-hidden />
+          <Skeleton className="h-28 min-w-0 rounded-2xl" aria-hidden />
         </div>
         <Skeleton className="mt-2 h-12 w-full rounded-xl" aria-hidden />
         <div className="mt-1 flex flex-1 flex-col pb-8">

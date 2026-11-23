@@ -371,8 +371,13 @@ export function PayPage({
           lands on their Prepay tab; Explore Offers lists places with any offer
           and lands on their first one (D5). History: Get Discounts | Pay Bill
           half and half (MESITA-4587 … 4704). */}
+      {/* ONE FAMILY OF TILES (Pato, 2026-11-23, MESITA-4735: "call them like
+          this: Pay Bill / Prepay, Get Bonus / Send Gift. BETTER DESIGN"). The
+          three share one anatomy: the icon disc top left, the name bottom left,
+          all 112px tall; Prepay's "Get Bonus" is a white pill top right. Pay
+          Bill runs full width; Prepay | Send Gift split the row under it. */}
       {payBusy ? (
-        <Skeleton className="mt-2 h-20 w-full rounded-xl bg-[#635BFF]/40" aria-hidden />
+        <Skeleton className="mt-2 h-28 w-full rounded-2xl bg-[#635BFF]/40" aria-hidden />
       ) : (
         <button
           type="button"
@@ -384,32 +389,32 @@ export function PayPage({
           <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
             <QrCode className="h-5 w-5" strokeWidth={2.25} />
           </span>
-          Pay Bill
+          <span className={TILE_TITLE}>Pay Bill</span>
         </button>
       )}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={`${CONSUMER_ROUTES.walletBuy}?offers=vouchers`}
-          className={cn(TILE_HALF, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+          className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-prepay
         >
-          <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
-            <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
+          <span className="flex w-full items-center justify-between gap-2">
+            <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
+              <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
+            </span>
+            <span className={TILE_PILL}>Get Bonus</span>
           </span>
-          <span className="flex flex-col">
-            <span>Prepay</span>
-            <span className="text-sm font-normal opacity-80">Get bonus credit</span>
-          </span>
+          <span className={TILE_TITLE}>Prepay</span>
         </PushLink>
         <PushLink
           href={CONSUMER_ROUTES.walletSend}
-          className={cn(TILE_HALF, "bg-neutral-950 text-white hover:bg-neutral-800")}
+          className={cn(TILE, "bg-neutral-950 text-white hover:bg-neutral-800")}
           data-send-gift
         >
           <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
             <Gift className="h-5 w-5" strokeWidth={2.25} />
           </span>
-          Send Gift
+          <span className={TILE_TITLE}>Send Gift</span>
         </PushLink>
       </div>
       <PushLink
@@ -526,13 +531,17 @@ function PlaceRows({
   );
 }
 
-/** Pay Bill, full width (MESITA-4731), as tall as Prepay and Send Gift
- *  (Pato, MESITA-4734: "purple and bottom buttons must be same height"). */
+/** Every action tile (MESITA-4735): 112px, the icon disc top left and the
+ *  name bottom left, so Pay Bill, Prepay and Send Gift read as one set,
+ *  all one height (Pato, MESITA-4734: "purple and bottom buttons must be
+ *  same height"). */
 const TILE =
-  "flex h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-xl px-1 text-center text-base leading-tight font-semibold whitespace-nowrap transition active:scale-[0.99]";
-/** Prepay and Send Gift, half and half under it: the icon left of the words. */
-const TILE_HALF =
-  "flex h-20 min-w-0 items-center gap-3 rounded-xl px-3 text-left text-base leading-tight font-semibold transition active:scale-[0.99]";
+  "flex h-28 min-w-0 flex-col items-start justify-between rounded-2xl p-4 text-left transition active:scale-[0.99]";
+/** A tile's name: one baseline across the three. */
+const TILE_TITLE = "text-lg leading-tight font-semibold";
+/** Prepay's promise rides a white pill top right, so its name stays level
+ *  with Send Gift's. */
+const TILE_PILL = "truncate rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-neutral-950";
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
