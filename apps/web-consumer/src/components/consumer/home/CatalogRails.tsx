@@ -660,7 +660,11 @@ export function CatalogRails() {
               "add the instagram icon instead of those ugly people"): pink on
               the white circle, white on the chosen black one. */}
           {c.key === SOCIAL_CHIP ? (
-            <Instagram className={cn("h-6 w-6", on ? "text-card" : "text-[#E1306C]")} strokeWidth={2.25} />
+            <Instagram
+              className={cn("h-6 w-6", on && "text-card")}
+              style={on ? undefined : { color: "#E1306C" }}
+              strokeWidth={2.25}
+            />
           ) : (
             c.emoji
           )}
