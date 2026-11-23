@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Clock } from "lucide-react";
 import {
   readyClock,
+  voucherOffers,
   VouchersPane,
   type OffersTab,
   type PlaceActions,
@@ -12,6 +13,7 @@ import {
   type VoucherBuyOutcome,
 } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
+import { OffersRewards, useRewardsRead } from "@/components/consumer/OffersRewards";
 import { money } from "@/lib/api/wallet";
 import { apiSyncInstagram } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -24,7 +26,7 @@ import {
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { errMsg } from "@/lib/utils";
-import { goBack, navigateTo } from "@/lib/navigate";
+import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
@@ -77,20 +79,19 @@ function readFromPay(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "pay";
 }
 
-/** The voucher an old link asks for: `?pick=` (an old ticket link,
- *  MESITA-4647) or `?voucher=` (the Add a card round trip, MESITA-4230;
- *  Home chips before MESITA-4455). The shop picks it when it is buyable. */
-/** MESITA-4698: the tab a link asks for, `?rewards=cashback` or
- *  `?rewards=prepayment` (the vouchers). None lets the page choose. */
-function readTab(): OffersTab | null {
-  const r = new URLSearchParams(window.location.search).get("rewards");
-  return r === "cashback" ? "cashbacks" : r === "prepayment" || r === "special" ? "vouchers" : null;
+/** THE TAB IS IN THE ADDRESS (MESITA-4710): `?rewards=` names it, so a
+ *  reload or Back from Pay Bill returns to the same tab. `prepayment` and
+ *  `special` (the carousel's and the Wallet's links) open Prepay, `cashback`
+ *  Checkout, `earned` Rewards; anything else, or none, Prepay. An asked
+ *  voucher opens Prepay whatever this says (the pane decides that). */
+function tabOf(rewards: string | null): OffersTab {
+  if (rewards === "cashback") return "checkout";
+  if (rewards === "earned") return "rewards";
+  return "prepay";
 }
 
-function readPick(): string | null {
-  const q = new URLSearchParams(window.location.search);
-  return q.get("pick") ?? q.get("voucher");
-}
+/** The `?rewards=` value a tab writes back. */
+const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", checkout: "cashback", rewards: "earned" };
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
 // fuck are you showing me that … why it needs to pass across that page"):
@@ -102,11 +103,30 @@ function readPick(): string | null {
 // (usePlaceVouchers), the same a voucher's ticket uses.
 export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const router = useRouter();
-  const profile = useConsumerProfile().data;
+  const profileRead = useConsumerProfile();
+  const profile = profileRead.data;
   const fromWallet = useSyncExternalStore(noopSubscribe, readFromWallet, () => false);
   const fromPay = useSyncExternalStore(noopSubscribe, readFromPay, () => false);
-  const pick = useSyncExternalStore(noopSubscribe, readPick, () => null);
-  const tab = useSyncExternalStore(noopSubscribe, readTab, () => null);
+  // READ ONCE, AT MOUNT (MESITA-4710): the tab and the asked voucher
+  // (`?pick=`, an old ticket link, MESITA-4647; `?voucher=`, the Add a card
+  // round trip, MESITA-4230). `pick` stays a constant, so dropping it from
+  // the address never empties an untouched basket.
+  const params = useSearchParams();
+  const [initialTab] = useState<OffersTab>(() => tabOf(params?.get("rewards") ?? null));
+  const [pick] = useState<string | null>(() => params?.get("pick") ?? params?.get("voucher") ?? null);
+  // Rewards reads the wallet the first time its tab opens in a visit.
+  const [rewardsOpened, setRewardsOpened] = useState(initialTab === "rewards");
+  const rewards = useRewardsRead(rewardsOpened);
+  // A switch rewrites `?rewards=` in place (no push, no server round trip),
+  // keeps `from=` and drops `pick=`/`voucher=`.
+  const onTabChange = useCallback((t: OffersTab) => {
+    const q = new URLSearchParams(window.location.search);
+    q.set("rewards", REWARDS_PARAM[t]);
+    q.delete("pick");
+    q.delete("voucher");
+    replaceAddress(`${window.location.pathname}?${q.toString()}`);
+    if (t === "rewards") setRewardsOpened(true);
+  }, []);
   const keep = useKeptScroll<HTMLDivElement>();
 
   // A PAID VOUCHER ENDS ON THE LOYALTY CARD (Pato, MESITA-4055: "don't
@@ -134,6 +154,10 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   );
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const credit = creditHere(place);
+  // The Rewards empty state's numbers, the server's (MESITA-4710): the best
+  // cashback line, and the best bonus Prepay shows (its chip's number).
+  const cashback = place.money?.cashback;
+  const cashbackPct = cashback ? Math.max(cashback.welcome_bps, cashback.regular_bps, cashback.vip_bps) / 100 || null : null;
 
   // A VIP basket re-reads the follower count first when the last read is over
   // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`
@@ -164,8 +188,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   );
 
   const actions: PlaceActions = {
-    // MESITA-4699: the Cashbacks tab's purple Pay Bill, a push to this place's
-    // bill; Back returns here.
+    // MESITA-4699: Checkout's purple Pay Bill (MESITA-4710), a push to this
+    // place's bill; Back returns here.
     onPay: () => navigateTo(router, payPlacePath(fetched.id), { motion: "drill" }),
     onBuyVoucher: buyChecked,
     onOfferOpened: vouchers.opened,
@@ -197,6 +221,9 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     // Instagram; Back returns here.
     onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
   };
+
+  const bonusPct =
+    voucherOffers(place.money, actions.guest).reduce((n, o) => Math.max(n, Number.parseInt(o.bonus.replace(/\D/g, ""), 10) || 0), 0) || null;
 
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-offers-route>
@@ -230,7 +257,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         {credit ? (
           // ONE DARK BOX (Pato, 2026-11-18, MESITA-4381: "just one box at the
           // top mentioning current balance"): the Loyalty Card's ink panel,
-          // the balance and, while a bonus waits, the pending line.
+          // the balance and, while anything waits, the pending line
+          // (pending_cents counts pending cashback and bonuses alike).
           //
           // THE AMOUNT ONLY, NO LINK (Pato, 2026-11-21, MESITA-4633: "to
           // avoid infinitely nested routes, just cut the hyperlink … just
@@ -241,8 +269,8 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           //
           // ONE SMALL LINE (Pato, 2026-11-22, MESITA-4701: "current credit
           // smaller and menu more obvious"): the balance at the right of one
-          // dark strip, the pending line under it only while a bonus waits, so
-          // the tabs below lead the page.
+          // dark strip, the pending line under it only while anything waits
+          // (a bonus or cashback), so the tabs below lead the page.
           <div
             className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-0.5 rounded-xl px-4 py-2.5"
             role="group"
@@ -263,7 +291,25 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           </div>
         ) : null}
         <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
-          <VouchersPane place={place} actions={actions} pick={pick} tab={tab} />
+          <VouchersPane
+            place={place}
+            actions={actions}
+            pick={pick}
+            initialTab={initialTab}
+            onTabChange={onTabChange}
+            renderRewards={(switchTab) => (
+              <OffersRewards
+                placeId={fetched.id}
+                photo={place.profilePhoto ?? null}
+                read={rewards}
+                cashbackPct={cashbackPct}
+                bonusPct={bonusPct}
+                profileFailed={profileRead.error != null && profileRead.data == null}
+                onRetryProfile={profileRead.reload}
+                switchTab={switchTab}
+              />
+            )}
+          />
         </div>
       </div>
       {/* The pay-with-a-card sheet the vouchers hook owns (MESITA-3552). */}
