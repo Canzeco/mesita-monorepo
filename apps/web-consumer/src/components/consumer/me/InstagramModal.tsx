@@ -335,8 +335,15 @@ export function WhyConnect({ live = true }: { live?: boolean }) {
             <span className="text-muted-foreground type-label block">
               Post a story tagging a place and get credits there. Checked automatically.
             </span>
+            {/* THE RULE, PLAIN (Pato, 2026-11-23, MESITA-4745: "make clearer
+                that the checker works when 1000 followers and public
+                instagram account"): the followers badge's rule
+                (_shared/instagram-badge.ts), in ink, not grey. */}
+            <span className="text-foreground type-label mt-1 block font-semibold" data-why-connect-rule="story">
+              Works with a public account with more than 1,000 followers.
+            </span>
           </span>
-          {live ? <SeeStatus /> : null}
+          {live ? <StoryStatus /> : null}
         </li>
       </ul>
     </section>
@@ -350,6 +357,20 @@ function SeeStatus() {
   return (
     <span className={cn(STATUS_CHIP, igConnected && "bg-green-100 text-green-800")} data-why-connect-status="see">
       {igConnected ? "On" : "Off"}
+    </span>
+  );
+}
+
+/** Story rewards' chip (MESITA-4745): On only when the server's followers
+ *  badge is on (public account, more than 1,000 followers); else what is
+ *  missing, so a connected guest under the bar never reads On. */
+function StoryStatus() {
+  const { igConnected } = useConsumerIdentity();
+  const qualifies = useConsumerProfile().data?.instagram_badge === true;
+  const on = igConnected && qualifies;
+  return (
+    <span className={cn(STATUS_CHIP, on && "bg-green-100 text-green-800")} data-why-connect-status="story">
+      {on ? "On" : igConnected ? "Needs 1,000+" : "Off"}
     </span>
   );
 }
