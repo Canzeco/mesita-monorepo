@@ -383,7 +383,7 @@ export function PaymentsPanel({
   const vouchers = voucherProducts(currency).filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]);
   const anyTierOn = vouchers.some((p) => settings[p.key]);
 
-  const voucherRow = ({ key, name, line, value, tone, icon }: Product) => {
+  const voucherRow = ({ key, name, line, value }: Product) => {
     const on = settings[key] && prepaymentsOn;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
     const blocked = !takesCards ? needsStripe : !prepaymentsOn ? needsPrepayments : !on && !settings.loyalty_cards ? creditsBlock : null;
@@ -547,7 +547,6 @@ export function PaymentsPanel({
               />
             </li>
             {RATE_ROWS.map((row) => {
-              const on = settings.loyalty_cards && cashback[row.key] > 0;
               return (
                 <li key={row.key} id={row.key === "welcome_bps" ? "welcome-visit-rate" : "returning-visit-rate"} className={MARK_ROW} data-place-state={row.key}>
                   <div className="min-w-0">
