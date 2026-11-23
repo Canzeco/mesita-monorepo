@@ -2,12 +2,12 @@
 
 import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Camera, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
-import { CASHBACK_TONE, VOUCHER_TONE } from "../../lib/offers";
+import { CASHBACK_TONE, POST_TONE, VOUCHER_TONE } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
@@ -914,16 +914,17 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
 }
 
 /** THREE SUBPAGES (Pato, 2026-11-23, MESITA-4710: "THIS MUST HAVE 3
- *  SUBPAGES — Prepay. Checkout. Rewards."): Prepay sells the vouchers,
- *  Checkout is paying the bill here and the cashback it earns, Rewards is
- *  what the guest earned here (the host draws it). The one scroll of
- *  MESITA-4702 went; the two tabs of MESITA-4698/4701 before it. */
-export type OffersTab = "prepay" | "checkout" | "rewards";
+ *  SUBPAGES"), NAMED PREPAY · PAY · POST (Pato, 2026-11-23, MESITA-4714: "3
+ *  ps sounds great"): Prepay sells the vouchers, Pay is paying the bill here
+ *  and the cashback it earns, Post is what an Instagram story here pays (the
+ *  host reads it; this package draws PostSection). What a guest earned stays
+ *  on the Loyalty Card and Tickets; the Rewards list went. */
+export type OffersTab = "prepay" | "pay" | "post";
 
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: LucideIcon }[] = [
   { id: "prepay", word: "Prepay", Icon: Ticket },
-  { id: "checkout", word: "Checkout", Icon: QrCode },
-  { id: "rewards", word: "Rewards", Icon: Gift },
+  { id: "pay", word: "Pay", Icon: QrCode },
+  { id: "post", word: "Post", Icon: Camera },
 ];
 
 /** The tab bar (MESITA-4710), MESITA-4701's last approved bar: three equal
@@ -937,12 +938,16 @@ function OffersTabs({
   locked,
   picked,
   barRef,
+  attached,
 }: {
   tab: OffersTab;
   onTab: (t: OffersTab) => void;
   locked: boolean;
   picked: number;
   barRef: RefObject<HTMLDivElement | null>;
+  /** Under the host's Balance card (MESITA-4714): one card, the shared
+   *  border is the card's, so the bar drops its top edge and top corners. */
+  attached?: boolean;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const move = (from: number, step: number) => {
@@ -952,7 +957,13 @@ function OffersTabs({
     refs.current[to]?.focus();
   };
   return (
-    <div ref={barRef} className={cn(CARD, "flex shrink-0 overflow-hidden")} role="tablist" aria-label="Offers" data-offers-tabs>
+    <div
+      ref={barRef}
+      className={cn(CARD, "flex shrink-0 overflow-hidden", attached && "rounded-t-none border-t-0")}
+      role="tablist"
+      aria-label="Offers"
+      data-offers-tabs
+    >
       {OFFERS_TABS.map(({ id, word, Icon }, i) => {
         const on = tab === id;
         // "Prepay · N" while the basket holds anything (MESITA-4710).
@@ -1277,7 +1288,7 @@ function CheckoutSection({
         <CashbackPanel cashback={cashback} onInfo={onInfo} />
       ) : (
         // No cashback here, or the read failed: Pay Bill still works.
-        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none="checkout">
+        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none="pay">
           This place gives no cashback yet. You can still pay your bill here.
         </p>
       )}
@@ -1307,7 +1318,8 @@ export function VouchersPane({
   pick,
   initialTab,
   onTabChange,
-  renderRewards,
+  renderPost,
+  attached,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -1317,9 +1329,11 @@ export function VouchersPane({
   initialTab?: OffersTab | null;
   /** Called after each switch the pane accepts (the host keeps the address). */
   onTabChange?: (tab: OffersTab) => void;
-  /** The Rewards tab's body, drawn by the host (MESITA-4710: no Rewards
-   *  data contract in this package). `switchTab` switches tabs in place. */
-  renderRewards?: (switchTab: (tab: OffersTab) => void) => ReactNode;
+  /** The Post tab's body (MESITA-4714): the host reads the place's story
+   *  reward and draws PostSection with it. `switchTab` switches in place. */
+  renderPost?: (switchTab: (tab: OffersTab) => void) => ReactNode;
+  /** The tab bar sits directly under the host's Balance card. */
+  attached?: boolean;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -1429,8 +1443,8 @@ export function VouchersPane({
   return (
     // ON THE GREY PAGE (MESITA-4196): the tab bar, then one tab's white
     // panels, its bar at the bottom (MESITA-4710).
-    <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      <OffersTabs tab={tab} onTab={switchTab} locked={locked} picked={count} barRef={barRef} />
+    <div className={cn("-mx-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pb-4", attached ? "" : "-mt-4 pt-4")} data-promos-page>
+      <OffersTabs tab={tab} onTab={switchTab} locked={locked} picked={count} barRef={barRef} attached={attached} />
       <div
         role="tabpanel"
         id={`offers-panel-${tab}`}
@@ -1452,12 +1466,11 @@ export function VouchersPane({
             onInfo={setInfo}
             onPay={() => void pay()}
           />
-        ) : tab === "checkout" ? (
+        ) : tab === "pay" ? (
           <CheckoutSection cashback={cashback} loading={loading} onInfo={setCashInfo} onPay={actions?.onPay} />
         ) : (
-          // REWARDS (MESITA-4710, d1a): what the guest earned here, the
-          // host's read and rows; no bottom bar.
-          renderRewards?.(switchTab) ?? null
+          // POST (MESITA-4714): the host's read, PostSection's rows.
+          renderPost?.(switchTab) ?? null
         )}
       </div>
       {cashInfo && cashback ? <CashbackInfo row={cashInfo} cap={whole(pesos(cashback.cap_cents, currency))} onClose={() => setCashInfo(null)} /> : null}
@@ -1503,5 +1516,141 @@ function BasketReceipt({ receipt, onDone }: { receipt: Receipt; onDone: () => vo
         Done
       </button>
     </div>
+  );
+}
+
+/** What the Post tab reads (consumer-web-get-story-reward, MESITA-4714). */
+export type PostTabRead = {
+  /** What a story pays here now, in cents; 0 = Off. */
+  reward_cents: number;
+  currency: string;
+  place_handle: string | null;
+  signed_in: boolean;
+  instagram_linked: boolean;
+  instagram_handle: string | null;
+  /** Stripe test mode: "Simulate a story" shows. */
+  simulate: boolean;
+  /** When this guest can be paid here again (once every 7 days). */
+  next_at: string | null;
+  latest: {
+    id: string;
+    state: "checking" | "rewarded" | "rejected";
+    reward_cents: number | null;
+    available_at: string | null;
+    reason: string | null;
+    posted_at: string;
+    simulated: boolean;
+  } | null;
+};
+
+/** POST (Pato, 2026-11-23, MESITA-4714: a place pays a guest for an
+ *  Instagram story, "20 OR 50, can setup in business console"): the amount,
+ *  three steps, the guest's latest story here with its status, Connect
+ *  Instagram when none is linked, and in test mode Simulate a story. The
+ *  server decides every number; this formats them. */
+export function PostSection({
+  read,
+  loading,
+  failed,
+  onRetry,
+  onConnectInstagram,
+  onSimulate,
+  simulating,
+}: {
+  read: PostTabRead | null;
+  loading: boolean;
+  failed: boolean;
+  onRetry?: () => void;
+  onConnectInstagram?: () => void;
+  onSimulate?: () => void;
+  simulating?: boolean;
+}) {
+  if (loading && !read) return <BoneRows n={2} />;
+  if (failed && !read) {
+    return (
+      <div className="flex flex-col items-center gap-3 px-1 py-6 text-center" data-post-failed>
+        <p className="text-muted-foreground text-sm">Couldn’t load this. Try again.</p>
+        {onRetry ? (
+          <button type="button" onClick={onRetry} className="border-border text-foreground h-10 rounded-full border px-4 text-sm font-semibold">
+            Retry
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+  if (!read || read.reward_cents <= 0) {
+    return (
+      <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none="post">
+        This place doesn’t pay for stories yet.
+      </p>
+    );
+  }
+  const amount = whole(pesos(read.reward_cents, read.currency));
+  const tags = read.place_handle ? `Tag @mesita and @${read.place_handle}` : "Tag @mesita and this place";
+  const steps = ["Post an Instagram story", tags, "Keep it up. Your credit lands in 3 hours"];
+  const latest = read.latest;
+  const status = latest
+    ? latest.state === "checking"
+      ? { word: "Checking", line: "We’re checking your story." }
+      : latest.state === "rewarded"
+        ? {
+            word: `Rewarded +${whole(pesos(latest.reward_cents ?? 0, read.currency))}`,
+            line: latest.available_at ? `Lands ${readyClock(latest.available_at)}` : "Lands in 3 hours",
+          }
+        : { word: "Rejected", line: latest.reason ?? "This story didn’t qualify." }
+    : null;
+  const nextAt = read.next_at ? readyClock(read.next_at) : "";
+  return (
+    <>
+      <OfferSectionHead chip={`Get ${amount} for a story`} tone={POST_TONE} sub="One story reward per place every 7 days." />
+      <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="How it works" data-post-steps>
+        <ol className="divide-border divide-y">
+          {steps.map((s, i) => (
+            <li key={s} className="text-foreground flex items-center gap-3 px-4 py-3 text-sm">
+              <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold", POST_TONE)} aria-hidden>
+                {i + 1}
+              </span>
+              {s}
+            </li>
+          ))}
+        </ol>
+      </section>
+      {status && latest ? (
+        <Box title="Your latest story here" data-post-latest={latest.state}>
+          <p className="text-foreground text-sm font-semibold">
+            {status.word}
+            {latest.simulated ? <span className="text-muted-foreground font-normal"> · Simulated</span> : null}
+          </p>
+          <p className="text-muted-foreground text-sm">{status.line}</p>
+        </Box>
+      ) : null}
+      {nextAt ? (
+        <p className="text-muted-foreground px-1 text-sm" data-post-next>
+          Your next story reward here opens {nextAt}.
+        </p>
+      ) : null}
+      {read.signed_in && !read.instagram_linked && onConnectInstagram ? (
+        <button
+          type="button"
+          onClick={onConnectInstagram}
+          className="bg-foreground text-paper flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full text-base font-semibold"
+          data-post-connect
+        >
+          <Camera className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          Connect Instagram
+        </button>
+      ) : null}
+      {read.simulate && onSimulate ? (
+        <button
+          type="button"
+          onClick={onSimulate}
+          disabled={simulating}
+          className="border-border text-foreground flex h-12 w-full shrink-0 items-center justify-center rounded-full border text-base font-semibold disabled:opacity-60"
+          data-post-simulate
+        >
+          {simulating ? "Simulating…" : "Simulate a story"}
+        </button>
+      ) : null}
+    </>
   );
 }
