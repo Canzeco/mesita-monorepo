@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addFundsOn, billRead, defaultMethod, methodFace, payHere } from "@/lib/pay-wallet";
+import { billRead, defaultMethod, methodFace, payHere, pickCard } from "@/lib/pay-wallet";
 import type { SavedCard } from "@/lib/api/cards";
 
 // MESITA-4526: the default way to pay decides which card or wallet checkout
@@ -54,7 +54,7 @@ describe("Pay while a bill may be open", () => {
   });
 });
 
-describe("Method and Add Funds", () => {
+describe("Method", () => {
   it("a null card list is Retry, not Add card", () => {
     expect(methodFace(undefined)).toBe("bone");
     expect(methodFace(null)).toBe("retry");
@@ -62,10 +62,24 @@ describe("Method and Add Funds", () => {
     expect(methodFace([{ last4: "4242" }])).toBe("card");
   });
 
-  it("a missing card_ok does not enable Add Funds and does not decide Pay", () => {
-    expect(addFundsOn(undefined)).toBe(false);
-    expect(addFundsOn(false)).toBe(false);
-    expect(addFundsOn(true)).toBe(true);
+  it("a clear bill read starts a checkout", () => {
     expect(payHere("clear")).toBe("checkout");
+  });
+});
+
+// Moved from pay-cards.test.ts (MESITA-4708): the card a voucher checkout
+// preselects.
+describe("pickCard", () => {
+  const card = (id: string): SavedCard => ({ id, brand: "visa", last4: "4242", exp_month: 8, exp_year: 2029, in_use: false });
+  it("keeps the remembered card while it is saved", () => {
+    expect(pickCard([card("a"), card("b")], "b")).toBe("b");
+  });
+  it("falls back to the first card, or none, when the remembered one is gone", () => {
+    expect(pickCard([card("a")], "gone")).toBe("a");
+    expect(pickCard([], "gone")).toBeNull();
+  });
+  it("picks nothing while the list is unknown, and never the excluded card by default", () => {
+    expect(pickCard(null, "a")).toBeNull();
+    expect(pickCard([card("a"), card("b")], "a", "a")).toBe("b");
   });
 });

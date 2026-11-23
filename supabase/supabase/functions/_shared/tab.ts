@@ -6,9 +6,9 @@
 // 12-hour staff token after that), the bill and a tip suggestion; the guest's
 // screen reads the bill by polling and chooses how to pay the bill (credits
 // first, the rest in cash) and the tip (cash; never credits); the waiter
-// types the cash received (or nothing: exactly what is owed). The card part
-// (T2b, MESITA-3563, _shared/tab-card.ts) pays the bill and/or the tip with a
-// saved card inside the app; credits never pay a tip.
+// types the cash received (or nothing: exactly what is owed); credits never
+// pay a tip. MESITA-4708: no card part any more (T2b, MESITA-3563, is gone):
+// a bill is credit and the rest outside; a card part is refused cards_off.
 //
 //   consumer-web-open-tab    pay_tab_open        the guest's QR
 //   consumer-web-get-tab     reads               the guest's poll
@@ -138,19 +138,16 @@ export type SplitInput = {
   creditCents: number;
   cashBillCents: number;
   cashTipCents: number;
-  cardBillCents: number;
-  cardTipCents: number;
-  /** The saved card (a platform PaymentMethod) for a card part. */
-  cardPmId: string | null;
-  /** MESITA-4386: the card part is paid with Apple Pay / Google Pay (guest
-   *  bills only): no saved card; the browser confirms the hold. */
-  express: boolean;
   requestId: string;
 };
 
+/** MESITA-4708: a card part of a bill (card, Apple Pay, Google Pay) is
+ *  gone; cards buy vouchers only. */
+const CARDS_OFF: [number, string, string] = [409, "cards_off", "Pay the rest to the place, in cash or on its own terminal"];
+
 /** The guest's split. Every part is a whole number of centavos, 0 to the cap;
  *  the sums and the credit are the SQL's to check, under the pair lock. */
-export function readSplitBody(b: Record<string, unknown>, opts: { allowExpress?: boolean } = {}): { ok: true; input: SplitInput } | TabRefusal {
+export function readSplitBody(b: Record<string, unknown>): { ok: true; input: SplitInput } | TabRefusal {
   if (!isUuid(b.tab_id)) return refuse(400, "bad_request", "tab_id must be a tab id");
   if (!isUuid(b.request_id)) return refuse(400, "bad_request", "request_id must be a uuid");
   const v = b.bill_version;
@@ -161,19 +158,9 @@ export function readSplitBody(b: Record<string, unknown>, opts: { allowExpress?:
   const parts = ["credit_cents", "cash_bill_cents", "cash_tip_cents", "card_bill_cents", "card_tip_cents"].map((k) => cents(b[k], { min: 0 }));
   if (parts.some((p) => p === null)) return refuse(400, "parts", "Each part is a whole number of centavos");
   const [credit, cashBill, cashTip, cardBill, cardTip] = parts as number[];
-  let cardPmId: string | null = null;
-  // MESITA-4386: express (Apple Pay / Google Pay) instead of a saved card.
-  if (b.express !== undefined && b.express !== null && b.express !== false) {
-    if (b.express !== true || !opts.allowExpress) return refuse(400, "bad_body", "express is for a guest's own bill", { field: "express" });
-    if (b.card_pm_id !== undefined && b.card_pm_id !== null) return refuse(400, "bad_body", "Send express or card_pm_id, not both", { field: "express" });
-    if (cardBill === 0 && cardTip === 0) return refuse(400, "bad_body", "express needs a card part", { field: "express" });
-  }
-  const express = b.express === true;
-  if ((cardBill > 0 || cardTip > 0) && !express) {
-    if (typeof b.card_pm_id !== "string" || !/^pm_[A-Za-z0-9]{8,64}$/.test(b.card_pm_id)) {
-      return refuse(400, "card_required", "Choose a saved card");
-    }
-    cardPmId = b.card_pm_id;
+  // MESITA-4708: a card part, a saved card or Apple Pay / Google Pay.
+  if (cardBill > 0 || cardTip > 0 || b.express === true || (b.card_pm_id !== undefined && b.card_pm_id !== null)) {
+    return refuse(...CARDS_OFF);
   }
   return {
     ok: true,
@@ -183,10 +170,6 @@ export function readSplitBody(b: Record<string, unknown>, opts: { allowExpress?:
       creditCents: credit,
       cashBillCents: cashBill,
       cashTipCents: cashTip,
-      cardBillCents: cardBill,
-      cardTipCents: cardTip,
-      cardPmId,
-      express,
       requestId: b.request_id,
     },
   };
@@ -221,7 +204,7 @@ export function readGuestPayBody(b: Record<string, unknown>): { ok: true; input:
   if (b.repeat_ok !== undefined && b.repeat_ok !== null && typeof b.repeat_ok !== "boolean") {
     return refuse(400, "bad_request", "repeat_ok must be true or false");
   }
-  const parsed = readSplitBody({ ...b, tab_id: b.place_id, bill_version: 1 }, { allowExpress: true });
+  const parsed = readSplitBody({ ...b, tab_id: b.place_id, bill_version: 1 });
   if (!parsed.ok) return parsed;
   const { tabId: _t, billVersion: _v, ...parts } = parsed.input;
   return { ok: true, input: { ...parts, placeId: b.place_id, billCents: bill, ticket, repeatOk: b.repeat_ok === true } };
@@ -256,8 +239,6 @@ const REFUSALS: Record<string, [number, string]> = {
   paid: [409, "This tab is paid"],
   stale: [409, "The bill changed. Check it and try again."],
   parts: [409, "The parts must add up to the bill"],
-  card_unavailable: [409, "This place isn't taking cards right now. Pay with credits or cash."],
-  card_tip_alone: [409, "A tip by card needs part of the bill by card or credits"],
   card_pending: [409, "The guest's card is still going through"],
   insufficient: [409, "Your credit changed. Try again."],
   outside_limit: [409, "You have paid the waiter here enough times today. Pay with credits instead."],
@@ -485,25 +466,15 @@ export function hashJoinToken(token: string): Promise<string> {
   return sha256Hex(`tab-join:${token}`);
 }
 
-export type TabCardInfo = {
-  card_available: boolean;
-  card_unavailable_code: string | null;
-  card_minimum_cents: number;
-};
-
-const NO_CARD: TabCardInfo = { card_available: false, card_unavailable_code: "not_configured", card_minimum_cents: 0 };
-
 export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   placeName: string | null;
   spendableCents: number;
   /** Cash Payments is on here (MESITA-3589): a cash part is allowed. */
   cashOk: boolean;
   nowMs: number;
-  card?: TabCardInfo;
   table?: (TableView & { mine: boolean }) | null;
   myShareTabId?: string | null;
 }) {
-  const card = extra.card ?? NO_CARD;
   const money = tabMoney(t);
   return {
     tab_id: t.id,
@@ -516,12 +487,8 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     ticket: t.ticket,
     waiter_name: t.waiter_name,
     spendable_cents: extra.spendableCents,
-    rates: {
-      cash_available: extra.cashOk,
-      card_available: card.card_available,
-      card_unavailable_code: card.card_unavailable_code,
-      card_minimum_cents: card.card_minimum_cents,
-    },
+    // MESITA-4708: cash only; no card part for a bill.
+    rates: { cash_available: extra.cashOk },
     ...money,
     // MESITA-3780: each part's money, so the Visit page
     // can say what every method charged. Never `proof_token`.
@@ -640,34 +607,18 @@ export async function callTabRpc(admin: Rpc, fn: string, args: Record<string, un
   return r;
 }
 
-/** What a card part adds to the call: the place's account, Mesita's fee
- *  (5% of the card bill part, invoiced), the card row's proof token and
- *  when an unfinished one is cancelled. */
-export type CardSplitArgs = {
-  stripeAccountId: string;
-  feeCents: number;
-  expiresAt: string;
-};
-
-/** The split as pay_tab_open_parts takes it. */
-export function splitArgs(consumerId: string, s: SplitInput, card?: CardSplitArgs | null) {
+/** The split as pay_tab_open_parts takes it. MESITA-4708: the card parts
+ *  are always 0 (the SQL keeps its card columns; they read 0). */
+export function splitArgs(consumerId: string, s: SplitInput) {
   return {
-    ...(card
-      ? {
-        p_stripe_account_id: card.stripeAccountId,
-        p_card_fee_cents: card.feeCents,
-        p_card_proof_token: mintProofToken(),
-        p_card_expires_at: card.expiresAt,
-      }
-      : {}),
     p_tab_id: s.tabId,
     p_consumer_id: consumerId,
     p_bill_version: s.billVersion,
     p_credit_cents: s.creditCents,
     p_cash_bill_cents: s.cashBillCents,
     p_cash_tip_cents: s.cashTipCents,
-    p_card_bill_cents: s.cardBillCents,
-    p_card_tip_cents: s.cardTipCents,
+    p_card_bill_cents: 0,
+    p_card_tip_cents: 0,
     p_request_id: s.requestId,
     p_proof_token: mintProofToken(),
     p_max_outside_per_day: OUTSIDE_MAX_PER_DAY,

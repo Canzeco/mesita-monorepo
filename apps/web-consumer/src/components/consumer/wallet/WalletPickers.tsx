@@ -6,10 +6,9 @@
 // page with Back to Wallet, never a sheet (his same-day rule: "use subpages
 // with own routes").
 //
-//   /wallet/buy    the places that sell credits: Mesita Payments places that
-//                  take cards (consumer-web-list-pay-places, `card_ok`). A row
-//                  opens the place's Offers at Prepayments, where the buying
-//                  happens (MESITA-3883).
+//   /wallet/buy    the places with offers (consumer-web-list-pay-places,
+//                  `offers_ok`). A row opens the place's Offers, where the
+//                  buying happens (MESITA-3883).
 //   /wallet/send   the Wallet's Loyalty Cards. A row opens that card's send page,
 //                  /wallet/place/<id>/send, which offers Buy Credits when
 //                  there is not enough to send.

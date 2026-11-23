@@ -38,7 +38,6 @@ const typed = (amount: string) => ({
   other: "",
   useCredit: true,
   method: null,
-  cardId: null,
 });
 
 describe("clearGuestDraft", () => {
@@ -56,7 +55,7 @@ describe("clearGuestDraft", () => {
     expect(readDraft("place-a")).toBeNull();
   });
 
-  it("remembers the last card across bills, and drops a blank id", () => {
+  it("remembers the last card (a voucher's default), and drops a blank id", () => {
     expect(readLastCard()).toBeNull();
     writeLastCard("pm_1");
     expect(readLastCard()).toBe("pm_1");

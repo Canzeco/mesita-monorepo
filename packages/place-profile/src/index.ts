@@ -62,7 +62,7 @@ export type { PlaceBalance, PlaceCashback, PlaceDetail, PlaceMoney, PlaceScore, 
 export { VOUCHER_KEYS } from "./place-detail";
 export { placeMoneyFrom } from "./place-to-detail";
 export { TestBand, TEST_BAND_TEXT } from "./components/TestBand";
-export { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type MoneyState, type MoneyVoucherKey, type VoucherReason } from "./money-state";
+export { moneyState, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type MoneyState, type MoneyVoucherKey, type VoucherReason } from "./money-state";
 export { MONEY_CODES, type MoneyCode } from "./money-codes";
 export {
   FREE_PLAN,
@@ -83,7 +83,6 @@ export {
   type StripeState,
   type StripeStageKey,
 } from "./lib/place-states";
-export { MIN_CARD_PART_CENTS, paySplit, type PaySplit } from "./pay-split";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";
 export { SizedImage, SizedImg } from "./components/SizedPhoto";

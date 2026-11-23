@@ -32,14 +32,9 @@ export type Draft = {
   tip: Tip;
   other: string;
   useCredit: boolean;
+  /** MESITA-4708: cash (outside the app) or none; the card, Apple Pay and
+   *  Google Pay ways (and the draft's card ids) left with the bill's card. */
   method: PayWith | null;
-  /** MESITA-4386: the card part goes by Apple Pay / Google Pay. */
-  express?: boolean;
-  /** MESITA-4397: which of the two (they are separate rows on Method). */
-  wallet?: "apple_pay" | "google_pay" | null;
-  cardId: string | null;
-  /** The card just refused: never preselected again (MESITA-4117). */
-  refusedCardId?: string | null;
   /** The bill this draft became (MESITA-3997): while it is set, every way
    *  back in (the place's Pay, a reload, the X and back) opens that bill's
    *  QR, never the Bill step again. Cancel bill and Start again clear it. */
@@ -50,8 +45,8 @@ export type Draft = {
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-lead.${placeId}`;
 /** The last tip chip sent at this place (MESITA-3713); it survives the draft. */
 const LAST_TIP_KEY = (placeId: string) => `mesita.pay.last-tip.${placeId}`;
-/** The last card charged, across bills (MESITA-4124). A draft's own card wins
- *  while that bill is open; a new bill starts on this one. */
+/** The last card picked (MESITA-4124): the default card a voucher checkout
+ *  and Payment methods preselect (a bill has no card since MESITA-4708). */
 const LAST_CARD_KEY = "mesita.pay.last-card";
 /** The place whose ticket is in progress (MESITA-3879). */
 const PENDING_KEY = "mesita.pay.pending-ticket";
@@ -146,14 +141,10 @@ export function readDraft(placeId: string): Draft | null {
     if (!d || typeof d.amount !== "string" || typeof d.savedAt !== "number") return null;
     if (payDraftExpired(d.savedAt, Date.now())) return null;
     // A stored stage is never trusted (MESITA-4117): an unknown one reads as
-    // Bill, and a junk method or card id as none.
+    // Bill, and a junk method as none (a card method, MESITA-4708, too).
     const stage: Stage = STAGES.includes(d.stage) ? d.stage : MERGED_INTO_PAY.includes(d.stage) ? "pay" : "bill";
-    const method = d.method === "card" || d.method === "cash" ? d.method : null;
-    const cardId = typeof d.cardId === "string" ? d.cardId : null;
-    const refusedCardId = typeof d.refusedCardId === "string" ? d.refusedCardId : null;
-    const wallet = d.wallet === "apple_pay" || d.wallet === "google_pay" ? d.wallet : null;
-    // An old draft with no wallet named goes back to Card (MESITA-4397).
-    return { ...d, stage, method, cardId, refusedCardId, express: d.express === true && wallet !== null, wallet };
+    const method = d.method === "cash" ? d.method : null;
+    return { stage, typing: d.typing, amount: d.amount, tip: d.tip, other: d.other, useCredit: d.useCredit, method, sentTabId: d.sentTabId ?? null, savedAt: d.savedAt };
   } catch {
     return null;
   }
@@ -213,25 +204,17 @@ export function clearGuestDraft(placeId: string) {
 }
 
 /** "Start again" reopens what was typed, keypad down, at the given stage
- *  (MESITA-4121, MESITA-4226: Pay when the bill's card failed, Method when
- *  it expired or was rejected, Bill otherwise). When the card failed, Pay marks it
- *  "Declined just now": a guest has one card, so it stays chosen, and
- *  paying outside the app is one tap away. A draft older than 30 minutes is
- *  gone, so the bill opens empty. */
-export function reopenGuestDraft(placeId: string, stage: Stage = "bill", cardFailed = false) {
+ *  (MESITA-4121: Method when the bill was cancelled back to it, Bill
+ *  otherwise). A draft older than 30 minutes is gone, so the bill opens
+ *  empty. */
+export function reopenGuestDraft(placeId: string, stage: Stage = "bill") {
   const d = readDraft(placeId);
   if (!d) return;
-  writeDraft(placeId, {
-    ...d,
-    stage,
-    typing: false,
-    sentTabId: null,
-    refusedCardId: cardFailed ? (d.cardId ?? d.refusedCardId ?? null) : (d.refusedCardId ?? null),
-  });
+  writeDraft(placeId, { ...d, stage, typing: false, sentTabId: null });
 }
 
 // ONE PAYMENT PER TAP (MESITA-4061). A pay call that times out or loses the
-// network may still have opened the bill (and held the card) on the server.
+// network may still have opened the bill on the server.
 // Until that same request id gets an answer the outcome is unknown: the
 // screen keeps the id, so the next tap of Pay resends it and the server
 // answers once, and nothing the guest changes in between may mint a new one.

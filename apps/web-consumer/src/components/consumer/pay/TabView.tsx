@@ -1,28 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, CheckCircle2, ChevronRight, CreditCard, Users } from "lucide-react";
+import { Banknote, CheckCircle2, ChevronRight, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { Spinner } from "@/components/shared/Spinner";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { brandLabel } from "@/lib/api/cards";
-import { useAddCardModal } from "@/lib/added-card";
 import {
   apiCancelTab,
   apiGetTab,
   apiJoinTab,
   apiOpenTab,
   apiPayTab,
-  runBankCheck,
   TAB_REFUSAL,
   tabSplit,
   type GuestTab,
-  type PayWith,
-  type TabCard,
-  type TabCardStep,
   type TabRead,
 } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
@@ -30,7 +24,6 @@ import { toast } from "@/lib/toast";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { cn } from "@/lib/utils";
-import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { GuestTabView } from "./GuestTabView";
@@ -65,11 +58,9 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 // coming back. Two failed reads in a row say "Reconnecting…"; four, while
 // nothing is paid yet, offer "Pay the usual way" (the waiter's code door).
 //
-// Cards (MESITA-3572; the card part is MESITA-3563): when get-tab says the
-// place takes cards, the rest of the bill and the tip can each go on a saved
-// card. The card is charged
-// inside the app; a bank check (3-D Secure) runs in Stripe.js, loaded only
-// then. No saved card: "Add a card" opens Stripe's page and comes back here.
+// MESITA-4708: no card part for a bill. The cards of MESITA-3572 (a saved
+// card for the rest of the bill and the tip, a bank check in Stripe.js) are
+// gone: credits first, the rest and the tip in cash.
 //
 // Friends (MESITA-3695, SplitWithFriends.tsx): a billed whole bill offers
 // "Split with friends"; splitting opens the guest's own share, an ordinary
@@ -140,11 +131,6 @@ export function TabView({
   const [busy, setBusy] = useState(false);
   const [nonce, setNonce] = useState(0);
   const lastChange = useRef({ at: 0, key: "" });
-  // Saved cards: asked once (with_cards) until an answer lists them.
-  const [cards, setCards] = useState<TabCard[] | null>(null);
-  const cardsAsked = useRef(false);
-  const [cardAction, setCardAction] = useState<TabCardStep | null>(null);
-  const [checking, setChecking] = useState(false);
   // The friends' QR (MESITA-3695): shown only on the device that split.
   const [joinToken, setJoinToken] = useState<string | null>(null);
 
@@ -157,7 +143,7 @@ export function TabView({
     lastChange.current = { at: Date.now(), key: "" };
   }
 
-  /** Applies one read of the tab: the tab, the cards, a card part's step. */
+  /** Applies one read of the tab. */
   function take(r: TabRead) {
     // A split table: the guest pays their own share.
     if (r.tab.my_share_tab_id && r.tab.my_share_tab_id !== r.tab.tab_id) {
@@ -165,14 +151,7 @@ export function TabView({
       return;
     }
     setTab(r.tab);
-    if (r.cards) {
-      cardsAsked.current = true;
-      setCards(r.cards);
-    }
-    setCardAction(r.card_action ?? null);
-    if (r.card_error) toast(TAB_REFUSAL[r.card_error.code] ?? r.card_error.error, { tone: "error" });
   }
-  const withCards = () => ({ withCards: !cardsAsked.current });
 
   /** Opens (or reuses) the guest's tab at a place: a fresh QR. */
   function open(placeId: string) {
@@ -216,7 +195,7 @@ export function TabView({
           else setOpenFailed(true);
         });
     } else {
-      void apiGetTab(getSupabase(), start.tabId, withCards())
+      void apiGetTab(getSupabase(), start.tabId)
         .then((r) => {
           if (cancelled) return;
           take(r);
@@ -244,7 +223,7 @@ export function TabView({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const read = () =>
-      apiGetTab(getSupabase(), tabId, withCards())
+      apiGetTab(getSupabase(), tabId)
         .then((r) => {
           if (cancelled) return;
           const key = `${r.tab.status}|${r.tab.updated_at}`;
@@ -308,20 +287,6 @@ export function TabView({
       readNow();
     } finally {
       setBusy(false);
-    }
-  }
-
-  /** A card part asked for a bank check: Stripe.js runs it on the place's
-   *  account; the poll then reads whether it went through. */
-  async function bankCheck(step: TabCardStep) {
-    setChecking(true);
-    try {
-      if ((await runBankCheck(step)) === "unavailable") {
-        toast("Couldn't open the bank check. Try again.", { tone: "error" });
-      }
-    } finally {
-      setChecking(false);
-      readNow();
     }
   }
 
@@ -459,16 +424,9 @@ export function TabView({
         <SplitScreen
           key={tab.bill_version}
           tab={tab}
-          cards={cards}
           getSupabase={getSupabase}
           reconnecting={reconnecting}
           onTapped={readNow}
-          onCardSaved={() => {
-            // The next read lists the cards again, the new one included.
-            cardsAsked.current = false;
-            readNow();
-          }}
-          onCardStep={(step) => void bankCheck(step)}
           onCancel={() => void cancel("cancel")}
           busyCancel={busy}
           registerBack={registerBack}
@@ -491,21 +449,10 @@ export function TabView({
   }
 
   if (tab.status === "paying") {
-    const cardGoing = tab.parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open"));
     return (
       <Shell testMode={tab.test_mode}>
         {shareCard}
-        {cardGoing || checking ? (
-          <CardScreen
-            tab={tab}
-            reconnecting={reconnecting}
-            checking={checking}
-            action={cardAction?.status === "requires_action" ? cardAction : null}
-            onFinishCheck={(step) => void bankCheck(step)}
-          />
-        ) : (
-          <CashScreen tab={tab} reconnecting={reconnecting} busy={busy} onChange={() => void cancel("change")} />
-        )}
+        <CashScreen tab={tab} reconnecting={reconnecting} busy={busy} onChange={() => void cancel("change")} />
       </Shell>
     );
   }
@@ -683,12 +630,9 @@ const SPLIT_QUESTION: Record<SplitStep, string> = { tip: "Add a tip?", pay: "How
 
 function SplitScreen({
   tab,
-  cards,
   getSupabase,
   reconnecting,
   onTapped,
-  onCardSaved,
-  onCardStep,
   onCancel,
   busyCancel,
   registerBack,
@@ -696,14 +640,9 @@ function SplitScreen({
   usualWay,
 }: {
   tab: GuestTab;
-  /** The guest's saved cards; null until the first read lists them. */
-  cards: TabCard[] | null;
   getSupabase: () => Parameters<typeof apiPayTab>[0];
   reconnecting: boolean;
   onTapped: () => void;
-  /** A card was saved in the app's card sheet (MESITA-4065). */
-  onCardSaved: () => void;
-  onCardStep: (step: TabCardStep) => void;
   onCancel: () => void;
   busyCancel: boolean;
   registerBack?: (back: (() => boolean) | null) => void;
@@ -714,23 +653,12 @@ function SplitScreen({
 }) {
   const bill = tab.bill_cents ?? 0;
   const suggested = tab.tip_suggested_cents;
-  const cardOn = tab.rates.card_available;
   const [step, setStep] = useState<SplitStep>("tip");
   const [tipChoice, setTipChoice] = useState<TipChoice>(suggested > 0 ? "waiter" : null);
   const [lastTip, setLastTip] = useState<TipChoice>(suggested > 0 ? "waiter" : null);
   const [tipText, setTipText] = useState("");
   const [useCredit, setUseCredit] = useState(tab.spendable_cents > 0);
-  const [billWith, setBillWith] = useState<PayWith>("cash");
-  const [tipWithPick, setTipWithPick] = useState<PayWith>("cash");
-  const [pmPick, setPmPick] = useState<string | null>(null);
-  const [cardSheet, setCardSheet] = useState(false);
   const [busy, setBusy] = useState(false);
-  // Add a card: a modal since MESITA-4398; once saved it is this
-  // bill's card.
-  const openAddCard = useAddCardModal((id) => {
-    setPmPick(id);
-    onCardSaved();
-  });
   const attempt = useRef<{ key: string; id: string } | null>(null);
   const m = (c: number) => money(c, tab.currency);
 
@@ -744,26 +672,16 @@ function SplitScreen({
     : 0;
   const credit = useCredit ? Math.min(Math.max(0, tab.spendable_cents), bill) : 0;
   const rest = bill - credit;
-  const effBillWith: PayWith = cardOn && rest > 0 ? billWith : "cash";
-  // A card tip needs part of the bill by card or credit (card_tip_alone).
-  const tipCardOk = cardOn && (effBillWith === "card" || credit > 0);
-  const tipWith: PayWith = tipCardOk ? tipWithPick : "cash";
   const split = tabSplit({
     billCents: bill,
     tipCents: tip,
     spendableCents: tab.spendable_cents,
     useCredit,
-    billWith: effBillWith,
-    tipWith,
   });
-  const usesCard = split.card_due_cents > 0;
-  const card = usesCard && cards && cards.length > 0 ? cards.find((c) => c.id === pmPick) ?? cards[0] : null;
-  const belowMinimum = usesCard && split.card_due_cents < tab.rates.card_minimum_cents;
   const tipOk = tipChoice !== null && (tipChoice !== "other" || typedTip !== null);
-  const payOk = !usesCard || (card !== null && !belowMinimum);
-  const canPay = bill > 0 && tipOk && !busy && payOk;
+  const canPay = bill > 0 && tipOk && !busy;
   const stepIndex = SPLIT_STEPS.indexOf(step);
-  const nextOk = step === "tip" ? tipOk : step === "pay" ? payOk : canPay;
+  const nextOk = step === "tip" ? tipOk : step === "pay" ? true : canPay;
 
   // The header's back arrow steps back through the steps; off the screen
   // from Tip. While a payment is going out it does nothing.
@@ -782,24 +700,20 @@ function SplitScreen({
   async function pay() {
     if (!canPay) return;
     // One request id per split: a retry after a lost answer replays the
-    // same tap (never a second charge), a changed split is a new one.
-    const key = [tab.bill_version, split.credit_cents, split.cash_bill_cents, split.cash_tip_cents, split.card_bill_cents, split.card_tip_cents, card?.id ?? ""].join("|");
+    // same tap (never a second payment), a changed split is a new one.
+    const key = [tab.bill_version, split.credit_cents, split.cash_bill_cents, split.cash_tip_cents].join("|");
     if (!attempt.current || attempt.current.key !== key) attempt.current = { key, id: crypto.randomUUID() };
     setBusy(true);
     try {
-      const r = await apiPayTab(getSupabase(), {
+      await apiPayTab(getSupabase(), {
         tab_id: tab.tab_id,
         bill_version: tab.bill_version,
         request_id: attempt.current.id,
         credit_cents: split.credit_cents,
         cash_bill_cents: split.cash_bill_cents,
         cash_tip_cents: split.cash_tip_cents,
-        card_bill_cents: split.card_bill_cents,
-        card_tip_cents: split.card_tip_cents,
-        card_pm_id: card?.id ?? null,
       });
       attempt.current = null;
-      if (r.card?.status === "requires_action") onCardStep(r.card);
       onTapped();
     } catch (e) {
       if (!(e instanceof EFError) || !e.code) {
@@ -815,22 +729,7 @@ function SplitScreen({
     }
   }
 
-  /** No saved card: the app's card sheet saves one (MESITA-4065: no Stripe
-   *  page) and it becomes this bill's card. */
-  function addCard() {
-    setCardSheet(false);
-    openAddCard();
-  }
-
-  const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
-  // MESITA-4058: every way says its rate as credits, 0% included.
-  const status = step === "pay" && belowMinimum
-    ? `A card needs at least ${m(tab.rates.card_minimum_cents)}. Pay this part another way.`
-    : step === "pay" && tip > 0 && cardOn && !tipCardOk
-    ? "A tip by card needs part of the bill by card or credit."
-    : reconnecting
-    ? "Reconnecting…"
-    : null;
+  const status = reconnecting ? "Reconnecting…" : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-tab-split={step}>
@@ -921,65 +820,15 @@ function SplitScreen({
                 </span>
               </button>
             ) : null}
-            {rest > 0 && cardOn ? (
-              <div>
-                <p className="flex h-5 items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">{credit > 0 ? "The rest" : "The bill"}</span>
-                  <span className="font-semibold tabular-nums">{m(rest)}</span>
-                </p>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub="To the waiter" compact />
-                  <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={cardSub} compact />
-                </div>
-              </div>
-            ) : (
+            <p className="border-border flex h-12 items-center justify-between gap-3 rounded-2xl border px-4 text-base">
+              <span>{rest > 0 ? (credit > 0 ? "The rest in cash" : "In cash") : "Your credit pays all of it"}</span>
+              <span className="font-semibold tabular-nums">{rest > 0 ? m(rest) : m(credit)}</span>
+            </p>
+            {tip > 0 ? (
               <p className="border-border flex h-12 items-center justify-between gap-3 rounded-2xl border px-4 text-base">
-                <span>{rest > 0 ? (credit > 0 ? "The rest in cash" : "In cash") : "Your credit pays all of it"}</span>
-                <span className="font-semibold tabular-nums">{rest > 0 ? m(rest) : m(credit)}</span>
+                <span>The tip in cash · never credits</span>
+                <span className="font-semibold tabular-nums">{m(tip)}</span>
               </p>
-            )}
-            {tip > 0 && cardOn ? (
-              <div>
-                <p className="flex h-5 items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">The tip · never credits</span>
-                  <span className="font-semibold tabular-nums">{m(tip)}</span>
-                </p>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  <Chip on={tipWith === "cash"} onClick={() => setTipWithPick("cash")} title="Cash" sub="To the waiter" compact />
-                  <Chip on={tipWith === "card"} onClick={() => setTipWithPick("card")} title="Card" sub={cardSub} disabled={!tipCardOk} compact />
-                </div>
-              </div>
-            ) : null}
-            {usesCard ? (
-              cards === null ? (
-                <Skeleton className="h-12 w-full rounded-2xl" />
-              ) : cards.length === 0 ? (
-                <button
-                  type="button"
-                  className="border-border flex h-12 w-full items-center gap-3 rounded-2xl border px-4 text-left disabled:opacity-60"
-                  disabled={busy}
-                  onClick={() => addCard()}
-                >
-                  <CreditCard className="h-5 w-5" aria-hidden />
-                  <span className="text-base font-semibold">{"Add a card"}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="border-border flex h-12 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left"
-                  onClick={() => setCardSheet(true)}
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    {card ? <CardBrandChip brand={card.brand} last4={card.last4} /> : <CreditCard className="h-5 w-5 shrink-0" aria-hidden />}
-                    <span className="min-w-0 truncate text-base">
-                      {card ? `${brandLabel(card.brand)} •••• ${card.last4}` : "Pick a card"}
-                    </span>
-                  </span>
-                  <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-sm font-semibold">
-                    Change <ChevronRight className="h-4 w-4" aria-hidden />
-                  </span>
-                </button>
-              )
             ) : null}
           </div>
         ) : null}
@@ -988,20 +837,13 @@ function SplitScreen({
           <>
             <div className="border-border flex shrink-0 flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" data-pay-split>
               {split.credit_cents > 0 ? <SplitLine label="Bill · credit" value={m(split.credit_cents)} /> : null}
-              {split.card_bill_cents > 0 ? <SplitLine label="Bill · card" value={m(split.card_bill_cents)} icon={<CreditCard />} /> : null}
               {split.cash_bill_cents > 0 ? <SplitLine label="Bill · cash" value={m(split.cash_bill_cents)} icon={<Banknote />} /> : null}
-              {split.card_tip_cents > 0 ? <SplitLine label="Tip · card" value={m(split.card_tip_cents)} icon={<CreditCard />} /> : null}
               {split.cash_tip_cents > 0 ? <SplitLine label="Tip · cash" value={m(split.cash_tip_cents)} icon={<Banknote />} /> : null}
               <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
                 <span>Total</span>
                 <span>{m(split.total_cents)}</span>
               </div>
             </div>
-            {card && usesCard ? (
-              <p className="text-muted-foreground mt-1 shrink-0 truncate text-sm tabular-nums">
-                {m(split.card_due_cents)} on your {brandLabel(card.brand)} •••• {card.last4}
-              </p>
-            ) : null}
             {split.cash_due_cents > 0 ? (
               <p className="text-muted-foreground mt-1 shrink-0 truncate text-sm tabular-nums">You give the waiter {m(split.cash_due_cents)} in cash</p>
             ) : null}
@@ -1029,43 +871,6 @@ function SplitScreen({
           </Button>
         )}
       </div>
-
-      {cardSheet ? (
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
-          <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
-          <div className="border-border scrollbar-thin-dark min-h-0 overflow-y-auto rounded-2xl border" role="radiogroup" aria-label="Card">
-            {(cards ?? []).map((c, i) => (
-              <button
-                key={c.id}
-                type="button"
-                role="radio"
-                aria-checked={card?.id === c.id}
-                onClick={() => {
-                  setPmPick(c.id);
-                  setCardSheet(false);
-                }}
-                className={cn("flex h-12 w-full items-center justify-between gap-3 px-4 text-left", i > 0 && "border-border border-t")}
-              >
-                <span className="flex min-w-0 items-center gap-3 text-base">
-                  <CardBrandChip brand={c.brand} last4={c.last4} />
-                  <span className="truncate">
-                    <span className="font-semibold">{brandLabel(c.brand)}</span> •••• {c.last4}
-                  </span>
-                </span>
-                <span className={cn("h-5 w-5 shrink-0 rounded-full border-2", card?.id === c.id ? "border-foreground bg-foreground" : "border-border")} aria-hidden />
-              </button>
-            ))}
-            <button
-              type="button"
-              className="border-border text-muted-foreground hover:text-foreground flex h-12 w-full items-center border-t px-4 text-sm font-semibold"
-              disabled={busy}
-              onClick={() => addCard()}
-            >
-              {"Add another card"}
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -1082,47 +887,7 @@ function SplitLine({ label, value, icon }: { label: string; value: string; icon?
   );
 }
 
-// ── 3. The card ──────────────────────────────────────────────────────────────
-
-function CardScreen({
-  tab,
-  reconnecting,
-  checking,
-  action,
-  onFinishCheck,
-}: {
-  tab: GuestTab;
-  reconnecting: boolean;
-  checking: boolean;
-  action: TabCardStep | null;
-  onFinishCheck: (step: TabCardStep) => void;
-}) {
-  const m = (c: number) => money(c, tab.currency);
-  return (
-    <div className="flex min-h-0 flex-1 flex-col" data-pay-tab-card>
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
-        <p className="w-full truncate text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
-        <p className="mt-3 text-4xl font-semibold tabular-nums">{m(tab.card_bill_cents + tab.card_tip_cents)}</p>
-        <p className="text-muted-foreground mt-1 text-base">on your card</p>
-        <p className="mt-5 flex items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
-          <Dot />
-          {checking ? "Checking with your bank" : action ? "Your bank wants to check this payment" : "Your card is going through"}
-        </p>
-        <ReconnectingLine on={reconnecting} />
-        {tab.cash_due_cents > 0 ? (
-          <p className="text-muted-foreground mt-4 text-sm tabular-nums">Then you give the waiter {m(tab.cash_due_cents)} in cash</p>
-        ) : null}
-      </div>
-      {action && !checking ? (
-        <Button size="lg" className="mt-4 w-full shrink-0 text-base font-semibold" onClick={() => onFinishCheck(action)}>
-          Finish the bank check
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-// ── 4. The cash ──────────────────────────────────────────────────────────────
+// ── 3. The cash ──────────────────────────────────────────────────────────────
 
 function CashScreen({ tab, reconnecting, busy, onChange }: { tab: GuestTab; reconnecting: boolean; busy: boolean; onChange: () => void }) {
   const m = (c: number) => money(c, tab.currency);
@@ -1143,11 +908,9 @@ function CashScreen({ tab, reconnecting, busy, onChange }: { tab: GuestTab; reco
       </div>
       <div className="border-border mt-3 flex shrink-0 flex-col rounded-2xl border px-4 py-2 text-sm tabular-nums">
         {tab.credit_cents > 0 ? <SplitLine label="Bill · credit" value={m(tab.credit_cents)} /> : null}
-        {tab.card_bill_cents > 0 ? <SplitLine label="Bill · card (paid)" value={m(tab.card_bill_cents)} /> : null}
         {tab.cash_bill_cents > 0 ? <SplitLine label="Bill · cash" value={m(tab.cash_bill_cents)} /> : null}
-        {tab.card_tip_cents > 0 ? <SplitLine label="Tip · card (paid)" value={m(tab.card_tip_cents)} /> : null}
         {tab.cash_tip_cents > 0 ? <SplitLine label="Tip · cash" value={m(tab.cash_tip_cents)} /> : null}
-        {tab.credit_cents > 0 && tab.card_bill_cents + tab.card_tip_cents === 0 ? (
+        {tab.credit_cents > 0 ? (
           <p className="text-muted-foreground py-1">Your credit is taken when the waiter taps Received.</p>
         ) : null}
       </div>
@@ -1158,17 +921,15 @@ function CashScreen({ tab, reconnecting, busy, onChange }: { tab: GuestTab; reco
   );
 }
 
-// ── 5. Paid ──────────────────────────────────────────────────────────────────
+// ── 4. Paid ──────────────────────────────────────────────────────────────────
 
 function PaidScreen({ tab, onDone }: { tab: GuestTab; onDone: () => void }) {
   const m = (c: number) => money(c, tab.currency);
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
-  const card = tab.card_bill_cents + tab.card_tip_cents;
-  const tip = tab.cash_tip_cents + tab.card_tip_cents;
-  const total = tab.credit_cents + cash + card;
+  const tip = tab.cash_tip_cents;
+  const total = tab.credit_cents + cash;
   const how = [
     tab.credit_cents > 0 ? `${m(tab.credit_cents)} credit` : null,
-    card > 0 ? `${m(card)} card` : null,
     cash > 0 ? `${m(cash)} cash` : null,
   ].filter(Boolean).join(" · ");
   return (

@@ -28,7 +28,7 @@ Deno.test("billing needs staff and the version the screen read", () => {
 Deno.test("the split: whole centavos, never a credit tip", () => {
   const base = { tab_id: TAB, request_id: REQ, bill_version: 1, credit_cents: 1000, cash_bill_cents: 2000, cash_tip_cents: 300 };
   const ok = readSplitBody(base);
-  assertEquals(ok.ok ? [ok.input.creditCents, ok.input.cashBillCents, ok.input.cashTipCents, ok.input.cardBillCents] : null, [1000, 2000, 300, 0]);
+  assertEquals(ok.ok ? [ok.input.creditCents, ok.input.cashBillCents, ok.input.cashTipCents] : null, [1000, 2000, 300]);
   const creditTip = readSplitBody({ ...base, credit_tip_cents: 100 });
   assertEquals(creditTip.ok ? null : creditTip.code, "tip_by_credit");
   const negative = readSplitBody({ ...base, cash_bill_cents: -1 });
@@ -157,8 +157,16 @@ Deno.test("the guest's tap: a typed bill in whole centavos, never a credit tip",
   assertEquals(half.ok ? null : half.code, "amount_required");
   const creditTip = readGuestPayBody({ ...base, bill_cents: 100, credit_cents: 100, credit_tip_cents: 10 });
   assertEquals(creditTip.ok ? null : creditTip.code, "tip_by_credit");
-  const noCard = readGuestPayBody({ ...base, bill_cents: 100, card_bill_cents: 100 });
-  assertEquals(noCard.ok ? null : noCard.code, "card_required");
+});
+
+Deno.test("no card for a bill (MESITA-4708): a card part, a saved card or Apple Pay / Google Pay is cards_off", () => {
+  const base = { place_id: "00000000-0000-4000-8000-000000003707", request_id: "00000000-0000-4000-8000-0000000e3707", bill_cents: 100 };
+  for (const extra of [{ card_bill_cents: 100 }, { credit_cents: 100, card_tip_cents: 10 }, { cash_bill_cents: 100, express: true }, { cash_bill_cents: 100, card_pm_id: "pm_abcdefgh12" }]) {
+    const r = readGuestPayBody({ ...base, ...extra });
+    assertEquals(r.ok ? null : [r.status, r.code], [409, "cards_off"]);
+  }
+  const split = readSplitBody({ tab_id: TAB, request_id: REQ, bill_version: 1, card_bill_cents: 100 });
+  assertEquals(split.ok ? null : split.code, "cards_off");
 });
 
 // ━━━ MESITA-3772: guest tabs ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -209,8 +217,7 @@ Deno.test("a ticket already paid reads back as its refusal: another guest's, or 
 });
 
 Deno.test("guest view: each part says what it charged, and the timeline is there (MESITA-3780)", () => {
-  const extra = { placeName: null, spendableCents: 0, cashOk: true, nowMs: NOW,
-    card: { card_available: true, card_unavailable_code: null, card_minimum_cents: 0 } };
+  const extra = { placeName: null, spendableCents: 0, cashOk: true, nowMs: NOW };
   const v = guestTabView(guestTab({ created_at: "2026-11-09T09:30:00Z", billed_at: "2026-11-09T09:40:00Z" }),
     [cardPart({ tip_cents: 1500 }), cashPart({ id: "cash", part: "outside" })], extra);
   const [card, cash] = v.parts;

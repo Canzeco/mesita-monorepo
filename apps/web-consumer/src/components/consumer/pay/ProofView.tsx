@@ -44,7 +44,7 @@ export function ProofView({
   const getSupabase = useLazyBrowserSupabase();
   const refunded = proof.status === "refunded";
   const partly = proof.status === "partly_refunded";
-  // The card part's Checkout is still open (MESITA-3305): no proof yet.
+  // Still open (a bill paid outside, waiting for the waiter): no proof yet.
   const open = proof.status === "open" || proof.status === "opening";
   // Closed with no money: Stripe expired it, or refused it.
   const closed = proof.status === "expired" || proof.status === "failed";
@@ -194,6 +194,7 @@ export function ProofView({
             {m(proof.amount_cents)} + {m(tip)} tip
           </p>
         ) : null}
+        {/* An older receipt may carry a card part (none since MESITA-4708). */}
         {proof.card_cents && proof.credit_cents ? (
           <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
             {m(proof.credit_cents)} from credit · {m(proof.card_cents)} by card
@@ -230,11 +231,6 @@ export function ProofView({
       </div>
       {open ? (
         <>
-          {proof.url ? (
-            <Button size="lg" className="mt-3 w-full shrink-0 text-base font-semibold" onClick={() => window.location.assign(proof.url as string)}>
-              Resume card payment
-            </Button>
-          ) : null}
           {slow ? (
             <button
               type="button"

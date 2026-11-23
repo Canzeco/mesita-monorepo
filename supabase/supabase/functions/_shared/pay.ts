@@ -8,7 +8,7 @@
 // The money move is the RPC: it locks the (guest, place) pair, replays a
 // request_id, refuses more than spendable and writes the payment and its
 // spend entry together. This module validates what reaches it and shapes
-// what leaves. No Stripe here: the card part is W2b.
+// what leaves. No Stripe here: a bill has no card part (MESITA-4708).
 //
 // The retry contract the Pay page keeps: the same request_id on any answer
 // without a money code (a network failure, a 5xx: the first call may have
@@ -62,32 +62,6 @@ export function readPayBody(b: Record<string, unknown>): { ok: true; input: PayI
     ticket = t === "" ? null : t;
   }
   return { ok: true, input: { placeId: b.place_id, amountCents: a, requestId: b.request_id, ticket } };
-}
-
-/** The card part of the body (MESITA-3305): `card_cents` (0 or absent is a
- *  credit-only payment), `tip_cents` by card only, and `return_url`, a
- *  Mesita address, needed whenever there is a card part. The card part
- *  never exceeds the bill. The caller checks the address. */
-export function readCardPart(
-  b: Record<string, unknown>,
-  amountCents: number,
-): { ok: true; cardCents: number; tipCents: number; returnUrl: string | null } | PayRefusal {
-  const c = b.card_cents;
-  const cardCents = c === undefined || c === null ? 0 : c;
-  if (typeof cardCents !== "number" || !Number.isInteger(cardCents) || cardCents < 0) {
-    return refuse(400, "card_cents must be a whole number of centavos");
-  }
-  if (cardCents > amountCents) return refuse(400, "card_cents cannot exceed amount_cents");
-  const t = b.tip_cents;
-  const tipCents = t === undefined || t === null ? 0 : t;
-  if (typeof tipCents !== "number" || !Number.isInteger(tipCents) || tipCents < 0) {
-    return refuse(400, "tip_cents must be a whole number of centavos");
-  }
-  if (tipCents > MAX_PAYMENT_INPUT_CENTS) return refuse(400, "That is more than one tip can be", "above_cap", { cap_cents: MAX_PAYMENT_INPUT_CENTS });
-  if (cardCents === 0 && tipCents > 0) return refuse(400, "A tip goes with a card part");
-  const returnUrl = typeof b.return_url === "string" ? b.return_url : null;
-  if (cardCents > 0 && !returnUrl) return refuse(400, "return_url is needed with a card part");
-  return { ok: true, cardCents, tipCents, returnUrl };
 }
 
 /** "$170.00MX" or "$170.50MX": always two decimals (MESITA-3767), MX after

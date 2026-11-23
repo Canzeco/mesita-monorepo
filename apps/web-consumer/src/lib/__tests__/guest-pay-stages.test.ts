@@ -1,15 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { SavedCard } from "@/lib/api/cards";
 import { pendingTicket, readDraft, reopenGuestDraft, writeDraft } from "@/lib/guest-pay-draft";
 import { closeAction, guardStage, initialStage, payBackStage, STEP } from "@/lib/guest-pay-stages";
-import { pickCard } from "@/lib/pay-cards";
 
-// Money (MVP test rule), MESITA-4226: no Card step (one saved card per
-// guest). A reload never turns a card choice into a cash give, never spends
-// credits the guest switched off, and a draft saved at the retired Card step
-// reopens at Pay with its card.
-
-const card = (id: string): SavedCard => ({ id, brand: "visa", last4: "4242", exp_month: 8, exp_year: 2029, in_use: false });
+// Money (MVP test rule): a reload never shows Pay with nothing to pay or a
+// way the guest did not choose, never spends credits the guest switched off,
+// and a draft saved at the retired Card step (MESITA-4226) reopens at Pay.
+// MESITA-4708: a bill has no card way; a stored card method reads as none.
 
 function memoryStorage(): Storage {
   const m = new Map<string, string>();
@@ -32,16 +28,14 @@ describe("the steps", () => {
 });
 
 describe("guardStage", () => {
-  const base = { method: "card" as const, way: "card" as const, dueCents: 9700 };
+  const base = { method: "cash" as const, way: "cash" as const, dueCents: 9700 };
 
   it("keeps Pay on the guest's way with something to pay", () => {
     expect(guardStage({ ...base, stage: "pay" })).toBe("pay");
-    expect(guardStage({ ...base, stage: "pay", method: "cash", way: "cash" })).toBe("pay");
+    expect(guardStage({ ...base, stage: "pay", method: null })).toBe("pay");
   });
 
-  it("never turns a card choice into the cash screen", () => {
-    // A reload where the card minimum now rules the card out: way is cash.
-    expect(guardStage({ ...base, stage: "pay", way: "cash" })).toBe("method");
+  it("never stops at Pay when the place takes no way for the rest", () => {
     expect(guardStage({ ...base, stage: "pay", way: null })).toBe("method");
   });
 
@@ -73,15 +67,6 @@ describe("initialStage", () => {
   });
 });
 
-describe("pickCard", () => {
-  it("the remembered card if still saved, else the first, else none", () => {
-    expect(pickCard([card("a")], "a")).toBe("a");
-    expect(pickCard([card("b")], "a")).toBe("b");
-    expect(pickCard([], "a")).toBeNull();
-    expect(pickCard(null, "a")).toBeNull();
-  });
-});
-
 describe("readDraft never trusts a stored stage", () => {
   beforeEach(() => {
     (globalThis as { window?: unknown }).window = { localStorage: memoryStorage() };
@@ -90,30 +75,18 @@ describe("readDraft never trusts a stored stage", () => {
     delete (globalThis as { window?: unknown }).window;
   });
 
-  it("reads an unknown stage as Bill and junk method or card ids as none", () => {
-    writeDraft("p", {
-      stage: "review" as never,
-      typing: false,
-      amount: "100",
-      tip: 10,
-      other: "",
-      useCredit: true,
-      method: "bitcoin" as never,
-      cardId: 42 as never,
-      refusedCardId: "pm_x",
-    });
+  it("reads an unknown stage as Bill and a junk or card method as none", () => {
+    writeDraft("p", { stage: "review" as never, typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "bitcoin" as never });
     const d = readDraft("p");
     expect(d?.stage).toBe("bill");
     expect(d?.method).toBeNull();
-    expect(d?.cardId).toBeNull();
-    expect(d?.refusedCardId).toBe("pm_x");
+    writeDraft("p", { stage: "pay", typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "card" as never });
+    expect(readDraft("p")?.method).toBeNull();
   });
 
-  it("reads a draft saved at the retired Card step as Pay, keeping its card", () => {
-    writeDraft("p", { stage: "card" as never, typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "card", cardId: "pm_a" });
-    const d = readDraft("p");
-    expect(d?.stage).toBe("pay");
-    expect(d?.cardId).toBe("pm_a");
+  it("reads a draft saved at the retired Card step as Pay", () => {
+    writeDraft("p", { stage: "card" as never, typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "cash" });
+    expect(readDraft("p")?.stage).toBe("pay");
   });
 });
 
@@ -124,25 +97,18 @@ describe("reopenGuestDraft (MESITA-4121)", () => {
   afterEach(() => {
     delete (globalThis as { window?: unknown }).window;
   });
-  const sent = { stage: "bill" as const, typing: false, amount: "100", tip: 10 as const, other: "", useCredit: true, method: "card" as const, cardId: "pm_a", sentTabId: "t1" };
+  const sent = { stage: "bill" as const, typing: false, amount: "100", tip: 10 as const, other: "", useCredit: true, method: "cash" as const, sentTabId: "t1" };
 
-  it("after a failed card: Pay, the same card kept and marked refused, the sent bill cleared", () => {
-    writeDraft("p", sent);
-    reopenGuestDraft("p", "pay", true);
-    const d = readDraft("p");
-    expect(d?.stage).toBe("pay");
-    expect(d?.cardId).toBe("pm_a");
-    expect(d?.refusedCardId).toBe("pm_a");
-    expect(d?.sentTabId ?? null).toBeNull();
-  });
-  it("after an expired bill: Method, nothing marked refused", () => {
+  it("back to Method: what was typed stays, keypad down, the sent bill cleared", () => {
     writeDraft("p", sent);
     reopenGuestDraft("p", "method");
-    expect(readDraft("p")?.stage).toBe("method");
-    expect(readDraft("p")?.refusedCardId ?? null).toBeNull();
+    const d = readDraft("p");
+    expect(d?.stage).toBe("method");
+    expect([d?.amount, d?.typing]).toEqual(["100", false]);
+    expect(d?.sentTabId ?? null).toBeNull();
   });
   it("no draft (older than 30 minutes): nothing to reopen, the bill opens empty", () => {
-    reopenGuestDraft("p", "pay", true);
+    reopenGuestDraft("p", "pay");
     expect(readDraft("p")).toBeNull();
   });
 });
@@ -156,7 +122,7 @@ describe("no zombie tickets (MESITA-4524)", () => {
   });
 
   it("a typed bill lives in memory only: never in localStorage, never a pending ticket", () => {
-    writeDraft("p", { stage: "pay", typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "card", cardId: "pm_a" });
+    writeDraft("p", { stage: "pay", typing: false, amount: "100", tip: 10, other: "", useCredit: true, method: "cash" });
     expect(readDraft("p")?.amount).toBe("100");
     const ls = (globalThis as unknown as { window: { localStorage: Storage } }).window.localStorage;
     expect(ls.length).toBe(0);

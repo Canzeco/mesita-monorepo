@@ -28,10 +28,8 @@ export type AnalyticsEvent =
   | "voucher_paid"
   // MESITA-4209 — the Home offer box: which voucher was showing, which place.
   | "offer_chip_tap"
-  // MESITA-4384 — express pay: which wallets the phone offered (the Express
-  // Checkout Element's ready), and an express payment that failed.
-  | "express_ready"
-  | "express_failed"
+  // MESITA-4708: express_ready / express_failed (MESITA-4384) left with
+  // Apple Pay / Google Pay on a bill, their only caller.
   // MESITA-4394 — reserve flow. `blocked` on the You view splits guests
   // who still have reservations from guests who do not.
   | "reserve_you_view"

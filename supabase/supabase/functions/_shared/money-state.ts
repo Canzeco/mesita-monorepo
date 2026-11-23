@@ -14,23 +14,16 @@
 //
 // `mesita_pay` is the green mark (the key keeps its old name: renaming a key
 // breaks readers; the products are Mesita Payments and Mesita Prepayments,
-// MESITA-3597): on when a guest can pay the bill by card here now (Mesita
-// Payments, W2b, CARD_BILL_PAY_LIVE) or buy a voucher (Mesita Prepayments):
-//   mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0
+// MESITA-3597): on when a guest can buy a voucher here now (Mesita
+// Prepayments):
+//   mesita_pay = sell.length > 0
+// MESITA-4708: card payment of the bill is gone (off since MESITA-4698, Pato
+// 2026-11-22: "only vouchers are sold in advance with Mesita"), and with it
+// CARD_BILL_PAY_LIVE: a bill is paid with credit and the rest outside (cash
+// or the place's own terminal). Card, Apple Pay and Google Pay buy vouchers.
 // Three blind spots on purpose, because the list rows cannot see them: the
 // admin pause, the guest's own limits and the fee hold (MESITA-3461) do not turn the
 // mark off.
-// CARD_BILL_PAY_LIVE is code, not config, on purpose: one edit turns card bill
-// pay off the mark and brings back the "arrives soon" notes on Business ›
-// Payments, should W2b ever be pulled.
-
-/** Card payment of the bill (W2b, MESITA-3305). OFF since MESITA-4698 (Pato,
- *  2026-11-22: "exclude for the moment payments in the card ... only vouchers
- *  are sold in advance with Mesita"): a bill is paid with credit and the rest
- *  outside (cash or the place's own terminal). Card, Apple Pay and Google Pay
- *  still buy vouchers. Every card-for-a-bill door asks this through
- *  cardRefusal (pay-card.ts) and cardsAccepted (payments.ts). */
-export const CARD_BILL_PAY_LIVE = false;
 
 export const MONEY_VOUCHER_KEYS = [
   // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
@@ -183,7 +176,7 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   }
   const credit = (balance?.spendable_cents ?? 0) > 0;
   const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
-  const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
+  const mesita_pay = sell.length > 0;
   return {
     sell,
     unavailable,

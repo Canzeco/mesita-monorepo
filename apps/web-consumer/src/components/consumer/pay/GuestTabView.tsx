@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banknote, CircleCheck, HandCoins, Loader2, PenLine, Smartphone, Wallet, XCircle } from "lucide-react";
+import { Banknote, CircleCheck, HandCoins, Loader2, PenLine, Wallet, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { Button } from "@/components/ui/button";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
+import { apiCancelTab, apiGetTab, type GuestTab, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
@@ -18,18 +18,19 @@ import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, StepBody, S
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
 
 // THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/bill/<id>, after App Pay, "I gave the cash" or credits alone:
+// /pay/bill/<id>, after "I gave the cash" or credits alone (MESITA-4708: no
+// card part, so no hold, bank check or card decline here):
 //
 //   6 Pay the waiter  three numbered steps (MESITA-4654): 1 Waiter scans
 //                 this (the QR, the total, the part not in cash), 2 Hand over
 //                 cash (the green box, only with cash), 3 Waiter confirms (the
 //                 time left). Nothing is editable; Cancel bill ends the
 //                 ticket. The screen stays on.
-//   Confirming    a Loader and "Confirming…" while money moves (the bank's
-//                 check, the charge at the signature).
+//   Confirming    a Loader and "Confirming…" while the waiter's Confirm
+//                 runs.
 //   7 Receipt     the step panel, a green Paid with the total, the lines
 //                 with their icons, "Confirmed by staff" ✓; Done.
-//   Not paid      a red XCircle, one line why, "Nothing was charged" (never on
+//   Not paid      a red XCircle, one line why, "Nothing was paid" (never on
 //                 cash), New ticket (MESITA-4524: the old ticket is done). Was Start
 //                 again (the bill with everything typed).
 //
@@ -60,8 +61,6 @@ export function GuestTabView({
 }) {
   const [tab, setTab] = useState(first);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
-  const [cardAction, setCardAction] = useState<TabCardStep | null>(null);
-  const [cardError, setCardError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -73,10 +72,9 @@ export function GuestTabView({
   const [failedReads, setFailedReads] = useState(0);
 
   const m = (c: number) => money(c, tab.currency);
-  const card = tab.card_bill_cents + tab.card_tip_cents;
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
-  const tip = tab.card_tip_cents + tab.cash_tip_cents;
-  const total = tab.credit_cents + card + cash;
+  const tip = tab.cash_tip_cents;
+  const total = tab.credit_cents + cash;
   const signed = tab.status === "paid" && !!tab.verified_at;
   const ended = tab.status === "cancelled" || tab.status === "expired";
   useEffect(() => {
@@ -84,10 +82,7 @@ export function GuestTabView({
     trackEvent(getSupabase(), "pay_step_view", { step: signed ? "receipt" : "sign" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signed, ended]);
-  const cardFailed = tab.parts.some((p) => p.part === "card" && !p.paid_at && (p.status === "failed" || p.status === "expired"));
-  // The bank hasn't held the card yet, or the charge runs at the signature.
-  const cardMoving = card > 0 && tab.parts.some((p) => p.part === "card" && (p.status === "open" || p.status === "opening") && !p.held_at && !p.paid_at);
-  const confirming = !signed && !ended && (tab.signing === true || cardMoving);
+  const confirming = !signed && !ended && tab.signing === true;
   const leftMs = Date.parse(tab.expires_at) - now;
   const done = signed || ended;
 
@@ -126,8 +121,6 @@ export function GuestTabView({
           if (!alive) return;
           setFailedReads(0);
           setTab(r.tab);
-          setCardAction(r.card_action ?? null);
-          if (r.card_error) setCardError(r.card_error.code);
         })
         .catch(() => {
           if (alive) setFailedReads((n) => n + 1);
@@ -167,7 +160,7 @@ export function GuestTabView({
   // ← BACK TO METHOD, A NEW TICKET (Pato, 2026-11-21, MESITA-4618: "when
   // creating ticket to pay, enable to return and just create other id for
   // the ticket"): while the bill waits for the waiter, ← cancels it on the
-  // server (nothing charged, the hold released) and reopens "How do you
+  // server (nothing paid, the credit released) and reopens "How do you
   // pay?" with the bill and tip still typed; Pay again makes a new ticket.
   async function backToMethod() {
     if (busy) return;
@@ -217,17 +210,6 @@ export function GuestTabView({
   }
 
   const placeName = tab.place.name ?? "A Mesita place";
-  // Every way this bill is paid (MESITA-4131): Confirm named the card part alone,
-  // so a bill split with credits or cash showed less than the bill.
-  const ways = [
-    tab.credit_cents > 0 ? { key: "credits", cents: tab.credit_cents } : null,
-    card > 0 ? { key: "card", cents: card } : null,
-    cash > 0 ? { key: "cash", cents: cash } : null,
-  ].filter((w) => w !== null);
-
-  // MESITA-4386: "Paid with Apple Pay / Google Pay": the card row names the wallet.
-  const payWith = tab.parts.find((p) => p.part === "card" && p.paid_at)?.pay_with;
-  const cardLabel = payWith === "apple_pay" ? "Apple Pay" : payWith === "google_pay" ? "Google Pay" : "Card";
 
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
   // ... keep the structure"). The same three
@@ -257,7 +239,6 @@ export function GuestTabView({
               <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
             </div>
             {tab.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Credits" value={m(tab.credit_cents)} /> : null}
-            {tab.card_bill_cents > 0 ? <MoneyRow icon={<Smartphone />} label={cardLabel} value={m(tab.card_bill_cents)} /> : null}
             {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Cash" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
             <MoneyRow label="Total" value={m(total)} strong />
@@ -283,8 +264,7 @@ export function GuestTabView({
   if (ended) {
     const reason =
       NOT_PAID_REASON[tab.end_reason ?? ""] ??
-      (cardError && NOT_PAID_REASON[cardError]) ??
-      (tab.status === "expired" ? NOT_PAID_REASON.expired : cardFailed ? NOT_PAID_REASON.card_declined : NOT_PAID_REASON.cancelled);
+      (tab.status === "expired" ? NOT_PAID_REASON.expired : NOT_PAID_REASON.cancelled);
     return (
       <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="not-paid">
         <PayTitle title="Not paid" />
@@ -296,7 +276,7 @@ export function GuestTabView({
               {/* MESITA-4524: never "Nothing was charged" on cash the guest may have handed over. */}
               {cash > 0
                 ? "The waiter didn't confirm your cash. If you handed it over, show this screen to the staff."
-                : "Nothing was charged"}
+                : "Nothing was paid"}
             </p>
           </PaySection>
         </StepBody>
@@ -305,12 +285,8 @@ export function GuestTabView({
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => {
             // MESITA-4524: a ticket that did not pay is done; this starts a
-            // NEW ticket. After a card decline it opens at Method with the
-            // bill and tip still typed (this session only); otherwise at an
-            // empty Bill.
-            const declined = cardFailed || tab.end_reason === "capture_failed" || tab.end_reason === "card_declined";
-            if (declined) reopenGuestDraft(tab.place.id, "method", true);
-            else clearGuestDraft(tab.place.id);
+            // NEW ticket at an empty Bill.
+            clearGuestDraft(tab.place.id);
             onPayAgain(tab.place.id);
           }}
         >
@@ -344,26 +320,13 @@ export function GuestTabView({
               {/* MESITA-4524: past 20 s the guest may leave; the ticket still ends on its own. */}
               {tab.signing && now - Date.parse(tab.updated_at) > 20_000 ? (
                 <p className="text-muted-foreground mt-2 max-w-xs text-sm">
-                  Your bank is taking longer than usual. You can go; your receipt will appear in Tickets.
+                  This is taking longer than usual. You can go; your receipt will appear in Tickets.
                 </p>
               ) : null}
             </div>
           </PaySection>
         </StepBody>
         <StepFooter strip={3} />
-        {cardAction ? (
-          <Button
-            size="lg"
-            className="mt-3 min-h-12 w-full shrink-0 text-base font-semibold"
-            disabled={busy}
-            onClick={() => {
-              setBusy(true);
-              void runBankCheck(cardAction).finally(() => setBusy(false));
-            }}
-          >
-            Finish the bank check
-          </Button>
-        ) : null}
       </div>
     );
   }
@@ -381,8 +344,7 @@ export function GuestTabView({
   // an hour left (MESITA-4131).
   const closing = secs <= 120;
   const reconnecting = failedReads >= 2;
-  // The bill's other parts, under the total: the cash has its own step.
-  const notCash = ways.filter((w) => w.key !== "cash");
+
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. */}
@@ -401,9 +363,10 @@ export function GuestTabView({
             <p className="shrink-0 text-2xl font-semibold tabular-nums" data-guest-sign-total>
               {m(total)}
             </p>
-            {notCash.length > 0 ? (
+            {/* The part not in cash, under the total: the cash has its own step. */}
+            {tab.credit_cents > 0 ? (
               <p className="text-muted-foreground shrink-0 text-sm tabular-nums" data-guest-sign-parts>
-                {notCash.map((w) => `${m(w.cents)} ${w.key === "credits" ? "from your credits" : "by card"}`).join(" · ")}
+                {m(tab.credit_cents)} from your credits
               </p>
             ) : null}
             <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
@@ -483,21 +446,18 @@ export function GuestTabView({
           {/* WHAT COMES BACK, PART BY PART (MESITA-4106, Pato: "mention that
               you can get your credits back, but that if you paid with money
               ... your money is gone"). Cancel (consumer-web-cancel-tab mode
-              "cancel") spends no credit and releases the card hold; cash
-              already in the waiter's hand is outside Mesita, the one loss. */}
+              "cancel") spends no credit; cash already in the waiter's hand is
+              outside Mesita, the one loss. */}
           <ul className="mt-2 flex flex-col gap-1.5 text-sm" data-guest-cancel-parts>
             {tab.credit_cents > 0 ? (
               <li className="text-muted-foreground">Your {m(tab.credit_cents)} of credits stay in your Wallet.</li>
-            ) : null}
-            {card > 0 ? (
-              <li className="text-muted-foreground">Your card is not charged: the {m(card)} hold is released.</li>
             ) : null}
             {cash > 0 ? (
               <li className="text-destructive font-semibold">
                 Cash you already gave the waiter ({m(cash)}) is not returned by Mesita. Ask the place for it.
               </li>
             ) : null}
-            {tab.credit_cents === 0 && card === 0 && cash === 0 ? <li className="text-muted-foreground">Nothing is paid.</li> : null}
+            {tab.credit_cents === 0 && cash === 0 ? <li className="text-muted-foreground">Nothing is paid.</li> : null}
           </ul>
           <CancelBillButtons busy={busy} disabled={busy} onCancel={() => void cancel()} onKeep={() => setConfirmCancel(false)} />
         </div>

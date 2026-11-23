@@ -27,7 +27,9 @@ const check = Deno.args.includes("--check");
 
 const SOURCE_DIR = "supabase/supabase/functions/_shared";
 const TARGET_DIR = "packages/place-profile/src";
-export const TWINS = ["money-state.ts", "money-codes.ts", "pay-split.ts"] as const;
+// MESITA-4708: pay-split.ts (the Pay form's card split) left with the card
+// part of a bill.
+export const TWINS = ["money-state.ts", "money-codes.ts"] as const;
 
 let drift = 0;
 for (const name of TWINS) {

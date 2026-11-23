@@ -12,7 +12,6 @@ import {
   connectApiVersion,
   isDashboardPairRefusal,
   isPaymentKey,
-  cardsAccepted,
   listRowMoney,
   settingsFromRow,
   snapshotFromStripe,
@@ -138,8 +137,6 @@ Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by car
     listRowMoney({ ...settingsFromRow(null), stripe_payments: false, loyalty_cards: true, prepayments: true, pay_cards: true, voucher_200: true }, true),
     { sell: [], mesita_pay: false },
   );
-  assertEquals(cardsAccepted({ pay_cards: true, stripe_payments: false }), false);
-  assertEquals(cardsAccepted({ pay_cards: true }), true);
 });
 
 // The "Stripe" general state and the guest Pay mark read one rule

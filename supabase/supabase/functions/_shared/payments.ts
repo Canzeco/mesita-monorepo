@@ -69,12 +69,6 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
   return typeof v === "string" && (PAYMENT_KEYS as readonly string[]).includes(v);
 }
 
-/** App Payments takes cards here: its own switch AND Accept Stripe Payments
- *  (MESITA-3946). Every reader of `pay_cards` asks this instead. */
-export function cardsAccepted(s: Partial<Record<"pay_cards" | "stripe_payments", unknown>> | null | undefined): boolean {
-  return s?.pay_cards === true && s?.stripe_payments !== false;
-}
-
 /** Every column a settings read selects. */
 export const SETTINGS_COLUMNS = [...PAYMENT_KEYS].join(", ");
 

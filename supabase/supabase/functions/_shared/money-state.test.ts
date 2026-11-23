@@ -2,7 +2,7 @@
 // pinned under the money rule.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { CARD_BILL_PAY_LIVE, type MoneySettings, moneyState } from "./money-state.ts";
+import { type MoneySettings, moneyState } from "./money-state.ts";
 
 const off: MoneySettings = {
   voucher_welcome: false,
@@ -84,8 +84,7 @@ Deno.test("Loyalty Cards Off never stops a guest spending what they hold", () =>
   assertEquals(moneyState(nothing, null, { spendable_cents: 500 }).loyalty_cards, false);
 });
 
-Deno.test("the green mark (MESITA-3408): on when a guest can buy a voucher; card bill pay is off (MESITA-4698)", () => {
-  assertEquals(CARD_BILL_PAY_LIVE, false);
+Deno.test("the green mark (MESITA-3408): on when a guest can buy a voucher; card bill pay is gone (MESITA-4708)", () => {
   // Pay by phone on with a charging account no longer lights it: no card for a bill.
   assertEquals(moneyState(off, can, null).mesita_pay, false);
   // A sellable voucher lights it, even with Pay by phone off.

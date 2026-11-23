@@ -37,10 +37,8 @@ const ALLOWED_EVENTS = new Set([
   "voucher_paid",
   // MESITA-4209 — a tap on Home's offer box, with the voucher then showing.
   "offer_chip_tap",
-  // MESITA-4384 — express pay: which wallet the phone offered (from the
-  // Express Checkout Element's ready), and an express payment that failed.
-  "express_ready",
-  "express_failed",
+  // MESITA-4708: express_ready / express_failed (MESITA-4384) left with
+  // Apple Pay / Google Pay on a bill, their only caller.
   // MESITA-4394 — the reserve-flow Pro offer: You step (blocked or not),
   // the hidden Pro step, and Upgrade.
   "reserve_you_view",

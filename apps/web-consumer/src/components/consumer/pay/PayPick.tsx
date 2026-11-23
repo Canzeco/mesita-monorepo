@@ -77,8 +77,8 @@ export function PlacePickBody({
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places: all, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // MESITA-4698: Get Discounts lists the places with offers (Loyalty
-  // Cards On); an older server without offers_ok falls back to card_ok.
-  const places = prepay && all ? all.filter((p) => p.offers_ok ?? p.card_ok) : all;
+  // Cards On). MESITA-4708: no card_ok fallback (a bill has no card part).
+  const places = prepay && all ? all.filter((p) => p.offers_ok === true) : all;
   const [query, setQuery] = useState("");
 
   return (
