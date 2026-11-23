@@ -383,19 +383,15 @@ export function PayPage({
         <PushLink
           href={`${CONSUMER_ROUTES.walletBuy}?offers=vouchers`}
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
-          aria-label="Prepay, Get Bonus"
           data-prepay
         >
-          <span className="flex w-full min-w-0 items-center justify-between gap-2">
-            <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
-              <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
-            </span>
-            <span className={TILE_PILL} aria-hidden>
-              <span className="max-[359px]:hidden">Get Bonus</span>
-              <span className="min-[360px]:hidden">Bonus</span>
-            </span>
+          {/* THE NAME (Pato, 2026-11-23, MESITA-4753: "call the box Prepay &
+              Get Bonus"; the purple one stays Pay Bill): the words carry the
+              bonus, so the Get Bonus pill is gone. */}
+          <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
+            <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          <span className={TILE_TITLE}>Prepay</span>
+          <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-28 min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
@@ -414,14 +410,17 @@ export function PayPage({
           </button>
         )}
       </div>
+      {/* EXPLORE OFFERS LEFT, SEND GIFT RIGHT, BLACK (Pato, 2026-11-23,
+          MESITA-4753: "explore offers at the left, send gift at the right";
+          grey boxes, "black boxes or something … or gray boxes"). */}
       <div className={QUIET_ROW}>
-        <PushLink href={CONSUMER_ROUTES.walletSend} className={QUIET_BUTTON} data-send-gift>
-          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">Send Gift</span>
-        </PushLink>
         <PushLink href={`${CONSUMER_ROUTES.walletBuy}?offers=any`} className={QUIET_BUTTON} data-explore-offers>
           <Tag className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">Explore Offers</span>
+        </PushLink>
+        <PushLink href={CONSUMER_ROUTES.walletSend} className={QUIET_BUTTON} data-send-gift>
+          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">Send Gift</span>
         </PushLink>
       </div>
 
@@ -534,18 +533,19 @@ function PlaceRows({
  *  name bottom left, so Pay Bill, Prepay and Send Gift read as one set,
  *  all one height (Pato, MESITA-4734: "purple and bottom buttons must be
  *  same height"). */
+// CENTRED (Pato, 2026-11-23, MESITA-4753: "prepay icon and pay bill icon
+// must be centered"): the icon disc and the name sit on the tile's middle line.
 const TILE =
-  "flex h-28 min-w-0 flex-col items-start justify-between rounded-2xl p-4 text-left transition active:scale-[0.99]";
-/** Send Gift | Explore Offers (MESITA-4748): two quiet 48px outlined buttons,
- *  icon then word, side by side; stacked under 360px (the Me card's rule). */
+  "flex h-28 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-center transition active:scale-[0.99]";
+/** Explore Offers | Send Gift (MESITA-4748; order and grey since
+ *  MESITA-4753, Pato: "make them black boxes or something … or gray boxes"):
+ *  two 48px grey boxes without a border, icon then word, side by side;
+ *  stacked under 360px (the Me card's rule). Outlined white before. */
 const QUIET_ROW = "mt-2 grid grid-cols-2 gap-2 max-[359px]:grid-cols-1";
 const QUIET_BUTTON =
-  "border-border bg-card hover:bg-muted flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 text-base font-semibold transition active:scale-[0.99]";
+  "bg-muted text-foreground hover:bg-border flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold transition active:scale-[0.99]";
 /** A tile's name: one baseline across the two. */
 const TILE_TITLE = "text-lg leading-tight font-semibold";
-/** Prepay's promise rides a white pill top right, so its name stays level
- *  with Send Gift's. */
-const TILE_PILL = "truncate rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-neutral-950";
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
