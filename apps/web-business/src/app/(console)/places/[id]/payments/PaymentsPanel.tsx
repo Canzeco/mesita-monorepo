@@ -1,13 +1,15 @@
 "use client";
 
 // Offers (MESITA-3296; the Place states of Main §10 since MESITA-3589).
-// SIX BOXES SINCE MESITA-4732 (Pato, 2026-11-23, design review D1–D4), each
-// a card with its own anchor, which Monitor's "Turn on in Offers" links to:
-//   Credit Limit       #credit-limit       · Outstanding Credit of the limit, and
-//                                            the next step that raises it
+// FIVE BOXES SINCE MESITA-4744 (six under MESITA-4732; Pato, 2026-11-23:
+// "credit limit must go into credits account"), each a card with its own
+// anchor, which Monitor's "Turn on in Offers" links to:
 //   Credits Account    #credits-account    · Credits Agreement · Credits Balance
-//                                            (read-only) · Accept Credits Payments
-//                                            (Loyalty Cards: on once signed, then locked)
+//                                            (read-only) · Outstanding Credit
+//                                            (#credit-limit: of the limit, and the
+//                                            next step that raises it) · Accept
+//                                            Credits Payments (Loyalty Cards: on
+//                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
 //   Visit Checkout     #visit-checkout     · Accept Cash Payments · Mesita Credits
 //                                            (always accepted, no switch) · Welcome
@@ -454,39 +456,6 @@ export function PaymentsPanel({
         </p>
       ) : null}
 
-      {/* CREDIT LIMIT (MESITA-4732): how much credit guests may hold here,
-          and the next step that raises it. Older servers send nothing: no box. */}
-      {creditLimit ? (
-        <div id="credit-limit" className="scroll-mt-24">
-          <Card className={SECTION}>
-            {head(GaugeIcon, "Credit Limit")}
-            <ul className="divide-border divide-y">
-              <li className={MARK_ROW} data-place-state="credit_limit">
-                {mark(GaugeIcon, (creditLimit.limit_cents ?? 0) > 0, "bg-emerald-100 text-emerald-700")}
-                <div className="min-w-0">
-                  <p className="font-medium">Outstanding Credit</p>
-                  <p className="text-muted-foreground">{limitLine(creditLimit)}</p>
-                  {creditLimit.next ? (
-                    <p className={BLOCKED}>
-                      {creditLimit.next.step === "credits"
-                        ? step(`Enable Credits Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#credits-account")
-                        : step(`Connect Stripe Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#stripe-account")}
-                    </p>
-                  ) : null}
-                </div>
-                <p className="font-semibold whitespace-nowrap tabular-nums">
-                  {wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}
-                  <span className="text-muted-foreground font-normal">
-                    {creditLimit.limit_cents === null ? " · no new credit" : ` of ${wholeMoney(creditLimit.limit_cents, creditLimit.currency)}`}
-                  </span>
-                </p>
-                <span />
-              </li>
-            </ul>
-          </Card>
-        </div>
-      ) : null}
-
       <div id="credits-account" className="scroll-mt-24">
         <Card className={SECTION}>
           {head(WalletIcon, "Credits Account")}
@@ -522,6 +491,34 @@ export function PaymentsPanel({
               </p>
               <span />
             </li>
+            {/* CREDIT LIMIT, INSIDE CREDITS ACCOUNT (Pato, 2026-11-23,
+                MESITA-4744: "credit limit must go into credits account"; its
+                own box since MESITA-4732): how much credit guests may hold
+                here, and the next step that raises it, under the balance.
+                Older servers send nothing: no row. */}
+            {creditLimit ? (
+              <li id="credit-limit" className={cn(MARK_ROW, "scroll-mt-24")} data-place-state="credit_limit">
+                {mark(GaugeIcon, (creditLimit.limit_cents ?? 0) > 0, "bg-emerald-100 text-emerald-700")}
+                <div className="min-w-0">
+                  <p className="font-medium">Outstanding Credit</p>
+                  <p className="text-muted-foreground">{limitLine(creditLimit)}</p>
+                  {creditLimit.next ? (
+                    <p className={BLOCKED}>
+                      {creditLimit.next.step === "credits"
+                        ? step(`Enable Credits Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#credits-account")
+                        : step(`Connect Stripe Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#stripe-account")}
+                    </p>
+                  ) : null}
+                </div>
+                <p className="font-semibold whitespace-nowrap tabular-nums">
+                  {wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}
+                  <span className="text-muted-foreground font-normal">
+                    {creditLimit.limit_cents === null ? " · no new credit" : ` of ${wholeMoney(creditLimit.limit_cents, creditLimit.currency)}`}
+                  </span>
+                </p>
+                <span />
+              </li>
+            ) : null}
             {/* ACCEPT CREDITS PAYMENTS CAN'T TURN DOWN (MESITA-3946): the
                 Loyalty Cards switch, on once the agreement is signed and then
                 locked; a guest's credit is always honoured. */}
