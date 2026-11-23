@@ -9,8 +9,10 @@ import { RowsSkeleton } from "@/components/consumer/wallet/WalletLists";
 // rows, never the title or the Add a Loyalty Card row.
 export default function Loading() {
   return (
-    <Screen title="Send Gift" paper>
-      <div aria-busy>
+    <Screen title="Send Gift" paper flush>
+      {/* The banner's bar (MESITA-4755), no words. */}
+      <div className="bg-neutral-950 h-12 shrink-0" aria-hidden />
+      <div aria-busy className="px-5 py-5">
         <Panel className="mt-2">
           <div className="px-4 pt-4">
             <Skeleton className="h-5 w-28 rounded-md" />

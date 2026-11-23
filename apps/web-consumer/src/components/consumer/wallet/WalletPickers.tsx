@@ -115,7 +115,18 @@ export function BuyCreditsPage({ offers = "any" }: { offers?: "vouchers" | "any"
 export function SendGiftPage() {
   const { wallet, credits, failed, reread } = useWallet();
   return (
-    <Screen title="Send Gift" paper>
+    <Screen title="Send Gift" paper flush>
+      {/* A BANNER LIKE PREPAY'S (Pato, 2026-11-23, MESITA-4755: "add a banner
+          in send gift, between header and searchbar"): one line, full bleed,
+          black like the old Send Gift tile, the gift in a white disc. The page
+          is flush for it; the list keeps the 20px inset below. */}
+      <p role="note" className="flex shrink-0 items-center gap-2.5 bg-neutral-950 px-4 py-2.5 text-base font-semibold text-white" data-list-banner>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-neutral-950" aria-hidden>
+          <Gift className="h-4 w-4" strokeWidth={2.5} />
+        </span>
+        <span className="min-w-0">Send credit to a friend</span>
+      </p>
+      <div className="px-5 py-5">
       {credits === null && failed ? (
         <EmptyState
           icon={Gift}
@@ -151,6 +162,7 @@ export function SendGiftPage() {
           <AddCreditsCardRow />
         </WalletPanelList>
       )}
+      </div>
     </Screen>
   );
 }
