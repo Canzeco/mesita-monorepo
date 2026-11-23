@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BadgePercent, ChevronRight, CreditCard, Gift, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
+import { BadgePercent, ChevronRight, CreditCard, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -25,7 +25,7 @@ import { usePendingTicket } from "./PendingTicketBanner";
 import { PayHeader } from "./PayHeader";
 import { PayFrameLoading } from "./PayFrameLoading";
 import { firstOfferTab, NearbyOffers, PayPickSheet } from "./PayPick";
-import { TicketsShortcut } from "./TicketsShortcut";
+import { WalletHeaderActions } from "./TicketsShortcut";
 import { PAY_TAB_PARAM, type PayTab, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
@@ -326,7 +326,7 @@ export function PayPage({
           then below each place ticket"): Tickets rides the header as an
           icon; the Payment method | Tickets row is gone, so Pay Bill is the
           page's first button. */}
-      <PayHeader title="Mesita Wallet" action={<TicketsShortcut icon />} />
+      <PayHeader title="Mesita Wallet" action={<WalletHeaderActions />} />
 
       {bill === "unknown" ? (
         <p className="text-muted-foreground px-2 py-3 text-sm" role="alert" data-error="open_bill_unknown">
@@ -397,12 +397,12 @@ export function PayPage({
             {/* THE WALLET, Prepay's one mark (Pato, 2026-11-23, MESITA-4762: "i
                 don't like the icon for prepay"; the Offers Prepay tab's since
                 MESITA-4726). */}
-            <WalletIcon className="h-4 w-4" strokeWidth={2.25} />
+            <WalletIcon className="h-5 w-5" strokeWidth={2.25} />
           </span>
           <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
         </PushLink>
         {payBusy ? (
-          <Skeleton className="h-20 min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
+          <Skeleton className="aspect-[8/5] min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
         ) : (
           <button
             type="button"
@@ -412,21 +412,14 @@ export function PayPage({
             data-pay-bill
           >
             <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
-              <QrCode className="h-4 w-4" strokeWidth={2.25} />
+              <QrCode className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className={TILE_TITLE}>Pay Bill</span>
           </button>
         )}
       </div>
-      {/* SEND GIFT, FULL WIDTH, BLACK (Pato, 2026-11-23, MESITA-4765: "Send
-          gift below in dark 100%"; /plan-design-review D4): one 56px black
-          bar under the two tiles. Explore Offers' button is gone: its list is
-          the Nearby Offers tab below. Grey Explore Offers | Send Gift boxes
-          before (MESITA-4753). */}
-      <PushLink href={CONSUMER_ROUTES.walletSend} className={SEND_GIFT} data-send-gift>
-        <Gift className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="truncate">Send Gift</span>
-      </PushLink>
+      {/* SEND GIFT LEFT FOR THE HEADER (MESITA-4780): the black full-width
+          bar (MESITA-4765) hid the menu below; Gift now sits beside Tickets. */}
 
       {/* ONE MENU, TWO SECTIONS (Pato, 2026-11-23, MESITA-4765: "one menu
           with two sections (Nearby Offers) (Loyalty Cards)"; D1): the Offers
@@ -434,7 +427,12 @@ export function PayPage({
           white bordered box. ALL WHITE (MESITA-4574): the box sits on the
           page's own white. */}
       <div className="mt-2 flex flex-1 flex-col pb-8" data-pay-cards>
-        <PayTabs tab={tab} onTab={chooseTab} />
+        {/* ITS OWN FLOATING BOX (Pato, 2026-11-23, MESITA-4780: "put nearby
+            offers & loyalty card in its own floating box, even if double
+            margins"): white, a hairline and a soft shadow, the switch inside. */}
+        <div className="border-border bg-card rounded-2xl border p-1.5 shadow-md" data-pay-tabs-box>
+          <PayTabs tab={tab} onTab={chooseTab} />
+        </div>
         <div
           role="tabpanel"
           id={`pay-panel-${tab}`}
@@ -476,21 +474,19 @@ export function PayPage({
 // must be centered"): the icon disc and the name sit on the tile's middle line.
 // SMALLER (Pato, 2026-11-23, MESITA-4778: "all in that page must be smaller
 // or shorter"; /plan-design-review pick): 80px (112 before), 32px disc, 14px.
+// TALLER, 8:5 (Pato, 2026-11-23, MESITA-4780: "make prepay and pay taller.
+// maybe fibonacci proportion of 8:5"): each tile is 8 wide by 5 tall.
 const TILE =
-  "flex h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-3 text-center transition active:scale-[0.99]";
-/** Send Gift (MESITA-4765, D4): full width, 56px, black, white icon and
- *  word at the tiles' 16px. */
-const SEND_GIFT =
-  "mt-2 flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-3 text-sm font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]";
+  "flex aspect-[8/5] min-w-0 flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition active:scale-[0.99]";
 /** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
  *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
  *  size (18px before). */
-const TILE_TITLE = "text-sm leading-tight font-semibold"; // 14px since MESITA-4778
+const TILE_TITLE = "text-base leading-tight font-semibold"; // 16px again on the 8:5 tile (MESITA-4780)
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
  *  Card page's round buttons' look. The tiles grew 88 to 96px to hold it. */
-const ICON_CIRCLE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white"; // 32px since MESITA-4778
+const ICON_CIRCLE = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white"; // 40px on the 8:5 tile (MESITA-4780)
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
@@ -582,7 +578,9 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
     refs.current[to]?.focus();
   };
   return (
-    <div className="border-border grid grid-cols-2 border-b" role="tablist" aria-label="Pay" data-pay-tabs>
+    // SUPER VISIBLE (MESITA-4780): the chosen option a filled black pill,
+    // white icon and word; the other grey. A 3px ink underline before.
+    <div className="grid grid-cols-2 gap-1" role="tablist" aria-label="Pay" data-pay-tabs>
       {PAY_TABS.map(({ id, word, icon: Icon }, i) => {
         const on = tab === id;
         return (
@@ -605,8 +603,8 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
               }
             }}
             className={cn(
-              "-mb-px flex min-w-0 items-center justify-center gap-1.5 border-b-[3px] px-1 py-2.5 text-sm whitespace-nowrap transition",
-              on ? "border-foreground text-foreground font-bold" : "text-muted-foreground hover:text-foreground border-transparent font-semibold",
+              "flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold whitespace-nowrap transition",
+              on ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
             data-pay-tab={id}
           >

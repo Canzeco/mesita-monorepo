@@ -1,4 +1,4 @@
-import { ChevronRight, ReceiptText, Ticket } from "lucide-react";
+import { ChevronRight, Gift, ReceiptText, Ticket } from "lucide-react";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { HEADER_PILL } from "@/components/consumer/search/header-classes";
@@ -77,4 +77,31 @@ export function TicketsShortcut({
 /** Tickets while the page reads (MESITA-4376): a bone in the pill's shape. */
 export function TicketsShortcutSkeleton() {
   return <Skeleton className="h-9 w-28 rounded-xl" aria-hidden />;
+}
+
+/** SEND GIFT IN THE HEADER (Pato, 2026-11-23, MESITA-4780: "send gift is ...
+ *  hiding that menu of two options, those two options must be super visible";
+ *  /plan-design-review pick): the Wallet's black full-width bar became a grey
+ *  "Gift" button beside Tickets, the same shape, opening Send Gift. */
+export function GiftShortcut() {
+  return (
+    <PushLink
+      href={CONSUMER_ROUTES.walletSend}
+      className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 items-center gap-2 rounded-xl px-3.5 text-base font-semibold"
+      data-send-gift
+    >
+      <Gift className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+      Gift
+    </PushLink>
+  );
+}
+
+/** The Wallet header's right side: Gift, then Tickets (MESITA-4780). */
+export function WalletHeaderActions() {
+  return (
+    <div className="flex items-center gap-2">
+      <GiftShortcut />
+      <TicketsShortcut icon />
+    </div>
+  );
 }
