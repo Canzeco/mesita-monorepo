@@ -92,7 +92,22 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
         next_ready_at: typeof b.next_ready_at === "string" && !Number.isNaN(Date.parse(b.next_ready_at)) ? b.next_ready_at : null,
       }
     : null;
+  // MESITA-4698: the cashback lines, null where none is earned.
+  const cb = m.cashback && typeof m.cashback === "object" ? (m.cashback as Record<string, unknown>) : null;
+  const cashback: PlaceMoney["cashback"] =
+    cb && n(cb.welcome_bps) !== null && n(cb.regular_bps) !== null && n(cb.vip_bps) !== null && n(cb.cap_cents) !== null
+      ? {
+          welcome_bps: n(cb.welcome_bps)!,
+          regular_bps: n(cb.regular_bps)!,
+          vip_bps: n(cb.vip_bps)!,
+          cap_cents: n(cb.cap_cents)!,
+          line: cb.line === "welcome" || cb.line === "regular" || cb.line === "vip" ? cb.line : null,
+        }
+      : m.cashback === null
+        ? null
+        : undefined;
   return {
+    ...(cashback !== undefined ? { cashback } : {}),
     charges_enabled: m.charges_enabled === true,
     // An older EF answer has no mark: fall back to the old rule, never drop it.
     mesita_pay: typeof m.mesita_pay === "boolean" ? m.mesita_pay : m.charges_enabled === true,

@@ -9,7 +9,7 @@ import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
 import { VOUCHER_TONE } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
-import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
+import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
 // MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
@@ -374,7 +374,9 @@ const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<M
   },
   {
     id: "prepayment",
-    title: "Classic Offers",
+    // MESITA-4698 (Pato: "we must have Vouchers and we must have Coupons
+    // as Offers"): the panels are Cashback, then Vouchers.
+    title: "Vouchers",
     keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
@@ -771,14 +773,100 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  Nothing is stored before the card charge answers: the basket lives in
  *  this component. Each voucher's own ticket page (MESITA-4630) went.
  *  `pick` preselects one voucher (an old link) when it is buyable. */
+/** MESITA-4698: the place's cashback, first on the Offers page. Three lines
+ *  (Welcome on a first bill, then Regular or VIP by Class), the guest's own
+ *  line marked. Nothing to buy: a confirmed bill earns it, 3 hours later.
+ *  Not drawn where none is earned (Loyalty Cards Off, or every line Off). */
+function CashbackPanel({ cashback, currency }: { cashback: PlaceCashback | null; currency: string }) {
+  if (!cashback) return null;
+  const rows: { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number }[] = [
+    { line: "welcome", title: "Welcome", who: "Your first bill here", bps: cashback.welcome_bps },
+    { line: "regular", title: "Regular", who: "Every later bill", bps: cashback.regular_bps },
+    { line: "vip", title: "VIP", who: "Every later bill, VIP Class", bps: cashback.vip_bps },
+  ].filter((r) => r.bps > 0) as { line: "welcome" | "regular" | "vip"; title: string; who: string; bps: number }[];
+  if (rows.length === 0) return null;
+  return (
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby="rewards-cashback" data-promos="cashback">
+      <div className="px-4 pt-3 pb-2">
+        <SectionTitle id="rewards-cashback" title="Cashback" />
+      </div>
+      <ul className="border-border divide-border divide-y border-t" data-cashback-lines>
+        {rows.map((r) => {
+          const mine = cashback.line === r.line;
+          return (
+            <li key={r.line} data-cashback={r.line} className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2">
+              <span
+                className={cn(
+                  "flex min-h-12 shrink-0 flex-col items-center justify-center rounded-xl px-2.5 py-2 tabular-nums",
+                  r.line === "vip" ? VOUCHER_TONE.voucher_vip : "bg-[#00D66F] text-neutral-950",
+                )}
+                aria-hidden
+              >
+                <span className="text-lg leading-none font-bold tracking-tight">{r.bps / 100}%</span>
+                <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Back</span>
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-foreground truncate text-base font-semibold">{r.title}</span>
+                <span className="text-muted-foreground text-sm">{r.who}</span>
+              </span>
+              {mine ? (
+                <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
+                  Yours
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-sm">
+        Pay your bill here and get it back as credit in 3 hours. Up to {whole(pesos(cashback.cap_cents, currency))} per bill, once a day, never on the
+        tip.
+      </p>
+    </section>
+  );
+}
+
+export type OffersTab = "cashbacks" | "vouchers";
+
+/** MESITA-4698 (Pato, 2026-11-22: "its offers page you can see the
+ *  Cashbacks and the Vouchers in two subpages below card amount"): two tabs
+ *  under the balance. Cashbacks shows the place's lines, nothing to buy;
+ *  Vouchers is the shop and its Pay bar. A place with no cashback opens on
+ *  Vouchers; one with no voucher on sale opens on Cashbacks. */
+function OffersTabs({ tab, onTab }: { tab: OffersTab; onTab: (t: OffersTab) => void }) {
+  return (
+    <div className="bg-muted flex shrink-0 rounded-full p-1" role="tablist" aria-label="Offers" data-offers-tabs>
+      {(["cashbacks", "vouchers"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          role="tab"
+          aria-selected={tab === t}
+          onClick={() => onTab(t)}
+          className={cn(
+            "h-10 flex-1 rounded-full text-sm font-semibold transition",
+            tab === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
+          )}
+          data-offers-tab={t}
+        >
+          {t === "cashbacks" ? "Cashbacks" : "Vouchers"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function VouchersPane({
   place,
   actions,
   pick,
+  tab: askedTab,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
   pick?: string | null;
+  /** The tab a link asks for (`?rewards=cashback|prepayment`). */
+  tab?: OffersTab | null;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -786,6 +874,7 @@ export function VouchersPane({
   }, [onLoad]);
 
   const co = useOfferCheckout(place, actions);
+  const [chosenTab, setTab] = useState<OffersTab | null>(null);
   const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
   // The guest's own picks; until the first tap, an asked voucher counts as one.
   const [picked, setPicked] = useState<Basket | null>(null);
@@ -857,13 +946,32 @@ export function VouchersPane({
   // HIDDEN ROWS ARE GONE (MESITA-4603), never drawn while list-vouchers is
   // still loading (every row is a grey bone then).
   const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
+  const cashback = place.money?.cashback ?? null;
+  const hasCashback = !!cashback && (cashback.welcome_bps > 0 || cashback.regular_bps > 0 || cashback.vip_bps > 0);
+  const tab: OffersTab =
+    chosenTab ?? askedTab ?? (pick ? "vouchers" : hasCashback || (!loading && products.length === 0) ? "cashbacks" : "vouchers");
   const infoProduct = info ? listedProducts().find((p) => p.key === info) ?? null : null;
 
   return (
     // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
     // (MESITA-4218), and the Pay bar under them, always (MESITA-4659).
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {GROUPS.map((g) => {
+      <OffersTabs tab={tab} onTab={setTab} />
+      {tab === "cashbacks" ? (
+        hasCashback ? (
+          <CashbackPanel cashback={cashback} currency={currency} />
+        ) : (
+          <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-cashback-none>
+            {loading ? "Loading…" : "No cashback here yet."}
+          </p>
+        )
+      ) : null}
+      {tab === "vouchers" && !loading && products.length === 0 ? (
+        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-vouchers-none>
+          No vouchers on sale here yet.
+        </p>
+      ) : null}
+      {tab === "vouchers" && GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
         return (
@@ -964,7 +1072,7 @@ export function VouchersPane({
           the right. Every other state is the one full-width button: with
           nothing picked every line reads $0 and it says "Select an offer",
           disabled: an empty basket charges nothing. */}
-      {(() => {
+      {tab === "vouchers" && (() => {
         const sum = totals ?? { price: 0, bonus: 0 };
         const amount = (cents: number) => whole(pesos(cents, currency));
         const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");

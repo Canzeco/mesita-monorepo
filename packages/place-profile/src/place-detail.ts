@@ -51,6 +51,19 @@ export type PlaceMoney = {
   catalog: Partial<Record<VoucherKey, VoucherCatalogLine>>;
   /** The signed-in guest's credit here; null when signed out or unknown. */
   balance: PlaceBalance | null;
+  /** MESITA-4698: the place's cashback lines; null where Loyalty Cards is Off
+   *  (no cashback is earned there), absent on older reads. */
+  cashback?: PlaceCashback | null;
+};
+
+/** MESITA-4698: a paid bill's cashback here. Rates in basis points (0 = Off);
+ *  `line` is the one this guest's next bill falls in (null signed out). */
+export type PlaceCashback = {
+  welcome_bps: number;
+  regular_bps: number;
+  vip_bps: number;
+  cap_cents: number;
+  line: "welcome" | "regular" | "vip" | null;
 };
 
 /** The Catalog's score for one place, the server's numbers (MESITA-2379):

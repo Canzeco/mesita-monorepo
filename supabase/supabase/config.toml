@@ -860,6 +860,10 @@ verify_jwt = true
 [functions.business-web-set-payment]
 verify_jwt = true
 
+# MESITA-4698: the owner's three cashback lines and the cap per bill.
+[functions.business-web-set-cashback]
+verify_jwt = true
+
 # MESITA-4502: mark a guest cash amount received. Signed-in business user. No waiter code.
 [functions.business-web-receive-cash]
 verify_jwt = true

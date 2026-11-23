@@ -340,6 +340,9 @@ const CONSUMER_READ_ALLOWLIST = [
   // way to pay. Read-only, error logged (null falls back to the card).
   // Writes go through the consumer_set_pay_method RPC.
   "_shared/cards.ts",
+  // Cashback (MESITA-4698): the caller's OWN guest_class, which line their
+  // next bill falls in on the Offers page. Read-only, error thrown and logged.
+  "_shared/cashback.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

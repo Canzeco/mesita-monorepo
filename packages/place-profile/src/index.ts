@@ -45,6 +45,7 @@ export {
   basketItems,
   readyClock,
   VouchersPane,
+  type OffersTab,
   voucherOffers,
   type VoucherOffer,
 } from "./components/place-detail/vouchers";
@@ -57,7 +58,7 @@ export type {
   VoucherBasketItem,
   VoucherBuyOutcome,
 } from "./actions";
-export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
+export type { PlaceBalance, PlaceCashback, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogLine, VoucherKey } from "./place-detail";
 export { VOUCHER_KEYS } from "./place-detail";
 export { placeMoneyFrom } from "./place-to-detail";
 export { TestBand, TEST_BAND_TEXT } from "./components/TestBand";

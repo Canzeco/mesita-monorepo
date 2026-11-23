@@ -16,7 +16,10 @@
 //                          payouts_paused|restricted (Main §10's Place Stripe)
 //             code_set,    whether the place code is set: the waiter's charge
 //                          (MESITA-3306) needs it, so Payments says so
-//             fee: { hold, invoice } }  Mesita's fee invoice (MESITA-3461):
+//             fee: { hold, invoice },
+//             cashback: { welcome_bps, regular_bps, vip_bps, cap_cents } }
+//                          MESITA-4698: the owner's three cashback lines and
+//                          the cap per bill (defaults when never saved)  Mesita's fee invoice (MESITA-3461):
 //                          hold = cards are off until it is paid; invoice =
 //                          the one to pay (amount, due, Stripe's page)
 
@@ -30,6 +33,7 @@ import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
+import { CASHBACK_DEFAULTS, readCashbackRates } from "../_shared/cashback.ts";
 
 serveJson("business-web-get-payments", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -95,9 +99,15 @@ serveJson("business-web-get-payments", async (req) => {
     .eq("place_id", placeId)
     .eq("status", "due")
     .order("created_at", { ascending: true });
+  // MESITA-4698: a failed read shows the defaults rather than no page.
+  const cashback = await readCashbackRates(admin, placeId).catch((err) => {
+    console.error(`[business-web-get-payments] cashback: ${errorMessage(err)}`);
+    return { ...CASHBACK_DEFAULTS };
+  });
   return json({
     ok: true,
     can_edit: canManage(access.role),
+    cashback,
     test_mode: !paymentsLivemode(),
     account: accountView(account),
     settings,
