@@ -24,11 +24,9 @@
 // Misuse: 400 bad_body (+field) · 401 sign_in · 404 place · 503 payments not
 //   configured.
 //
-// MESITA-4386: A BILL. `{ place_id, bill: { amount_cents } }` (the card part
-// plus its tip, in hundredths) instead of a voucher: the place must take
-// cards through Mesita (card_unavailable otherwise; below_minimum under the
-// card minimum); the label is "Bill · <place>". The hold itself is
-// consumer-web-pay-guest with `express: true`.
+// MESITA-4708: vouchers only. The bill mode (MESITA-4386, `bill`) is gone
+// with the card part of a bill: `bill` answers { ok: true, available: false,
+// code: "cards_off" }.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -42,9 +40,6 @@ import { toStripeAmount } from "../_shared/money.ts";
 import { walletDomainsForSetup } from "../_shared/pm-domains.ts";
 import { expressLabel, expressWalletsFor } from "../_shared/express-pay.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
-import { readSettings } from "../_shared/payments.ts";
-import { tabCardRates } from "../_shared/tab-card.ts";
-import { MONEY_CURRENCY } from "../_shared/money.ts";
 
 serveJson("consumer-web-express-pay-setup", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -55,7 +50,7 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const { place_id: placeId } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, code: "bad_body", field: "place_id", error: "place_id must be a Mesita place id" }, 400);
-  if (bodyRes.body.bill !== undefined) return await billSetup(admin, placeId, bodyRes.body.bill);
+  if (bodyRes.body.bill !== undefined) return json({ ok: true, available: false, code: "cards_off" });
   const basket = parseBasket(bodyRes.body);
   if (!basket.ok) {
     if (basket.code === "voucher_retired") return json({ ok: true, available: false, code: basket.code });
@@ -116,42 +111,3 @@ serveJson("consumer-web-express-pay-setup", async (req) => {
     label: expressLabel(units.length > 1 ? `${units.length} vouchers` : voucherName(units[0], offer.currency), place.name ?? null),
   });
 });
-
-/** MESITA-4386: the Pay Bill flow's button. */
-async function billSetup(admin: Parameters<typeof readMoneyConfig>[0], placeId: string, bill: unknown): Promise<Response> {
-  const amount = (bill as { amount_cents?: unknown } | null)?.amount_cents;
-  if (typeof amount !== "number" || !Number.isInteger(amount) || amount < 1 || amount > 100_000_000) {
-    return json({ ok: false, code: "bad_body", field: "bill", error: "bill.amount_cents must be a whole number of centavos" }, 400);
-  }
-  const no = (code: string) => json({ ok: true, available: false, code });
-  const config = await readMoneyConfig(admin);
-  if (config.express_wallets.length === 0) return no("disabled");
-  const placeRes = await readVoucherPlace(admin, placeId);
-  if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
-  const place = placeRes.place;
-  if (!place || place.state !== "active") return json({ ok: false, error: "This place can't take payments" }, 404);
-  const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
-  const livemode = paymentsLivemode();
-  const key = paymentsStripeKey();
-  const publishableKey = paymentsPublishableKey(livemode);
-  const [account, settings] = await Promise.all([readAccount(admin, placeId), readSettings(admin, placeId)]);
-  const rates = tabCardRates({ account, settings, livemode, currency, stripeReady: !!key });
-  // No account that can charge: refused before any Stripe call.
-  if (!rates.card_available || !account || !account.charges_enabled || account.livemode !== livemode) return no("card_unavailable");
-  if (amount < rates.card_minimum_cents) return no("below_minimum");
-  if (!key || !publishableKey) return json({ ok: false, error: "Payments are not available right now" }, 503);
-  const domains = await walletDomainsForSetup(admin, stripeClient(key), { placeId, accountId: account.stripe_account_id, livemode, nowMs: Date.now() });
-  const wallets = expressWalletsFor(config.express_wallets, domains);
-  if (wallets.length === 0) return no("domains_inactive");
-  return json({
-    ok: true,
-    available: true,
-    wallets,
-    publishable_key: publishableKey,
-    stripe_account: account.stripe_account_id,
-    amount_cents: toStripeAmount(amount, currency),
-    currency,
-    country: (account.account_country ?? "MX").toUpperCase(),
-    label: expressLabel("Bill", place.name ?? null),
-  });
-}

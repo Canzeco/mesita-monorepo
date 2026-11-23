@@ -23,7 +23,7 @@
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //               offers: { sell } (MESITA-4262, what Home's offer button says),
 //                          balance_cents, available_cents, pending_cents,
-//                          spendable_cents, last_at, card_ok, pinned,
+//                          spendable_cents, last_at, pinned,
 //                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id, gift_id }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
@@ -38,8 +38,7 @@
 //   its filter come from here, never from a catalog read.
 //   pinned (MESITA-3582): the guest added this card by hand; a pinned card
 //   with no entries is a $0 card they can remove.
-//   card_ok (MESITA-3305) says the place can take a card part: its account
-//   charges in this universe and the owner's Cards switch is on.
+//   MESITA-4708: no card_ok (MESITA-3305): a bill has no card part.
 //             sent_links (MESITA-3292): [{ gift_id, place_id, amount_cents,
 //               currency, created_at, can_share (MESITA-4390) }]: credit links the guest sent that
 //               nobody took yet (already off their balance; take-back-able),
@@ -58,10 +57,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { CARD_BILL_PAY_LIVE } from "../_shared/money-state.ts";
 import { type CashbackRates, readCashbackRatesMany } from "../_shared/cashback.ts";
 import { errorMessage } from "../_shared/errors.ts";
-import { cardsAccepted, chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
+import { chargesEnabledByPlace, listRowMoney, type PaymentKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { readPins, withPins } from "../_shared/loyalty-cards.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
@@ -214,10 +212,6 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const ids = [
     ...new Set([...balances.map((b) => b.place_id), ...gifts.map((g) => g.place_id)]),
   ];
-  // card_ok (MESITA-3305): the place's account can charge in this universe
-  // and the owner's Cards switch is on, so the Pay tab may offer a card
-  // part there. A failed read reads as no card; the server is the last word
-  // at start anyway.
   const [placesRes, charging, settingsRes] = await Promise.all([
     readWalletPlaces(admin, ids),
     chargesEnabledByPlace(admin, ids, livemode),
@@ -228,17 +222,11 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
   const places = placesRes.places;
   if (settingsRes.error) console.error(`[consumer-web-get-wallet] settings read: ${settingsRes.error.message}`);
-  // Mesita Payments On: only a row saying so (no row is Off, MESITA-3599).
-  const cardsOn = new Set<string>();
   // via unknown: a template-string select widens `data` (as in payments.ts).
   const settingRows = ((settingsRes.error ? [] : settingsRes.data) ?? []) as unknown as Array<
     { place_id: string } & Partial<Record<PaymentKey, unknown>>
   >;
   const settingsById = new Map(settingRows.map((r) => [r.place_id, r]));
-  for (const r of settingRows) {
-    // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
-    if (CARD_BILL_PAY_LIVE && cardsAccepted(settingsFromRow(r))) cardsOn.add(r.place_id);
-  }
   // THE GREEN MARK (MESITA-3514): the list rows' rule, so a Wallet card
   // and a Home tile never disagree. A failed settings read reads as no row.
   for (const [id, place] of places) {
@@ -293,7 +281,6 @@ serveJson("consumer-web-get-wallet", async (req) => {
       place: places.get(place_id) ?? null,
       place_id,
       ...b,
-      card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
       offers: offersById.get(place_id) ?? { sell: [] },
     })),
     sent_links: sentLinks.map((g) => ({

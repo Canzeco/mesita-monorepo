@@ -3,7 +3,7 @@
 // a charge on the wrong merchant, so the header is pinned both ways.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { stripeClient } from "./stripe.ts";
+import { paymentsPublishableKey, stripeClient } from "./stripe.ts";
 
 function capture() {
   const seen: Array<{ url: string; init: RequestInit }> = [];
@@ -26,4 +26,14 @@ Deno.test("Stripe-Account and the signal ride only the call that names them", as
   assertEquals("Stripe-Account" in h1, false);
   assertEquals(seen[1].init.signal, undefined);
   assertEquals(h1["Idempotency-Key"], "attempt-1");
+});
+
+// Moved from tab-card.test.ts (MESITA-4708): the voucher's Apple Pay / Google
+// Pay button reads the same key.
+Deno.test("the publishable key must match the mode", () => {
+  const env = (m: Record<string, string>) => (k: string) => m[k];
+  assertEquals(paymentsPublishableKey(false, env({ STRIPE_PUBLISHABLE_KEY_TEST: "pk_test_1" })), "pk_test_1");
+  assertEquals(paymentsPublishableKey(false, env({ STRIPE_PUBLISHABLE_KEY_TEST: "pk_live_1" })), null);
+  assertEquals(paymentsPublishableKey(true, env({ STRIPE_PUBLISHABLE_KEY_LIVE: "pk_live_1" })), "pk_live_1");
+  assertEquals(paymentsPublishableKey(false, env({})), null);
 });

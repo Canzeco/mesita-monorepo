@@ -1,16 +1,14 @@
 // THE PAY TAB'S LIST (MESITA-3457): the places a signed-in guest can pay at
 // now. The union of places where they hold credit (any switch: credit is the
-// place's debt, MESITA-3408) and places that take a card part (`card_ok`:
-// the account charges in this universe and Mesita Payments is on). Credit places
-// first, then by distance.
+// place's debt, MESITA-3408), places where the bill can be paid outside
+// (`outside_ok`, MESITA-3545: Cash Payments and a place code) and places with
+// offers (`offers_ok`). Credit places first, then by distance.
 //
-// MESITA-3545 (Payments Flow v2): a place with a place code is also listed
-// when it takes no card (`outside_ok`): the guest types the waiter's code
-// there and pays the bill outside. Outside-only places count like card
-// places below.
+// MESITA-4708: no card part for a bill, so no `card_ok` and no
+// `card_min_cents` (the card places of MESITA-3457 are gone).
 //
-// While fewer than OPEN_ALL_BELOW places have Mesita Payments on, every one of
-// them is listed, nearest first (the /autoplan gate d3a of 2026-11-08: an
+// While fewer than OPEN_ALL_BELOW places take a bill paid outside, every one
+// of them is listed, nearest first (the /autoplan gate d3a of 2026-11-08: an
 // empty list in a young city reads as a broken tab); from OPEN_ALL_BELOW on,
 // only those within NEAR_RADIUS_M. The guest's location is never stored and
 // never logged.
@@ -18,9 +16,9 @@
 // The tunables live here, one file for the server side; the client's twins
 // (the 3-decimal rounding, the 12-hour "Paid" line) live in PayPage.
 
-/** Card places listed past this many: only those within NEAR_RADIUS_M. */
+/** Outside places listed past this many: only those within NEAR_RADIUS_M. */
 export const OPEN_ALL_BELOW = 20;
-/** The radius once the city has OPEN_ALL_BELOW Mesita Payments places. */
+/** The radius once the city has OPEN_ALL_BELOW outside places. */
 export const NEAR_RADIUS_M = 2000;
 /** The hard cap on one answer. */
 export const PAY_PLACES_LIMIT = 50;
@@ -65,7 +63,6 @@ export type PayPlaceInput = {
   tier: number | null;
   mesita_pay: boolean;
   currency: string;
-  card_ok: boolean;
   /** Spendable now: Available minus held (wallet_balances.spendable_cents). */
   available_cents: number;
   pending_cents: number;
@@ -82,23 +79,22 @@ export type PayPlace = Omit<PayPlaceInput, "lat" | "lng" | "tier" | "mesita_pay"
   marks: { tier: number | null; mesita_pay: boolean };
   distance_m: number | null;
   test_mode: boolean;
-  card_min_cents: number;
 };
 
 /** Which places the answer lists, in order. Pure: the EF reads the rows,
- *  this decides. `cardPlaceCount` is how many places have Mesita Payments on in
- *  this universe (the d3a switch). */
+ *  this decides. `outsidePlaceCount` is how many places take a bill paid
+ *  outside in this universe (the d3a switch). */
 export function payPlaces(
   rows: PayPlaceInput[],
-  opts: { at: Coords | null; cardPlaceCount: number; testMode: boolean; minCents: (currency: string) => number },
+  opts: { at: Coords | null; outsidePlaceCount: number; testMode: boolean },
 ): PayPlace[] {
-  const near = opts.cardPlaceCount >= OPEN_ALL_BELOW;
+  const near = opts.outsidePlaceCount >= OPEN_ALL_BELOW;
   const out: Array<PayPlace & { credit: boolean }> = [];
   for (const r of rows) {
     const credit = r.available_cents > 0 || r.pending_cents > 0;
-    if (!credit && !r.card_ok && !r.outside_ok && !r.offers_ok) continue;
+    if (!credit && !r.outside_ok && !r.offers_ok) continue;
     const d = opts.at && r.lat !== null && r.lng !== null ? distanceM(opts.at, { lat: r.lat, lng: r.lng }) : null;
-    // A place without the guest's credit (card or outside): within the radius
+    // A place without the guest's credit (outside or offers): within the radius
     // once the city is big enough; with no location, only while every such
     // place is listed.
     if (!credit && near && (d === null || d > NEAR_RADIUS_M)) continue;
@@ -110,13 +106,11 @@ export function payPlaces(
       marks: { tier: r.tier, mesita_pay: r.mesita_pay },
       distance_m: d,
       currency: r.currency,
-      card_ok: r.card_ok,
       available_cents: r.available_cents,
       pending_cents: r.pending_cents,
       outside_ok: r.outside_ok,
       offers_ok: r.offers_ok,
       test_mode: opts.testMode,
-      card_min_cents: opts.minCents(r.currency),
       paid_recent: r.paid_recent,
       credit,
     });

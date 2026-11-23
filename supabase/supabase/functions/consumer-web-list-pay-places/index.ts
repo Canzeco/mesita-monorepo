@@ -1,9 +1,11 @@
 // Supabase Edge Function — consumer-web-list-pay-places
 //
 // MESITA-3457: the Pay tab's list. The places a signed-in guest can pay at
-// now: where they hold credit (any switch, MESITA-3408) and where Mesita Payments
-// takes a card part (`card_ok`), nearest first (MESITA-3536). Which
-// card places are listed, the radius and the cap are _shared/pay-places.ts.
+// now: where they hold credit (any switch, MESITA-3408), where a bill can be
+// paid outside (`outside_ok`) and where there are offers, nearest first
+// (MESITA-3536). Which places are listed, the radius and the cap are
+// _shared/pay-places.ts. MESITA-4708: no `card_ok` or `card_min_cents` (no
+// card for a bill).
 // consumer-web-start-payment is unchanged: this only lists.
 //
 // The location is used for distance and dropped: never stored, never
@@ -11,8 +13,8 @@
 //
 // Body: { lat?: number, lng?: number } (the client rounds to 3 decimals)
 // Response: { ok: true, places: [{ place_id, name, photo, address, marks: { tier, mesita_pay },
-//             distance_m | null, currency, card_ok, available_cents,
-//             pending_cents, outside_ok, test_mode, card_min_cents,
+//             distance_m | null, currency, available_cents,
+//             pending_cents, outside_ok, test_mode,
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
 //             offers_ok, offers: { sell } }] }
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
@@ -20,8 +22,6 @@
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
-//   card_min_cents is MIN_CHARGE_CENTS (money.ts), the minimum the start
-//   checks on card + tip.
 //   MESITA-3545: outside_ok = the place has a place code (the waiter's
 //   charge, so the bill can be paid outside). An outside-only place carries
 //   no Mesita Payments mark.
@@ -31,9 +31,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
-import { CARD_BILL_PAY_LIVE, moneyState } from "../_shared/money-state.ts";
-import { cardsAccepted, listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
+import { MONEY_CURRENCY } from "../_shared/money.ts";
+import { moneyState } from "../_shared/money-state.ts";
+import { listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
@@ -100,19 +100,17 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   }
   const credit = new Map(balances.map((b) => [b.place_id, b]));
 
-  let cardPlaceCount = 0;
+  let outsidePlaceCount = 0;
   const rows: PayPlaceInput[] = [];
   type ProfileRow = { id: string; name: string | null; profile_photo: string | null; address: string | null; state: string | null; currency: string | null; lat: number | null; lng: number | null; boost_tier: number | null };
   for (const p of (placesRes.data ?? []) as ProfileRow[]) {
     const s = settings.get(p.id) ?? settingsFromRow(null);
     const charges = charging.has(p.id);
     const active = p.state === "active";
-    // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
-    const cardOk = CARD_BILL_PAY_LIVE && charges && cardsAccepted(s) && active;
     // Cash Payments (MESITA-3589): the owner's switch and the place code.
     const cashState = moneyState({ ...s, has_place_code: coded.has(p.id) }, charges ? { charges_enabled: true } : null, null);
     const outsideOk = cashState.cash && active;
-    if (cardOk || outsideOk) cardPlaceCount++;
+    if (outsideOk) outsidePlaceCount++;
     const money = listRowMoney(s, charges);
     const b = credit.get(p.id);
     rows.push({
@@ -125,7 +123,6 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       tier: p.boost_tier,
       mesita_pay: money.mesita_pay,
       currency: (b?.currency ?? p.currency ?? MONEY_CURRENCY).toLowerCase(),
-      card_ok: cardOk,
       // A closed place still owes its credit; only an active one is paid here.
       available_cents: active ? (b?.spendable_cents ?? 0) : 0,
       pending_cents: active ? (b?.pending_cents ?? 0) : 0,
@@ -137,9 +134,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
 
   const listed = payPlaces(rows, {
     at: loc.coords,
-    cardPlaceCount,
+    outsidePlaceCount,
     testMode: !livemode,
-    minCents: (c) => MIN_CHARGE_CENTS[c] ?? 0,
   });
   // The offer slides (MESITA-4519): one batched read for the listed places,
   // the same rule as Home's rows. It logs its own failures and answers no

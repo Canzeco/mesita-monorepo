@@ -5,28 +5,20 @@
 // payment and its spend entry and answers a proof token; the QR opens the
 // proof on visit.mesita.ai.
 //
-// MESITA-3305 (W2b): with a card part (`card_cents` > 0) the credit part is
-// held and the card part plus an optional tip opens one Stripe Checkout on
-// the place's connected account with Mesita's fee on the card part; the
-// answer is the Checkout url. The hold becomes a spend when Stripe says
-// paid (the receiver, the cron, or the guest's return to /pay?payment=).
+// MESITA-4708: NO CARD FOR A BILL. The card part (MESITA-3305, W2b: a Stripe
+// Checkout for the rest and a tip) is gone: cards buy vouchers only. A
+// `card_cents` or `tip_cents` above 0 answers 409 cards_off; the rest of a
+// bill is paid outside (below).
 //
-// Body: { place_id: uuid, amount_cents: integer (credit + card),
-//         card_cents?: integer, tip_cents?: integer, return_url?: string,
+// Body: { place_id: uuid, amount_cents: integer (credit),
 //         request_id: uuid (one per tap; a retry after a lost answer carries
 //         the same), ticket?: string }
 // Response (credit only): { ok: true, payment_id, status, outcome: paid |
 //           already_paid, amount_cents, credit_cents, currency, paid_at,
 //           proof: { token, url }, test_mode }
-// Response (card part):   { ok: true, payment_id, status: "open", url,
-//           expires_at, amount_cents, credit_cents, card_cents, tip_cents,
-//           currency, test_mode }
 //   400 (a malformed call) · 400 amount_required | above_cap (+cap_cents) ·
 //   401 sign_in · 404 gone (no such active place) ·
-//   409 insufficient (+spendable_cents) | taken (+payment_id) |
-//       no_account | cards_off | currency_mismatch | below_minimum |
-//       in_progress (+url, expires_at, payment_id) | locked (+retry_after_s) ·
-//   502 checkout_failed ·
+//   409 insufficient (+spendable_cents) | taken (+payment_id) | cards_off ·
 //   500 with request_id (the payment may have gone through: retry the same
 //   request_id and a replay answers already_paid)
 //
@@ -41,7 +33,7 @@
 //       taken (+payment_id: this guest's paid payment, or null)
 //
 // MESITA-3545 (Payments Flow v2): `look: true` also answers the waiter's tip
-// (tip_cents). With a charge the card path pays at most the waiter's bill:
+// (tip_cents). With a charge the credit path pays at most the waiter's bill:
 // `amount_cents` may be lower, never higher (the rest is "rest at the
 // table", paid off-app, earning nothing); the tip is the guest's to change.
 // The outside path: body { place_id, charge_code, outside: true, tip_cents,
@@ -61,16 +53,15 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
-import { readCardPart, readPayBody, startOutsidePayment, startPayment } from "../_shared/pay.ts";
-import { billCardOff, startCardPayment } from "../_shared/pay-card.ts";
+import { readPayBody, startOutsidePayment, startPayment } from "../_shared/pay.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { readAccount, readSettings } from "../_shared/payments.ts";
+import { readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, openOutsideOf, readChargeCode, readTip, supabaseChargeStore } from "../_shared/charge.ts";
 import { moneyText } from "../_shared/pay.ts";
-import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-start-payment", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
@@ -119,7 +110,7 @@ serveJson("consumer-web-start-payment", async (req) => {
     // set; the owner's switch decides whether a bill may be paid outside.
     const money = moneyState({ ...settings, has_place_code: true }, null, null);
     if (!money.cash) {
-      return json({ ok: false, code: "cash_off", error: "This place doesn't take cash through Mesita. Pay with credit or card." }, 409);
+      return json({ ok: false, code: "cash_off", error: "This place doesn't take cash through Mesita. Pay with credit." }, 409);
     }
     const currency = String(placeRes.place.currency ?? MONEY_CURRENCY).toLowerCase();
     const livemode = paymentsLivemode();
@@ -128,7 +119,7 @@ serveJson("consumer-web-start-payment", async (req) => {
     }
     // This guest's outside bill on this charge is still waiting: answer it,
     // never a second hold under a new request_id.
-    // A live card or credit payment of this guest already holds the charge.
+    // A live payment of this guest already holds the charge.
     if (c.payment_id && !(await openOutsideOf(store, c, userId))) {
       const held = await store.payment(c.payment_id);
       if (held && held.consumer_id === userId && (held.status === "open" || held.status === "opening")) {
@@ -199,10 +190,11 @@ serveJson("consumer-web-start-payment", async (req) => {
   if (charge && input.amountCents > charge.amount_cents) {
     return json({ ok: false, error: `The waiter's charge is ${moneyText(charge.amount_cents, charge.currency)}` }, 400);
   }
-  const card = readCardPart(bodyRes.body, input.amountCents);
-  if (!card.ok) return json({ ok: false, code: card.code, error: card.error, ...card.detail }, card.status);
-  if (card.cardCents > 0 && (!card.returnUrl || !isAllowedReturnUrl(card.returnUrl))) {
-    return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
+  // MESITA-4708: no card part (and so no card tip) for a bill.
+  const cardCents = bodyRes.body.card_cents;
+  const tipCents = bodyRes.body.tip_cents;
+  if ((typeof cardCents === "number" && cardCents > 0) || (typeof tipCents === "number" && tipCents > 0)) {
+    return json({ ok: false, code: "cards_off", error: "Pay the rest to the place, in cash or on its own terminal" }, 409);
   }
 
   const placeRes = await readVoucherPlace(admin, input.placeId);
@@ -211,9 +203,7 @@ serveJson("consumer-web-start-payment", async (req) => {
   if (!place || place.state !== "active") {
     return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
   }
-  // A guest's credit is the place's debt (MESITA-3408): no switch refuses
-  // it. The switches still shape a card part (Mesita Payments).
-  const settings = await readSettings(admin, input.placeId);
+  // A guest's credit is the place's debt (MESITA-3408): no switch refuses it.
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
   const livemode = paymentsLivemode();
@@ -233,38 +223,6 @@ serveJson("consumer-web-start-payment", async (req) => {
   };
 
   try {
-    if (card.cardCents > 0) {
-      const key = paymentsStripeKey();
-      if (!key) return json({ ok: false, code: "no_account", error: "Payments are not available right now" }, 503);
-      // MESITA-4698: no card for a bill while CARD_BILL_PAY_LIVE is off.
-      const off = billCardOff();
-      if (off) return json({ ok: false, code: off.code, error: off.error }, off.status);
-      const account = await readAccount(admin, input.placeId);
-      const res = await startCardPayment(admin, stripeClient(key), {
-        consumerId: userId,
-        email: user.email ?? null,
-        input: { ...input, cardCents: card.cardCents, tipCents: card.tipCents, returnUrl: card.returnUrl as string },
-        place: { id: place.id, name: place.name, currency },
-        account,
-        settings,
-        livemode,
-        nowMs: Date.now(),
-      });
-      if (!res.ok) {
-        await release();
-        console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: res.code ?? "refused", place_id: input.placeId, amount_cents: input.amountCents, card_cents: card.cardCents }));
-        return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
-      }
-      if (res.kind === "already_paid") {
-        // The same tap, already settled: the page reads the payment back.
-        if (charges) await bind(res.payment_id, (await charges.payment(res.payment_id))?.paid_at ?? null);
-        return json({ ok: true, payment_id: res.payment_id, status: "paid", outcome: "already_paid", test_mode: !livemode });
-      }
-      await bind(res.start.payment_id, null);
-      console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: "open", payment_id: res.start.payment_id, place_id: input.placeId, amount_cents: input.amountCents, card_cents: card.cardCents, tip_cents: card.tipCents }));
-      return json({ ok: true, ...res.start });
-    }
-
     const res = await startPayment(admin, { consumerId: userId, input, currency, livemode });
     if (!res.ok) {
       await release();
