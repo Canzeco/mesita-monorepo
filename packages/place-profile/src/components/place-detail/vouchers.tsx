@@ -1720,7 +1720,39 @@ export function PostSection({
             }
           : { word: "Rejected", line: latest.reason ?? "This story didn’t qualify." }
     : null;
-  const nextAt = read.next_at ? readyClock(read.next_at) : "";
+  const nextAt = read.next_at && Date.parse(read.next_at) > Date.now() ? readyClock(read.next_at) : "";
+  // JUST THE STORY, ONE BUTTON (Pato, 2026-11-23, MESITA-4751: "just list the
+  // story, and if someone wants to, add a button at the bottom to post story.
+  // since there is only one option, you don't need to select"). The tab is
+  // the story row; a story still in its checks, or turned down, is a second
+  // row in the same list (a paid one lives in Tickets). The "Your latest story
+  // here" card and the "next reward opens" line went into the one button.
+  const inFlight = latest && latest.state !== "rewarded" && status ? latest : null;
+  const BAR_BUTTON = "flex h-12 w-full items-center justify-center gap-2 rounded-full text-base font-semibold disabled:opacity-60";
+  const button = !read.signed_in ? null : !read.instagram_linked ? (
+    onConnectInstagram ? (
+      <button type="button" onClick={onConnectInstagram} className={cn(BAR_BUTTON, "bg-foreground text-paper")} data-post-connect>
+        <Instagram className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+        Connect Instagram
+      </button>
+    ) : null
+  ) : nextAt ? (
+    <button type="button" disabled className={cn(BAR_BUTTON, "bg-muted text-muted-foreground")} data-post-next>
+      Next story reward {nextAt}
+    </button>
+  ) : read.simulate && onSimulate ? (
+    // Stripe test mode (MESITA-4714): the button simulates the story.
+    <button type="button" onClick={onSimulate} disabled={simulating} className={cn(BAR_BUTTON, POST_TONE)} data-post-simulate>
+      <Instagram className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+      {simulating ? "Simulating…" : "Simulate a story"}
+    </button>
+  ) : (
+    // Instagram's story camera on a phone with the app.
+    <a href="instagram://story-camera" className={cn(BAR_BUTTON, POST_TONE)} data-post-story>
+      <Instagram className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+      Post Story
+    </a>
+  );
   return (
     <>
       {/* POST IS A BOX TOO (Pato, MESITA-4725: "even if its only one offer
@@ -1738,6 +1770,20 @@ export function PostSection({
               <span className="text-muted-foreground truncate text-sm">Tag {tags}</span>
             </span>
           </li>
+          {inFlight && status ? (
+            <li className="flex items-center gap-3 px-3.5 py-3" data-post-latest={inFlight.state}>
+              <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
+                <Instagram className="h-5 w-5" strokeWidth={2.25} />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-foreground text-sm font-semibold">
+                  Your story · {status.word}
+                  {inFlight.simulated ? <span className="text-muted-foreground font-normal"> · Simulated</span> : null}
+                </span>
+                <span className="text-muted-foreground text-sm">{status.line}</span>
+              </span>
+            </li>
+          ) : null}
         </ul>
       </section>
       <HowItWorks
@@ -1747,78 +1793,13 @@ export function PostSection({
         steps={steps}
         good={["Don't hide or delete the story for 10 hours.", "One story reward per place every 7 days.", "No person reviews it. An AI does, automatically."]}
       />
-      {status && latest ? (
-        <Box title="Your latest story here" data-post-latest={latest.state}>
-          <div className="flex items-start gap-3">
-            <StoryThumb src={latest.image_url ?? null} simulated={latest.simulated} />
-            <div className="flex min-w-0 flex-col">
-              <p className="text-foreground text-sm font-semibold">
-                {status.word}
-                {latest.simulated ? <span className="text-muted-foreground font-normal"> · Simulated</span> : null}
-              </p>
-              <p className="text-muted-foreground text-sm">{status.line}</p>
-            </div>
-          </div>
-        </Box>
-      ) : null}
-      {nextAt ? (
-        <p className="text-muted-foreground px-1 text-sm" data-post-next>
-          Your next story reward here opens {nextAt}.
-        </p>
-      ) : null}
-      {read.signed_in && !read.instagram_linked && onConnectInstagram ? (
-        <button
-          type="button"
-          onClick={onConnectInstagram}
-          className="bg-foreground text-paper flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full text-base font-semibold"
-          data-post-connect
-        >
-          <Instagram className="h-5 w-5" strokeWidth={2.25} />
-          Connect Instagram
-        </button>
-      ) : null}
-      {read.simulate && onSimulate ? (
-        <button
-          type="button"
-          onClick={onSimulate}
-          disabled={simulating}
-          className="border-border text-foreground flex h-12 w-full shrink-0 items-center justify-center rounded-full border text-base font-semibold disabled:opacity-60"
-          data-post-simulate
-        >
-          {simulating ? "Simulating…" : "Simulate a story"}
-        </button>
+      {/* ONE BUTTON AT THE BOTTOM, sticky like Pay's Go to Pay Bill. */}
+      {button ? (
+        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-post-bar>
+          {button}
+        </div>
       ) : null}
     </>
   );
 }
 
-/** THE STORY THE AI FETCHED (Pato, MESITA-4725: "An AI will automatically
- *  fetch story and display it here"): Meta's link, 9:16. A link that no
- *  longer answers (Meta expires them) or a simulated story shows the pink
- *  placeholder with the Instagram mark. */
-function StoryThumb({ src, simulated }: { src: string | null; simulated: boolean }) {
-  const [broken, setBroken] = useState(false);
-  if (src && !broken) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={src}
-        alt="Your story"
-        onError={() => setBroken(true)}
-        className="bg-muted h-32 w-[4.5rem] shrink-0 rounded-xl object-cover"
-        data-post-story-image
-      />
-    );
-  }
-  return (
-    <span
-      className={cn("flex h-32 w-[4.5rem] shrink-0 flex-col items-center justify-center gap-1 rounded-xl text-center", POST_TONE)}
-      aria-label={simulated ? "Simulated story" : "Your story"}
-      role="img"
-      data-post-story-placeholder
-    >
-      <Instagram className="h-6 w-6" strokeWidth={2.25} />
-      {simulated ? <span className="type-meta font-bold uppercase">Test</span> : null}
-    </span>
-  );
-}
