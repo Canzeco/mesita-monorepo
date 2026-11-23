@@ -11,8 +11,8 @@
 // 0 Off · 2000 · 5000; optional, absent keeps the saved one). It pays only
 // while Loyalty Cards is On (story_reward_grant checks).
 //
-// Body: { place_id, welcome_bps, returning_bps, cap_cents, story_reward_cents? }
-// Response: { ok: true, cashback: { welcome_bps, returning_bps, cap_cents, story_reward_cents } }
+// Body: { place_id, welcome_bps, returning_bps, story_reward_cents? } (a cap_cents is ignored; no ceiling since MESITA-4728)
+// Response: { ok: true, cashback: { welcome_bps, returning_bps, story_reward_cents } }
 //   400 (bad input) · 403 owner_only
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

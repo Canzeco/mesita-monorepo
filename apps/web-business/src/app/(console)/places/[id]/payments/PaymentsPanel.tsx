@@ -140,7 +140,7 @@ function storyWord(cents: number): string {
 }
 
 /** Stage 1 · Cashbacks: one row per solution, the line it sets. */
-const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "cap_cents" | "story_reward_cents">; name: string; line: string; tone: string; icon: Icon }> = [
+const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "story_reward_cents">; name: string; line: string; tone: string; icon: Icon }> = [
   { key: "welcome_bps", name: "New Customers", line: "Welcome cashback on a guest's first bill here.", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
   { key: "returning_bps", name: "Returning Customers", line: "Returning cashback on every later bill here.", tone: "bg-green-100 text-green-700", icon: ArrowsClockwiseIcon },
 ];
@@ -239,7 +239,6 @@ export function PaymentsPanel({
   const [cashDue, setCashDue] = useState(initial.cash_due ?? []);
   const [cashback, setCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
   const [savedCashback, setSavedCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
-  const [capText, setCapText] = useState(String((initial.cashback ?? CASHBACK_DEFAULTS).cap_cents / 100));
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
@@ -279,7 +278,6 @@ export function PaymentsPanel({
     if (!r.ok) return setError(r.error);
     setCashback(r.data);
     setSavedCashback(r.data);
-    setCapText(String(r.data.cap_cents / 100));
   }
 
   async function agree() {
@@ -605,26 +603,6 @@ export function PaymentsPanel({
               </li>
             );
           })}
-          <li className={MARK_ROW} data-place-state="cashback_cap">
-            {mark(PiggyBankIcon, settings.loyalty_cards && cashback.cap_cents > 0, "bg-emerald-100 text-emerald-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Cap per bill</p>
-              <p className="text-muted-foreground">The most cashback one bill can earn, in {CURRENCY_NAME[currency] ?? currency}.</p>
-            </div>
-            <span />
-            <input
-              className="border-border bg-background w-28 rounded-full border px-3 py-1.5 text-right text-sm tabular-nums"
-              inputMode="numeric"
-              aria-label="Cashback cap per bill"
-              value={capText}
-              disabled={pending}
-              onChange={(e) => {
-                const t = e.target.value.replace(/[^0-9]/g, "").slice(0, 5);
-                setCapText(t);
-                setCashback((c) => ({ ...c, cap_cents: Math.min(Number(t || "0"), 10000) * 100 }));
-              }}
-            />
-          </li>
           {/* POST (Pato, 2026-11-23, MESITA-4714: "20 OR 50, can setup in
               business console"): what a verified Instagram story tagging
               @mesita and this place pays the guest, as credit here 3 hours

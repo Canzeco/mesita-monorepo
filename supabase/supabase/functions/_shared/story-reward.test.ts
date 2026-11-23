@@ -50,7 +50,7 @@ Deno.test("story reward: once per guest per place per 7 days", () => {
 });
 
 Deno.test("story reward: the owner picks only Off, 20 or 50; absent keeps the saved one", () => {
-  const base = { welcome_bps: 1000, returning_bps: 500, cap_cents: 20000 };
+  const base = { welcome_bps: 1000, returning_bps: 500 };
   for (const c of [0, 2000, 5000]) assertEquals(readCashbackInput({ ...base, story_reward_cents: c }).ok, true);
   for (const c of [1000, 2500, -2000, "2000", 20]) assertEquals(readCashbackInput({ ...base, story_reward_cents: c }).ok, false);
   const absent = readCashbackInput(base);
