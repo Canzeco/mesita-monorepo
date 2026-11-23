@@ -351,7 +351,16 @@ export function LocationChooser({
   };
 
   const card = (
-    <ul role="list" aria-label="Location" className={cardClass} data-places-location>
+    <ul
+      role="list"
+      aria-label="Location"
+      // NO STRIP UNDER THE HEADER (MESITA-4741): signed out there is no
+      // search field above the rows, so in the floating modal the card pulls
+      // up by the body's 20px and drops its own top hairline; the first row
+      // sits on the header's line.
+      className={cn(cardClass, anonymous && flush && "-mt-5 border-t-0")}
+      data-places-location
+    >
       {row({
         key: "here",
         title: locationLabel(null, coords !== null, locating),
