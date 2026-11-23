@@ -136,10 +136,15 @@ export type HubTile = {
   soon?: boolean;
 };
 
-/** The grid cells, in reading order; Settings is the last (ten with it
- *  since MESITA-4329: Profile · Instagram / Plan · Saved / Notifications ·
- *  Reservations / Tickets · Share / Integrations · Settings). */
+/** The grid cells, in reading order; Settings is the last (MESITA-4736:
+ *  Profile · Instagram / Reservations · Notifications / Tickets · Cards /
+ *  Saved · Plan / Gift · Share / Settings). */
 export const ME_HUB_GRID: readonly HubTile[] = [
+  // GROUPED BY TOPIC (Pato, 2026-11-23, MESITA-4736: "redo the order of
+  // those bottom boxes"), two to a row: you (Profile · Instagram), your
+  // bookings (Reservations · Notifications), your money (Tickets · Cards),
+  // your list and your plan (Saved · Plan), other people (Gift · Share),
+  // then Settings. The comments below keep each cell's history.
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
   {
@@ -153,6 +158,49 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Instagram",
     summary: "Connect your account",
     href: CONSUMER_ROUTES.mePages.instagram,
+  },
+  {
+    Icon: CalendarCheck,
+    title: "Reservations",
+    summary: "Upcoming and past",
+    href: CONSUMER_ROUTES.mePages.reservations,
+  },
+  // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855). The Notifications cell
+  // wears the red dot the bar's Activity tab wore (MESITA-3717).
+  {
+    Icon: Bell,
+    title: "Notifications",
+    summary: "Bookings and updates",
+    href: CONSUMER_ROUTES.mePages.notifications,
+  },
+  // TICKETS BEFORE GIFT (MESITA-3885, Pato: "tickets before gift").
+  // Every transaction, four kinds — Visit, Voucher, Gift, Refund.
+  {
+    Icon: Ticket,
+    title: "Tickets",
+    summary: "Every transaction",
+    href: CONSUMER_ROUTES.mePages.tickets,
+  },
+  // CARDS (Pato, 2026-11-22, MESITA-4698: "move card to this part. Cards.
+  // remove payment method from pay page"): the saved card, Apple Pay and
+  // Google Pay (/wallet/methods), which buy vouchers; a bill is paid outside
+  // since card bill pay left. It sits beside Settings on the last row.
+  {
+    // AN ACTUAL CARD (MESITA-4706: "card must be an actual card").
+    Icon: CreditCard,
+    title: "Cards",
+    summary: "Ways to pay",
+    href: CONSUMER_ROUTES.walletMethods,
+  },
+  // SAVED, A SHORTCUT (after Reservations since MESITA-4657) (Pato, 2026-11-18, MESITA-4327: "add a new box, a
+  // shortcut for saved places. not own place. just a shortcut"): Home on
+  // its ❤️ Saved row, no page of its own. Right after Plan (MESITA-4329:
+  // "put it after plan"); it sat beside Settings first.
+  {
+    Icon: Heart,
+    title: "Saved",
+    summary: "Places you saved",
+    href: `${CONSUMER_ROUTES.home}?row=saved`,
   },
   // NO CLASS (Pato, 2026-11-22, MESITA-4709: "no more VIP"): the Class
   // tile and /me/class left again (back with MESITA-4657, first gone with
@@ -168,37 +216,14 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
   },
-  // ACTIVITY'S CHIPS, AS ME'S PAGES (MESITA-3855). The Notifications cell
-  // wears the red dot the bar's Activity tab wore (MESITA-3717).
+  // GIFT IS BACK ON ME (Pato, 2026-11-22, MESITA-4670: "Add Gift button
+  // here too"): beside Share, both about other people; it opens Send Gift's
+  // place list, the Loyalty Card's Send Gift flow. Gone since MESITA-4523.
   {
-    Icon: Bell,
-    title: "Notifications",
-    summary: "Bookings and updates",
-    href: CONSUMER_ROUTES.mePages.notifications,
-  },
-  {
-    Icon: CalendarCheck,
-    title: "Reservations",
-    summary: "Upcoming and past",
-    href: CONSUMER_ROUTES.mePages.reservations,
-  },
-  // SAVED, A SHORTCUT (after Reservations since MESITA-4657) (Pato, 2026-11-18, MESITA-4327: "add a new box, a
-  // shortcut for saved places. not own place. just a shortcut"): Home on
-  // its ❤️ Saved row, no page of its own. Right after Plan (MESITA-4329:
-  // "put it after plan"); it sat beside Settings first.
-  {
-    Icon: Heart,
-    title: "Saved",
-    summary: "Places you saved",
-    href: `${CONSUMER_ROUTES.home}?row=saved`,
-  },
-  // TICKETS BEFORE GIFT (MESITA-3885, Pato: "tickets before gift").
-  // Every transaction, four kinds — Visit, Voucher, Gift, Refund.
-  {
-    Icon: Ticket,
-    title: "Tickets",
-    summary: "Every transaction",
-    href: CONSUMER_ROUTES.mePages.tickets,
+    Icon: Gift,
+    title: "Gift",
+    summary: "Send credit",
+    href: CONSUMER_ROUTES.walletSend,
   },
   // SHARE REPLACES GIFT (Pato, 2026-11-14, MESITA-3940: "here add share
   // instead of gift"): the cell opens /share, the channel-rows page Wallet
@@ -209,26 +234,6 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Share",
     summary: "Tell a friend",
     href: CONSUMER_ROUTES.share,
-  },
-  // GIFT IS BACK ON ME (Pato, 2026-11-22, MESITA-4670: "Add Gift button
-  // here too"): beside Share, both about other people; it opens Send Gift's
-  // place list, the Loyalty Card's Send Gift flow. Gone since MESITA-4523.
-  {
-    Icon: Gift,
-    title: "Gift",
-    summary: "Send credit",
-    href: CONSUMER_ROUTES.walletSend,
-  },
-  // CARDS (Pato, 2026-11-22, MESITA-4698: "move card to this part. Cards.
-  // remove payment method from pay page"): the saved card, Apple Pay and
-  // Google Pay (/wallet/methods), which buy vouchers; a bill is paid outside
-  // since card bill pay left. It sits beside Settings on the last row.
-  {
-    // AN ACTUAL CARD (MESITA-4706: "card must be an actual card").
-    Icon: CreditCard,
-    title: "Cards",
-    summary: "Ways to pay",
-    href: CONSUMER_ROUTES.walletMethods,
   },
   // NO INTEGRATIONS CELL (Pato, 2026-11-22, MESITA-4657: "Share Settings
   // (integrations here inside)"): it is Settings' first row.
