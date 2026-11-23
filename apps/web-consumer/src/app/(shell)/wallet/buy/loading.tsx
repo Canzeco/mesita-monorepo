@@ -1,11 +1,13 @@
 import { Screen } from "@/components/consumer/nav/Screen";
 import { Skeleton } from "@/components/shared/Skeleton";
 
-// /wallet/buy's frame (MESITA-4597): Prepay & Get Credits as it draws, edge to
-// edge, grey bones only: the search pill, then three place rows.
+// /wallet/buy's frame (MESITA-4597): the list as it draws, edge to edge, grey
+// bones only: the search pill, then three place rows. No title: the same frame
+// stands in for Prepay and Explore Offers (MESITA-4731), and the query that
+// tells them apart is not known here.
 export default function Loading() {
   return (
-    <Screen title="Get Discounts" paper flush>
+    <Screen title="" paper flush>
       <div className="flex flex-col pt-3" aria-busy>
         <div className="px-5 pt-3 pb-2">
           <Skeleton className="h-11 w-full rounded-full" />

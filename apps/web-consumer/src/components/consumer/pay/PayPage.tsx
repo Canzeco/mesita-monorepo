@@ -398,7 +398,7 @@ export function PayPage({
           </span>
           <span className="flex flex-col">
             <span>Prepay</span>
-            <span className="text-xs font-medium opacity-80">Get bonus credit</span>
+            <span className="text-sm font-normal opacity-80">Get bonus credit</span>
           </span>
         </PushLink>
         <PushLink

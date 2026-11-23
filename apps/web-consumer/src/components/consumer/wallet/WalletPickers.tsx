@@ -38,7 +38,8 @@ import { useRouter } from "next/navigation";
 import { navigateTo } from "@/lib/navigate";
 import { PlacePickBody } from "@/components/consumer/pay/PayPick";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { CONSUMER_ROUTES, walletSendPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, placeOffersPath, walletSendPath } from "@/lib/consumer-route-contract";
+import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
 import { placeHref } from "@/lib/place-route";
 import { useWallet } from "./use-wallet";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
@@ -63,14 +64,21 @@ export function prepayReturnHref(placeIdOrSlug: string): string {
  *  no balance, no Add row; a place opens its Offers at Prepayments, where the
  *  buying happens. A bordered "Places" list with balances and an Add row
  *  before. */
-export function BuyCreditsPage() {
+export function BuyCreditsPage({ offers = "any" }: { offers?: "vouchers" | "any" }) {
   const router = useRouter();
+  // TWO DOORS, ONE LIST (MESITA-4731, D5): Pay's Prepay opens it as
+  // `?offers=vouchers` (places that sell a voucher, landing on their Prepay
+  // tab); Explore Offers as `?offers=any` (places with any offer, landing on
+  // their first: Prepay, else Pay, else Post).
+  const open = (id: string, p?: PayPlace) => {
+    const t = p ? payPlaceTabs(p) : null;
+    const tab = offers === "vouchers" || !t || t.prepay ? "prepayment" : t.pay ? "cashback" : t.post ? "post" : null;
+    navigateTo(router, placeOffersPath(id, tab), { motion: "drill" });
+  };
   return (
-    // EXPLORE DISCOUNTS (MESITA-4698): the places with offers; a row opens
-    // its Offers page, which picks Cashbacks or Vouchers itself.
-    <Screen title="Get Discounts" paper flush>
+    <Screen title={offers === "vouchers" ? "Prepay" : "Explore Offers"} paper flush>
       <div className="flex min-h-0 flex-1 flex-col pt-3 pb-8">
-        <PlacePickBody prepay onPick={(id) => navigateTo(router, `${placeHref(id)}/offers`, { motion: "drill" })} />
+        <PlacePickBody prepay offers={offers} onPick={open} />
       </div>
     </Screen>
   );
