@@ -55,7 +55,6 @@ import {
   updatedAgo,
 } from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
-import { FollowersBadge } from "@/components/shared/followers-badge";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import {
   INPUT_CLASS,
@@ -996,8 +995,6 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   // The emulated count while the emulator is on (MESITA-4693).
   const own = useConsumerProfile().data;
   const emulated = own?.instagram_followers_emulated ?? null;
-  // MESITA-4714: the server's followers badge (a pink disc, MESITA-4734), right of the handle.
-  const badge = own?.instagram_badge === true && !pending;
   const now = useSyncExternalStore(
     minuteClock.subscribe,
     minuteClock.now,
@@ -1031,7 +1028,6 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
               {handle ? `@${handle}` : "Instagram connected"}
             </p>
           )}
-          {badge && handle ? <FollowersBadge /> : null}
         </div>
         <p className="text-muted-foreground type-label truncate">
           {emulated != null ? `${followersLabel(emulated)} (test)` : followersLabel(igFollowers)}

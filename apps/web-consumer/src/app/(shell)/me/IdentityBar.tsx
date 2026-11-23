@@ -109,14 +109,14 @@ export function IdentityBar({
               label: instagramLabel,
               connected: instagramConnected,
               href: CONSUMER_ROUTES.mePages.instagram,
-              // MESITA-4714: the server's followers badge (a yellow disc, MESITA-4722) (instagram_badge).
-              badge: profile?.instagram_badge === true,
+              // No followers badge (MESITA-4774): VIP Class replaces it.
             }}
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
-            // No Class or Plan pill (MESITA-4709): the Plan tile on the grid
-            // opens Me › Plan.
+            // CLASS IS BACK (MESITA-4774): Name | Class, opening Me › VIP.
+            // No Plan pill: the Plan tile on the grid opens Me › Plan.
+            guestClass={{ vip: profile?.guest_class === "vip", href: CONSUMER_ROUTES.mePages.vip }}
           />
         )}
       </div>

@@ -4,6 +4,7 @@ import {
   Bell,
   CalendarCheck,
   CreditCard,
+  Crown,
   Gem,
   Heart,
   Settings as SettingsIcon,
@@ -157,6 +158,15 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     title: "Instagram",
     summary: "Connect your account",
     href: CONSUMER_ROUTES.mePages.instagram,
+  },
+  // VIP IS THE THIRD BOX (Pato, 2026-11-23, MESITA-4774: "vip box must be
+  // the third box … not 100% wide but 50%"): a cell like the others, opening
+  // Me › VIP (status, or the invitation code). A crown, not Plan's gem.
+  {
+    Icon: Crown,
+    title: "VIP",
+    summary: "Invitation code",
+    href: CONSUMER_ROUTES.mePages.vip,
   },
   {
     Icon: CalendarCheck,

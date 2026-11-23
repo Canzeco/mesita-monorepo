@@ -2,9 +2,8 @@
 
 import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { User } from "lucide-react";
+import { Crown, User } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { FollowersBadge } from "@/components/shared/followers-badge";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -68,9 +67,6 @@ export type IdentityInstagram = {
   connected?: boolean;
   /** A door (Me) when set; a plain fact (Social) when not. */
   href?: string;
-  /** MESITA-4714: the followers badge (a pink disc, MESITA-4734) right of the handle (the server's
-   *  instagram_badge: more than 1,000 followers, public account). */
-  badge?: boolean;
 };
 
 function InstagramBadge({ connected = true }: { connected?: boolean }) {
@@ -131,14 +127,12 @@ function InstagramLine({ instagram }: { instagram: IdentityInstagram }) {
     >
       <InstagramBadge connected={instagram.connected} />
       <span className="truncate">{instagram.label}</span>
-      {instagram.badge ? <FollowersBadge /> : null}
     </PushLink>
   ) : (
     <span className={IDENTITY_INSTAGRAM_CLASS} data-identity-instagram>
       <InstagramBadge connected={instagram.connected} />
       <span className="sr-only">Instagram:</span>
       <span className="truncate">{instagram.label}</span>
-      {instagram.badge ? <FollowersBadge /> : null}
     </span>
   );
 }
@@ -204,11 +198,15 @@ export function IdentityModules({
   avatarUrl,
   instagram,
   nameHref,
+  guestClass,
 }: {
   name: string;
   avatarUrl: string | null;
   instagram: IdentityInstagram & { href: string };
   nameHref: string;
+  /** MESITA-4774: the Class pill right of the name ("VIP Class" or
+   *  "Regular Class"), opening Me › VIP. Absent: the name runs full width. */
+  guestClass?: { vip: boolean; href: string };
 }) {
   // THE HANDLE ONLY (Pato, 2026-11-22, MESITA-4651: "don't mention the
   // number of followers there … only the instagram"): the count lives on Me
@@ -241,15 +239,31 @@ export function IdentityModules({
         </span>
       </PushLink>
       <span className="flex w-full min-w-0 flex-col gap-2">
-        <PushLink
-          href={nameHref}
-          aria-label={`Profile: ${name}`}
-          className={IDENTITY_PILL_CLASS}
-          data-identity-name
-        >
-          <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{name}</span>
-        </PushLink>
+        {/* NAME | CLASS (Pato, 2026-11-23, MESITA-4774: "Name Left | Class
+            Right, instagram button … now we have VIP Class"): two halves,
+            then Instagram full width. */}
+        <span className={cn("grid w-full min-w-0 gap-2", guestClass ? "grid-cols-2" : "grid-cols-1")}>
+          <PushLink
+            href={nameHref}
+            aria-label={`Profile: ${name}`}
+            className={IDENTITY_PILL_CLASS}
+            data-identity-name
+          >
+            <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="truncate">{name}</span>
+          </PushLink>
+          {guestClass ? (
+            <PushLink
+              href={guestClass.href}
+              aria-label={guestClass.vip ? "VIP Class" : "Regular Class"}
+              className={IDENTITY_PILL_CLASS}
+              data-identity-class={guestClass.vip ? "vip" : "regular"}
+            >
+              <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+              <span className="truncate">{guestClass.vip ? "VIP Class" : "Regular Class"}</span>
+            </PushLink>
+          ) : null}
+        </span>
         <PushLink
           href={instagram.href}
           aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
@@ -259,7 +273,6 @@ export function IdentityModules({
           <InstagramBadge connected={instagram.connected} />
           {/* No Instagram linked: says so plainly (MESITA-4691). */}
           <span className="truncate">{instagram.connected ? handle : "No Instagram"}</span>
-          {instagram.connected && instagram.badge ? <FollowersBadge /> : null}
         </PushLink>
       </span>
     </div>
@@ -309,20 +322,16 @@ export function PersonInstagramPill({
   label,
   href,
   onOpen,
-  badge,
 }: {
   label: string;
   href?: string | null;
   /** Counts the tap (social_open_instagram). */
   onOpen?: () => void;
-  /** MESITA-4714: the server's followers badge (a pink disc, MESITA-4734), right of the handle. */
-  badge?: boolean;
 }) {
   const body = (
     <>
       <InstagramBadge connected={label.startsWith("@")} />
       <span className="truncate">{label}</span>
-      {badge && label.startsWith("@") ? <FollowersBadge /> : null}
     </>
   );
   return href ? (
