@@ -46,9 +46,9 @@ describe("a redeem answer, as the page shows it", () => {
 });
 
 describe("credit labels (MESITA-4766)", () => {
-  it("names a Returning VIP Back and keeps an old story credit", () => {
-    expect(entryLabel({ kind: "cashback", reason: "returning_vip" })).toBe("Back · Returning VIP");
-    expect(entryLabel({ kind: "cashback", reason: "welcome" })).toBe("Back · Welcome");
+  it("names a Returning VIP Cashback and keeps an old story credit", () => {
+    expect(entryLabel({ kind: "cashback", reason: "returning_vip" })).toBe("Cashback · Returning VIP");
+    expect(entryLabel({ kind: "cashback", reason: "welcome" })).toBe("Cashback · Welcome");
     expect(ENTRY_LABEL.story).toBe("Instagram Story credit");
     expect(creditEntryTitle("story.123")).toBe("Instagram Story credit");
     expect(KIND_WORD.story).toBe("Instagram Story credit");

@@ -387,7 +387,7 @@ export function PayPage({
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={CONSUMER_ROUTES.walletBuy}
-          className={cn(TILE, "bg-[#4DA3FF] text-neutral-950 hover:bg-[#3a95f5]")}
+          className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-prepay
         >
           {/* THE NAME (Pato, 2026-11-23, MESITA-4753: "call the box Prepay &
