@@ -84,7 +84,7 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 // Every offer green (MESITA-4181) and one yellow (MESITA-4688) before.
 // BLACK INK ON BLUE (Pato, 2026-11-22, MESITA-4702: "use black color in
 // prepayments, it gives more confidence. blue background, black letters").
-const BLUE = "bg-[#0A84FF] text-neutral-950";
+// Blue left with MESITA-4748: Prepay is green again.
 // POST IS PINK (Pato, 2026-11-23, MESITA-4714: Prepay · Pay · Post): the
 // third offer kind gets the third colour, neither blue nor green, black ink.
 // A CLEARLY PINK PINK (Pato, MESITA-4725: "MUST BE PINK, BETTER COLOR"):
@@ -92,15 +92,21 @@ const BLUE = "bg-[#0A84FF] text-neutral-950";
 const PINK = "bg-[#FF66C4] text-neutral-950";
 /** MESITA-4714: the Post slide and the Post tab's mark. */
 export const POST_TONE = PINK;
+// ONE COLOUR PER OFFER, EVERYWHERE (Pato, 2026-11-23, MESITA-4748,
+// /plan-design-review D9): Prepay green, Pay purple, Post pink, the Wallet's
+// two tiles' colours, so a colour means the same thing on Home, the place
+// screen and Pay. Vouchers blue and cashback green before (MESITA-4701/4702).
+// Pay is Stripe purple with white ink, Pay Bill's own button.
+const PURPLE = "bg-[#635BFF] text-white";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  voucher_welcome: BLUE,
-  voucher_200: BLUE,
-  voucher_1000: BLUE,
-  voucher_5000: BLUE,
-  voucher_vip: BLUE,
+  voucher_welcome: GREEN,
+  voucher_200: GREEN,
+  voucher_1000: GREEN,
+  voucher_5000: GREEN,
+  voucher_vip: GREEN,
 };
-/** MESITA-4701: every cashback line, one green. */
-export const CASHBACK_TONE = GREEN;
+/** Every cashback line, one purple (MESITA-4748; green under MESITA-4701). */
+export const CASHBACK_TONE = PURPLE;
 // THE WORDS (Pato, 2026-11-17, MESITA-4219): Classic, the best standard
 // voucher, leads; every pill reads "+N% Bonus" on every screen (the "+"
 // back, MESITA-4221). Prepay led with "+N%" before.
@@ -108,20 +114,21 @@ export const CASHBACK_TONE = GREEN;
 // and green for cashbacks · Pay (X% Cashback) · Prepay (Up to X% Bonus)"):
 // a green Pay slide where a bill earns cashback, then the blue Prepay slide.
 const OFFER_SLIDES: OfferSlide[] = [
-  { key: "cashback", lead: "Pay", pill: "", pillShort: "", short: "Pay", spoken: "Pay", section: "cashback", tone: GREEN },
+  { key: "cashback", lead: "Pay", pill: "", pillShort: "", short: "Pay", spoken: "Pay", section: "cashback", tone: PURPLE },
   // The best standard voucher on sale (offerSlides picks it).
   // "Prepay" on the previews since MESITA-4255 (Pato: "instead of classic use
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
-  { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: BLUE },
+  { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
   // POST, THIRD (MESITA-4714): "Post · $20 Story" where a story pays.
   { key: "post", lead: "Post", pill: "", pillShort: "", short: "Post", spoken: "Post", section: "post", tone: PINK },
   // No Welcome voucher slide since MESITA-4698: Welcome is a cashback line.
 ];
 
 /** The standard vouchers' bonuses: the server's catalog (supabase
- *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +30%; MESITA-4152). */
-const STANDARD_BONUS: Record<string, number> = {
+ *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +30%; MESITA-4152).
+ *  Pay's Prepay list draws one box per voucher from it (MESITA-4748). */
+export const STANDARD_BONUS: Record<string, number> = {
   voucher_200: 10,
   voucher_1000: 20,
   voucher_5000: 30,

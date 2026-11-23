@@ -31,7 +31,9 @@ function AddCreditsCardRow() {
 }
 
 import { useState } from "react";
-import { Gift } from "lucide-react";
+import { BadgePercent, Gift, Tag } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ListLocationBox } from "./ListLocationBox";
 
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useRouter } from "next/navigation";
@@ -75,9 +77,34 @@ export function BuyCreditsPage({ offers = "any" }: { offers?: "vouchers" | "any"
     const tab = offers === "vouchers" || !t || t.prepay ? "prepayment" : t.pay ? "cashback" : t.post ? "post" : null;
     navigateTo(router, placeOffersPath(id, tab), { motion: "drill" });
   };
+  const vouchers = offers === "vouchers";
   return (
-    <Screen title={offers === "vouchers" ? "Prepay" : "Explore Offers"} paper flush>
-      <div className="flex min-h-0 flex-1 flex-col pt-3 pb-8">
+    <Screen title={vouchers ? "Prepay" : "Explore Offers"} paper flush action={<ListLocationBox title={vouchers ? "short" : "long"} />}>
+      {/* A BANNER THAT SAYS WHAT THIS IS (Pato, 2026-11-23, MESITA-4748:
+          "between header and searchbar add banner … like prepay and get
+          bonus … really short text"; /plan-design-review D6): one line, full
+          bleed. Prepay's is Link green, the Wallet tile's colour; Explore
+          Offers' is grey with the tag in a green disc. */}
+      <p
+        role="note"
+        className={cn(
+          "flex shrink-0 items-center gap-2.5 px-4 py-2.5 text-base font-semibold",
+          vouchers ? "bg-[#00D66F] text-neutral-950" : "bg-muted text-foreground border-border border-b",
+        )}
+        data-list-banner
+      >
+        <span
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+            vouchers ? "bg-neutral-950 text-white" : "bg-[#00D66F] text-neutral-950",
+          )}
+          aria-hidden
+        >
+          {vouchers ? <BadgePercent className="h-4 w-4" strokeWidth={2.5} /> : <Tag className="h-4 w-4" strokeWidth={2.5} />}
+        </span>
+        <span className="min-w-0">{vouchers ? "Prepay and get bonus credit" : "Prepay, pay or post and earn credit"}</span>
+      </p>
+      <div className="flex min-h-0 flex-1 flex-col pb-8">
         <PlacePickBody prepay offers={offers} onPick={open} />
       </div>
     </Screen>
