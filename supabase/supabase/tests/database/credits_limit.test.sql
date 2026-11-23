@@ -1,21 +1,27 @@
 -- MESITA-3947 — Credits Limit: a default per currency, a per-place override,
 -- the limit that binds a place, and the admin read; nobody but the EFs
--- reads any of it.
+-- reads any of it. MESITA-4732: a Mexican place earns its limit in steps
+-- (0 · MX$10,000 with the Credits Account · MX$50,000 with a charging
+-- Stripe account too); its own limit still wins.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(14);
+select plan(23);
 
-insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3947');
+insert into auth.users (id) values
+  ('00000000-0000-4000-8000-0000000a3947'),
+  ('00000000-0000-4000-8000-0000000c4732');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3947');
 insert into public.place_profiles (id, google_name) values
   ('00000000-0000-4000-8000-000000003947', 'Limit Probe MX'),
-  ('00000000-0000-4000-8000-000000013947', 'Limit Probe US');
+  ('00000000-0000-4000-8000-000000013947', 'Limit Probe US'),
+  ('00000000-0000-4000-8000-000000024732', 'Limit Probe Tiers');
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000003947', 'mesita-3947-probe-mx', 'active', 'generating', 'MXN'),
-  ('00000000-0000-4000-8000-000000013947', 'mesita-3947-probe-us', 'active', 'generating', 'USD');
+  ('00000000-0000-4000-8000-000000013947', 'mesita-3947-probe-us', 'active', 'generating', 'USD'),
+  ('00000000-0000-4000-8000-000000024732', 'mesita-4732-probe-tiers', 'active', 'generating', 'MXN');
 
 -- ━━━ EF-only ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -25,8 +31,10 @@ select ok(
     and not has_function_privilege('anon', 'public.admin_credit_limits(boolean)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.admin_credit_limits(boolean)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.admin_set_place_credit_limit(uuid, bigint)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.admin_set_place_credit_limit(uuid, bigint)', 'EXECUTE'),
-  'place_credit_limit, admin_set_place_credit_limit and admin_credit_limits are service-role only'
+    and not has_function_privilege('authenticated', 'public.admin_set_place_credit_limit(uuid, bigint)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_credit_limit_info(uuid, boolean)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_credit_limit_info(uuid, boolean)', 'EXECUTE'),
+  'place_credit_limit, place_credit_limit_info, admin_set_place_credit_limit and admin_credit_limits are service-role only'
 );
 
 select ok(
@@ -65,8 +73,8 @@ select is(
 
 select is(
   public.place_credit_limit('00000000-0000-4000-8000-000000003947'),
-  10000000::bigint,
-  'a place without its own limit takes its currency''s default'
+  0::bigint,
+  'a Mexican place without its own limit and with the Credits Account Off may take no new credit (MESITA-4732)'
 );
 
 select ok(
@@ -121,6 +129,73 @@ select ok(
   not exists (select 1 from jsonb_array_elements(public.admin_credit_limits(false) -> 'places') r
                where r ->> 'place_id' = '00000000-0000-4000-8000-000000013947'),
   'a place with no credit and Loyalty Cards Off is not listed'
+);
+
+-- ━━━ The tiers (MESITA-4732) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is(
+  public.place_credit_limit_info('00000000-0000-4000-8000-000000024732', false),
+  jsonb_build_object('limit_cents', 0, 'currency', 'MXN', 'tier', 'none',
+                     'next', jsonb_build_object('step', 'credits', 'limit_cents', 1000000)),
+  'Credits Account Off: limit 0, the next step is the Credits Account and MX$10,000'
+);
+
+insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
+values ('00000000-0000-4000-8000-000000024732', '00000000-0000-4000-8000-0000000c4732', 'owner', 'draft-2026-11', repeat('0', 64));
+insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000024732', true);
+
+select is(
+  public.place_credit_limit_info('00000000-0000-4000-8000-000000024732', false),
+  jsonb_build_object('limit_cents', 1000000, 'currency', 'MXN', 'tier', 'credits',
+                     'next', jsonb_build_object('step', 'stripe', 'limit_cents', 5000000)),
+  'Credits Account On: MX$10,000, the next step is the Stripe Account and MX$50,000'
+);
+
+insert into public.place_payment_accounts (place_id, stripe_account_id, livemode, charges_enabled)
+values ('00000000-0000-4000-8000-000000024732', 'acct_test_4732', false, true);
+
+select is(
+  public.place_credit_limit_info('00000000-0000-4000-8000-000000024732', false),
+  jsonb_build_object('limit_cents', 5000000, 'currency', 'MXN', 'tier', 'stripe', 'next', null),
+  'Credits Account On and a Stripe account that charges: MX$50,000, no next step'
+);
+
+select is(
+  public.place_credit_limit('00000000-0000-4000-8000-000000024732'),
+  5000000::bigint,
+  'the voucher buy''s limit is the tiered one'
+);
+
+select is(
+  public.place_credit_limit_info('00000000-0000-4000-8000-000000024732', true) ->> 'tier',
+  'credits',
+  'a test-mode account does not raise the limit in the live universe'
+);
+
+select is(
+  public.place_credit_limit_info('00000000-0000-4000-8000-000000003947', false),
+  jsonb_build_object('limit_cents', 250000, 'currency', 'MXN', 'tier', 'custom', 'next', null),
+  'a place''s own limit wins over every tier'
+);
+
+select is(
+  public.place_credit_limit_info('00000000-0000-4000-8000-000000013947', false),
+  jsonb_build_object('limit_cents', 1000000, 'currency', 'USD', 'tier', 'default', 'next', null),
+  'a non-Mexican place keeps its currency''s default'
+);
+
+select is(
+  (select (r ->> 'limit_cents')::bigint
+     from jsonb_array_elements(public.admin_credit_limits(false) -> 'places') r
+    where r ->> 'place_id' = '00000000-0000-4000-8000-000000024732'),
+  5000000::bigint,
+  'the admin page shows the tiered limit'
+);
+
+select ok(
+  public.place_credit_limit_info('00000000-0000-4000-8000-0000000f4732', false) is null
+    and public.place_credit_limit('00000000-0000-4000-8000-0000000f4732') is null,
+  'no such place: no limit (the buy refuses)'
 );
 
 select * from finish();

@@ -22,6 +22,16 @@
 //                          the cap per bill (defaults when never saved)  Mesita's fee invoice (MESITA-3461):
 //                          hold = cards are off until it is paid; invoice =
 //                          the one to pay (amount, due, Stripe's page)
+//             credit_limit: { limit_cents, outstanding_cents, currency,
+//                          tier: none|credits|stripe|custom|default,
+//                          next: { step: credits|stripe, limit_cents } | null }
+//                          MESITA-4732: the Credit Limit box on Offers. The
+//                          tiers are place_credit_limit_info's (one source,
+//                          in this server's Stripe universe); outstanding is
+//                          wallet_place_outstanding, the voucher buy's read.
+//                          null when either read fails.
+//             instagram_url: the place profile's Instagram link (Offers ›
+//                          Instagram Stories shows it read-only), or null
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -34,6 +44,37 @@ import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/st
 import { errorMessage } from "../_shared/errors.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { CASHBACK_DEFAULTS, readCashbackRates } from "../_shared/cashback.ts";
+import { readPlaceOutstanding } from "../_shared/vouchers.ts";
+
+type CreditLimitStep = { step: "credits" | "stripe"; limit_cents: number };
+type CreditLimitView = {
+  limit_cents: number | null;
+  outstanding_cents: number;
+  currency: string;
+  tier: "none" | "credits" | "stripe" | "custom" | "default";
+  next: CreditLimitStep | null;
+};
+
+const CREDIT_LIMIT_TIERS = new Set(["none", "credits", "stripe", "custom", "default"]);
+
+/** MESITA-4732: place_credit_limit_info's jsonb as the Offers page reads it;
+ *  null when the place has none (no such place). */
+function creditLimitView(info: unknown, outstandingCents: number, currency: string): CreditLimitView | null {
+  if (!info || typeof info !== "object") return null;
+  const row = info as { limit_cents?: unknown; currency?: unknown; tier?: unknown; next?: unknown };
+  const tier = String(row.tier ?? "");
+  if (!CREDIT_LIMIT_TIERS.has(tier)) return null;
+  const next = row.next && typeof row.next === "object" ? row.next as { step?: unknown; limit_cents?: unknown } : null;
+  return {
+    limit_cents: row.limit_cents === null || row.limit_cents === undefined ? null : Number(row.limit_cents),
+    outstanding_cents: outstandingCents,
+    currency: typeof row.currency === "string" && row.currency ? row.currency : currency,
+    tier: tier as CreditLimitView["tier"],
+    next: next && (next.step === "credits" || next.step === "stripe")
+      ? { step: next.step, limit_cents: Number(next.limit_cents ?? 0) }
+      : null,
+  };
+}
 
 serveJson("business-web-get-payments", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -104,6 +145,21 @@ serveJson("business-web-get-payments", async (req) => {
     console.error(`[business-web-get-payments] cashback: ${errorMessage(err)}`);
     return { ...CASHBACK_DEFAULTS };
   });
+  // MESITA-4732: the Credit Limit box and the read-only Place Username.
+  const currency = String(placeRow?.currency ?? "MXN").toUpperCase();
+  const [limitRes, outstanding, profileRes] = await Promise.all([
+    admin.rpc("place_credit_limit_info", { p_place_id: placeId, p_livemode: paymentsLivemode() }),
+    readPlaceOutstanding(admin, placeId, currency, paymentsLivemode()).catch((err) => {
+      console.error(`[business-web-get-payments] wallet_place_outstanding: ${errorMessage(err)}`);
+      return null;
+    }),
+    admin.from("place_profiles").select("instagram_url").eq("id", placeId).maybeSingle(),
+  ]);
+  if (limitRes.error) console.error(`[business-web-get-payments] place_credit_limit_info: ${limitRes.error.message}`);
+  if (profileRes.error) console.error(`[business-web-get-payments] place_profiles: ${profileRes.error.message}`);
+  const credit_limit = limitRes.error || outstanding === null ? null : creditLimitView(limitRes.data, outstanding, currency);
+  const igRaw = (profileRes.data as { instagram_url?: unknown } | null)?.instagram_url;
+  const instagram_url = typeof igRaw === "string" && igRaw.trim() ? igRaw.trim() : null;
   return json({
     ok: true,
     can_edit: canManage(access.role),
@@ -111,7 +167,9 @@ serveJson("business-web-get-payments", async (req) => {
     test_mode: !paymentsLivemode(),
     account: accountView(account),
     settings,
-    currency: String(placeRow?.currency ?? "MXN").toUpperCase(),
+    currency,
+    credit_limit,
+    instagram_url,
     contract: { ...contract, text: LOYALTY_CARDS_TERMS_TEXT },
     code_set: !!code,
     credits_balance,
