@@ -226,9 +226,9 @@ export async function withVouchersUpTo<T extends { id: string }>(
     const money = listRowMoney(settings.get(p.id), charges.has(p.id));
     const sell = config.buying_paused ? [] : money.sell;
     const r = rates.get(p.id);
-    const top = r ? Math.max(r.welcome_bps, r.regular_bps, r.vip_bps) : 0;
+    const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
     const cashback_pct = top > 0 ? top / 100 : null;
-    const cashback_flat = !!r && r.welcome_bps === r.regular_bps && r.regular_bps === r.vip_bps;
+    const cashback_flat = !!r && r.welcome_bps === r.returning_bps;
     return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: money.mesita_pay, offers: { sell, cashback_pct, cashback_flat } };
   });
 }

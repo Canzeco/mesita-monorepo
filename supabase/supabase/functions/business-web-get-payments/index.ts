@@ -17,8 +17,8 @@
 //             code_set,    whether the place code is set: the waiter's charge
 //                          (MESITA-3306) needs it, so Payments says so
 //             fee: { hold, invoice },
-//             cashback: { welcome_bps, regular_bps, vip_bps, cap_cents } }
-//                          MESITA-4698: the owner's three cashback lines and
+//             cashback: { welcome_bps, returning_bps, cap_cents } }
+//                          MESITA-4698: the owner's two cashback lines and
 //                          the cap per bill (defaults when never saved)  Mesita's fee invoice (MESITA-3461):
 //                          hold = cards are off until it is paid; invoice =
 //                          the one to pay (amount, due, Stripe's page)
