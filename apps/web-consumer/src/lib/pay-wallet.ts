@@ -2,7 +2,15 @@
 // look like a clear bill, and a missing card list must not look like Add card.
 
 import { isExpired, payMethodOf, type PayMethod, type SavedCard } from "@/lib/api/cards";
-import { pickCard } from "@/lib/pay-cards";
+
+/** The remembered card if it is still saved, else the first, else none.
+ *  A just-refused card (`exclude`) is never picked by default (MESITA-4117).
+ *  Moved here from pay-cards.ts when the bill's card left (MESITA-4708). */
+export function pickCard(cards: SavedCard[] | null, remembered: string | null, exclude: string | null = null): string | null {
+  if (!cards) return null;
+  if (remembered && remembered !== exclude && cards.some((c) => c.id === remembered)) return remembered;
+  return cards.find((c) => c.id !== exclude)?.id ?? null;
+}
 
 // THE DEFAULT WAY TO PAY (MESITA-4526). One answer for the Wallet header,
 // the Payment methods page and checkout:
@@ -82,9 +90,4 @@ export function methodFace(cards: unknown): "bone" | "retry" | "add" | "card" {
   if (Array.isArray(cards) && cards.length === 0) return "add";
   if (Array.isArray(cards) && cards.length > 0) return "card";
   return "retry";
-}
-
-/** Add Funds only when the place sells credit. A missing flag does not enable it. */
-export function addFundsOn(cardOk: boolean | undefined): boolean {
-  return cardOk === true;
 }

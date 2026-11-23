@@ -1,11 +1,11 @@
-// Pay at the table, the guest's side (MESITA-3564, cards MESITA-3572). The
-// guest opens a tab at a place and shows its QR; the waiter types the bill
-// and a tip suggestion on visit.mesita.ai; the guest chooses how to pay the
-// bill (credits first, the rest in cash or by card) and the tip (cash or
-// card; credits never pay a tip); a card part is charged inside the app on
-// the place's Stripe account (a bank check, 3-D Secure, runs in Stripe.js);
-// a cash part waits for the waiter's Received. The server is the last word on
-// every amount; tabSplit is only what the screen proposes.
+// Pay at the table, the guest's side (MESITA-3564). The guest opens a tab at
+// a place and shows its QR; the waiter types the bill and a tip suggestion on
+// visit.mesita.ai; the guest pays the bill with credits first and the rest in
+// cash (or on the place's own terminal), and the tip in cash (credits never
+// pay a tip); a cash part waits for the waiter's Received. MESITA-4708: no
+// card part for a bill (cards, MESITA-3572, and Apple Pay / Google Pay,
+// MESITA-4386, are gone): cards buy vouchers only. The server is the last word
+// on every amount; tabSplit is only what the screen proposes.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { SIGN } from "@mesita/place-profile/lib/pay-steps";
@@ -28,20 +28,18 @@ export type GuestTab = {
   waiter_name: string | null;
   /** The guest's credit here they can spend now. */
   spendable_cents: number;
-  rates: {
-    card_available: boolean;
-    card_unavailable_code: string | null;
-    /** Stripe's minimum for the card part (bill + tip by card). */
-    card_minimum_cents: number;
-  };
+  /** MESITA-4708: cash only; a bill has no card part. */
+  rates: { cash_available: boolean };
   credit_cents: number;
   cash_bill_cents: number;
   cash_tip_cents: number;
   cash_due_cents: number;
   cash_received_cents: number | null;
+  /** 0 since MESITA-4708 (no card part); an older bill may carry one. */
   card_bill_cents: number;
   card_tip_cents: number;
-  /** The payment rows the guest's split opened: `card` and `outside` (cash). */
+  /** The payment rows the guest's split opened: `outside` (cash); `card` on
+   *  an older bill. */
   parts: Array<{
     id: string;
     part: string | null;
@@ -119,17 +117,9 @@ export async function apiOpenTab(
   });
 }
 
-/** A saved card the tab can charge (on the guest's own Stripe customer). */
-export type TabCard = {
-  id: string;
-  brand: string;
-  last4: string;
-  exp_month: number;
-  exp_year: number;
-};
-
-/** What Stripe.js needs to finish a card part: a bank check (3-D Secure)
- *  runs `handleNextAction` on the place's account. */
+/** What Stripe.js needs to finish a card payment: a bank check (3-D Secure)
+ *  runs `handleNextAction` on the place's account. MESITA-4708: a voucher
+ *  bought with a saved card (member-place-actions); never a bill. */
 export type TabCardStep = {
   status: "succeeded" | "processing" | "requires_action";
   payment_intent_id: string;
@@ -138,28 +128,8 @@ export type TabCardStep = {
   publishable_key?: string;
 };
 
-/** MESITA-4386: an express hold waiting for Face ID / Google: the Pay
- *  screen's ExpressPayButton confirms it with the client secret. */
-export type TabExpressStep = {
-  status: "requires_payment_method";
-  express: true;
-  payment_intent_id: string;
-  client_secret: string;
-  stripe_account: string;
-  publishable_key: string;
-  amount_cents: number;
-};
-
 export type TabRead = {
   tab: GuestTab;
-  /** Only when asked (`withCards`) and the place takes cards. */
-  cards?: TabCard[];
-  /** A card part waiting on the guest (a bank check left open, a reload). */
-  card_action?: TabCardStep;
-  /** A card part that just failed; the tab is billed again. */
-  card_error?: { code: string; error: string; decline_code?: string };
-  /** MESITA-4386: an express hold not yet confirmed in the browser. */
-  express_action?: TabExpressStep;
   /** MESITA-3709: a new QR for a guest tab, only when asked (`remint`). */
   token?: string;
   qr_url?: string;
@@ -168,19 +138,18 @@ export type TabRead = {
 export async function apiGetTab(
   client: SupabaseClient,
   tabId: string,
-  opts: { withCards?: boolean; remint?: boolean } = {},
+  opts: { remint?: boolean } = {},
 ): Promise<TabRead> {
   return await invokeEF<TabRead>(client, "consumer-web-get-tab", {
     tab_id: tabId,
-    ...(opts.withCards ? { with_cards: true } : {}),
     ...(opts.remint ? { remint: true } : {}),
   });
 }
 
 /** MESITA-3709: the guest's own payment, in one tap. The guest typed the
- *  bill (before tip) and chose how to pay it; the answer is the guest tab,
- *  its QR (the waiter scans it to Verify) and, with a card part, Stripe's
- *  step. One `request_id` per tap: a retry after a lost answer sends the
+ *  bill (before tip) and chose how to pay it (credits, the rest in cash); the
+ *  answer is the guest tab and its QR (the waiter scans it to Verify). One
+ *  `request_id` per tap: a retry after a lost answer sends the
  *  same and gets the same tab. Refusals arrive as EFError codes. */
 export type PaidGuest = {
   outcome: "opened" | "replayed";
@@ -190,9 +159,6 @@ export type PaidGuest = {
   qr_url: string;
   expires_at: string | null;
   test_mode: boolean;
-  card?: TabCardStep;
-  /** MESITA-4386: the express hold's step (Apple Pay / Google Pay). */
-  express?: TabExpressStep | { status: "held" | "processing" | "succeeded"; payment_intent_id: string };
 };
 
 export async function apiReleaseGuestPay(client: SupabaseClient, requestId: string): Promise<void> {
@@ -201,51 +167,34 @@ export async function apiReleaseGuestPay(client: SupabaseClient, requestId: stri
 
 export async function apiPayGuest(
   client: SupabaseClient,
-  args: { place_id: string; bill_cents: number; request_id: string; card_pm_id?: string | null; express?: boolean } & TabSplit,
+  args: { place_id: string; bill_cents: number; request_id: string } & TabSplit,
 ): Promise<PaidGuest> {
-  const { card_pm_id, express, ...rest } = args;
-  const hasCard = rest.card_bill_cents > 0 || rest.card_tip_cents > 0;
-  return await invokeEF<PaidGuest>(client, "consumer-web-pay-guest", {
-    ...rest,
-    ...(hasCard && express ? { express: true } : hasCard && card_pm_id ? { card_pm_id } : {}),
-  });
+  return await invokeEF<PaidGuest>(client, "consumer-web-pay-guest", args);
 }
 
 export type TabSplit = {
   credit_cents: number;
   cash_bill_cents: number;
   cash_tip_cents: number;
-  card_bill_cents: number;
-  card_tip_cents: number;
 };
 
 /** One tap. `request_id` is one per tap; a retry after a lost answer sends
- *  the same, so it never pays (or charges the card) twice. A card part needs
- *  `card_pm_id`. Refusals arrive as EFError codes: stale, insufficient,
- *  outside_limit, card_declined, card_needs_auth, card_tip_alone, … */
+ *  the same, so it never pays twice. Refusals arrive as EFError codes:
+ *  stale, insufficient, outside_limit, cash_off, … */
 export async function apiPayTab(
   client: SupabaseClient,
   args: {
     tab_id: string;
     bill_version: number;
     request_id: string;
-    card_pm_id?: string | null;
   } & TabSplit,
-): Promise<{ status: "paying" | "paid"; card?: TabCardStep }> {
-  const { card_pm_id, ...rest } = args;
-  const hasCard = rest.card_bill_cents > 0 || rest.card_tip_cents > 0;
-  return await invokeEF<{ status: "paying" | "paid"; card?: TabCardStep }>(
-    client,
-    "consumer-web-pay-tab",
-    {
-      ...rest,
-      ...(hasCard && card_pm_id ? { card_pm_id } : {}),
-    },
-  );
+): Promise<{ status: "paying" | "paid" }> {
+  return await invokeEF<{ status: "paying" | "paid" }>(client, "consumer-web-pay-tab", args);
 }
 
-/** The card part's bank check (3-D Secure), in Stripe.js on the place's
- *  account. Loaded only here, only when a card asks for it. "done": Stripe
+/** A card's bank check (3-D Secure), in Stripe.js on the place's account
+ *  (a voucher bought with a saved card). Loaded only here, only when a card
+ *  asks for it. "done": Stripe
  *  finished the step (the poll reads whether it went through, and says so
  *  when the bank refused); "unavailable": the check couldn't open. */
 export async function runBankCheck(
@@ -316,45 +265,34 @@ export function equalShare(billCents: number, ways: number): number {
   return Math.min(billCents, Math.ceil(billCents / ways / 100) * 100);
 }
 
-export type PayWith = "cash" | "card";
+/** How the rest of a bill is paid: outside the app, in cash or on the
+ *  place's own terminal (MESITA-4708: the card way is gone). */
+export type PayWith = "cash";
 
 /** How the screen splits a bill: the guest's credit first (up to the bill)
- *  when they use it, the rest of the bill in cash or by card, the whole tip
- *  in cash or by card (credits never pay a tip). `card_tip_alone`: a card tip needs part of the bill by card or
- *  credits (the server refuses it otherwise). */
+ *  when they use it, the rest of the bill and the whole tip in cash (credits
+ *  never pay a tip). */
 export function tabSplit(args: {
   billCents: number;
   tipCents: number;
   spendableCents: number;
   useCredit: boolean;
-  billWith?: PayWith;
-  tipWith?: PayWith;
 }): TabSplit & {
   total_cents: number;
   cash_due_cents: number;
-  card_due_cents: number;
-  card_tip_alone: boolean;
 } {
   const bill = Math.max(0, Math.round(args.billCents));
   const tip = Math.max(0, Math.round(args.tipCents));
   const credit = args.useCredit
     ? Math.min(Math.max(0, args.spendableCents), bill)
     : 0;
-  const rest = bill - credit;
-  const cardBill = args.billWith === "card" ? rest : 0;
-  const cashBill = rest - cardBill;
-  const cardTip = args.tipWith === "card" ? tip : 0;
-  const cashTip = tip - cardTip;
+  const cashBill = bill - credit;
   return {
     credit_cents: credit,
     cash_bill_cents: cashBill,
-    cash_tip_cents: cashTip,
-    card_bill_cents: cardBill,
-    card_tip_cents: cardTip,
+    cash_tip_cents: tip,
     total_cents: bill + tip,
-    cash_due_cents: cashBill + cashTip,
-    card_due_cents: cardBill + cardTip,
-    card_tip_alone: cardTip > 0 && cardBill === 0 && credit === 0,
+    cash_due_cents: cashBill + tip,
   };
 }
 
@@ -375,31 +313,14 @@ export const TAB_REFUSAL: Record<string, string> = {
   paid: "This bill is paid.",
   expired: "This bill expired. Open a new one.",
   cancelled: "This bill was cancelled.",
-  card_unavailable:
-    "This place isn't taking cards right now. Pay with credits or cash.",
-  cards_off:
-    "This place isn't taking cards right now. Pay with credits or cash.",
-  no_account:
-    "This place isn't taking cards right now. Pay with credits or cash.",
-  currency_mismatch:
-    "This place isn't taking cards right now. Pay with credits or cash.",
-  card_declined: "Your card was declined. Try another card or pay another way.",
-  card_needs_auth:
-    "This card needs a bank check we can't do yet. Pick another way to pay.",
-  card_failed: "Couldn't start the card payment. Try again.",
-  card_tip_alone: "A tip by card needs part of the bill by card or credit.",
-  below_minimum: "The card part is too small for a card. Pay it another way.",
-  card_not_found:
-    "That card isn't saved on your account anymore. Pick another.",
-  card_required: "Pick a card.",
-  card_pending: "Your card is still going through.",
-  locked: "Too many card tries. Wait a few minutes or pay another way.",
+  // MESITA-4708: a bill has no card part.
+  cards_off: "Pay the rest with cash or the place's own terminal.",
   closed: "That payment was cancelled. Tap again to start over.",
   // MESITA-3709: guest pays, waiter verifies.
   // MESITA-3772: one open payment per guest, across every place.
   too_many_open: "Get your open payment signed or close it before paying again.",
   amount_required: "Type the amount you're paying.",
-  cash_off: "This place doesn't take cash through Mesita. Pay with credit or card.",
+  cash_off: "This place doesn't take cash through Mesita. Pay with credit.",
   above_cap: "That's more than Mesita takes in one payment.",
   verified: SIGN.alreadySigned,
   guest_tab: "This payment can only be cancelled.",

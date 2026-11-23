@@ -12,9 +12,9 @@ const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : u
 // payment in progress or the places the guest can pay at, then what they pay
 // with (/wallet forwards here). Each money object has its own address under
 // it (MESITA-3614). The shapes it had before arrive here and forward in one
-// hop: the printed table QR (?place=), a Stripe card return
-// (?payment=<id>&checkout=…, built by _shared/pay-card.ts) and an old bill
-// reload (?tab=). A saved card's Stripe return (?card=) stays: the page's
+// hop: the printed table QR (?place=), an old Stripe card return
+// (?payment=<id>&checkout=…; a bill has no card part since MESITA-4708) and
+// an old bill reload (?tab=). A saved card's Stripe return (?card=) stays: the page's
 // Pay with reads it.
 export default async function Page({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;

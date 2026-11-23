@@ -12,7 +12,7 @@
 //   Stage 2 · Vouchers   needs Credits + Stripe: Wholesale Presales, App
 //                        Prepayments then Small · Medium · Big.
 // App Payments (card for the bill) left the page: the bill is paid with
-// credit and the rest outside (CARD_BILL_PAY_LIVE false).
+// credit and the rest outside (MESITA-4698; the code went in MESITA-4708).
 // SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
 //   Stripe Account   · the account (a standard pill since MESITA-4534; was large, MESITA-4024) · Accept Stripe Payments
 //   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
@@ -516,8 +516,8 @@ export function PaymentsPanel({
             tone: "bg-lime-100 text-lime-700",
             accept: { key: "cash_payments" },
           })}
-          {/* App Payments (card for the bill) is gone while CARD_BILL_PAY_LIVE
-              is false (MESITA-4698): guests pay the rest outside. */}
+          {/* App Payments (card for the bill) is gone (MESITA-4698, its code
+              MESITA-4708): guests pay the rest outside. */}
           {pairRow({
             id: "credits-payments",
             name: "Credits Payments",

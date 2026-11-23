@@ -7,10 +7,10 @@
 //   0 Pick · 1 Bill · 2 Tip · 3 Method · 4 Pay · 5 Confirm · 6 Receipt
 //
 // Pick is the Pay tab's list (never drawn as a current step); Bill and Tip
-// share GuestPayScreen's "bill" stage (typing or not); Method picks the way
-// (credits, Mesita App with the one card, or outside the app); Pay charges
-// the card or says to give the cash; Confirm and Receipt are GuestTabView.
-// Credits that cover everything open the bill from Method (Pay not shown).
+// share GuestPayScreen's "bill" stage (typing or not); Method sets the
+// credits and the rest outside the app; Pay says to give the cash; Confirm and
+// Receipt are GuestTabView. Credits that cover everything open the bill from
+// Method (Pay not shown). MESITA-4708: no card, Apple Pay or Google Pay way.
 //
 // THE STRIP AT THE BOTTOM (Pato, 2026-11-21, MESITA-4600: "bottom must have
 // steps. 1. Show place, 2 …"): four numbered steps, Place · Bill · Tip · Pay,
@@ -86,9 +86,7 @@ export function closeAction(a: { busy: boolean; billOpen: boolean }): "ignore" |
 
 /** The stage the screen shows: a stored or live stage that no longer makes
  *  sense goes back to Method, where the guest sees why. Pay needs a way that
- *  is still the one the guest chose (a reload can turn a card choice into
- *  cash when the card minimum changes) and something to pay. A card Pay with
- *  no saved card stays on Pay, whose button is then Add a card. */
+ *  is still the one the guest chose and something to pay. */
 export function guardStage(a: { stage: Stage; method: PayWith | null; way: PayWith | null; dueCents: number }): Stage {
   if (a.stage === "pay") {
     if (a.dueCents <= 0 || a.way === null) return "method";
@@ -112,16 +110,3 @@ export function initialStage(d: { stage: Stage; useCredit: boolean } | null): St
   if (d.stage === "pay" && d.useCredit === false) return "method";
   return d.stage;
 }
-
-/** Card refusals that keep the guest on Pay (MESITA-4121): the bill never
- *  opened, nothing is held, and the way out is the card again or cash. */
-export const PAY_CARD_REFUSALS: ReadonlySet<string> = new Set([
-  "card_declined",
-  "card_needs_auth",
-  "card_failed",
-  "card_not_found",
-  "locked",
-  "below_minimum",
-  "card_unavailable",
-  "cards_off",
-]);

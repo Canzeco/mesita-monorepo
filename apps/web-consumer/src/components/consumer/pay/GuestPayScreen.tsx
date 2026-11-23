@@ -1,48 +1,34 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, CreditCard, Lock, ReceiptText, XCircle } from "lucide-react";
+import { Banknote, Check, ReceiptText, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiListCards, brandLabel } from "@/lib/api/cards";
-import { useAddCardModal } from "@/lib/added-card";
-import { apiListVisits, apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
+import { apiListVisits, apiPayGuest, type PayWith, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
-import { apiExpressSetup, money, type PayPlace } from "@/lib/api/wallet";
-import { ExpressBillPay } from "./ExpressBillPay";
-import type { ExpressWallet } from "./ExpressPayButton";
-import { acceptCardsAnswer, type CardsLoad, cardsFailure, loadedCards, pickCard } from "@/lib/pay-cards";
-import { closeAction, guardStage, initialStage, PAY_CARD_REFUSALS, payBackStage } from "@/lib/guest-pay-stages";
+import { money, type PayPlace } from "@/lib/api/wallet";
+import { closeAction, guardStage, initialStage, payBackStage } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
   outcomeUnknownAfter,
   pendingTicket,
   PENDING_NAME_KEY,
   readDraft,
-  readLastCard,
   readLastTip,
   requestIdAfterEdit,
   type Tip,
   TIP_CHIPS,
   type Stage,
   writeDraft,
-  writeLastCard,
   writeLastTip,
 } from "@/lib/guest-pay-draft";
 import { trackEvent } from "@/lib/analytics/track";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
-import { CONSUMER_ROUTES, payPlacePath } from "@/lib/consumer-route-contract";
-import { useRouter } from "next/navigation";
-import { navigateTo } from "@/lib/navigate";
-import { clearSessionHref } from "@/lib/stale-session";
 import { cn } from "@/lib/utils";
-import { cardFace } from "@/components/shared/card-brand-marks";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { CashChip, CreditsCardChip, CreditsPill, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
-import { isApplePhone, walletInBrowser } from "@/lib/pay-wallet";
-import { ApplePayChip, GooglePayChip } from "./wallet-chips";
+import { CashChip, CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
 import { BAD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
@@ -61,12 +47,14 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 //             Total, and the Coins line.
 //   3 Method  the Wallet switch "Use my credits" (MESITA-4068: asked here,
 //             not on Tip; on by default; credits never pay the tip), what is
-//             left, then App or Cash, one way for all of it; the chosen tile
-//             has a thick border; the Coins line follows the choice. Credits
-//             cover everything and no tip: "Pay with credits" opens the bill.
-//   4A App    the saved card and "Pay MX$X": the card is held, charged when
-//             the waiter signs.
-//   4B Cash   "Give MX$X to the waiter", then "I gave the cash".
+//             left, then Pay outside the app (cash or the place's own
+//             terminal) for all of it. Credits cover everything and no tip:
+//             "Show the waiter" opens the bill.
+//   4 Cash    "Give MX$X to the waiter", then "I gave the cash".
+//
+// MESITA-4708: NO CARD FOR A BILL. The Card way (a saved card held at Show
+// the waiter, MESITA-4524) and Apple Pay / Google Pay (MESITA-4386) are gone:
+// cards buy vouchers only.
 //
 // Paying opens the bill (/pay/bill/<id>, GuestTabView: Confirm, Confirming,
 // Receipt, Not paid). The header's back arrow steps back.
@@ -84,8 +72,6 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-com
 type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
 
 const STILL_WORKING = "Still working. Tap again to try again.";
-/** Refusals that mean this card, not the bill: Method marks it "Declined just now". */
-const CARD_REFUSED = new Set(["card_declined", "card_needs_auth", "card_failed", "card_not_found", "locked"]);
 const CALL_LIMIT_MS = 25_000;
 class SlowCall extends Error {}
 
@@ -118,7 +104,7 @@ export function GuestPayScreen({
   placeId: string;
   places: PayPlace[] | null;
   placesFailed: boolean;
-  getSupabase: () => Parameters<typeof apiListCards>[0];
+  getSupabase: () => Parameters<typeof apiListVisits>[0];
   /** The bill exists (or the guest's one open bill): open it. */
   onPaid: (tabId: string) => void;
   /** Open: the search to choose another place. */
@@ -132,7 +118,6 @@ export function GuestPayScreen({
   /** The header's X (MESITA-3880) runs this. */
   registerClose?: (close: (() => void) | null) => void;
 }) {
-  const router = useRouter();
   const place = places?.find((p) => p.place_id === placeId) ?? null;
   // The tabs' banner names the place (MESITA-3906).
   const placeName = place?.name ?? null;
@@ -151,7 +136,7 @@ export function GuestPayScreen({
     if (sentTabId) onPaid(sentTabId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentTabId]);
-  // A draft at Card or Pay with credits off starts at Method (MESITA-4117):
+  // A draft at Pay with credits off starts at Method (MESITA-4117):
   // credits come back on by default, so the guest sees the new split.
   const [stage, setStage] = useState<Stage>(() => initialStage(draft));
   const [typing, setTyping] = useState(draft?.typing ?? true);
@@ -164,53 +149,9 @@ export function GuestPayScreen({
   // off is not carried over from a saved draft.
   const [useCredit, setUseCredit] = useState(true);
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
-  // APPLE PAY / GOOGLE PAY (MESITA-4386): the card part by the phone's
-  // wallet, held at Face ID and charged when the waiter signs. `express` is
-  // the guest's pick; `expressOn` says the place can take it (setup); the
-  // Pay step's button says whether this phone can.
-  const [express, setExpress] = useState(draft?.express === true);
-  const [expressOn, setExpressOn] = useState(false);
-  // MESITA-4397: Apple Pay and Google Pay are two rows; `wallet` is the one
-  // picked, `wallets` what the place's setup offers, `applePhone` whether
-  // this browser is Apple's (it has Apple Pay and no Google Pay button).
-  const [wallet, setWallet] = useState<ExpressWallet | null>(draft?.wallet ?? null);
-  const [wallets, setWallets] = useState<ExpressWallet[]>([]);
-  const [applePhone, setApplePhone] = useState(false);
-  // THE DEFAULT WAY (MESITA-4526): the guest's stored Apple Pay / Google Pay
-  // is picked for them once, when the place offers it in this browser and
-  // they have not picked yet. A stored card needs nothing: the card tile
-  // already wins. A pick here never rewrites the default.
-  // Both answers it needs (the cards read's pay_method, the place's wallets)
-  // land in callbacks, in either order; each one calls applyStoredWay.
-  const storedWay = useRef<"card" | "apple_pay" | "google_pay" | null>(null);
-  // The same answer for drawing the Method step (MESITA-4617).
-  const [defaultWay, setDefaultWay] = useState<"card" | "apple_pay" | "google_pay" | null>(null);
-  const expressSeen = useRef<{ wallets: ExpressWallet[]; applePhone: boolean } | null>(null);
-  const picked = useRef(draft?.method != null || draft?.express === true || draft?.wallet != null);
-  const applyStoredWay = () => {
-    const w = storedWay.current;
-    const seen = expressSeen.current;
-    if (picked.current || !seen || (w !== "apple_pay" && w !== "google_pay")) return;
-    if (!seen.wallets.includes(w) || !walletInBrowser(w, seen.applePhone)) return;
-    picked.current = true;
-    setMethod("card");
-    setExpress(true);
-    setWallet(w);
-  };
-  const [expressState, setExpressState] = useState<"loading" | "ready" | "none">("loading");
-  const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? readLastCard());
-  // The card the bank just refused: Method says "Declined just now" (MESITA-4226).
-  const [refusedCardId, setRefusedCardId] = useState<string | null>(draft?.refusedCardId ?? null);
-  const [cardsLoad, setCardsLoad] = useState<CardsLoad>({ state: "loading" });
-  const [cardsAttempt, setCardsAttempt] = useState(0);
-  const latestCardsAttempt = useRef(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
-  // A card refusal on Pay (MESITA-4121): the guest stays on Pay with the
-  // refusal line; the card shown is the one refused, and the main button
-  // leads to another card (or another way when the place refused cards).
-  const [payRefusal, setPayRefusal] = useState<{ code: string; cardId: string | null } | null>(null);
   const requestId = useRef<string | null>(null);
   // A pay call timed out or lost the network: the bill may be open on the
   // server. Until that same request id answers, Cancel bill and ‹ are locked
@@ -243,11 +184,9 @@ export function GuestPayScreen({
   }, [placeId]);
   const root = useRef<HTMLDivElement | null>(null);
 
-  const cards = loadedCards(cardsLoad);
-  const cardOk = place?.card_ok === true;
   const cashOk = place?.outside_ok === true;
   const spendable = Math.max(place?.available_cents ?? 0, 0);
-  const off = !!place && !cardOk && !cashOk && spendable === 0;
+  const off = !!place && !cashOk && spendable === 0;
   const m = (c: number) => money(c, place?.currency ?? "mxn");
   // The X closes and keeps the ticket (MESITA-3908): Pay shows it, the
   // tabs show the banner. Cancelling is its own button.
@@ -259,7 +198,7 @@ export function GuestPayScreen({
   // MESITA-4598: "the ticket is not saved until resolved … if i close the
   // ticket before finishing, the ticket is gone, not saved"; picked "gone at
   // once"): what was typed here is dropped and Pay shows, no question. A
-  // ticket already on the server (a card held, an answer still coming) is
+  // ticket already on the server (an answer still coming) is
   // real: ✕ only leaves it. It kept the draft before (MESITA-3908).
   // MESITA-4600: the rule lives in closeAction (pinned by a test). A cash
   // bill already handed over (cashDue) is open on the server too.
@@ -270,29 +209,6 @@ export function GuestPayScreen({
     onLeavePay();
   };
 
-  // The saved cards, when the place takes cards (and again on Retry).
-  useEffect(() => {
-    if (!cardOk) return;
-    const attempt = cardsAttempt;
-    latestCardsAttempt.current = attempt;
-    void apiListCards(getSupabase())
-      .then((r) => {
-        if (acceptCardsAnswer(attempt, latestCardsAttempt.current)) {
-          setCardsLoad({ state: "loaded", cards: r.cards });
-          storedWay.current = r.pay_method;
-          setDefaultWay(r.pay_method);
-          applyStoredWay();
-        }
-      })
-      .catch((err: unknown) => {
-        if (!acceptCardsAnswer(attempt, latestCardsAttempt.current)) return;
-        const failed = cardsFailure(err);
-        if (failed.state === "signed_out") window.location.assign(clearSessionHref(payPlacePath(placeId)));
-        setCardsLoad(failed);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardOk, cardsAttempt]);
-
   // The sums.
   const billCents = readAmount(amount) ?? 0;
   const tipCents = tip === null ? 0 : tip === "other" ? readTip(other) ?? 0 : Math.round((billCents * tip) / 100);
@@ -300,77 +216,22 @@ export function GuestPayScreen({
   const creditCents = creditOn ? Math.min(spendable, billCents) : 0;
   const leftCents = billCents - creditCents;
   const dueCents = leftCents + tipCents;
-  const cardMin = place?.card_min_cents ?? 0;
-  // Why a tile is grey (one line), null when it can pay what's left.
-  const appWhy = !place
-    ? null
-    : !cardOk
-    ? "This place doesn't take cards through Mesita."
-    : dueCents > 0 && dueCents < cardMin
-    ? leftCents === 0
-      ? `Tips under ${m(cardMin)} can't go by card. Set the tip to 0 or tip the waiter outside Mesita.`
-      : `Card minimum is ${m(cardMin)}`
-    : null;
+  // Why the Cash row is grey (one line), null when it can pay what's left.
   const cashWhy = place && !cashOk ? "This place doesn't take cash through Mesita." : null;
-  const appOn = !appWhy;
-  // The default wallet the Method step shows instead of the Card (MESITA-4617):
-  // stored on Pay, offered by the place, usable in this browser.
-  // Saved cards answered and there is none (MESITA-4617).
-  const noCardYet = cardsLoad.state === "loaded" && (cards?.length ?? 0) === 0;
-  const defaultWallet =
-    (defaultWay === "apple_pay" || defaultWay === "google_pay") &&
-    expressOn &&
-    !appWhy &&
-    wallets.includes(defaultWay) &&
-    walletInBrowser(defaultWay, applePhone)
-      ? defaultWay
-      : null;
   const cashOn = !cashWhy;
-  // The way the bill goes: the guest's pick if it can, else the only one.
-  // Mesita App is preselected wherever the place takes cards and the guest
-  // has not picked cash (MESITA-4123); a way the place refuses falls to the
-  // other one.
-  const way: PayWith | null = method === "cash" && cashOn ? "cash" : appOn ? "card" : cashOn ? "cash" : null;
-  const chosenCard = pickCard(cards, cardId);
+  // The way the rest goes: outside the app, where the place takes it.
+  const way: PayWith | null = cashOn ? "cash" : null;
   const creditsOnly = dueCents === 0;
   // The step shown (MESITA-4117): a stored or live stage that stopped making
-  // sense goes back to Method, or to Card when no card can be charged. Pure,
-  // so nothing sets state while rendering.
+  // sense goes back to Method. Pure, so nothing sets state while rendering.
   const shown = guardStage({ stage, method, way, dueCents });
 
-  // Every change is saved, so the X and "Add a card" come back to it.
+  // Every change is saved, so the X comes back to it.
   useEffect(() => {
     if (sentTabId) return;
     requestId.current = requestIdAfterEdit(requestId.current, outcomeUnknown);
-    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method, express, wallet, cardId, refusedCardId });
-  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, express, wallet, cardId, refusedCardId, outcomeUnknown]);
-
-  // Whether the place can take Apple Pay / Google Pay for what's left
-  // (MESITA-4386): asked once the amount settles, on Method and Pay.
-  useEffect(() => {
-    if (!cardOk || dueCents <= 0 || (shown !== "method" && shown !== "pay")) return;
-    let gone = false;
-    const t = window.setTimeout(() => {
-      void apiExpressSetup(getSupabase(), { place_id: placeId, bill: { amount_cents: dueCents } })
-        .then((r) => {
-          if (gone) return;
-          setExpressOn(r.available);
-          setWallets(r.available ? r.wallets : []);
-          setApplePhone(isApplePhone());
-          expressSeen.current = { wallets: r.available ? r.wallets : [], applePhone: isApplePhone() };
-          applyStoredWay();
-        })
-        .catch(() => {
-          if (!gone) setExpressOn(false);
-        });
-    }, 300);
-    return () => {
-      gone = true;
-      window.clearTimeout(t);
-    };
-    // getSupabase is a stable lazy getter (MESITA-3207).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardOk, dueCents, shown, placeId]);
+    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method });
+  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, outcomeUnknown]);
 
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
@@ -408,7 +269,6 @@ export function GuestPayScreen({
       return true;
     }
     setError(null);
-    setPayRefusal(null);
     return true;
   }
   useEffect(() => {
@@ -416,29 +276,12 @@ export function GuestPayScreen({
   });
   useEffect(() => () => registerBack?.(null), [registerBack]);
 
-  // Add a card in the app (MESITA-4065: no Stripe page): the card sheet; the
-  // saved card becomes the bill's card.
-  // A modal since MESITA-4398 (a page in MESITA-4101): once saved, the saved
-  // card becomes the bill's card. The draft survives the trip.
-  const openAddCard = useAddCardModal((id) => {
-    writeLastCard(id);
-    setCardId(id);
-    setCardsLoad({ state: "loading" });
-    setCardsAttempt((n) => n + 1);
-  });
-  function addCard() {
-    setError(null);
-    openAddCard();
-  }
-
-  /** Opens the bill: credits only, the card held, or the cash given. */
+  /** Opens the bill: credits only, or the cash given. */
   async function openBill(w: PayWith | null) {
     if (!place || busy || billCents <= 0) return;
     setBusy(true);
     setError(null);
-    setPayRefusal(null);
     requestId.current ??= crypto.randomUUID();
-    const card = w === "card" ? leftCents : 0;
     const cash = w === "cash" ? leftCents : 0;
     try {
       const r = await withinLimit(apiPayGuest(getSupabase(), {
@@ -446,11 +289,8 @@ export function GuestPayScreen({
         bill_cents: billCents,
         request_id: requestId.current,
         credit_cents: creditCents,
-        card_bill_cents: card,
-        card_tip_cents: w === "card" ? tipCents : 0,
         cash_bill_cents: cash,
         cash_tip_cents: w === "cash" ? tipCents : 0,
-        card_pm_id: w === "card" ? chosenCard : null,
       }));
       if (r.status === "due" || !r.tab_id) {
         setCashDue(r.status === "due" ? dueCents : null);
@@ -463,18 +303,13 @@ export function GuestPayScreen({
       }
       rememberGuestTab(r.tab_id, r.qr_url);
       writeLastTip(placeId, tip);
-      if (w === "card") writeLastCard(chosenCard);
-      // Start again comes back to the bill with everything typed; the draft
-      // keeps the card actually charged, not only one the guest tapped.
-      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, cardId: w === "card" ? chosenCard : cardId, refusedCardId, sentTabId: r.tab_id ?? undefined });
+      // Start again comes back to the bill with everything typed.
+      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, sentTabId: r.tab_id ?? undefined });
       setOutcomeUnknown(false);
-      if (r.card?.status === "requires_action") await runBankCheck(r.card);
       onPaid(r.tab_id);
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
       if (code) requestId.current = null;
-      // The bank refused this card: never its default again (MESITA-4117).
-      if (w === "card" && code && CARD_REFUSED.has(code)) setRefusedCardId(chosenCard);
       setOutcomeUnknown(outcomeUnknownAfter(code));
       // MESITA-4524: the open one is a ticket (open_attempt_id) or an older bill.
       const openId = code === "too_many_open" && e instanceof EFError ? (e.body?.open_attempt_id ?? e.body?.open_tab_id) : null;
@@ -483,13 +318,6 @@ export function GuestPayScreen({
         return;
       }
       setBusy(false);
-      // Refused before the bill opened (MESITA-4121): nothing is held, so the
-      // guest stays on Pay; the next tap sends a fresh request id.
-      if (w === "card" && code && PAY_CARD_REFUSALS.has(code)) {
-        setPayRefusal({ code, cardId: chosenCard });
-        setError(TAB_REFUSAL[code] ?? NOT_PAID_REASON[code] ?? NETWORK_FAILURE);
-        return;
-      }
       if (code && NOT_PAID_REASON[code]) {
         setNotPaid(NOT_PAID_REASON[code]);
         return;
@@ -587,7 +415,7 @@ export function GuestPayScreen({
   // left the footer, the ✕ throws the ticket away (MESITA-4598).
   const top = (title: string) => <PayTitle title={title} back />;
 
-  // NOT PAID (before the bill opened: the card was refused).
+  // NOT PAID (before the bill opened: refused).
   if (notPaid) {
     return frame(
       <>
@@ -716,20 +544,12 @@ export function GuestPayScreen({
     );
   }
 
-  // The guest's one saved card (MESITA-4168), named on Method, charged on Pay.
-  const card = cards?.find((c) => c.id === chosenCard) ?? null;
-  const cardsUnknown = cards === null;
-  const retryCards = () => {
-    setCardsLoad({ state: "loading" });
-    setCardsAttempt((n) => n + 1);
-  };
-
-  // 3 METHOD: App or Cash for everything that's left.
+  // 3 METHOD: credits, then the rest outside the app.
   if (shown === "method") {
     // Credits cover the bill and the tip: nothing is left for a way, so the
     // button opens the bill (credits are spent). It is money, so › is not
     // offered.
-    // Next: Pay, for either way (MESITA-4226: no Card step).
+    // Next: Pay (a draft reopened at Method with the way already set).
     const toNext = () => {
       if (way) {
         setMethod(way);
@@ -739,8 +559,8 @@ export function GuestPayScreen({
     return frame(
       <>
         {top("How do you pay?")}
-        {/* ONE PANEL (MESITA-4077): credits, App and Cash, then what is left
-            to pay. Each way says what it earns; nothing else repeats it. */}
+        {/* ONE PANEL (MESITA-4077): credits and the way outside the app, then
+            what is left to pay. */}
         <StepBody>
           <PaySection title="How you pay" className="text-base">
             <div className="divide-border mt-1 divide-y">
@@ -768,69 +588,11 @@ export function GuestPayScreen({
                 </span>
               </button>
             ) : null}
-            {/* THE DEFAULT AND CASH, NOTHING ELSE (Pato, 2026-11-21, MESITA-4617:
-                "don't list all the payment methods. just offer the default
-                payment method and cash. the default payment method is
-                selected before starting the bill"): the guest's default (Pay ›
-                Payment method) is Apple Pay or Google Pay when stored, offered
-                here and usable in this browser, else the Card; then Pay
-                outside the app. Every way was listed before (MESITA-4397). */}
+            {/* MESITA-4708: no Card, Apple Pay or Google Pay row for a bill
+                (the default way and cash before, MESITA-4617): the rest is
+                paid outside the app. */}
             {creditsOnly ? null : (
               <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
-                {/* CARD (MESITA-4244, Pato: "maybe just mentioning the card
-                    i think its clearer. with the visa thing. just say Card";
-                    was "Mesita App" on the brand pink, MESITA-4123): the
-                    guest's one saved card, its brand chip as on the Wallet;
-                    the choice is the ring. */}
-                {defaultWallet ? null : (
-                <MethodTile
-                  on={way === "card" && !(express && expressOn)}
-                  off={appWhy}
-                  lead={card ? <SavedCardChip brand={card.brand} last4={card.last4} /> : <NoCardChip />}
-                  id="app"
-                  title="Card"
-                  line={card ? `${brandLabel(card.brand)} •••• ${card.last4}${card.id === refusedCardId ? " · Declined just now" : ""}` : noCardYet ? "Add a card" : "Add one on the next step"}
-                  onPick={() => {
-                    // NO CARD YET: ADD ONE, THE TICKET GOES (Pato, 2026-11-21,
-                    // MESITA-4617: "if not added yet, offer redirect to add card
-                    // page and yes, the ticket is lost after addition and must
-                    // be created again"): Add a card's page, what was typed
-                    // here dropped.
-                    if (noCardYet) {
-                      clearGuestDraft(placeId);
-                      navigateTo(router, CONSUMER_ROUTES.walletAddCard, { motion: "drill" });
-                      return;
-                    }
-                    picked.current = true;
-                    setMethod("card");
-                    setExpress(false);
-                    setWallet(null);
-                  }}
-                />
-                )}
-                {/* APPLE PAY and GOOGLE PAY (MESITA-4386; two rows since
-                    MESITA-4397, Pato: "show apple pay and google pay
-                    separated"): Face ID on Pay holds it; the waiter's code
-                    charges it. The one this browser can't use stays, greyed. */}
-                {expressOn && !appWhy
-                  ? EXPRESS_ROWS.filter((r) => r.wallet === defaultWallet).map((r) => (
-                      <MethodTile
-                        key={r.wallet}
-                        on={way === "card" && express && wallet === r.wallet}
-                        off={walletInBrowser(r.wallet, applePhone) ? null : "Not on this phone"}
-                        lead={r.chip}
-                        id={r.wallet}
-                        title={r.title}
-                        line="Charged when you confirm"
-                        onPick={() => {
-                          picked.current = true;
-                          setMethod("card");
-                          setExpress(true);
-                          setWallet(r.wallet);
-                        }}
-                      />
-                    ))
-                  : null}
                 {/* Cash in its dollar-bill green (MESITA-4244, Pato: "for
                     cash use green"), the Wallet's Cash chip. */}
                 <MethodTile
@@ -840,12 +602,7 @@ export function GuestPayScreen({
                   id="cash"
                   title="Pay outside the app"
                   line="Cash or the place's card terminal"
-                  onPick={() => {
-                    picked.current = true;
-                    setMethod("cash");
-                    setExpress(false);
-                    setWallet(null);
-                  }}
+                  onPick={() => setMethod("cash")}
                 />
               </div>
             )}
@@ -863,9 +620,7 @@ export function GuestPayScreen({
               ? { label: "Show the waiter", busy, disabled: held, onClick: () => void openBill(null) }
               : way === "cash"
                 ? { label: `Pay ${m(dueCents)} in cash`, busy, disabled: held, onClick: () => void openBill("cash") }
-                : way === "card" && !(express && expressOn)
-                  ? { label: "Show the waiter", busy, disabled: !chosenCard || held, onClick: () => void openBill("card") }
-                  : { label: "Next", busy, disabled: !way || held, onClick: toNext }
+                : { label: "Next", busy, disabled: !way || held, onClick: toNext }
           }
         />
       </>,
@@ -873,179 +628,7 @@ export function GuestPayScreen({
     );
   }
 
-  // 4A' APPLE PAY / GOOGLE PAY (MESITA-4386): the amount, the phone's own
-  // wallet button and when it is charged. Face ID holds the card part and
-  // opens the bill; the waiter's code charges it. A phone without a wallet
-  // says so, and the way out is Method.
-  if (way === "card" && express && expressOn && wallet) {
-    const walletName = wallet === "apple_pay" ? "Apple Pay" : "Google Pay";
-    const chooseAnother = () => {
-      setError(null);
-      setPayRefusal(null);
-      setExpress(false);
-      setWallet(null);
-      setStage("method");
-    };
-    return frame(
-      <>
-        {top("Pay")}
-        <StepBody className="flex-1">
-          <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-express-pay={expressState}>
-            <span className="flex flex-col items-center gap-1">
-              <span className="text-muted-foreground text-lg font-semibold">Pay</span>
-              <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
-            </span>
-            <div className="relative min-h-12 w-full max-w-xs">
-              {expressState === "loading" ? <Skeleton className="absolute inset-0 h-12 rounded-xl" /> : null}
-              {expressState === "none" ? (
-                <p className="text-base font-semibold" role="status">
-                  This phone can&apos;t pay with {walletName} here. Choose another way.
-                </p>
-              ) : null}
-              <div className={cn(expressState !== "ready" && "pointer-events-none opacity-0")}>
-                <ExpressBillPay
-                  wallet={wallet}
-                  getSupabase={getSupabase}
-                  placeId={placeId}
-                  billCents={billCents}
-                  dueCents={dueCents}
-                  split={{ credit_cents: creditCents, card_bill_cents: leftCents, card_tip_cents: tipCents, cash_bill_cents: 0, cash_tip_cents: 0 }}
-                  requestId={() => (requestId.current ??= crypto.randomUUID())}
-                  disabled={held}
-                  onState={setExpressState}
-                  onLock={setBusy}
-                  onOpened={(tabId, qrUrl) => {
-                    rememberGuestTab(tabId, qrUrl);
-                    writeLastTip(placeId, tip);
-                    writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, express, wallet, cardId, refusedCardId, sentTabId: tabId });
-                    setOutcomeUnknown(false);
-                  }}
-                  onBill={(tabId) => onPaid(tabId)}
-                  onError={(text) => {
-                    requestId.current = null;
-                    setError(text);
-                  }}
-                />
-              </div>
-            </div>
-            {busy ? (
-              <p className="text-base font-semibold" role="status" data-guest-express-paying>
-                Paying…
-              </p>
-            ) : null}
-            <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
-              <Lock className="h-4 w-4 shrink-0" aria-hidden />
-              Charged when you confirm.
-            </p>
-          </PaySection>
-        </StepBody>
-        {status}
-        <StepFooter
-          strip={3}
-          primary={{ label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }}
-        />
-      </>,
-      "express",
-    );
-  }
-
-  // 4A APP PAY: the guest's one saved card (MESITA-4168; the Card step that
-  // picked among several is gone, MESITA-4226), "Pay $X" (MESITA-4316),
-  // held now. No card saved: "Add a card", which comes back here with it. Pay
-  // moves money: › is not offered. Only stage "pay" reaches here.
-  if (way === "card") {
-    const shownCard = card;
-    const guestFace = shownCard ? cardFace(shownCard.brand, brandLabel(shownCard.brand)) : null;
-    // After a refusal the way out is Method (the guest has one card).
-    const chooseAnother = () => {
-      setError(null);
-      setPayRefusal(null);
-      setStage("method");
-    };
-    const payOutside = () => {
-      setError(null);
-      setPayRefusal(null);
-      setMethod("cash");
-      setStage("method");
-    };
-    return frame(
-      <>
-        {top("Pay")}
-        {/* ONE CENTRED CHARGE (MESITA-4100, Pato: "the pay step must be a
-            simple pay button centered with the selected card, like charge X
-            to this card"): the card is picked on Method, so here it is the
-            card, the amount and one line on when it is charged. No CVC: a
-            saved card is charged by Stripe without it; a bank that wants its
-            own check asks in its window when Pay is tapped (runBankCheck). */}
-        <StepBody className="flex-1">
-          <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-card-pay>
-            {cardsUnknown ? (
-              cardsLoad.state === "failed" ? (
-                <button type="button" className="text-base font-semibold underline" onClick={retryCards}>
-                  Couldn&apos;t load your card. Retry
-                </button>
-              ) : (
-                <Skeleton className="h-36 w-56 rounded-2xl" />
-              )
-            ) : !shownCard ? (
-              <span className="flex flex-col items-center gap-1" data-guest-no-cards>
-                <span className="text-muted-foreground text-lg font-semibold">Add a card to pay</span>
-                <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
-              </span>
-            ) : shownCard ? (
-              <>
-                <span className="flex flex-col items-center gap-1">
-                  <span className="text-muted-foreground text-lg font-semibold">Hold</span>
-                  <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
-                  <span className="text-muted-foreground text-lg">on this card</span>
-                </span>
-                <span
-                  className={cn("flex h-36 w-56 flex-col justify-between rounded-2xl p-5 text-left shadow-md", guestFace?.className)}
-                  style={guestFace?.style}
-                  role="img"
-                  aria-label={`${brandLabel(shownCard.brand)} ending ${shownCard.last4}`}
-                  data-guest-card
-                >
-                  {guestFace?.mark}
-                  <span className="text-lg font-semibold tracking-widest tabular-nums">•••• {shownCard.last4}</span>
-                </span>
-                <p className="text-muted-foreground flex max-w-xs items-center justify-center gap-2 text-sm">
-                  <Lock className="h-4 w-4 shrink-0" aria-hidden />
-                  {/* MESITA-4524: the consent line. The waiter's Confirm charges it. */}
-                  {m(dueCents)} will be held on •••• {shownCard.last4} and charged when the waiter confirms.
-                </p>
-              </>
-            ) : null}
-          </PaySection>
-        </StepBody>
-        {status}
-        {/* Pay outside the app: a quiet second way out of a refusal, only
-            where the place takes cash (MESITA-4121). */}
-        {payRefusal && cashOn ? (
-          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")} onClick={payOutside} data-guest-pay-outside>
-            Pay outside the app
-          </button>
-        ) : null}
-        <StepFooter
-          strip={3}
-          // "Pay $X" (MESITA-4316, was "Pay in one click", MESITA-4106): the
-          // card is held now and charged when the waiter signs. No card
-          // saved: Add a card. After a refusal the main button leads back
-          // to Method (MESITA-4121, MESITA-4226).
-          primary={
-            payRefusal
-              ? { label: "Choose another way", busy: false, disabled: held, onClick: chooseAnother }
-              : !cardsUnknown && !card
-              ? { label: "Add a card", busy, disabled: held, onClick: addCard }
-              : { label: "Show the waiter", busy, disabled: held || !card, onClick: () => void openBill("card") }
-          }
-        />
-      </>,
-      "app",
-    );
-  }
-
-  // 4B CASH PAY: give the cash, then the QR. The bubble, the amount and the
+  // 4 CASH PAY: give the cash, then the QR. The bubble, the amount and the
   // words sit together in the middle.
   return frame(
     <>
@@ -1074,29 +657,15 @@ export function GuestPayScreen({
   );
 }
 
-/** A row for App or Cash in the How you pay panel (MESITA-4072; a bordered
- *  tile with a thick border when chosen until then): the ring on the right
- *  fills when chosen; grey with one line why when the place can't take it. */
-/** Method's two phone-wallet rows, in this order (MESITA-4397). */
-const EXPRESS_ROWS: { wallet: ExpressWallet; title: string; chip: React.ReactNode }[] = [
-  { wallet: "apple_pay", title: "Apple Pay", chip: <ApplePayChip /> },
-  { wallet: "google_pay", title: "Google Pay", chip: <GooglePayChip /> },
-];
 
 /** Method's rows share one leading slot (MESITA-4085), as wide as the
  *  Credits Card image, each mark at its left edge: the marks start on one
  *  edge and the words on another. */
 const LEAD_SLOT = "flex w-[3.2rem] shrink-0 items-center";
 
-/** No card saved yet: a black card chip, the Wallet's chip shape. */
-function NoCardChip() {
-  return (
-    <span className="flex h-8 w-[3.2rem] shrink-0 items-center justify-center rounded-md bg-neutral-900 text-white" aria-hidden>
-      <CreditCard className="h-4 w-4" />
-    </span>
-  );
-}
-
+/** A row in the How you pay panel (MESITA-4072; a bordered tile with a
+ *  thick border when chosen until then): the ring on the right fills when
+ *  chosen; grey with one line why when the place can't take it. */
 function MethodTile({
   id,
   on,
@@ -1106,12 +675,12 @@ function MethodTile({
   line,
   onPick,
 }: {
-  /** The test hook: "app" or "cash". */
+  /** The test hook: "cash". */
   id: string;
   on: boolean;
   off: string | null;
-  /** The way's chip, the Wallet's (MESITA-4244): the saved card's brand,
-   *  Cash's green. Greyed when the place can't take it. */
+  /** The way's chip, the Wallet's (MESITA-4244): Cash's green. Greyed when
+   *  the place can't take it. */
   lead: React.ReactNode;
   title: string;
   line: string;

@@ -63,9 +63,6 @@ export type WalletBalance = {
   /** What the Pay tab can spend there now: Available minus credit held by
    *  open payments, from the server (MESITA-3304). */
   spendable_cents: number;
-  /** The place can take a card part (MESITA-3305): its Stripe account
-   *  charges and the owner's Cards switch is on. Absent reads as no. */
-  card_ok?: boolean;
   /** What this guest can buy here now (MESITA-4262): the vouchers Home's
    *  offer button switches through. Absent before MESITA-4262 reads as none. */
   offers?: { sell: string[] };
@@ -221,7 +218,7 @@ export type ExpressBasket = { place_id: string } & (
 export async function apiExpressSetup(
   client: SupabaseClient,
   /** MESITA-4386: a bill's card part (plus tip) instead of a voucher basket. */
-  args: ExpressBasket | { place_id: string; bill: { amount_cents: number } },
+  args: ExpressBasket,
 ): Promise<ExpressSetup> {
   return await invokeEF<ExpressSetup>(client, "consumer-web-express-pay-setup", args);
 }
@@ -305,19 +302,19 @@ export const money = moneyLabel;
 
 // ── Paying from credit (MESITA-3304, W2a) ───────────────────────────────────
 
-/** A payment as the Pay tab shows it: the proof once paid; while a card
- *  part's Checkout is open (MESITA-3305), its url to resume and its expiry. */
+/** A payment as the Pay tab shows it: the proof once paid. MESITA-4708: a
+ *  bill has no card part, so no Checkout to resume. */
 export type PayProof = {
   payment_id: string;
   place_name: string | null;
   /** The place's Premier tier and Mesita Payments mark beside its name
    *  (MESITA-3539), when known. */
   place_marks?: { tier: number | null; mesita_pay: boolean } | null;
-  /** The row's state: open (a card part's Checkout is still open), paid,
-   *  refunded, partly_refunded, expired, failed, needs_review. */
+  /** The row's state: open (a bill paid outside, waiting for the waiter),
+   *  paid, refunded, partly_refunded, expired, failed, needs_review. */
   status: string;
   amount_cents: number;
-  /** The parts (MESITA-3305); 0 on a credit-only payment. */
+  /** The parts (MESITA-3305); card_cents is 0 since MESITA-4708. */
   credit_cents?: number;
   card_cents?: number;
   tip_cents?: number;
@@ -327,55 +324,37 @@ export type PayProof = {
   /** The ticket number the guest typed, when the server sends it. */
   ticket?: string | null;
   currency: string;
-  /** Null while the card part is still open. */
+  /** Null while the payment is still open. */
   paid_at: string | null;
   /** When staff marked the proof seen on visit.mesita.ai. */
   proof_seen_at: string | null;
   proof: { token: string; url: string } | null;
-  /** While open: the Checkout to resume, or null when Stripe no longer has it. */
-  url?: string | null;
   expires_at?: string | null;
   test_mode: boolean;
 };
 
-type Started =
-  | {
-    payment_id: string;
-    status: string;
-    outcome: "paid" | "already_paid";
-    amount_cents?: number;
-    credit_cents?: number;
-    currency?: string;
-    paid_at?: string;
-    proof?: { token: string; url: string } | null;
-    test_mode: boolean;
-  }
-  | {
-    payment_id: string;
-    status: "open";
-    url: string;
-    expires_at: string;
-    amount_cents: number;
-    credit_cents: number;
-    card_cents: number;
-    tip_cents: number;
-    currency: string;
-    test_mode: boolean;
-  };
+type Started = {
+  payment_id: string;
+  status: string;
+  outcome: "paid" | "already_paid";
+  amount_cents?: number;
+  credit_cents?: number;
+  currency?: string;
+  paid_at?: string;
+  proof?: { token: string; url: string } | null;
+  test_mode: boolean;
+};
 
-/** What a start answers: a paid proof (credit only), a Checkout to open
- *  (a card part), or a payment already settled under this request id, to
- *  read back. */
+/** What a start answers: a paid proof, or a payment already settled under
+ *  this request id, to read back. */
 export type PayStart =
   | { kind: "paid"; proof: PayProof }
-  | { kind: "checkout"; payment_id: string; url: string; expires_at: string }
   | { kind: "already_paid"; payment_id: string };
 
-/** Pays the place: from credit alone, or credit plus a card part (and a tip
- *  by card) through Stripe Checkout on the place's account. Refusals arrive
- *  as EFError with a code from PAY_REFUSAL; `insufficient` carries
- *  `spendable_cents`, `taken` the `payment_id` that already went through,
- *  `in_progress` the open Checkout's `url` (EFError.body). */
+/** Pays the place from credit (MESITA-4708: the card part through Stripe
+ *  Checkout is gone). Refusals arrive as EFError with a code from
+ *  PAY_REFUSAL; `insufficient` carries `spendable_cents`, `taken` the
+ *  `payment_id` that already went through (EFError.body). */
 export async function apiStartPayment(
   client: SupabaseClient,
   args: {
@@ -383,9 +362,6 @@ export async function apiStartPayment(
     place_name: string | null;
     place_marks?: { tier: number | null; mesita_pay: boolean } | null;
     amount_cents: number;
-    card_cents?: number;
-    tip_cents?: number;
-    return_url?: string;
     request_id: string;
     ticket: string | null;
     /** The waiter's 4-digit code (MESITA-3306): the charge sets the amount
@@ -397,12 +373,9 @@ export async function apiStartPayment(
     place_id: args.place_id,
     amount_cents: args.amount_cents,
     request_id: args.request_id,
-    ...(args.card_cents ? { card_cents: args.card_cents, return_url: args.return_url } : {}),
-    ...(args.tip_cents ? { tip_cents: args.tip_cents } : {}),
     ...(args.ticket ? { ticket: args.ticket } : {}),
     ...(args.charge_code ? { charge_code: args.charge_code } : {}),
   });
-  if (r.status === "open" && "url" in r) return { kind: "checkout", payment_id: r.payment_id, url: r.url, expires_at: r.expires_at };
   if (!("outcome" in r) || r.paid_at === undefined) return { kind: "already_paid", payment_id: r.payment_id };
   return {
     kind: "paid",
@@ -423,8 +396,7 @@ export async function apiStartPayment(
   };
 }
 
-/** One of the guest's payments: its proof again and whether staff saw it;
- *  an open card part is settled on this read when Stripe says paid. */
+/** One of the guest's payments: its proof again and whether staff saw it. */
 export async function apiGetPayment(client: SupabaseClient, paymentId: string): Promise<PayProof> {
   const r = await invokeEF<
     Omit<PayProof, "place_name" | "place_marks"> & {
@@ -450,66 +422,21 @@ export async function apiGetPayment(client: SupabaseClient, paymentId: string): 
     paid_at: r.paid_at,
     proof_seen_at: r.proof_seen_at,
     proof: r.proof,
-    url: r.url,
     expires_at: r.expires_at,
     test_mode: r.test_mode,
   };
 }
 
-/** Back from a cancelled Checkout (MESITA-3458): the open session is
- *  expired and the credit hold released, so the form can pay again. The
- *  payment as it now stands, and the ticket it carried, so the form shows
- *  the same amount, tip and ticket. `paid` when Stripe had already taken the
- *  money; `pending` when Stripe still reports it open. */
-export type PayRelease = {
-  outcome: "released" | "paid" | "unchanged" | "pending";
-  payment: PayProof;
-  place_id: string | null;
-  ticket: string | null;
-};
-
-export async function apiReleasePayment(client: SupabaseClient, paymentId: string): Promise<PayRelease> {
-  const r = await invokeEF<
-    Omit<PayProof, "place_name"> & { place: { id: string; name: string | null }; outcome: PayRelease["outcome"]; ticket: string | null }
-  >(client, "consumer-web-release-payment", { payment_id: paymentId });
-  return {
-    outcome: r.outcome,
-    place_id: r.place?.id ?? null,
-    ticket: r.ticket ?? null,
-    payment: {
-      payment_id: r.payment_id,
-      place_name: r.place?.name ?? null,
-      status: r.status,
-      amount_cents: r.amount_cents,
-      credit_cents: r.credit_cents,
-      card_cents: r.card_cents,
-      tip_cents: r.tip_cents,
-      currency: r.currency,
-      paid_at: r.paid_at,
-      proof_seen_at: r.proof_seen_at,
-      proof: r.proof,
-      test_mode: r.test_mode,
-    },
-  };
-}
-
 /** What the guest reads when a payment is refused, by the server's code.
- *  `insufficient` prints the server's spendable_cents instead; `in_progress`
- *  offers the open Checkout. */
+ *  `insufficient` prints the server's spendable_cents instead. */
 export const PAY_REFUSAL: Record<string, string> = {
   sign_in: "Sign in to pay.",
   amount_required: "Type an amount to pay.",
   above_cap: "That's more than one payment can be.",
   gone: "This place can't take payments.",
   taken: "This payment already went through.",
-  // The card part (MESITA-3305)
-  below_minimum: "The card part is below the card minimum.",
-  no_account: "This place isn't taking card payments yet.",
-  cards_off: "This place isn't taking card payments right now.",
-  currency_mismatch: "This place can't take card payments in its currency yet.",
-  in_progress: "A card payment here is still open.",
-  checkout_failed: "Couldn't open checkout. Try again.",
-  locked: "Card payments here are paused for a few minutes.",
+  // MESITA-4708: a bill has no card part.
+  cards_off: "Pay the rest with cash or the place's own terminal.",
 };
 
 // ── The waiter's charge (MESITA-3306) ───────────────────────────────────────
@@ -538,9 +465,9 @@ export const CHARGE_REFUSAL: Record<string, string> = {
 
 // ── The Pay tab's list (MESITA-3457) ────────────────────────────────────────
 
-/** One place the guest can pay at now: their credit there, whether Mesita
- *  Pay takes a card part, the card minimum, and the last
- *  12 hours' payment. Every number is the server's. */
+/** One place the guest can pay at now: their credit there, whether a bill
+ *  can be paid outside, its offers, and the last 12 hours' payment. Every
+ *  number is the server's. */
 export type PayPlace = {
   place_id: string;
   name: string | null;
@@ -552,13 +479,10 @@ export type PayPlace = {
   /** Null without a location, or for a place with no coordinates. */
   distance_m: number | null;
   currency: string;
-  card_ok: boolean;
   /** Spendable now: Available minus credit held by open payments. */
   available_cents: number;
   pending_cents: number;
   test_mode: boolean;
-  /** Stripe's minimum on card + tip (the start refuses below it). */
-  card_min_cents: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
   /** Cash Payments is on here (the owner's switch and a waiter code). */
   outside_ok?: boolean;

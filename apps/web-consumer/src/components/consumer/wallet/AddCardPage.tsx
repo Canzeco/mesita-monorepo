@@ -14,7 +14,6 @@ import { Panel } from "@/components/shared/Panel";
 import { WALLET_CACHE_KEY } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack, safeReturn } from "@/lib/navigate";
-import { readDraft, writeDraft } from "@/lib/guest-pay-draft";
 import { invalidateCached } from "@/lib/screen-cache";
 import { toast } from "@/lib/toast";
 import { handOverAddedCard, PICK_PARAM } from "@/lib/added-card";
@@ -25,8 +24,9 @@ import { handOverAddedCard, PICK_PARAM } from "@/lib/added-card";
 // a card row. The same form as the sheet (useAddCard: one SetupIntent,
 // Stripe's Payment Element, nothing charged), in a Panel, with Save card
 // pinned under a hairline (Screen's footer). Saved: Back to the screen
-// that opened it: Wallet reads again and lists the card; a purchase (Pay's
-// Method, the Offers page, the member tab, MESITA-4101) selects it.
+// that opened it: Wallet reads again and lists the card; a purchase (the
+// Offers page, the member tab, MESITA-4101) selects it. MESITA-4708: a bill
+// has no card, so no Pay draft takes it.
 export function AddCardPage() {
   const router = useRouter();
   const form = useAddCard({
@@ -34,11 +34,6 @@ export function AddCardPage() {
     onSaved: (id) => {
       const params = new URLSearchParams(window.location.search);
       const back = safeReturn(params.get("return"));
-      const placeId = back?.match(/^\/pay\/place\/([^/?#]+)/)?.[1];
-      if (placeId) {
-        const draft = readDraft(decodeURIComponent(placeId));
-        if (draft) writeDraft(decodeURIComponent(placeId), { ...draft, cardId: id });
-      }
       if (params.has(PICK_PARAM)) handOverAddedCard(id);
       toast.success("Card saved.");
       invalidateCached(WALLET_CACHE_KEY);

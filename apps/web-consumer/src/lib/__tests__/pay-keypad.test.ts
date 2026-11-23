@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { readAmount } from "@mesita/place-profile/lib/money";
-import type { PayPlace } from "@/lib/api/wallet";
-import { tabSplit } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
-import { amountShown, draftAmount, draftTip, keyLive, type PadKey, payButton, payProblem, type PayProblemArgs, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
+import { amountShown, draftAmount, draftTip, keyLive, type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 
 // Money (MVP test rule): the keypad is the only way a guest types a bill or
-// a tip, so every text it can build must be one readAmount reads; and the
-// tip ways the Method step offers must be ones Pay accepts (MESITA-3739).
+// a tip, so every text it can build must be one readAmount reads
+// (MESITA-3739).
 
 const type = (keys: PadKey[]) => keys.reduce((t, k) => pressKey(t, k), "");
 
@@ -85,91 +83,6 @@ describe("draftAmount", () => {
   });
 });
 
-const place = (p: Partial<PayPlace> = {}): PayPlace => ({
-  place_id: "p",
-  name: "Place",
-  photo: null,
-  address: null,
-  marks: { tier: null, mesita_pay: true },
-  distance_m: null,
-  currency: "mxn",
-  card_ok: true,
-  available_cents: 0,
-  pending_cents: 0,
-  test_mode: false,
-  card_min_cents: 1000,
-  paid_recent: null,
-  outside_ok: true,
-  ...p,
-});
-
-const covered = (p: Partial<PayPlace>, tipCents: number, cardId: string | null = "pm_1"): Omit<PayProblemArgs, "tipWith"> => ({
-  place: place(p),
-  billCents: 30000,
-  tipCents,
-  spendableCents: 50000,
-  useCredit: true,
-  restWith: null,
-  cardId,
-});
-
-describe("tipWays", () => {
-  it("credit pays the bill: the tip can go cash or card", () => {
-    expect(tipWays(covered({}, 3000))).toEqual(["cash", "card"]);
-  });
-  it("no card on file: cash only", () => {
-    expect(tipWays(covered({}, 3000, null))).toEqual(["cash"]);
-  });
-  it("a tip under the card minimum: cash only", () => {
-    expect(tipWays(covered({ card_min_cents: 5000 }, 3000))).toEqual(["cash"]);
-  });
-  it("cash off: card only", () => {
-    expect(tipWays(covered({ outside_ok: false }, 3000))).toEqual(["card"]);
-  });
-  it("cards off and cash off: nothing", () => {
-    expect(tipWays(covered({ outside_ok: false, card_ok: false }, 3000))).toEqual([]);
-  });
-  it("every offered way is one Pay accepts, across places and splits", () => {
-    for (const card_ok of [true, false])
-      for (const outside_ok of [true, false])
-        for (const card_min_cents of [0, 1000, 5000])
-          for (const tip of [0, 500, 3000])
-            for (const cardId of ["pm_1", null]) {
-              const a = covered({ card_ok, outside_ok, card_min_cents }, tip, cardId);
-              for (const w of tipWays(a)) expect(payProblem({ ...a, tipWith: w })).toBeNull();
-            }
-  });
-});
-
-describe("payProblem", () => {
-  // The screen acts on the code (Add a card), so each stop has its own.
-  const paying = (p: Partial<PayPlace>, over: Partial<PayProblemArgs> = {}): PayProblemArgs => ({
-    place: place(p),
-    billCents: 30000,
-    tipCents: 0,
-    spendableCents: 0,
-    useCredit: false,
-    restWith: "card",
-    tipWith: "card",
-    cardId: "pm_1",
-    ...over,
-  });
-  it("a card part with no saved card is add_card", () => {
-    expect(payProblem(paying({}, { cardId: null }))?.code).toBe("add_card");
-  });
-  it("credit covering the bill needs no card", () => {
-    expect(payProblem(paying({}, { cardId: null, useCredit: true, spendableCents: 30000 }))).toBeNull();
-  });
-  it("each other stop has its own code and a sentence", () => {
-    expect(payProblem(paying({ card_ok: false }))?.code).toBe("card_unavailable");
-    expect(payProblem(paying({ outside_ok: false }, { restWith: "cash", tipWith: "cash" }))?.code).toBe("cash_off");
-    expect(payProblem(paying({ card_min_cents: 50000 }))?.code).toBe("card_min");
-    expect(payProblem(paying({}, { restWith: "cash", tipCents: 3000, tipWith: "card" }))?.code).toBe("card_tip_alone");
-    expect(payProblem(paying({ card_min_cents: 50000 }))?.message).toBeTruthy();
-    expect(payProblem(paying({}))).toBeNull();
-  });
-});
-
 describe("amountShown", () => {
   // The prefix and suffix are the money formatter's own for the currency.
   const zero = money(0, "mxn");
@@ -206,58 +119,5 @@ describe("amountShown", () => {
         expect(a.prefix + a.body + a.ghost + a.suffix).toBe(money(cents, cur));
       }
     }
-  });
-});
-
-describe("payButton", () => {
-  const m = (c: number) => money(c, "mxn");
-  const split = (a: { bill: number; tip?: number; credit?: number; billWith: "cash" | "card"; tipWith?: "cash" | "card" }) =>
-    tabSplit({
-      billCents: a.bill,
-      tipCents: a.tip ?? 0,
-      spendableCents: a.credit ?? 0,
-      useCredit: (a.credit ?? 0) > 0,
-      billWith: a.billWith,
-      tipWith: a.tipWith ?? a.billWith,
-    });
-  const btn = (s: ReturnType<typeof split>) => payButton(s, { m });
-
-  // MESITA-3798: the Pay step's rows name each way; the line is only the
-  // cash that stays at the table.
-  it("card only: the whole amount, no line", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, billWith: "card" }))).toEqual({ button: `Pay ${m(69000)}`, line: null });
-  });
-  it("credit and card: the in-app sum, no line", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "card" }))).toEqual({ button: `Pay ${m(69000)}`, line: null });
-  });
-  it("card with a cash tip: the card amount, plus the cash to the waiter", () => {
-    expect(btn(split({ bill: 49000, tip: 20000, billWith: "card", tipWith: "cash" }))).toEqual({
-      button: `Pay ${m(49000)}`,
-      line: `+ ${m(20000)} cash to the waiter`,
-    });
-  });
-  it("credit with the rest in cash: the credit amount, plus the cash to the waiter", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, credit: 20000, billWith: "cash" }))).toEqual({
-      button: `Pay ${m(20000)}`,
-      line: `+ ${m(49000)} cash to the waiter`,
-    });
-  });
-  it("all cash: nothing moves in the app, I paid, no line", () => {
-    expect(btn(split({ bill: 60000, tip: 9000, billWith: "cash" }))).toEqual({ button: "I paid", line: null });
-  });
-  it("the button's amount is always credit + card bill + card tip; the line is exactly the cash", () => {
-    for (const bill of [100, 49000, 60000, 300050])
-      for (const tip of [0, 500, 9000])
-        for (const credit of [0, 100, 20000, 60000, 999999])
-          for (const billWith of ["cash", "card"] as const)
-            for (const tipWith of ["cash", "card"] as const) {
-              const s = split({ bill, tip, credit, billWith, tipWith });
-              const inApp = s.credit_cents + s.card_bill_cents + s.card_tip_cents;
-              const cash = s.cash_bill_cents + s.cash_tip_cents;
-              const b = btn(s);
-              expect(inApp + cash).toBe(s.total_cents);
-              if (inApp === 0) expect(b).toEqual({ button: "I paid", line: null });
-              else expect(b).toEqual({ button: `Pay ${m(inApp)}`, line: cash > 0 ? `+ ${m(cash)} cash to the waiter` : null });
-            }
   });
 });

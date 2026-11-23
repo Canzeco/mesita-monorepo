@@ -93,7 +93,6 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             <PayForm
               key={formPlace.place_id}
               place={formPlace}
-              refill={null}
               onBack={() => {
                 setFormPlaceId(null);
                 leave();
