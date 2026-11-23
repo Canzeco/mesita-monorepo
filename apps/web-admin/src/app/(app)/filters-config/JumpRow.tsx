@@ -15,10 +15,10 @@ import { JUMP_BAR_CLASS, JUMP_CHIP_CLASS, JUMP_CHIP_NUMBER_CLASS } from "@/compo
 const HOW = "s-how";
 
 const SECTIONS: readonly (readonly [string, string])[] = [
+  ["s-scores", "Scores"],
   ["s-ranking", "Ranking"],
   ["s-mixing", "Mixing"],
   ["s-social", "Social"],
-  ["s-scores", "Scores"],
   ["s-map", "Map"],
   // `s-name` is frozen: Crenup, Multiple Places and Single Place link to it.
   ["s-name", "Search bars"],
