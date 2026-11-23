@@ -100,6 +100,8 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
           welcome_bps: n(cb.welcome_bps)!,
           returning_bps: n(cb.returning_bps)!,
           line: cb.line === "welcome" || cb.line === "returning" ? cb.line : null,
+          // MESITA-4770: Discount or Cashback.
+          visit_mechanism: cb.visit_mechanism === "discount" ? "discount" : "cashback",
           // MESITA-4714: Post's reward; a bad value is Off.
           ...(cb.story_reward_cents !== undefined ? { story_reward_cents: n(cb.story_reward_cents) ?? 0 } : {}),
         }

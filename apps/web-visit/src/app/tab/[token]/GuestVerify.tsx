@@ -6,7 +6,7 @@ import { SIGN } from "@mesita/place-profile/lib/pay-steps";
 import { listPayments, rejectTab, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
 import { signRequest } from "@/lib/sign-gate";
 import { CodeBoxes } from "./CodeBoxes";
-import { BanknoteIcon, CheckIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
+import { BanknoteIcon, CheckIcon, CoinsIcon, HandCoinsIcon, SmartphoneIcon, UserIcon, WalletIcon, XIcon } from "./icons";
 
 // THE WAITER'S SCREEN (MESITA-3857, Pato's "14. Payments Flow Guest-Lead"
 // §5): the waiter scans the guest's QR and checks the bill against the real
@@ -212,6 +212,13 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   // TO CONFIRM.
   // Each line: the word on the left, the amount on the right (MESITA-4108).
   const lines: Array<{ key: string; icon: React.ReactNode; label: string; value: string; good?: boolean }> = [];
+  // MESITA-4770: a visit Discount: the printed bill first (the waiter checks
+  // it against the ticket), then what came off it, then how the rest is paid.
+  const discount = tab.discount_cents ?? 0;
+  if (discount > 0 && tab.bill_cents) {
+    lines.push({ key: "bill", icon: <CoinsIcon className="pay-icon" />, label: "Bill", value: money(tab.bill_cents) });
+    lines.push({ key: "discount", icon: <CoinsIcon className="pay-icon" />, label: "Discount", value: `−${money(discount)}`, good: true });
+  }
   if (tab.credit_cents > 0) lines.push({ key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Credits", value: money(tab.credit_cents) });
   if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: "By card", value: money(tab.card_bill_cents) });
   if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: "Cash received", value: money(tab.cash_bill_cents) });

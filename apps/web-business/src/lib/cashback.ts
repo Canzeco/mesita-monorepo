@@ -12,9 +12,16 @@
 // Returning 5 · 10 %, Small voucher 10 · 20 %, Medium 20 · 40 %, Big 40 · 60 %,
 // Story MX$20 · MX$40. TWIN of supabase _shared/cashback.ts and money.ts
 // VOUCHER_BONUS_STEPS_BPS; the server refuses anything else.
+/** MESITA-4770: how the Welcome / Returning lines pay out (Pato,
+ *  2026-11-23: "YOU JUST SET THE TIER. AND THEN THE MECHANISM FOR ALL YOUR
+ *  VISIT TIERS"). Discount = off this bill, no Credits Agreement; Cashback =
+ *  credit for the next visit, needs Loyalty Cards. */
+export type VisitMechanism = "discount" | "cashback";
+export const VISIT_MECHANISMS: readonly VisitMechanism[] = ["discount", "cashback"];
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
+  visit_mechanism: VisitMechanism;
   story_reward_cents: number;
   small_bonus_bps: number;
   medium_bonus_bps: number;
@@ -31,6 +38,7 @@ export type VoucherBonusField = keyof typeof VOUCHER_BONUS_PICKS_BPS;
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
+  visit_mechanism: "cashback",
   story_reward_cents: 2000,
   small_bonus_bps: 1000,
   medium_bonus_bps: 2000,
@@ -41,6 +49,13 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
  *  bonuses: the defaults fill them. */
 export function withStoryReward(r: Partial<CashbackRates> & Pick<CashbackRates, "welcome_bps" | "returning_bps">): CashbackRates {
   const out = { ...CASHBACK_DEFAULTS };
-  for (const k of Object.keys(out) as Array<keyof CashbackRates>) if (typeof r[k] === "number") out[k] = r[k];
+  for (const k of Object.keys(out) as Array<keyof CashbackRates>) {
+    const v = r[k];
+    if (k === "visit_mechanism") {
+      if (v === "discount" || v === "cashback") out.visit_mechanism = v;
+    } else if (typeof v === "number") {
+      (out as Record<string, unknown>)[k] = v;
+    }
+  }
   return out;
 }

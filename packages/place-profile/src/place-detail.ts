@@ -64,6 +64,9 @@ export type PlaceCashback = {
   welcome_bps: number;
   returning_bps: number;
   line: "welcome" | "returning" | null;
+  /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for both
+   *  lines. Absent on older reads = cashback. */
+  visit_mechanism?: "discount" | "cashback";
   /** MESITA-4714 (Post): what a verified Instagram story pays here, in cents
    *  (0 = Off). Absent on older reads. */
   story_reward_cents?: number;

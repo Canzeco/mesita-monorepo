@@ -12,8 +12,9 @@
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
 //   Visit Checkout     #visit-checkout     · Accept Cash Payments · Mesita Credits
-//                                            (always accepted, no switch) · Welcome
-//                                            and Returning Visit Rates (cashback)
+//                                            (always accepted, no switch) · Visit
+//                                            Offer (MESITA-4770: Discount | Cashback)
+//                                            · Welcome and Returning Visit Rates
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -67,6 +68,8 @@ import {
   VISIT_PICKS_BPS,
   VOUCHER_BONUS_PICKS_BPS,
   type VoucherBonusField,
+  VISIT_MECHANISMS,
+  type VisitMechanism,
 } from "@/lib/cashback";
 import {
   setPlaceCashback,
@@ -140,12 +143,15 @@ function wholeMoney(cents: number, currency: string): string {
   }
 }
 
-/** Visit Checkout's two cashback lines (MESITA-4698; no VIP since MESITA-4709),
- *  two picks each (MESITA-4764). */
-const RATE_ROWS: Array<{ key: keyof typeof VISIT_PICKS_BPS; name: string; line: string; icon: Icon }> = [
-  { key: "welcome_bps", name: "Welcome Visit Rate", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
-  { key: "returning_bps", name: "Returning Visit Rate", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
+/** Visit Checkout's two lines (MESITA-4698; no VIP since MESITA-4709), two
+ *  picks each (MESITA-4764), paid out by the place's one mechanism
+ *  (MESITA-4770: Discount off this bill, or Cashback for the next visit). */
+const RATE_ROWS: Array<{ key: keyof typeof VISIT_PICKS_BPS; name: string; when: string; icon: Icon }> = [
+  { key: "welcome_bps", name: "Welcome Visit Rate", when: "a guest's first bill here", icon: ConfettiIcon },
+  { key: "returning_bps", name: "Returning Visit Rate", when: "every later bill here", icon: ArrowsClockwiseIcon },
 ];
+/** MESITA-4770: the mechanism picks, in the owner's words. */
+const MECHANISM_LABEL: Record<VisitMechanism, string> = { discount: "Discount", cashback: "Cashback" };
 const pct = (bps: number) => `${bps / 100}%`;
 /** The story amounts a place can pick (Off is the switch). */
 const STORY_AMOUNTS = STORY_REWARD_STEPS_CENTS.filter((c) => c > 0);
@@ -183,6 +189,7 @@ type DraftKey = "prepayments" | VoucherKey;
 const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
   "welcome_bps",
   "returning_bps",
+  "visit_mechanism",
   "story_reward_cents",
   "small_bonus_bps",
   "medium_bonus_bps",
@@ -524,7 +531,11 @@ export function PaymentsPanel({
     );
   };
 
-  const visitOn = settings.loyalty_cards && (rates.welcome_bps > 0 || rates.returning_bps > 0);
+  // MESITA-4770: a Discount needs no Credits Agreement; Cashback does (new
+  // credit is born only while the Credits Account is on).
+  const discount = rates.visit_mechanism === "discount";
+  const visitBlock = discount ? null : creditsBlock;
+  const visitOn = (discount || settings.loyalty_cards) && (rates.welcome_bps > 0 || rates.returning_bps > 0);
   const storyOn = rates.story_reward_cents > 0;
   // A story pays only while the Credits Account is on (story_reward_grant).
   const storyLive = settings.loyalty_cards && storyOn;
@@ -658,13 +669,15 @@ export function PaymentsPanel({
             <li id="visit-checkout-enabled" className={MARK_ROW} data-place-state="visit_checkout">
               <div className="min-w-0">
                 <p className="font-medium">Enabled</p>
-                <p className="text-muted-foreground">Guests pay the bill here by card, cash or credit, and earn cashback.</p>
-                {under(creditsBlock, null)}
+                <p className="text-muted-foreground">
+                  {discount ? "Guests pay the bill here by cash or credit, and get a discount." : "Guests pay the bill here by cash or credit, and earn cashback."}
+                </p>
+                {under(visitBlock, null)}
               </div>
               <p className={cn("font-semibold whitespace-nowrap", !visitOn && "text-muted-foreground")}>{visitOn ? "On" : "Off"}</p>
               <Switch
                 on={visitOn}
-                pending={pending || !!creditsBlock}
+                pending={pending || !!visitBlock}
                 onClick={() => {
                   if (visitOn) {
                     setLastRates(restoreRates(rates));
@@ -674,13 +687,46 @@ export function PaymentsPanel({
                 label={`Visit Checkout: ${visitOn ? "on" : "off"}`}
               />
             </li>
+            {/* MECHANISM (Pato, 2026-11-23, MESITA-4770: "YOU JUST SET THE TIER.
+                AND THEN THE MECHANISM FOR ALL YOUR VISIT TIERS"): one choice
+                for both rates. Discount comes off this bill; Cashback is
+                credit for the next visit. */}
+            <li id="visit-mechanism" className={MARK_ROW} data-place-state="visit_mechanism">
+              <div className="min-w-0">
+                <p className="font-medium">Visit Offer</p>
+                <p className="text-muted-foreground">
+                  {discount ? "Off the bill at the table. No Credits Agreement needed." : "Credit back for the guest's next visit here."}
+                </p>
+              </div>
+              <span />
+              <div className="flex gap-1" role="group" aria-label="Visit Offer">
+                {VISIT_MECHANISMS.map((m) => {
+                  const picked = rates.visit_mechanism === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      aria-pressed={picked}
+                      disabled={pending}
+                      onClick={() => editRates({ ...rates, visit_mechanism: m })}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm font-semibold disabled:opacity-50",
+                        picked ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
+                      )}
+                    >
+                      {MECHANISM_LABEL[m]}
+                    </button>
+                  );
+                })}
+              </div>
+            </li>
             {RATE_ROWS.map((row) => {
               return (
                 <li key={row.key} id={row.key === "welcome_bps" ? "welcome-visit-rate" : "returning-visit-rate"} className={MARK_ROW} data-place-state={row.key}>
                   <div className="min-w-0">
                     <p className="font-medium">{row.name}</p>
-                    <p className="text-muted-foreground">{row.line}</p>
-                    {under(creditsBlock, null)}
+                    <p className="text-muted-foreground">{discount ? "Discount" : "Cashback"} on {row.when}.</p>
+                    {under(visitBlock, null)}
                   </div>
                   <span />
                   {picks(row.name, VISIT_PICKS_BPS[row.key], visitOn ? rates[row.key] : lastRates[row.key], pct, pending || !visitOn, (b) =>
@@ -717,7 +763,9 @@ export function PaymentsPanel({
             </ul>
           ) : null}
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-            A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later.{" "}
+            {discount
+              ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
+              : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later."}{" "}
             <a className="underline underline-offset-2" href={chargeUrl} target="_blank" rel="noreferrer">
               Waiter&apos;s screen
             </a>

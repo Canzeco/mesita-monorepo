@@ -304,8 +304,9 @@ function Section({
 type BoxKind = "vouchers" | "any" | "cashback";
 type OfferBox = { top: string; bottom: string; tone: string; key: string };
 
-/** The tints: Prepay green, Pay purple, Post pink (D9), light under black ink. */
-const BOX_TINT = { prepay: "bg-[#00D66F]/15", pay: "bg-[#635BFF]/12", post: "bg-[#FF66C4]/20" } as const;
+/** The tints, light under black ink (MESITA-4770: Prepay blue, Discount
+ *  green, Cashback red-pink, Post pink; offers.ts holds the solid tones). */
+const BOX_TINT = { prepay: "bg-[#4DA3FF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#FF5A6E]/15", post: "bg-[#FF66C4]/20" } as const;
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
@@ -326,13 +327,18 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       tone: BOX_TINT.prepay,
     }));
   }
+  // MESITA-4770: the visit lines read "Off" (Discount, green) or "Back"
+  // (Cashback, red-pink).
+  const discount = o.visit_mechanism === "discount";
+  const word = discount ? "Off" : "Back";
+  const visitTint = discount ? BOX_TINT.discount : BOX_TINT.cashback;
   if (kind === "cashback") {
     const w = o.welcome_pct ?? null;
     const r = o.returning_pct ?? null;
-    if (w !== null && w === r) return [{ key: "every", top: "Every bill", bottom: `${w}% Back`, tone: BOX_TINT.pay }];
+    if (w !== null && w === r) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
     return [
-      ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% Back`, tone: BOX_TINT.pay }] : []),
-      ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% Back`, tone: BOX_TINT.pay }] : []),
+      ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% ${word}`, tone: visitTint }] : []),
+      ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% ${word}`, tone: visitTint }] : []),
     ];
   }
   // Explore Offers: one box per kind, Prepay · Pay · Post, in offerSlides' words.
@@ -344,7 +350,7 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       key: sl.key,
       top: sl.lead,
       bottom: sl.pillShort,
-      tone: sl.key === "prepay" ? BOX_TINT.prepay : sl.key === "cashback" ? BOX_TINT.pay : BOX_TINT.post,
+      tone: sl.key === "prepay" ? BOX_TINT.prepay : sl.key === "cashback" ? visitTint : BOX_TINT.post,
     }));
 }
 

@@ -8,7 +8,7 @@ import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
-import { CASHBACK_TONE, POST_TONE, VOUCHER_TONE } from "../../lib/offers";
+import { POST_TONE, VOUCHER_TONE, visitMechanismOf, visitTone, visitWord, type VisitMechanism } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
@@ -803,15 +803,16 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  same size"): cashback and vouchers alike. */
 const BADGE = "flex min-h-12 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-xl py-2 tabular-nums";
 
-type CashbackLineRow = { line: "welcome" | "returning"; title: string; who: string; bps: number };
+type CashbackLineRow = { line: "welcome" | "returning"; title: string; who: string; bps: number; mech: VisitMechanism };
 
 /** The place's lines that earn (rate above Off): Welcome, then Returning
  *  (MESITA-4709, Pato: "no more VIP"; three lines by Class before). */
 function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
+  const mech = visitMechanismOf({ cashback });
   return (
     [
-      { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps },
-      { line: "returning", title: "Returning Visit", who: "Every later bill", bps: cashback.returning_bps },
+      { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps, mech },
+      { line: "returning", title: "Returning Visit", who: "Every later bill", bps: cashback.returning_bps, mech },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }
@@ -830,9 +831,9 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
           const mine = cashback.line === r.line;
           return (
             <li key={r.line} data-cashback={r.line} className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2">
-              <span className={cn(BADGE, CASHBACK_TONE)} aria-hidden>
+              <span className={cn(BADGE, visitTone(r.mech))} aria-hidden>
                 <span className="text-lg leading-none font-bold tracking-tight">{r.bps / 100}%</span>
-                <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Back</span>
+                <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">{visitWord(r.mech)}</span>
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-1">
@@ -849,7 +850,8 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
                   </button>
                 </span>
                 {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702); 1 hour since MESITA-4717. */}
-                <span className="text-muted-foreground text-sm">{r.who} · lands in 1 hour</span>
+                {/* MESITA-4770: a Discount comes off the bill at the table. */}
+                <span className="text-muted-foreground text-sm">{r.who} · {r.mech === "discount" ? "off the bill" : "lands in 1 hour"}</span>
               </span>
               {mine ? (
                 <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
@@ -964,19 +966,33 @@ function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => v
   // steps across, Good to know with an icon per line. No card and nothing
   // personal in the steps ("the how it works should not display personal
   // info").
-  const steps: Step[] = [
-    { Icon: QrCode, title: "Pay", short: "Pay", amount: "Your bill", line: "Here, or cash to the waiter" },
-    { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
-    { Icon: Wallet, title: "Receive", short: "Receive", amount: `${pct} back`, line: "As credit at this place", green: true },
-  ];
+  // MESITA-4770: a Discount comes off the printed bill before paying; the
+  // waiter sees it on the bill. Cashback lands as credit an hour later.
+  const discount = row.mech === "discount";
+  const steps: Step[] = discount
+    ? [
+        { Icon: QrCode, title: "Type your bill", short: "Bill", amount: "Your bill", line: "In Pay Bill, here" },
+        { Icon: Wallet, title: "Get", short: "Get", amount: `${pct} off`, line: "Taken off before you pay", green: true },
+        { Icon: Utensils, title: "Pay the rest", short: "Pay", line: "Cash or credit; the waiter confirms" },
+      ]
+    : [
+        { Icon: QrCode, title: "Pay", short: "Pay", amount: "Your bill", line: "Here, or cash to the waiter" },
+        { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
+        { Icon: Wallet, title: "Receive", short: "Receive", amount: `${pct} back`, line: "As credit at this place", green: true },
+      ];
   // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day): who the line is
   // for, never on credit, no minimum, and the credit's own rules.
-  const good: { Icon: LucideIcon; text: string }[] = [
-    { Icon: Repeat1, text: row.who + "." },
-    { Icon: Wallet, text: "Never on what you pay with credit." },
-    { Icon: Utensils, text: "Spend it on any bill here." },
-    { Icon: InfinityIcon, text: "It never expires." },
-  ];
+  const good: { Icon: LucideIcon; text: string }[] = discount
+    ? [
+        { Icon: Repeat1, text: row.who + "." },
+        { Icon: Utensils, text: "On the bill, never on the tip." },
+      ]
+    : [
+        { Icon: Repeat1, text: row.who + "." },
+        { Icon: Wallet, text: "Never on what you pay with credit." },
+        { Icon: Utensils, text: "Spend it on any bill here." },
+        { Icon: InfinityIcon, text: "It never expires." },
+      ];
   return createPortal(
     <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-cashback-info>
       <div

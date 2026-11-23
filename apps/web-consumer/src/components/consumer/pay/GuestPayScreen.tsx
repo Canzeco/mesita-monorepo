@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiListVisits, apiPayGuest, type PayWith, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
-import { money, type PayPlace } from "@/lib/api/wallet";
+import { discountOf, money, type PayPlace, payPlaceDiscountBps } from "@/lib/api/wallet";
 import { closeAction, guardStage, initialStage, payBackStage } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
@@ -158,6 +158,8 @@ export function GuestPayScreen({
   // and nothing mints a new id (MESITA-4061).
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
   const [cashDue, setCashDue] = useState<number | null>(null);
+  // MESITA-4770: the discount rate the server answered (discount_changed).
+  const [serverDiscountBps, setServerDiscountBps] = useState<number | null>(null);
 
   // ONE TICKET AT A TIME (MESITA-3879, MESITA-3908): another place's ticket
   // in progress, or a bill open on the server at another place, blocks this
@@ -209,12 +211,19 @@ export function GuestPayScreen({
     onLeavePay();
   };
 
-  // The sums.
+  // The sums. MESITA-4770: a visit Discount comes off the printed bill before
+  // credit and cash split what is left; the tip is on the printed bill. The
+  // server works out the same and answers discount_changed with its own
+  // numbers when they differ (serverDiscountBps then wins).
   const billCents = readAmount(amount) ?? 0;
   const tipCents = tip === null ? 0 : tip === "other" ? readTip(other) ?? 0 : Math.round((billCents * tip) / 100);
+  const discountBps = serverDiscountBps ?? payPlaceDiscountBps(place);
+  const discountCents = discountOf(billCents, discountBps);
+  const toPayCents = billCents - discountCents;
+  const discountLabel = place?.visit_line === "returning" ? "Returning discount" : "Welcome discount";
   const creditOn = useCredit && spendable > 0;
-  const creditCents = creditOn ? Math.min(spendable, billCents) : 0;
-  const leftCents = billCents - creditCents;
+  const creditCents = creditOn ? Math.min(spendable, toPayCents) : 0;
+  const leftCents = toPayCents - creditCents;
   const dueCents = leftCents + tipCents;
   // Why the Cash row is grey (one line), null when it can pay what's left.
   const cashWhy = place && !cashOk ? "This place doesn't take cash through Mesita." : null;
@@ -318,6 +327,13 @@ export function GuestPayScreen({
         return;
       }
       setBusy(false);
+      // MESITA-4770: the place's discount differs from the preview; take the
+      // server's rate and show the new amounts before the guest taps again.
+      if (code === "discount_changed" && e instanceof EFError && typeof e.body?.discount_bps === "number") {
+        setServerDiscountBps(e.body.discount_bps);
+        setError("The discount here changed. Check the new amount and tap again.");
+        return;
+      }
       if (code && NOT_PAID_REASON[code]) {
         setNotPaid(NOT_PAID_REASON[code]);
         return;
@@ -524,7 +540,12 @@ export function GuestPayScreen({
                   </>
                 ) : (
                   <>
-                    Tip {tipOk ? m(tipCents) : "—"} · Total <span className="text-foreground font-semibold">{m(billCents + tipCents)}</span>
+                    {discountCents > 0 ? (
+                      <span data-guest-bill-discount>
+                        {discountLabel} −{m(discountCents)} ·{" "}
+                      </span>
+                    ) : null}
+                    Tip {tipOk ? m(tipCents) : "—"} · Total <span className="text-foreground font-semibold">{m(toPayCents + tipCents)}</span>
                   </>
                 )}
               </p>
