@@ -29,7 +29,8 @@ export type CashbackRates = {
   cap_cents: number;
 };
 
-/** No row: the defaults 10 / 5 / 10 %, MX$200 (the SQL defaults too). */
+/** The last fallback, 10 / 5 / 10 %, MX$200: cashback_defaults' seed and
+ *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   regular_bps: 500,
@@ -80,14 +81,28 @@ export async function readCashbackRates(admin: SupabaseClient, placeId: string):
     .eq("place_id", placeId)
     .maybeSingle();
   if (error) throw new Error(`place_cashback_settings: ${error.message}`);
+  return data ? (data as CashbackRates) : await readCashbackDefaults(admin);
+}
+
+/** MESITA-4700: the defaults an admin set (cashback_defaults, one row), what
+ *  every place without its own lines reads; the code's literals when the row
+ *  is missing (the same fallback as place_cashback_rates). */
+export async function readCashbackDefaults(admin: SupabaseClient): Promise<CashbackRates> {
+  const { data, error } = await admin
+    .from("cashback_defaults")
+    .select("welcome_bps, regular_bps, vip_bps, cap_cents")
+    .eq("id", true)
+    .maybeSingle();
+  if (error) throw new Error(`cashback_defaults: ${error.message}`);
   return data ? (data as CashbackRates) : { ...CASHBACK_DEFAULTS };
 }
 
 /** Several places' lines at once, defaults filled in. */
 export async function readCashbackRatesMany(admin: SupabaseClient, placeIds: string[]): Promise<Map<string, CashbackRates>> {
   const out = new Map<string, CashbackRates>();
-  for (const id of placeIds) out.set(id, { ...CASHBACK_DEFAULTS });
   if (placeIds.length === 0) return out;
+  const defaults = await readCashbackDefaults(admin);
+  for (const id of placeIds) out.set(id, { ...defaults });
   const { data, error } = await admin
     .from("place_cashback_settings")
     .select("place_id, welcome_bps, regular_bps, vip_bps, cap_cents")

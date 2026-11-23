@@ -660,6 +660,10 @@ verify_jwt = true
 [functions.admin-web-save-credits-limit]
 verify_jwt = true
 
+# MESITA-4700: the cashback defaults on Admin › Offers.
+[functions.admin-web-save-cashback-defaults]
+verify_jwt = true
+
 # Recent app lines from the enrichment workflow. Super-admin only.
 [functions.admin-web-list-logs]
 verify_jwt = true

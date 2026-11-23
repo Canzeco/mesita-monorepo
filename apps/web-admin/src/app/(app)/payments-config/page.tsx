@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowsClockwiseIcon, CaretRightIcon, CoinsIcon, GaugeIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
+import { CaretRightIcon, CoinsIcon, GaugeIcon, TicketIcon } from "@phosphor-icons/react/dist/ssr";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import {
   FOCUS_RING_CLASS,
@@ -15,6 +15,7 @@ import {
   Tr,
 } from "@/components/admin-ui";
 import { getVoucherPrices, type VoucherPriceRow } from "./actions";
+import { CashbackDefaultsCard } from "./CashbackDefaultsCard";
 
 // ADMIN › PAYMENTS (Pato, 2026-11-14, MESITA-3918: "create a new page in
 // Admin called Payments, there create a subsection called Vouchers ... must
@@ -51,14 +52,6 @@ const whole = (amount: number, code: string) => {
 
 const wait = (sec: number) => (sec <= 0 ? "At once" : sec % 3600 === 0 ? `${sec / 3600} h` : `${Math.round(sec / 60)} min`);
 
-/** MESITA-4698: the three cashback lines and their defaults (twin of
- *  place_cashback_settings' SQL defaults and _shared/cashback.ts). */
-const CASHBACK_LINES = [
-  { name: "New Customers", who: "Welcome: a guest's first bill at the place", pct: 10 },
-  { name: "Returning Customers", who: "Every later bill, Regular Class", pct: 5 },
-  { name: "VIP Customers", who: "Every later bill, VIP Class (an Instagram with more than 5,000 followers)", pct: 10 },
-] as const;
-
 export default async function PaymentsConfigPage() {
   const res = await getVoucherPrices();
   const rows: VoucherPriceRow[] = res.ok
@@ -69,7 +62,7 @@ export default async function PaymentsConfigPage() {
     : [];
   return (
     <PageContainer className="flex flex-col gap-6 sm:gap-8">
-      <PageHeader title="Offers" description="Cashbacks and Vouchers, the two offers a place can run. Read-only: these numbers change only in code." />
+      <PageHeader title="Offers" description="Cashbacks and Vouchers, the two offers a place can run. The cashback defaults are editable; the vouchers change only in code." />
       {/* MESITA-3947: the one editable part of Payments, on its own page. */}
       <Link
         href="/payments-config/credits-limit"
@@ -83,43 +76,8 @@ export default async function PaymentsConfigPage() {
           right={<CaretRightIcon className="text-muted-foreground group-hover:text-foreground h-4 w-4" aria-hidden />}
         />
       </Link>
-      {/* MESITA-4698: Stage 1 of a place's Offers. Each owner picks its own rates
-          on Business › Offers; these are the choices and the defaults (the SQL
-          defaults of place_cashback_settings). */}
-      <SectionCard
-        icon={<ArrowsClockwiseIcon aria-hidden />}
-        title="Cashbacks"
-        subtitle="Needs Credits only, no Stripe. A confirmed bill earns credit on the part not paid with credit, never the tip. It lands 3 hours later, once per guest per place per day. Mesita takes no fee."
-      >
-        <div className="mt-4">
-          <Table className="min-w-[640px]" data-admin-cashback-lines>
-            <THead>
-              <Tr>
-                <Th>Line</Th>
-                <Th>Who</Th>
-                <Th numeric>Default</Th>
-                <Th>Owner can pick</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {CASHBACK_LINES.map((l) => (
-                <Tr key={l.name} data-cashback-line={l.name}>
-                  <Td className="font-semibold">{l.name}</Td>
-                  <Td className="text-muted-foreground">{l.who}</Td>
-                  <Td numeric className="tabular-nums">{l.pct}%</Td>
-                  <Td className="text-muted-foreground">Off · 5% · 10% · 15% · 20%</Td>
-                </Tr>
-              ))}
-              <Tr data-cashback-line="cap">
-                <Td className="font-semibold">Cap per bill</Td>
-                <Td className="text-muted-foreground">The most one bill can earn</Td>
-                <Td numeric className="tabular-nums">{moneyLabel(20000, "MXN")}</Td>
-                <Td className="text-muted-foreground">Any amount up to 10,000</Td>
-              </Tr>
-            </TBody>
-          </Table>
-        </div>
-      </SectionCard>
+      {/* MESITA-4698: Stage 1 of a place's Offers; editable since MESITA-4700. */}
+      <CashbackDefaultsCard initial={res.ok ? res.cashback_defaults : null} />
       <SectionCard
           icon={<TicketIcon aria-hidden />}
           title="Vouchers"
