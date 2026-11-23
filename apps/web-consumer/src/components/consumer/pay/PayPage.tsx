@@ -383,19 +383,15 @@ export function PayPage({
         <PushLink
           href={`${CONSUMER_ROUTES.walletBuy}?offers=vouchers`}
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
-          aria-label="Prepay, Get Bonus"
           data-prepay
         >
-          <span className="flex w-full min-w-0 items-center justify-between gap-2">
-            <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
-              <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
-            </span>
-            <span className={TILE_PILL} aria-hidden>
-              <span className="max-[359px]:hidden">Get Bonus</span>
-              <span className="min-[360px]:hidden">Bonus</span>
-            </span>
+          {/* THE NAME (Pato, 2026-11-23, MESITA-4753: "call the box Prepay &
+              Get Bonus"; the purple one stays Pay Bill): the words carry the
+              bonus, so the Get Bonus pill is gone. */}
+          <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
+            <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
           </span>
-          <span className={TILE_TITLE}>Prepay</span>
+          <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
         </PushLink>
         {payBusy ? (
           <Skeleton className="h-28 min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
@@ -548,9 +544,6 @@ const QUIET_BUTTON =
   "bg-muted text-foreground hover:bg-border flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold transition active:scale-[0.99]";
 /** A tile's name: one baseline across the two. */
 const TILE_TITLE = "text-lg leading-tight font-semibold";
-/** Prepay's promise rides a white pill top right, so its name stays level
- *  with Send Gift's. */
-const TILE_PILL = "truncate rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-neutral-950";
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
