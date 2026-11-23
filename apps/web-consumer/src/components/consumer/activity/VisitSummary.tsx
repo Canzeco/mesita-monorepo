@@ -30,16 +30,22 @@
 // charged." and draws no payment lines: a page of "Not charged"
 // said one fact many times.
 //
-// No green full screen, no live clock, no steps: those are for the waiter at
+// THE BACK'S STEPS (MESITA-4747, Pato 2026-11-23: "Visit 1. Pay 2. Wait
+// 1 hour 3. Get Back"): a paid bill that earned Back (its cashback lines,
+// read as `back`) shows Pay · Wait 1 hour · Get Back under the top box, the
+// same VoucherSteps a voucher wears. Pending 1 hour is the real window
+// (pay_tab_grant_cashback); the wait's line counts to its available_at.
+//
+// No green full screen, no live clock: those are for the waiter at
 // the table. One read of consumer-web-get-tab; older reads without the part
 // amounts fall back to the tab's own split.
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Banknote, Copy, CreditCard, UtensilsCrossed, WalletCards } from "lucide-react";
+import { BadgeDollarSign, Banknote, Clock3, Copy, CreditCard, Undo2, UtensilsCrossed, WalletCards } from "lucide-react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { apiGetTab, type GuestTab, type GuestVisit } from "@/lib/api/tab";
+import { apiGetTab, type GuestTab, type GuestVisit, type TabRead } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
 import { payPlacePath, payReceiptPath, placePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -56,6 +62,7 @@ import {
   TimelinePanel,
   type TicketTone,
 } from "./TicketParts";
+import { readyIn, VoucherSteps } from "./VoucherSteps";
 
 type Part = GuestTab["parts"][number];
 
@@ -71,6 +78,7 @@ const when = (iso: string) => `${day(iso)} · ${clockTime(iso)}`;
 export function VisitSummary({ tabId }: { tabId: string }) {
   const getSupabase = useLazyBrowserSupabase();
   const [tab, setTab] = useState<GuestTab | null>(null);
+  const [back, setBack] = useState<TabRead["back"]>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
@@ -78,7 +86,9 @@ export function VisitSummary({ tabId }: { tabId: string }) {
     let gone = false;
     apiGetTab(getSupabase(), tabId)
       .then((r) => {
-        if (!gone) setTab(r.tab);
+        if (gone) return;
+        setTab(r.tab);
+        setBack(r.back ?? null);
       })
       .catch(() => {
         if (!gone) setFailed(true);
@@ -91,7 +101,7 @@ export function VisitSummary({ tabId }: { tabId: string }) {
   return (
     <MeScreen title="Visit">
       {tab ? (
-        <Statement tab={tab} />
+        <Statement tab={tab} back={back ?? null} />
       ) : failed ? (
         <EmptyState
           icon={UtensilsCrossed}
@@ -162,7 +172,7 @@ const PART_NAME: Record<string, string> = { card: "Card", outside: "Cash" };
 
 // ─── The statement ──────────────────────────────────────────────────────────
 
-function Statement({ tab }: { tab: GuestTab }) {
+function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["back"]> | null }) {
   const m = (c: number) => money(c, tab.currency);
   const paid = tab.status === "paid";
   const open = tab.status === "waiting_bill" || tab.status === "billed" || tab.status === "paying";
@@ -302,6 +312,8 @@ function Statement({ tab }: { tab: GuestTab }) {
         dim={!paid}
       />
 
+      {paid && back ? <BackSteps back={back} paid={total} m={m} /> : null}
+
       {showReceipt ? (
         <>
           {tab.bill_cents != null ? (
@@ -353,5 +365,43 @@ function Statement({ tab }: { tab: GuestTab }) {
         secondary={{ label: "Open the place", href: placePath(tab.place.id) }}
       />
     </TicketPage>
+  );
+}
+
+/** Pay · Wait 1 hour · Get Back (MESITA-4747): the bill paid, the hour the
+ *  Back is Pending, the Back landed. The page reads once, so the wait's line
+ *  is the clock at that read; coming back reads again. */
+function BackSteps({
+  back,
+  paid,
+  m,
+}: {
+  back: NonNullable<TabRead["back"]>;
+  paid: number;
+  m: (c: number) => string;
+}) {
+  const [now] = useState(() => Date.now());
+  const waiting = back.pending && back.available_at != null && Date.parse(back.available_at) > now;
+  return (
+    <VoucherSteps
+      steps={[
+        { key: "pay", Icon: BadgeDollarSign, title: "Pay", amount: m(paid), state: "done" },
+        {
+          key: "wait",
+          Icon: Clock3,
+          title: "Wait 1 hour",
+          sub: waiting && back.available_at ? readyIn(Date.parse(back.available_at), now) : null,
+          state: waiting ? "current" : "done",
+        },
+        {
+          key: "back",
+          Icon: Undo2,
+          title: "Get Back",
+          amount: `+${m(back.amount_cents)}`,
+          amountTone: waiting ? undefined : "green",
+          state: waiting ? undefined : "done",
+        },
+      ]}
+    />
   );
 }

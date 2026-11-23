@@ -33,6 +33,10 @@
 //   what is paid and left, the shares by id); on a split table it is the table
 //   itself and `tab.my_share_tab_id` names the guest's own share.
 //   `table.mine`: this guest split it (only they can show the friends' QR).
+//   MESITA-4747: `back` is the Back this paid bill earned (Pato: "Visit
+//   1. Pay 2. Wait 1 hour 3. Get Back"): the sum of its cashback lines, when
+//   the last one lands, and whether it is still Pending; null when the bill
+//   earned none (or is not paid). The Visit ticket draws its three steps.
 //   400 (a malformed call) · 401 sign_in · 404 not_found (no such tab of
 //   this guest)
 
@@ -110,11 +114,22 @@ serveJson("consumer-web-get-tab", async (req) => {
       console.log("[consumer-web-get-tab]", JSON.stringify({ outcome: r.ok === true ? "reminted" : r.code, tab_id: tabNow.id }));
     }
 
-    const [settings, placeRes, balance] = await Promise.all([
+    const [settings, placeRes, balance, backRes] = await Promise.all([
       readSettings(admin, tab.place_id),
       readVoucherPlace(admin, tab.place_id),
       readPlaceBalance(admin, user.id, tab.place_id, tab.currency, tab.livemode),
+      // MESITA-4747: the Back this bill earned (pay_tab_grant_cashback writes
+      // it at the payment, Available one hour later). Only a paid bill has one.
+      !attemptView && tabNow.status === "paid"
+        ? admin
+          .from("wallet_entries")
+          .select("amount_cents, currency, available_at")
+          .eq("consumer_id", user.id)
+          .eq("tab_id", tabNow.id)
+          .eq("kind", "cashback")
+        : Promise.resolve({ data: [], error: null }),
     ]);
+    if (backRes.error) throw new Error(`wallet_entries: ${backRes.error.message}`);
     if (!placeRes.ok) throw new Error(placeRes.error);
     // Cash Payments (MESITA-3589).
     const cashMoney = moneyState({ ...settings, has_place_code: true }, null, null);
@@ -144,6 +159,7 @@ serveJson("consumer-web-get-tab", async (req) => {
         cashOk: cashMoney.cash,
         nowMs,
       }),
+      back: backOf((backRes.data ?? []) as BackLine[], nowMs),
       ...(reminted ?? {}),
       server_now: new Date(nowMs).toISOString(),
     });
@@ -151,3 +167,18 @@ serveJson("consumer-web-get-tab", async (req) => {
     return failWithRequestId("consumer-web-get-tab", "Couldn't read the tab. Try again.", err);
   }
 });
+
+type BackLine = { amount_cents: number; currency: string | null; available_at: string | null };
+
+/** The bill's Back, its lines summed; it lands when the last line does. */
+function backOf(lines: BackLine[], nowMs: number) {
+  const cents = lines.reduce((n, l) => n + (l.amount_cents > 0 ? l.amount_cents : 0), 0);
+  if (cents <= 0) return null;
+  const at = lines.map((l) => l.available_at).filter((x): x is string => !!x).sort().at(-1) ?? null;
+  return {
+    amount_cents: cents,
+    currency: (lines[0]?.currency ?? "mxn").toLowerCase(),
+    available_at: at,
+    pending: at != null && Date.parse(at) > nowMs,
+  };
+}

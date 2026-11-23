@@ -50,3 +50,35 @@ export async function apiListStories(
     "Couldn't load your stories",
   );
 }
+
+/** One story's ticket (MESITA-4747, consumer-web-list-stories with
+ *  { story_id }): what /me/tickets/stories/<id> draws its five steps from.
+ *  `checked_at` is the first check, `recheck_at` the second (10 hours later;
+ *  an emulator story 2 minutes). `reward_cents` is promised from verified
+ *  on, `credit_cents` written once rewarded. `failed_at` names the step a
+ *  rejection came from; `reason` says why in plain words. */
+export type StoryTicket = {
+  id: string;
+  place: { id: string; name: string | null; slug: string | null; photo_url: string | null } | null;
+  state: GuestStory["state"];
+  posted_at: string;
+  checked_at: string | null;
+  recheck_at: string | null;
+  decided_at: string | null;
+  reward_cents: number | null;
+  credit_cents: number | null;
+  currency: string;
+  reason: string | null;
+  failed_at: "check" | "recheck" | null;
+  simulated: boolean;
+};
+
+export async function apiGetStory(client: SupabaseClient, storyId: string): Promise<StoryTicket> {
+  const r = await invokeEF<{ story: StoryTicket }>(
+    client,
+    "consumer-web-list-stories",
+    { story_id: storyId },
+    "Couldn't load this story",
+  );
+  return r.story;
+}

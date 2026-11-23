@@ -11,6 +11,7 @@ import {
   payReceiptPath,
   payBillPath,
   creditEntryPath,
+  storyTicketPath,
   visitPath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
@@ -189,7 +190,8 @@ const STORY_PILL: Record<GuestStory["state"], [string, StatusTone]> = {
 };
 
 /** The guest's own Instagram stories (MESITA-4738): the place, how long ago,
- *  the state, and the credit once it landed. */
+ *  the state, and the credit once it landed. Each opens its ticket, the five
+ *  steps (MESITA-4747). */
 export function storyRows(stories: GuestStory[]): Row[] {
   return stories.map((s) => {
     const [label, tone] = STORY_PILL[s.state] ?? [s.state, "grey" as StatusTone];
@@ -210,6 +212,7 @@ export function storyRows(stories: GuestStory[]): Row[] {
       sign: credited ? "+" : null,
       line: "Instagram Story",
       dim: s.state === "rejected",
+      href: storyTicketPath(s.id),
     };
   });
 }

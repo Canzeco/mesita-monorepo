@@ -43,11 +43,11 @@
 // more says so and goes back to Tickets.
 
 import { creditEntryTitle } from "@/lib/credit-entry-title";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BadgeDollarSign, Clock3, Copy, Gift } from "lucide-react";
-import { VoucherSteps } from "./VoucherSteps";
+import { readyIn, VoucherSteps } from "./VoucherSteps";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -162,6 +162,9 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
 
   // A gift line whose gift the read holds is that gift's page (MESITA-4066).
   const router = useRouter();
+  // The wait step counts down from the page's first paint, like the Story
+  // and Visit tickets (MESITA-4747); coming back re-reads it.
+  const [now] = useState(() => Date.now());
   const found = wallet.data ? findEntry(wallet.data, placeId, entryKey).e : undefined;
   const gift = wallet.data && found ? giftOfEntry(wallet.data, found) : null;
   const forward = gift ? giftTicketPath(gift.gift_id) : null;
@@ -299,7 +302,9 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         {/* THE VOUCHER'S STEPS (Pato, 2026-11-23, MESITA-4717: "1. Pay X
             2. Wait 3 hours 3. Receive Y (all in one run)"): only when the
             purchase came with a bonus; a refunded one has none to wait for.
-            Four steps (Pay · Credits · Wait · Bonus) were MESITA-4627. */}
+            Four steps (Pay · Credits · Wait · Bonus) were MESITA-4627.
+            MESITA-4747: Pato's titles, "Pay · Wait 3 hours · Get Bonus";
+            the last step shows the bonus itself, green once it lands. */}
         {bought && bonus && !refund ? (
           <VoucherSteps
             steps={[
@@ -308,14 +313,15 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
                 key: "wait",
                 Icon: Clock3,
                 title: "Wait 3 hours",
-                sub: bonus.pending && bonus.available_at ? `Ready ${entryDate(bonus.available_at)}` : null,
+                sub: bonus.pending && bonus.available_at ? readyIn(Date.parse(bonus.available_at), now) : null,
                 state: e.pending || bonus.pending ? "current" : "done",
               },
               {
                 key: "receive",
                 Icon: Gift,
-                title: "Receive it all",
-                amount: m(amount + bonus.amount_cents),
+                title: "Get Bonus",
+                amount: `+${m(bonus.amount_cents)}`,
+                amountTone: e.pending || bonus.pending ? undefined : "green",
                 state: e.pending || bonus.pending ? undefined : "done",
               },
             ]}

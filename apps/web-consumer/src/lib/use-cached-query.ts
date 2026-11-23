@@ -21,6 +21,9 @@ export type CachedQuery<T> = {
   loading: boolean;
   /** The last read failed and there is nothing to paint. */
   error: string | null;
+  /** The failed read's HTTP status when it carried one (an EFError's
+   *  404 / 400), so a screen can tell "gone" from "offline" (MESITA-4747). */
+  errorStatus: number | null;
   /** Ask again now. */
   reload: () => void;
 };
@@ -32,7 +35,7 @@ export function useCachedQuery<T>(
 ): CachedQuery<T> {
   useSyncExternalStore(subscribeScreenCache, screenCacheVersion, () => 0);
   const entry = key ? readCachedEntry<T>(key) : null;
-  const [failed, setFailed] = useState<{ key: string; message: string } | null>(
+  const [failed, setFailed] = useState<{ key: string; message: string; status: number | null } | null>(
     null,
   );
   const [nonce, setNonce] = useState(0);
@@ -50,7 +53,9 @@ export function useCachedQuery<T>(
       (e: unknown) => {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
-        setFailed({ key, message });
+        const status =
+          e && typeof e === "object" && "status" in e && typeof e.status === "number" ? e.status : null;
+        setFailed({ key, message, status });
       },
     );
     return () => {
@@ -67,6 +72,7 @@ export function useCachedQuery<T>(
     data,
     loading: data == null && error == null && key != null,
     error,
+    errorStatus: error != null ? (failed?.status ?? null) : null,
     reload,
   };
 }
