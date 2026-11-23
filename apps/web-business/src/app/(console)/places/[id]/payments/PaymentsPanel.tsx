@@ -71,13 +71,19 @@ import {
   startPaymentOnboarding,
 } from "@/lib/business-api";
 
-/** One row: mark · title and line · value · control; the line wraps, the rest hold. */
-const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
+/** One row: mark · title and line · value · control; the line wraps, the rest hold.
+ *  SYMMETRY (Pato, 2026-11-23, MESITA-4744: "keep symmetry."): every row is
+ *  its own grid, so auto value and control tracks landed at a different x on
+ *  each row. Both get the same minimum width and sit right-aligned, so every
+ *  value and every switch or select line up down the page. */
+const MARK_ROW =
+  "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_minmax(8rem,auto)_minmax(6rem,auto)] items-center gap-4 px-5 py-3 text-sm sm:px-6 [&>*:nth-child(3)]:justify-self-end [&>*:nth-child(3)]:text-right [&>*:nth-child(4)]:justify-self-end";
 const HEAD = "flex items-center gap-2 px-5 pt-4 pb-2 font-semibold sm:px-6";
 const NOTE = "text-muted-foreground text-xs";
 const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
 const SECTION = "flex flex-col p-0 sm:p-0";
-const SELECT = "border-border bg-background rounded-full border px-3 py-1.5 text-sm";
+/** The rate select fills the control slot (6rem), like a switch's place. */
+const SELECT = "border-border bg-background w-24 rounded-full border px-3 py-1.5 text-sm";
 
 /** A voucher: its bonus, one objective line, and the Offers page's face. */
 type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string; icon: Icon };
