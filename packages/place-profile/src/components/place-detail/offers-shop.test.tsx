@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { PlaceActions, VoucherBasketItem, VoucherBuyOutcome } from "../../actions";
 import type { PlaceDetail, PlaceMoney } from "../../place-detail";
-import { basketItems, VouchersPane } from "./vouchers";
+import { basketItems, type OffersTab, VouchersPane } from "./vouchers";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -26,6 +26,7 @@ const MONEY: PlaceMoney = {
   unavailable: { voucher_welcome: "used" },
   catalog: {
     voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 10800 },
+    voucher_1000: { price_cents: 100000, bonus_cents: 20000, credit_cents: 120000, available_after_sec: 10800 },
     voucher_5000: { price_cents: 500000, bonus_cents: 150000, credit_cents: 650000, available_after_sec: 10800 },
   },
   balance: { available_cents: 0, pending_cents: 0, held_cents: 0, spendable_cents: 0 },
@@ -44,12 +45,12 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-function mount(actions: PlaceActions) {
+function mount(actions: PlaceActions, opts: { pick?: string; initialTab?: OffersTab } = {}) {
   document.body.innerHTML = `<div id="host"></div>`;
   root = createRoot(document.getElementById("host")!);
   const place = { name: "Probe", photos: [], money: MONEY } as unknown as PlaceDetail;
   act(() => {
-    root!.render(<VouchersPane place={place} actions={actions} />);
+    root!.render(<VouchersPane place={place} actions={actions} pick={opts.pick} initialTab={opts.initialTab} />);
   });
 }
 
@@ -126,6 +127,41 @@ describe("the Offers shop's charge (MESITA-4647)", () => {
     expect(buy).not.toHaveBeenCalled();
     expect(addCard).toHaveBeenCalledTimes(1);
     expect(q('[data-voucher="voucher_5000"] [data-offer-qty]')!.textContent).toBe("1");
+  });
+
+  // MESITA-4710: the tabs never touch the basket. A basket picked on Prepay
+  // survives a trip to Checkout and back, no tab switches while the charge
+  // is out, and Pay charges exactly the steppers' items, once.
+  it("a basket survives a switch to Checkout and back, no switch while the charge is out, one charge (MESITA-4710)", async () => {
+    let answer: (v: VoucherBuyOutcome) => void = () => {};
+    const buy = vi.fn((_items: VoucherBasketItem[], _card: string | null) => new Promise<VoucherBuyOutcome>((r) => (answer = r)));
+    mount({ onBuyVoucher: buy, payCards: { state: "ready", cards: CARDS }, payCardId: "pm_pick" }, { pick: "voucher_200", initialTab: "checkout" });
+    const tab = (id: OffersTab) => q(`[data-offers-tab="${id}"]`)!;
+    // An asked voucher opens Prepay whatever the link's tab says.
+    expect(tab("prepay").getAttribute("aria-selected")).toBe("true");
+    expect(q('[data-voucher="voucher_200"] [data-offer-qty]')!.textContent).toBe("1");
+    act(() => tab("checkout").click());
+    expect(tab("checkout").getAttribute("aria-selected")).toBe("true");
+    expect(q("[data-offer-pay]")).toBeNull();
+    act(() => tab("prepay").click());
+    expect(q('[data-voucher="voucher_200"] [data-offer-qty]')!.textContent).toBe("1");
+    plus("voucher_1000");
+    act(() => {
+      q("[data-offer-pay]")!.click();
+    });
+    // The charge is out: the switch is refused and Prepay stays open.
+    act(() => tab("checkout").click());
+    expect(tab("prepay").getAttribute("aria-selected")).toBe("true");
+    expect(q("[data-offer-pay]")).not.toBeNull();
+    await act(async () => answer("paid"));
+    expect(buy).toHaveBeenCalledTimes(1);
+    expect(buy).toHaveBeenCalledWith(
+      [
+        { voucher: "voucher_200", qty: 1 },
+        { voucher: "voucher_1000", qty: 1 },
+      ],
+      "pm_pick",
+    );
   });
 
   it("the basket keeps the server's caps and drops what can't be bought", () => {
