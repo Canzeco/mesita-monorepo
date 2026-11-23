@@ -79,7 +79,7 @@ export function BuyCreditsPage({ offers = "any" }: { offers?: "vouchers" | "any"
   };
   const vouchers = offers === "vouchers";
   return (
-    <Screen title={vouchers ? "Prepay" : "Explore Offers"} paper flush action={<ListLocationBox />}>
+    <Screen title={vouchers ? "Prepay" : "Explore Offers"} paper flush action={<ListLocationBox title={vouchers ? "short" : "long"} />}>
       {/* A BANNER THAT SAYS WHAT THIS IS (Pato, 2026-11-23, MESITA-4748:
           "between header and searchbar add banner … like prepay and get
           bonus … really short text"; /plan-design-review D6): one line, full

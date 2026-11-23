@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/shared/Skeleton";
 // outlined search box, then three place rows, each with its three offer boxes.
 export default function Loading() {
   return (
-    <Screen title="" paper flush action={<Skeleton className="h-9 w-24 rounded-xl" />}>
+    <Screen title="" paper flush action={<Skeleton className="h-10 w-24 rounded-xl" />}>
       <div className="flex flex-col" aria-busy>
         <Skeleton className="h-12 w-full rounded-none" />
         <div className="px-4 pt-4 pb-2">

@@ -15,8 +15,10 @@ import { cn } from "@/lib/utils";
 // the Prepay and Explore Offers header, opening Home's location modal. The
 // list sorts from what it names. It replaces the "Use my location / Not now"
 // card those lists showed. "Near me" for the phone's own fix (Home's
-// "Current location" does not fit beside a centred title), no chevron, and
-// under 380px the pin alone (the words stay for a screen reader).
+// "Current location" does not fit beside a centred title), no chevron, at
+// Home's size (16px, 18px pin; MESITA-4749). Where the words cannot fit beside
+// the title the box is the pin alone (the words stay for a screen reader):
+// under 360px on Prepay, under 430px beside the longer "Explore Offers".
 
 /** What the box says. */
 export function listLocationLabel(
@@ -32,7 +34,10 @@ export function listLocationLabel(
   return { label: "Set location", off: false };
 }
 
-export function ListLocationBox() {
+/** Below this width the box drops its words (the title beside it decides). */
+const LABEL_HIDDEN = { short: "max-[359px]:sr-only", long: "max-[429px]:sr-only" } as const;
+
+export function ListLocationBox({ title = "short" }: { title?: keyof typeof LABEL_HIDDEN }) {
   const active = useActiveLocation();
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -51,8 +56,8 @@ export function ListLocationBox() {
         className={cn(HOME_LOCATION_CLASS, "max-w-full", off && HOME_LOCATION_OFF_CLASS)}
         data-list-location
       >
-        <Pin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-        <span className="min-w-0 truncate max-[379px]:sr-only">{label}</span>
+        <Pin className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+        <span className={cn("min-w-0 truncate", LABEL_HIDDEN[title])}>{label}</span>
       </button>
       <LocationModal
         open={open}
