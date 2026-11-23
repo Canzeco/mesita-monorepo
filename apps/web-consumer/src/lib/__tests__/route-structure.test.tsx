@@ -670,24 +670,20 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
     // MESITA-4306: Class left ("LETS REMOVE THE CLASS"); MESITA-4657: back,
     // and Integrations moved inside Settings; MESITA-4709: gone again ("no
     // more VIP").
+    // MESITA-4736: grouped by topic, two to a row.
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
-      "Plan",
-      "Notifications",
       "Reservations",
+      "Notifications",
+      "Tickets",
+      "Cards",
       // A shortcut to Home's ❤️ Saved row (MESITA-4327).
       "Saved",
-      // Every transaction, four kinds (MESITA-3855); before Gift since
-      // MESITA-3885 ("tickets before gift").
-      "Tickets",
-      // Share replaces Gift (MESITA-3940: "here add share instead of
-      // gift"); it opens /share.
-      "Share",
-      // Gift is back beside Share (MESITA-4670); it opens Send Gift.
+      "Plan",
+      // Gift opens Send Gift (MESITA-4670); Share opens /share (MESITA-3940).
       "Gift",
-      // Cards (MESITA-4698): the ways to pay, moved off Pay; beside Settings.
-      "Cards",
+      "Share",
       "Settings",
     ]);
     // No Soon cell since MESITA-3954: MCP is a Soon row on Integrations.
