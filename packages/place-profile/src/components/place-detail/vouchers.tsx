@@ -1,9 +1,10 @@
 "use client";
 
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
+import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
@@ -913,18 +914,39 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
   );
 }
 
-/** THREE SUBPAGES (Pato, 2026-11-23, MESITA-4710: "THIS MUST HAVE 3
- *  SUBPAGES — Prepay. Checkout. Rewards."): Prepay sells the vouchers,
- *  Checkout is paying the bill here and the cashback it earns, Rewards is
- *  what the guest earned here (the host draws it). The one scroll of
- *  MESITA-4702 went; the two tabs of MESITA-4698/4701 before it. */
-export type OffersTab = "prepay" | "checkout" | "rewards";
+/** PREPAY · PAY · POST (Pato, 2026-11-23, MESITA-4716: "Prepay Pay Post —
+ *  the three sections, and then list the offers for each"): Prepay sells the
+ *  vouchers, Pay is paying the bill here and the cashback it earns, Post is
+ *  the Instagram story box. They were Prepay · Checkout · Rewards
+ *  (MESITA-4710), with Rewards listing what the guest earned here. */
+export type OffersTab = "prepay" | "pay" | "post";
 
-const OFFERS_TABS: { id: OffersTab; word: string; Icon: LucideIcon }[] = [
+const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
   { id: "prepay", word: "Prepay", Icon: Ticket },
-  { id: "checkout", word: "Checkout", Icon: QrCode },
-  { id: "rewards", word: "Rewards", Icon: Gift },
+  { id: "pay", word: "Pay", Icon: QrCode },
+  { id: "post", word: "Post", Icon: Instagram },
 ];
+
+/** What one Instagram story earns here, in pesos (Pato, MESITA-4716: "post
+ *  instagram story, receive 20 or 50 pesos as credits"). No server number
+ *  exists yet (Stories left the product 2026-11-22), so the words are here. */
+const POST_STORY_PESOS = [20, 50] as const;
+
+/** POST (MESITA-4716): "literally a box". One white box with the offer;
+ *  nothing to buy and no button. */
+function PostSection() {
+  const [low, high] = POST_STORY_PESOS;
+  return (
+    <div className={cn(CARD, "flex items-center gap-3 px-4 py-4")} data-offers-post>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#E1306C]/10 text-[#E1306C]" aria-hidden>
+        <Instagram className="h-5 w-5" strokeWidth={2.25} />
+      </span>
+      <p className="text-foreground text-base font-semibold">
+        Post an Instagram story, receive {low} or {high} pesos as credits
+      </p>
+    </div>
+  );
+}
 
 /** The tab bar (MESITA-4710), MESITA-4701's last approved bar: three equal
  *  thirds, an icon over the word, the open tab in ink with a 3px ink line
@@ -986,7 +1008,9 @@ function OffersTabs({
             )}
             data-offers-tab={id}
           >
-            <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} aria-hidden />
+            <span className="flex" aria-hidden>
+              <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} />
+            </span>
             <span className="tabular-nums">{count ? `${word} · ${count}` : word}</span>
             <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
           </button>
@@ -1244,7 +1268,7 @@ function PrepaySection({
   );
 }
 
-/** CHECKOUT (MESITA-4710): paying the bill here and the cashback it earns.
+/** PAY (MESITA-4710; "Checkout" until MESITA-4716): paying the bill here and the cashback it earns.
  *  The lines are the server's (Welcome, Returning; MESITA-4709),
  *  then the purple Go to Pay Bill at the bottom (MESITA-4699). Nothing to
  *  buy: a confirmed bill earns it, 3 hours later, with no minimum. */
@@ -1307,7 +1331,6 @@ export function VouchersPane({
   pick,
   initialTab,
   onTabChange,
-  renderRewards,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -1317,9 +1340,6 @@ export function VouchersPane({
   initialTab?: OffersTab | null;
   /** Called after each switch the pane accepts (the host keeps the address). */
   onTabChange?: (tab: OffersTab) => void;
-  /** The Rewards tab's body, drawn by the host (MESITA-4710: no Rewards
-   *  data contract in this package). `switchTab` switches tabs in place. */
-  renderRewards?: (switchTab: (tab: OffersTab) => void) => ReactNode;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -1452,12 +1472,10 @@ export function VouchersPane({
             onInfo={setInfo}
             onPay={() => void pay()}
           />
-        ) : tab === "checkout" ? (
+        ) : tab === "pay" ? (
           <CheckoutSection cashback={cashback} loading={loading} onInfo={setCashInfo} onPay={actions?.onPay} />
         ) : (
-          // REWARDS (MESITA-4710, d1a): what the guest earned here, the
-          // host's read and rows; no bottom bar.
-          renderRewards?.(switchTab) ?? null
+          <PostSection />
         )}
       </div>
       {cashInfo && cashback ? <CashbackInfo row={cashInfo} cap={whole(pesos(cashback.cap_cents, currency))} onClose={() => setCashInfo(null)} /> : null}

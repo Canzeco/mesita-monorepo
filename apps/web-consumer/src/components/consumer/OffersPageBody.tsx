@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, Clock } from "lucide-react";
 import {
   readyClock,
-  voucherOffers,
   VouchersPane,
   type OffersTab,
   type PlaceActions,
@@ -13,7 +12,6 @@ import {
   type VoucherBuyOutcome,
 } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
-import { OffersRewards, useRewardsRead } from "@/components/consumer/OffersRewards";
 import { money } from "@/lib/api/wallet";
 import { apiSyncInstagram } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -82,16 +80,17 @@ function readFromPay(): boolean {
 /** THE TAB IS IN THE ADDRESS (MESITA-4710): `?rewards=` names it, so a
  *  reload or Back from Pay Bill returns to the same tab. `prepayment` and
  *  `special` (the carousel's and the Wallet's links) open Prepay, `cashback`
- *  Checkout, `earned` Rewards; anything else, or none, Prepay. An asked
- *  voucher opens Prepay whatever this says (the pane decides that). */
+ *  Pay, `post` Post; `earned` (the old Rewards tab, MESITA-4716) opens Post
+ *  too. Anything else, or none, Prepay. An asked voucher opens Prepay
+ *  whatever this says (the pane decides that). */
 function tabOf(rewards: string | null): OffersTab {
-  if (rewards === "cashback") return "checkout";
-  if (rewards === "earned") return "rewards";
+  if (rewards === "cashback") return "pay";
+  if (rewards === "post" || rewards === "earned") return "post";
   return "prepay";
 }
 
 /** The `?rewards=` value a tab writes back. */
-const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", checkout: "cashback", rewards: "earned" };
+const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", pay: "cashback", post: "post" };
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
 // fuck are you showing me that … why it needs to pass across that page"):
@@ -114,9 +113,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const params = useSearchParams();
   const [initialTab] = useState<OffersTab>(() => tabOf(params?.get("rewards") ?? null));
   const [pick] = useState<string | null>(() => params?.get("pick") ?? params?.get("voucher") ?? null);
-  // Rewards reads the wallet the first time its tab opens in a visit.
-  const [rewardsOpened, setRewardsOpened] = useState(initialTab === "rewards");
-  const rewards = useRewardsRead(rewardsOpened);
   // A switch rewrites `?rewards=` in place (no push, no server round trip),
   // keeps `from=` and drops `pick=`/`voucher=`.
   const onTabChange = useCallback((t: OffersTab) => {
@@ -125,7 +121,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     q.delete("pick");
     q.delete("voucher");
     replaceAddress(`${window.location.pathname}?${q.toString()}`);
-    if (t === "rewards") setRewardsOpened(true);
   }, []);
   const keep = useKeptScroll<HTMLDivElement>();
 
@@ -154,10 +149,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   );
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const credit = creditHere(place);
-  // The Rewards empty state's numbers, the server's (MESITA-4710): the best
-  // cashback line, and the best bonus Prepay shows (its chip's number).
-  const cashback = place.money?.cashback;
-  const cashbackPct = cashback ? Math.max(cashback.welcome_bps, cashback.returning_bps) / 100 || null : null;
 
   // A VIP basket re-reads the follower count first when the last read is over
   // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`
@@ -188,7 +179,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   );
 
   const actions: PlaceActions = {
-    // MESITA-4699: Checkout's purple Pay Bill (MESITA-4710), a push to this
+    // MESITA-4699: Pay's purple Pay Bill (MESITA-4710), a push to this
     // place's bill; Back returns here.
     onPay: () => navigateTo(router, payPlacePath(fetched.id), { motion: "drill" }),
     onBuyVoucher: buyChecked,
@@ -221,9 +212,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     // Instagram; Back returns here.
     onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
   };
-
-  const bonusPct =
-    voucherOffers(place.money, actions.guest).reduce((n, o) => Math.max(n, Number.parseInt(o.bonus.replace(/\D/g, ""), 10) || 0), 0) || null;
 
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-offers-route>
@@ -297,18 +285,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             pick={pick}
             initialTab={initialTab}
             onTabChange={onTabChange}
-            renderRewards={(switchTab) => (
-              <OffersRewards
-                placeId={fetched.id}
-                photo={place.profilePhoto ?? null}
-                read={rewards}
-                cashbackPct={cashbackPct}
-                bonusPct={bonusPct}
-                profileFailed={profileRead.error != null && profileRead.data == null}
-                onRetryProfile={profileRead.reload}
-                switchTab={switchTab}
-              />
-            )}
           />
         </div>
       </div>
