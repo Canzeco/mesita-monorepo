@@ -967,7 +967,7 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   // The emulated count while the emulator is on (MESITA-4693).
   const own = useConsumerProfile().data;
   const emulated = own?.instagram_followers_emulated ?? null;
-  // MESITA-4714: the server's followers badge (blue since MESITA-4721), right of the handle.
+  // MESITA-4714: the server's followers badge (a yellow disc, MESITA-4722), right of the handle.
   const badge = own?.instagram_badge === true && !pending;
   const now = useSyncExternalStore(
     minuteClock.subscribe,
