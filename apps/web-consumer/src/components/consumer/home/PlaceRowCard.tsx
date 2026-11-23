@@ -46,8 +46,9 @@ function scoreNumber(n: number | null | undefined): string {
  * inorganic slot, the Family lane's name on a family chip (MESITA-4517),
  * Organic otherwise. Google and Foursquare (raw score, then its
  * multiplier; "—" when missing) are Popularity's two halves (MESITA-4517).
- * No `area`, no label.
- * TO REMOVE: delete this and its one use.
+ * No `area`, no label. Discovery's Score overlay switch (MESITA-4757,
+ * `general.showScores`) turns it off without a deploy.
+ * TO REMOVE: delete this, its one use and the `showScores` prop.
  */
 /** A lane key's name on the tag (MESITA-4517). */
 const LANE_NAMES: Record<string, string> = {
@@ -187,6 +188,7 @@ export function PlaceRowCard({
   table = null,
   ad = false,
   rank = null,
+  showScores = true,
 }: {
   place: Place;
   /** The row sits in an ad slot (MESITA-4454, H4): its id is in the rank's
@@ -196,6 +198,9 @@ export function PlaceRowCard({
   /** The temporary score label's "#3 → 1st" (H1): the merged rank before
    *  the shuffle (null past the first page) and the shown position. */
   rank?: { pre: number | null; shown: number } | null;
+  /** Discovery's Score overlay switch (MESITA-4757): false hides the
+   *  temporary score label. */
+  showScores?: boolean;
   /** The guest's live table here, if any (MESITA-4453). */
   table?: LiveTable | null;
   saved: boolean;
@@ -275,7 +280,9 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
-          <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
+          {showScores ? (
+            <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
+          ) : null}
         </>,
         cn(ROW_PHOTO, "block", focus),
         `Open ${place.name}`,

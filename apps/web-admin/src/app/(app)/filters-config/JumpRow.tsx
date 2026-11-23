@@ -1,8 +1,8 @@
 "use client";
 
 // Discovery's jump row (MESITA-4694): the Multiple Places bar (the same shell
-// and numbered chips, from the kit's class strings) over the page's six
-// sections. One line that scrolls sideways at every width: six chips do not
+// and numbered chips, from the kit's class strings) over the page's seven
+// sections. One line that scrolls sideways at every width: seven chips do not
 // fit one line on a narrow pane, and a wrapped bar would be taller than the
 // cards' scroll margin. z-30: the Ranking table's pinned header cell is z-20.
 //
@@ -18,6 +18,7 @@ const SECTIONS: readonly (readonly [string, string])[] = [
   ["s-ranking", "Ranking"],
   ["s-mixing", "Mixing"],
   ["s-social", "Social"],
+  ["s-scores", "Scores"],
   ["s-map", "Map"],
   // `s-name` is frozen: Crenup, Multiple Places and Single Place link to it.
   ["s-name", "Search bars"],

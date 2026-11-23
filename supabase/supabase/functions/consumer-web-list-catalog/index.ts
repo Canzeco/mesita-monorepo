@@ -63,7 +63,7 @@
 //                scores with its organic lane's row and carries `lane`.
 //   radiusKm, bounds, google, unified, prefer, minReviews: ignored.
 // Rank response: { ok, location: { kind }, rankMode, pageSize, total, order,
-//   adIds, lanes: true, preShuffle, seed, updatedAt, places: [... { area,
+//   adIds, lanes: true, preShuffle, seed, updatedAt, showScores, places: [... { area,
 //   ad? }], summary }.
 //   order       every ranked id: the shuffled first page, then the merged tail
 //   adIds       ids sitting in ad slots, across the whole order
@@ -73,6 +73,8 @@
 //   preShuffle  id → its 1-based merged rank before the shuffle (first page)
 //   seed        the shuffle's seed (sent or drawn)
 //   updatedAt   the config row's updated_at: a change drops cached orders
+//   showScores  `general.showScores` (MESITA-4757): Home draws the temporary
+//               score overlay on the photos only when true
 //   ad          true on a place in an ad slot (it wears "Ad"); else absent
 // Fill response: { ok, rankMode, places: [... { area, ad? }], summary:
 //   { asked, returned, chunks, ads } }.
@@ -402,6 +404,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     preShuffle: pool.preShuffle,
     seed: seeded.seed,
     updatedAt: loaded.updatedAt,
+    showScores: cfg.general.showScores,
     places,
     summary: pool.summary,
   });

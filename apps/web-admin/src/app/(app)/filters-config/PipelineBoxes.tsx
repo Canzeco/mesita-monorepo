@@ -8,6 +8,7 @@
 //   Ranking             the lane rows, each with its batch → `params.recipes`
 //   Mixing              Home's shuffle and the Inorganic lane → `params.mix`
 //   Social              Home › Social's length → `social`
+//   Score overlay       Home's score numbers on the photos → `general.showScores`
 //   Map                 pins, dots, reload timing → four `map` keys
 //   Search bars         the guest bar and the Admin & Business bar, one Save
 //   How ranking works   read only, closed: the formula and which screen
@@ -21,7 +22,7 @@
 // exponent, Google exponent, Premier exponent, Temperature; never "root".
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { LayoutGrid, ListOrdered, MapPin, Search, Shuffle, Users } from "lucide-react";
+import { Gauge, LayoutGrid, ListOrdered, MapPin, Search, Shuffle, Users } from "lucide-react";
 import {
   Chip,
   Collapsible,
@@ -79,6 +80,7 @@ export const BOX_SLICES = {
   mixing: ["mixing"],
   mapDisplay: ["mapDisplay"],
   social: ["social"],
+  scoreOverlay: ["scoreOverlay"],
   // No box writes Premier's prices since MESITA-3828; the slice stays so
   // actions.test.ts keeps proving no other box can overwrite them.
   premier: ["premier"],
@@ -642,6 +644,42 @@ export function SocialDiscoveryBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
       </div>
       <Save editor={editor} dirty={dirty} slices={BOX_SLICES.social} />
+    </SectionCard>
+  );
+}
+
+// Score overlay ────────────────────────────────────────────────────────
+// Home's temporary score numbers on each row's photo (MESITA-4449), on or
+// off (MESITA-4757, Pato: "toggle if show score data on top of images or if
+// not show it"). Display only: no rank changes. A Save moves the config
+// stamp, so Home drops its cached order and the next load reads it.
+export function ScoreOverlayBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const dirty = cfg.general.showScores !== saved.general.showScores;
+  return (
+    <SectionCard
+      id="s-scores"
+      icon={<Gauge />}
+      title="Score overlay"
+      subtitle="Home: each place's score numbers on top of its photo."
+      right={unsaved(dirty)}
+      className="scroll-mt-20"
+    >
+      <div className="mt-4">
+        <SwitchRow
+          label="Show scores on photos"
+          checked={cfg.general.showScores}
+          pending={off}
+          hint="Lane, Google, Foursquare, Popularity, Proximity, Premier and Final. Ranking does not change."
+          onCheckedChange={(showScores) => {
+            setOk(false);
+            setCfg((c) => ({ ...c, general: { ...c.general, showScores } }));
+          }}
+        />
+      </div>
+      <Save editor={editor} dirty={dirty} slices={BOX_SLICES.scoreOverlay} />
     </SectionCard>
   );
 }

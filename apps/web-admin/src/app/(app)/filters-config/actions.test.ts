@@ -112,7 +112,11 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       admin: { ...live.name.admin, textCount: 3 },
       popularityFloor: 6,
     },
-    general: { ...live.general, requireActive: !live.general.requireActive },
+    general: {
+      ...live.general,
+      requireActive: !live.general.requireActive,
+      showScores: !live.general.showScores,
+    },
     deep: { limit: 9, minSimilarity: 0.3 },
     chat: { prompt: "Be brief." },
     premier: { yearlyCents: { boost_2x: 15000, boost_5x: 200000 } },
@@ -291,6 +295,18 @@ describe("the Name boxes", () => {
     expect(after.general).toEqual(live.general);
   });
 
+  it("the Score overlay card writes general.showScores and never requireActive (MESITA-4757)", async () => {
+    const srv = server(storedBlob());
+    const live = coerceConfig(srv.stored);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.scoreOverlay]);
+    const after = coerceConfig(srv.stored);
+    expect(after.general.showScores).toBe(!live.general.showScores);
+    expect(after.general.requireActive).toBe(live.general.requireActive);
+    expect(after.map).toEqual(live.map);
+    expect(after.params).toEqual(live.params);
+    expect(after.name).toEqual(live.name);
+  });
+
   it("Deep and the Chat prompt write only themselves", async () => {
     const srv = server(storedBlob());
     const live = coerceConfig(srv.stored);
@@ -302,7 +318,7 @@ describe("the Name boxes", () => {
 
 describe("the cards' slices", () => {
   it("are the saving cards, each with its own slices, none shared; catalogPipeline is gone", () => {
-    expect(Object.keys(BOX_SLICES)).toEqual(["searchbars", "ranking", "mixing", "mapDisplay", "social", "premier"]);
+    expect(Object.keys(BOX_SLICES)).toEqual(["searchbars", "ranking", "mixing", "mapDisplay", "social", "scoreOverlay", "premier"]);
     const all: string[] = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
     expect(all).not.toContain("catalogPipeline");

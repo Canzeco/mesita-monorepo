@@ -399,6 +399,9 @@ export type AreaPool = {
   /** The config row's `updatedAt` the rank read (DX-b); absent from an
    *  older EF. */
   updatedAt?: string | null;
+  /** Discovery's `general.showScores` (MESITA-4757): false hides the
+   *  temporary score overlay on the photos. Absent (an older EF) = shown. */
+  showScores?: boolean;
 };
 
 function cleanPlace(place: Place): Place {
@@ -447,6 +450,7 @@ export async function apiListAreaPool(
     laneOf?: unknown;
     updatedAt?: unknown;
     rankMode?: unknown;
+    showScores?: unknown;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ids: true,
@@ -497,6 +501,7 @@ export async function apiListAreaPool(
     ...(typeof data.updatedAt === "string" || data.updatedAt === null
       ? { updatedAt: data.updatedAt }
       : {}),
+    ...(typeof data.showScores === "boolean" ? { showScores: data.showScores } : {}),
   };
 }
 

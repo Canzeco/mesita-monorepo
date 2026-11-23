@@ -99,7 +99,8 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
     assertEquals(dead in cfg, false, dead);
   }
   // `general.minReviews` is retired (MESITA-2702): the one floor is map's.
-  assertEquals(cfg.general, { requireActive: true });
+  // `showScores` (MESITA-4757) postdates the blob: its default, on.
+  assertEquals(cfg.general, { requireActive: true, showScores: true });
   // `pinCount`, `supers`, the reload km/sec pair and `googleFill` are
   // dropped and seed nothing (MESITA-2687, MESITA-2703); the four source
   // switches are gone (MESITA-2872, MESITA-2909).

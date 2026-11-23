@@ -42,6 +42,9 @@ type UpdateDiscoveryConfigResult = ActionResult<{
 
 export type DiscoverySlice =
   | "general"
+  // The Score overlay card (MESITA-4757): `general.showScores` alone, never
+  // `requireActive`.
+  | "scoreOverlay"
   // The Map display card (MESITA-4454): the pin counts and the reload
   // timing of `map`, never the Catalog's page size or the floors.
   | "mapDisplay"
@@ -109,7 +112,10 @@ export async function updateDiscoveryConfig(
   const keys = new Set(slices);
   const next: DiscoveryConfig = {
     ...live.config,
-    general: keys.has("general") ? config.general : live.config.general,
+    general: {
+      ...(keys.has("general") ? config.general : live.config.general),
+      ...(keys.has("scoreOverlay") ? { showScores: config.general.showScores } : null),
+    },
     map: {
       ...live.config.map,
       ...(keys.has("mapDisplay") ? pick(config.map, MAP_DISPLAY_KEYS) : null),
