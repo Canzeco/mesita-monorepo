@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { BadgePercent, ChevronRight, Gift, QrCode, Tag } from "lucide-react";
+import { ChevronRight, Gift, QrCode, Tag, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -389,7 +389,10 @@ export function PayPage({
               Get Bonus"; the purple one stays Pay Bill): the words carry the
               bonus, so the Get Bonus pill is gone. */}
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
-            <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
+            {/* THE WALLET, Prepay's one mark (Pato, 2026-11-23, MESITA-4762: "i
+                don't like the icon for prepay"; the Offers Prepay tab's since
+                MESITA-4726). */}
+            <WalletIcon className="h-5 w-5" strokeWidth={2.25} />
           </span>
           <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
         </PushLink>
