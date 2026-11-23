@@ -238,17 +238,24 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           // to offers path"): no chevron, no tap. The card opens Offers; Offers
           // never opens the card, so Back from Offers lands on the card and
           // the two can't stack. It pushed the card since MESITA-4601.
+          //
+          // ONE SMALL LINE (Pato, 2026-11-22, MESITA-4701: "current credit
+          // smaller and menu more obvious"): the balance at the right of one
+          // dark strip, the pending line under it only while a bonus waits, so
+          // the tabs below lead the page.
           <div
-            className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-1 rounded-2xl p-4"
+            className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-0.5 rounded-xl px-4 py-2.5"
             role="group"
             aria-label={credit.label}
             data-offers-balance
           >
-            <span className="text-paper/70 text-sm font-semibold">Loyalty Card · ready now</span>
-            <span className="text-2xl leading-none font-bold tracking-tight tabular-nums">{credit.ready}</span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-paper/70 text-sm font-semibold">Loyalty Card</span>
+              <span className="text-base font-bold tabular-nums">{credit.ready}</span>
+            </span>
             {credit.pending ? (
-              <span className="text-paper/70 mt-1 flex items-center gap-1.5 text-sm tabular-nums" data-offers-pending>
-                <Clock className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+              <span className="text-paper/70 flex items-center gap-1.5 text-xs tabular-nums" data-offers-pending>
+                <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
                 <span className="truncate">{credit.pending}</span>
               </span>
             ) : null}
