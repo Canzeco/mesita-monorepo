@@ -21,7 +21,9 @@
 //   MESITA-4748: welcome_pct | returning_pct, the two Back lines apart, for
 //   the Pay Bill sheet's two boxes.
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
-//   and vouchers where sold): Pay's Get Offers lists these.
+//   and vouchers where sold), or (MESITA-4770) a visit Discount there:
+//   Pay's Get Offers lists these. offers.visit_mechanism = discount | cashback;
+//   visit_line = welcome (no paid bill here yet) | returning.
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
@@ -77,7 +79,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   if (ids.length === 0) return json({ ok: true, places: [] });
 
   const since = new Date(Date.now() - PAID_RECENT_HOURS * 3600_000).toISOString();
-  const [placesRes, settingsRes, paidRes] = await Promise.all([
+  const [placesRes, settingsRes, paidRes, billedRes] = await Promise.all([
     admin.from("profiles").select("id, name, profile_photo, address, state, currency, lat, lng, boost_tier").in("id", ids),
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     admin.from("wallet_payments")
@@ -88,10 +90,17 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       .gte("paid_at", since)
       .order("paid_at", { ascending: false })
       .limit(50),
+    // MESITA-4770: the places where this guest has a paid bill, so the phone
+    // previews the right visit line (Welcome before the first, Returning
+    // after); pay_guest_begin decides the same and has the last word.
+    admin.from("pay_tabs").select("place_id").eq("consumer_id", userId).eq("livemode", livemode)
+      .eq("status", "paid").in("place_id", ids).limit(5000),
   ]);
   if (placesRes.error) return fail("places", placesRes.error.message);
   if (settingsRes.error) return fail("settings", settingsRes.error.message);
   if (paidRes.error) return fail("payments", paidRes.error.message);
+  if (billedRes.error) return fail("bills", billedRes.error.message);
+  const billed = new Set(((billedRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
 
   const settings = new Map<string, PaymentSettings>();
   for (const row of (settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[]) {
@@ -147,6 +156,17 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   const offers = new Map(withOffers.map((r) => [r.id, r.offers]));
   return json({
     ok: true,
-    places: listed.map((p) => ({ ...p, offers: offers.get(p.place_id) ?? NO_LIST_ROW_OFFERS })),
+    places: listed.map((p) => {
+      const o = offers.get(p.place_id) ?? NO_LIST_ROW_OFFERS;
+      // MESITA-4770: a place giving a visit Discount has an offer without the
+      // Credits Agreement.
+      const discount = o.visit_mechanism === "discount" && (o.welcome_pct !== null || o.returning_pct !== null);
+      return {
+        ...p,
+        offers_ok: p.offers_ok || (discount && p.outside_ok),
+        visit_line: billed.has(p.place_id) ? "returning" : "welcome",
+        offers: o,
+      };
+    }),
   });
 });

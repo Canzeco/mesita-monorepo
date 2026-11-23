@@ -220,19 +220,24 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // MESITA-4702: the Loyalty Card carousel's green "Pay · N% Cashback"
   // slide: each place's highest cashback line where Loyalty Cards is On. A
   // failed read shows no cashback slide rather than a wrong rate.
-  const earning = balances.map((b) => b.place_id).filter((id) => settingsFromRow(settingsById.get(id) ?? null).loyalty_cards === true);
-  const cashbackRates = await readCashbackRatesMany(admin, earning).catch((err) => {
+  // MESITA-4770: a Discount shows without Loyalty Cards; cashback and the
+  // story only where credit can be born.
+  const credits = (id: string) => settingsFromRow(settingsById.get(id) ?? null).loyalty_cards === true;
+  const cashbackRates = await readCashbackRatesMany(admin, balances.map((b) => b.place_id)).catch((err) => {
     console.error("[consumer-web-get-wallet] cashback", errorMessage(err));
     return new Map<string, CashbackRates>();
   });
   const cashbackOf = (id: string) => {
-    const r = cashbackRates.get(id);
+    const all = cashbackRates.get(id);
+    const visit_mechanism = all?.visit_mechanism === "discount" ? "discount" : "cashback";
+    const r = all && (credits(id) || visit_mechanism === "discount") ? all : undefined;
     const top = r ? Math.max(r.welcome_bps, r.returning_bps) : 0;
     return {
       cashback_pct: top > 0 ? top / 100 : null,
       cashback_flat: !!r && r.welcome_bps === r.returning_bps,
+      visit_mechanism,
       // MESITA-4714: the pink Post slide.
-      story_cents: r && r.story_reward_cents > 0 ? r.story_reward_cents : null,
+      story_cents: credits(id) && all && all.story_reward_cents > 0 ? all.story_reward_cents : null,
     };
   };
   const offerRows = await withGuestOffers(

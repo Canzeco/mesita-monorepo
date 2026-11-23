@@ -23,9 +23,28 @@ export const CASHBACK_WAIT_SEC = 60 * 60;
 
 export type CashbackLine = "welcome" | "returning";
 
+/** MESITA-4770 (Pato, 2026-11-23: "SAME TIERS ... YOU JUST SET THE TIER. AND
+ *  THEN THE MECHANISM FOR ALL YOUR VISIT TIERS"): how the Welcome / Returning
+ *  lines pay out. "cashback" = credit for the next visit (needs Loyalty Cards
+ *  On); "discount" = off this bill, worked out by pay_guest_begin. */
+export const VISIT_MECHANISMS = ["cashback", "discount"] as const;
+export type VisitMechanism = (typeof VISIT_MECHANISMS)[number];
+export function isVisitMechanism(v: unknown): v is VisitMechanism {
+  return typeof v === "string" && (VISIT_MECHANISMS as readonly string[]).includes(v);
+}
+
+/** What a printed bill's discount is, rounded down (mirrors pay_guest_begin;
+ *  the tip is never part of the bill). Pure. */
+export function discountCents(billCents: number, bps: number): number {
+  if (bps <= 0 || billCents <= 0) return 0;
+  return Math.floor((billCents * bps) / 10000);
+}
+
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
+  /** MESITA-4770: Discount or Cashback, for both lines. */
+  visit_mechanism: VisitMechanism;
   /** MESITA-4714: what a verified Instagram story pays (Post), in cents:
    *  0 (Off) · 2000 · 4000. Lives beside the cashback lines. */
   story_reward_cents: number;
@@ -63,13 +82,14 @@ export function isStoryRewardCents(v: unknown): v is (typeof STORY_REWARD_STEPS_
 }
 
 /** The columns every rates read selects. */
-export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, story_reward_cents, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
+export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, visit_mechanism, story_reward_cents, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
 
 /** The last fallback, 10 / 5 %: cashback_defaults' seed and
  *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
+  visit_mechanism: "cashback",
   story_reward_cents: 2000,
   small_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_200[0],
   medium_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_1000[0],
@@ -85,16 +105,20 @@ const isIn = (steps: readonly number[], v: unknown): v is number => typeof v ===
 export function readCashbackInput(
   body: Record<string, unknown>,
 ): { ok: true; rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> } | { ok: false; error: string } {
-  const { welcome_bps, returning_bps, story_reward_cents } = body;
+  const { welcome_bps, returning_bps, story_reward_cents, visit_mechanism } = body;
   if (!isIn(WELCOME_STEPS_BPS, welcome_bps)) return { ok: false, error: "Welcome must be Off, 10% or 20%" };
   if (!isIn(RETURNING_STEPS_BPS, returning_bps)) return { ok: false, error: "Returning must be Off, 5% or 10%" };
   if (story_reward_cents !== undefined && !isStoryRewardCents(story_reward_cents)) {
     return { ok: false, error: "The story reward must be Off, 20 or 40" };
   }
+  if (visit_mechanism !== undefined && !isVisitMechanism(visit_mechanism)) {
+    return { ok: false, error: "The visit offer must be Discount or Cashback" };
+  }
   const rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> = {
     welcome_bps,
     returning_bps,
     ...(story_reward_cents !== undefined ? { story_reward_cents } : {}),
+    ...(visit_mechanism !== undefined ? { visit_mechanism } : {}),
   };
   for (const [field, key] of Object.entries(VOUCHER_BONUS_FIELDS) as Array<[VoucherBonusField, keyof typeof VOUCHER_BONUS_STEPS_BPS]>) {
     const v = body[field];
@@ -167,20 +191,22 @@ export async function readCashbackRatesMany(admin: SupabaseClient, placeIds: str
   return out;
 }
 
-/** A place's cashback as the guest screens read it (MESITA-4698, MESITA-4702):
- *  the two lines, and the line this caller's next bill falls in
- *  (null signed out). Null where Loyalty Cards is Off (no cashback is earned
- *  there) or the read fails (logged): no rate beats a wrong one. */
+/** A place's visit offer as the guest screens read it (MESITA-4698,
+ *  MESITA-4702, MESITA-4770): the two lines, the mechanism (Discount or
+ *  Cashback), and the line this caller's next bill falls in (null signed
+ *  out). Null where the read fails (logged; no rate beats a wrong one) or
+ *  where Loyalty Cards is Off and the mechanism is cashback (no credit is
+ *  born there); a discount needs no Credits Agreement. */
 export async function placeCashbackFor(
   admin: SupabaseClient,
   args: { placeId: string; consumerId: string | null; livemode: boolean; loyaltyCards: boolean; who: string },
 ): Promise<(CashbackRates & { line: CashbackLine | null }) | null> {
-  if (!args.loyaltyCards) return null;
   try {
     const [rates, firstBill] = await Promise.all([
       readCashbackRates(admin, args.placeId),
       args.consumerId ? readHasPaidBill(admin, args.consumerId, args.placeId, args.livemode).then((paid) => !paid) : Promise.resolve(null),
     ]);
+    if (!args.loyaltyCards && rates.visit_mechanism !== "discount") return null;
     return { ...rates, line: firstBill === null ? null : cashbackLine(firstBill) };
   } catch (err) {
     console.error(`[${args.who}] cashback`, err instanceof Error ? err.message : String(err));

@@ -2,7 +2,7 @@
 // trigger mirrors (pay_tab_grant_cashback) and the owner's allowed inputs.
 // Two lines since MESITA-4709: Welcome, then Returning.
 import { assertEquals } from "jsr:@std/assert@1";
-import { CASHBACK_DEFAULTS, cashbackCents, cashbackLine, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
+import { CASHBACK_DEFAULTS, cashbackCents, cashbackLine, discountCents, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
 
 Deno.test("cashback: Welcome wins the first bill, Returning every later one", () => {
   assertEquals(cashbackLine(true), "welcome");
@@ -48,4 +48,27 @@ Deno.test("voucher bonus: two picks per size; absent keeps the saved one (MESITA
   const absent = readCashbackInput(base);
   assertEquals(absent.ok && "small_bonus_bps" in absent.rates, false);
   assertEquals(voucherBonusFrom({ small_bonus_bps: 2000, medium_bonus_bps: 2000, big_bonus_bps: 6000 }), { voucher_200: 2000, voucher_1000: 2000, voucher_5000: 6000 });
+});
+
+// MESITA-4770: Discount or Cashback over the same two lines.
+Deno.test("visit mechanism: the owner's save accepts Discount or Cashback, refuses anything else", () => {
+  const base = { welcome_bps: 1000, returning_bps: 500 };
+  const d = readCashbackInput({ ...base, visit_mechanism: "discount" });
+  assertEquals(d.ok && d.rates.visit_mechanism, "discount");
+  const c = readCashbackInput({ ...base, visit_mechanism: "cashback" });
+  assertEquals(c.ok && c.rates.visit_mechanism, "cashback");
+  // Absent keeps the saved one.
+  const none = readCashbackInput(base);
+  assertEquals(none.ok && "visit_mechanism" in none.rates, false);
+  assertEquals(readCashbackInput({ ...base, visit_mechanism: "both" }).ok, false);
+  assertEquals(CASHBACK_DEFAULTS.visit_mechanism, "cashback");
+});
+
+Deno.test("visit discount: the rate on the printed bill, rounded down (pay_guest_begin's sum)", () => {
+  // MX$500 at Welcome 10% = MX$50 off.
+  assertEquals(discountCents(50000, 1000), 5000);
+  // MX$333.33 at 5% rounds down.
+  assertEquals(discountCents(33333, 500), 1666);
+  assertEquals(discountCents(50000, 0), 0);
+  assertEquals(discountCents(0, 1000), 0);
 });

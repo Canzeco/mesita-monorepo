@@ -17,7 +17,7 @@ import { readWalletPlaces } from "./wallet.ts";
 export const VISITS_LIMIT = 50;
 
 const LIST_TAB_COLUMNS =
-  "id, place_id, status, currency, livemode, bill_cents, tip_cents, ticket, waiter_name, paid_at, expires_at, created_at, origin, verified_at";
+  "id, place_id, status, currency, livemode, bill_cents, tip_cents, ticket, waiter_name, paid_at, expires_at, created_at, origin, verified_at, discount_cents";
 
 export type GuestVisit = {
   tab_id: string;
@@ -25,6 +25,8 @@ export type GuestVisit = {
   status: string;
   currency: string;
   bill_cents: number | null;
+  /** MESITA-4770: the visit discount taken off bill_cents (0 = none). */
+  discount_cents: number;
   tip_cents: number;
   ticket: string | null;
   waiter_name: string | null;
@@ -75,7 +77,7 @@ export async function listVisits(
   // or a hold refused before any QR, never was a ticket to the guest.
   let attemptQuery = admin
     .from("guest_pay_attempts")
-    .select("id, place_id, status, currency, livemode, bill_cents, tip_cents, expires_at, created_at, end_reason, held_at, payment_id")
+    .select("id, place_id, status, currency, livemode, bill_cents, tip_cents, expires_at, created_at, end_reason, held_at, payment_id, discount_cents")
     .eq("consumer_id", consumerId)
     .eq("livemode", livemode)
     .or("status.in.(opening,due),and(status.eq.released,end_reason.in.(rejected,expired,declined),held_at.not.is.null)");
@@ -85,7 +87,7 @@ export async function listVisits(
     .limit(VISITS_LIMIT + 1);
   if (attemptError) return { ok: false, error: `attempts: ${attemptError.message}` };
   const attempts = (attemptData ?? []) as Array<{
-    id: string; place_id: string; status: string; currency: string; bill_cents: number; tip_cents: number;
+    id: string; place_id: string; status: string; currency: string; bill_cents: number; tip_cents: number; discount_cents: number | null;
     expires_at: string; created_at: string; end_reason: string | null; payment_id: string | null;
   }>;
   const attemptsCut = attempts.length > VISITS_LIMIT;
@@ -115,6 +117,7 @@ export async function listVisits(
       status: effectiveStatus(t, parts as unknown as TabPartRow[], nowMs),
       currency: t.currency,
       bill_cents: t.bill_cents,
+      discount_cents: t.discount_cents ?? 0,
       tip_cents: t.tip_cents,
       ticket: t.ticket,
       waiter_name: t.waiter_name,
@@ -135,6 +138,7 @@ export async function listVisits(
       status: open ? "paying" : a.end_reason === "expired" ? "expired" : "cancelled",
       currency: a.currency,
       bill_cents: a.bill_cents,
+      discount_cents: a.discount_cents ?? 0,
       tip_cents: a.tip_cents,
       ticket: null,
       waiter_name: null,
