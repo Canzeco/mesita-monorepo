@@ -614,8 +614,7 @@ export function PaymentsPanel({
       </Card>
       <Card className={SECTION}>
         <div className={HEAD}>
-          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Stage 1</p>
-          <h2>Cashbacks</h2>
+          <h2>Stage 1 · Cashbacks</h2>
           <p className={cn(NOTE, "font-normal")}>
             Needs Credits only. A confirmed bill earns credit here on the part not paid with credit, never the tip. It lands 3 hours later, one per guest
             per day. Mesita takes no fee.
@@ -680,8 +679,7 @@ export function PaymentsPanel({
       </Card>
       <Card className={SECTION}>
         <div className={HEAD}>
-          <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">Stage 2</p>
-          <h2>Vouchers</h2>
+          <h2>Stage 2 · Vouchers</h2>
           <p className={cn(NOTE, "font-normal")}>
             Wholesale Presales. Needs Credits and Stripe. Guests pay ahead in the app; you get the money now, minus Mesita&apos;s 5%. The bonus lands 3
             hours later.
