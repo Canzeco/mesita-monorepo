@@ -681,8 +681,7 @@ describe("T8 — Me's grid is ten cells, every one a live door", () => {
       // A shortcut to Home's ❤️ Saved row (MESITA-4327).
       "Saved",
       "Plan",
-      // Gift opens Send Gift (MESITA-4670); Share opens /share (MESITA-3940).
-      "Gift",
+      // Share opens /share (MESITA-3940); no Gift since MESITA-4740.
       "Share",
       "Settings",
     ]);
