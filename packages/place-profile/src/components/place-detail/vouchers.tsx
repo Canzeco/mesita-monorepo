@@ -213,10 +213,11 @@ function whole(v: string): string {
   return noMx(v).replace(/\.00$/, "");
 }
 
-/** YOUR MONEY NOW, THE BONUS IN 3 HOURS (Pato, 2026-11-17, MESITA-4214):
- *  every voucher. The row and the button say only "Pay $X · Get $Y"; the (i)
- *  says when each part is ready. */
-const READY_IN = "bonus in 3 hr";
+/** ALL OF IT IN 3 HOURS (Pato, 2026-11-23, MESITA-4717: "Pay X, Wait 3
+ *  hours, Receive Y (you now receive all in one run)"): every voucher. The
+ *  row and the button say only "Pay $X · Get $Y"; the steps say when. Your
+ *  money now and the bonus later was MESITA-4214. */
+const READY_IN = "all in 3 hr";
 
 /** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
 function offerStatus(
@@ -333,7 +334,7 @@ export type VoucherOffer = {
   bonus: string;
   pay: string;
   get: string;
-  /** "bonus in 3 hr" (MESITA-4214). */
+  /** "all in 3 hr" (MESITA-4717; "bonus in 3 hr" since MESITA-4214). */
   ready: string;
   /** This guest can buy it now. */
   buyable: boolean;
@@ -350,7 +351,7 @@ export type VoucherOffer = {
  *  2026-11-17, MESITA-4218: "Classic Offers · Special Offers"; Standard Offers
  *  in MESITA-4216; Limited and
  *  Unlimited Vouchers in MESITA-4203).
- *  What the guest paid is ready at once, the bonus 3 hours later (MESITA-4214).
+ *  What the guest paid and the bonus land together 3 hours later (MESITA-4717).
  *  Instant / Prepayment Vouchers in MESITA-4198. One "Prepaid Vouchers" group from MESITA-4173,
  *  Special and Bonus Vouchers in MESITA-4154. The host still opens it by
  *  `?rewards=prepayment` or `?rewards=special`. */
@@ -438,13 +439,33 @@ type Step = {
   short?: string;
 };
 
-/** Small, Medium, Big and Welcome: pay, the credit now, the bonus in 3 hours. */
-function sheetSteps(pay: string, bonus: string | null, card: { label: string; last4: string } | null): Step[] {
+/** Every voucher (MESITA-4717): 1 Pay X · 2 Wait 3 hours · 3 Receive Y,
+ *  all of it at once. */
+function sheetSteps(pay: string, get: string, card: { label: string; last4: string } | null): Step[] {
   return [
     { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `${card.label} ${card.last4}` : "By card" },
-    { Icon: Wallet, title: "Get your credit now", short: "Credits", amount: pay, line: "Right away" },
-    { Icon: Gift, title: "Get your bonus in 3 hours", short: "Bonus", amount: bonus ? `+${bonus}` : undefined, line: "In 3 hours, by itself", green: true },
+    { Icon: Clock, title: "Wait 3 hours", short: "3 hours", line: "Nothing to do" },
+    { Icon: Wallet, title: "Receive it all", short: "Receive", amount: get, line: "Credit and bonus together", green: true },
   ];
+}
+
+/** THE THREE TABS' STEPS (Pato, 2026-11-23, MESITA-4717): each tab opens
+ *  with its fixed steps, one numbered line each, then its offers. */
+function NumberedSteps({ steps, tone, ...data }: { steps: string[]; tone: string } & { [k: `data-${string}`]: string | undefined }) {
+  return (
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="How it works" {...data}>
+      <ol className="divide-border divide-y">
+        {steps.map((s, i) => (
+          <li key={s} className="text-foreground flex items-center gap-3 px-4 py-3 text-sm">
+            <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold", tone)} aria-hidden>
+              {i + 1}
+            </span>
+            {s}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
 const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
@@ -703,7 +724,6 @@ function OfferInfo({
   }, [onClose]);
   const pay = priceValue(product, line, currency);
   const get = creditValue(product, line, currency);
-  const bonusAmount = line ? whole(pesos(line.bonus_cents, currency)) : null;
   // INTO THE APP'S CARD (MESITA-4664): on the body at z-50 the panel fell
   // under the app's own layers and only the dim showed. Like OffTileSheet:
   // the card when there is one (absolute, above the app's z-scale), else the
@@ -730,7 +750,7 @@ function OfferInfo({
         <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
           <OfferBox pay={pay} get={get} bonus={`+${product.bonus.replace(/ bonus$/, "")}`} />
           <Box title="How it works">
-            <StepList steps={sheetSteps(whole(pay), bonusAmount, card)} />
+            <StepList steps={sheetSteps(whole(pay), whole(get), card)} />
           </Box>
           <GoodToKnow productKey={product.key} />
         </div>
@@ -804,7 +824,7 @@ function OfferSectionHead({ title, chip, tone, sub }: { title?: string; chip: st
 /** MESITA-4698/4702: the place's cashback on the one Offers page. Two
  *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
  *  guest's own marked Yours, each with its (i). Nothing to buy: a
- *  confirmed bill earns it, 3 hours later, with no minimum. */
+ *  confirmed bill earns it, 1 hour later (MESITA-4717), with no minimum. */
 function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: (r: CashbackLineRow) => void }) {
   const rows = cashbackRows(cashback);
   if (rows.length === 0) return null;
@@ -833,8 +853,8 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
                     <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
                   </button>
                 </span>
-                {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702). */}
-                <span className="text-muted-foreground text-sm">{r.who} · lands in 3 hours</span>
+                {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702); 1 hour since MESITA-4717. */}
+                <span className="text-muted-foreground text-sm">{r.who} · lands in 1 hour</span>
               </span>
               {mine ? (
                 <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
@@ -864,9 +884,9 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
   const host = document.getElementById("mesita-app-card");
   const pct = `${row.bps / 100}%`;
   const steps: Step[] = [
-    { Icon: QrCode, title: "Pay your bill here", short: "Pay", line: "Cash or the place's terminal; the waiter confirms" },
-    { Icon: Repeat, title: `Get ${pct} back`, short: "Cashback", amount: pct, line: "On what you pay in cash or by terminal" },
-    { Icon: Clock, title: "It lands in 3 hours", short: "3 hours", line: "As credit at this place", green: true },
+    { Icon: QrCode, title: "Pay your bill here", short: "Pay", line: "Cash or card; credit earns none" },
+    { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
+    { Icon: Repeat, title: `Receive ${pct} back`, short: "Receive", amount: pct, line: "As credit at this place", green: true },
   ];
   const good: { Icon: LucideIcon; text: string }[] = [
     { Icon: Utensils, text: row.who + "." },
@@ -1077,7 +1097,12 @@ function PrepaySection({
       <OfferSectionHead
         chip={topBonus > 0 ? `Up to ${topBonus}% Bonus` : "Bonus"}
         tone={VOUCHER_TONE.voucher_200}
-        sub="Pay ahead, spend it here. Your bonus lands in 3 hours."
+        sub="Pay ahead, spend it here."
+      />
+      <NumberedSteps
+        tone={VOUCHER_TONE.voucher_200}
+        steps={["Pay for an offer below", "Wait 3 hours", "Receive what you paid plus the bonus, all at once"]}
+        data-prepay-steps
       />
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
@@ -1165,10 +1190,9 @@ function PrepaySection({
       })}
       {/* THE PAY BAR (MESITA-4647), ALWAYS THERE ON PREPAY (Pato,
           2026-11-22, MESITA-4659; MESITA-4710, d2a): sticky at the bottom,
-          the same lines whatever is picked — Pay, Get immediately (the price
-          is credit now), Get in 3 hours (the bonus, green), then under a
-          hairline the total, You get (MESITA-4669, Pato: "a bit confusing,
-          add a line"). Then one black pill. Ready to charge with a saved
+          the same lines whatever is picked — Pay, Bonus (green), then under a
+          hairline the total, You get in 3 hours (MESITA-4717: all of it lands
+          together; MESITA-4669, Pato: "a bit confusing, add a line"). Then one black pill. Ready to charge with a saved
           card, it splits in half (MESITA-4669, Pato: "50% of button for the
           payment method, 50% right for the amount … pay x get y, even if a
           bit redundant"): the card on the left (a tap cycles cards, the old
@@ -1189,15 +1213,11 @@ function PrepaySection({
                 <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-pay>{amount(sum.price)}</dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">Get immediately</dt>
-                <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-now>{amount(sum.price)}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">Get in 3 hours</dt>
+                <dt className="text-muted-foreground">Bonus</dt>
                 <dd className="font-semibold text-[#00A85A] tabular-nums" data-offer-sum-bonus>+{amount(sum.bonus)}</dd>
               </div>
               <div className="border-border mt-1.5 flex items-center justify-between gap-3 border-t pt-1.5 text-lg">
-                <dt className="text-foreground font-bold">You get</dt>
+                <dt className="text-foreground font-bold">You get in 3 hours</dt>
                 <dd className="text-foreground font-bold tabular-nums" data-offer-sum-total>{amount(sum.price + sum.bonus)}</dd>
               </div>
             </dl>
@@ -1255,10 +1275,10 @@ function PrepaySection({
   );
 }
 
-/** CHECKOUT (MESITA-4710): paying the bill here and the cashback it earns.
+/** PAY (MESITA-4710; 1 hour since MESITA-4717): paying the bill here and the cashback it earns.
  *  The lines are the server's (Welcome, Returning; MESITA-4709),
  *  then the purple Go to Pay Bill at the bottom (MESITA-4699). Nothing to
- *  buy: a confirmed bill earns it, 3 hours later, with no minimum. */
+ *  buy: a confirmed bill earns it, 1 hour later, with no minimum. */
 function CheckoutSection({
   cashback,
   loading,
@@ -1280,7 +1300,12 @@ function CheckoutSection({
         chip={rows.length > 0 ? `${flat ? "" : "Up to "}${top}% Cashback` : null}
         tone={CASHBACK_TONE}
         // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
-        sub="Pay your bill here. Lands in 3 hours. Credit you spend earns none."
+        sub="Only on what you pay by card or cash, never on credit."
+      />
+      <NumberedSteps
+        tone={CASHBACK_TONE}
+        steps={["Pay your bill here", "Wait 1 hour", "Receive your cashback as credit here"]}
+        data-pay-steps
       />
       {loading ? (
         <BoneRows n={2} />
@@ -1497,7 +1522,7 @@ function BasketReceipt({ receipt, onDone }: { receipt: Receipt; onDone: () => vo
           <CircleCheck className={cn("h-10 w-10", paid ? "text-[#00A85A]" : "text-muted-foreground")} strokeWidth={2.25} aria-hidden />
           <h3 className={OFFERS_TITLE_CLASS}>{paid ? "Paid" : "Confirming your payment"}</h3>
           <p className="text-muted-foreground text-sm">
-            {paid ? "Your credit is ready now. The bonus lands by itself." : "Your bank is confirming it. Your credit shows once it does."}
+            {paid ? "Everything lands together in 3 hours, by itself." : "Your bank is confirming it. Your credit shows once it does."}
           </p>
         </div>
         <div className="border-border divide-border divide-y border-t">
@@ -1507,9 +1532,8 @@ function BasketReceipt({ receipt, onDone }: { receipt: Receipt; onDone: () => vo
           <ReceiptRow label="You paid" value={whole(receipt.pay)} />
           <ReceiptRow label="Card" value={receipt.card ? `${receipt.card.label} •••• ${receipt.card.last4}` : "Card"} />
           {when ? <ReceiptRow label="Date" value={when} /> : null}
-          <ReceiptRow label="Credit now" value={whole(receipt.pay)} />
-          {receipt.bonus ? <ReceiptRow label={bonusAt ? `Bonus at ${bonusAt}` : "Bonus in 3 hours"} value={`+${whole(receipt.bonus)}`} green /> : null}
-          <ReceiptRow label="You get" value={whole(receipt.get)} green />
+          {receipt.bonus ? <ReceiptRow label="Bonus" value={`+${whole(receipt.bonus)}`} green /> : null}
+          <ReceiptRow label={bonusAt ? `You get at ${bonusAt}` : "You get in 3 hours"} value={whole(receipt.get)} green />
         </div>
       </section>
       <button type="button" onClick={onDone} className="bg-foreground text-paper mt-auto flex h-12 w-full shrink-0 items-center justify-center rounded-full text-base font-semibold" data-offer-done>
@@ -1534,8 +1558,10 @@ export type PostTabRead = {
   next_at: string | null;
   latest: {
     id: string;
-    state: "checking" | "rewarded" | "rejected";
+    state: "checking" | "verified" | "rewarded" | "rejected";
     reward_cents: number | null;
+    /** Verified: when the second check runs (MESITA-4717). */
+    recheck_at?: string | null;
     available_at: string | null;
     reason: string | null;
     posted_at: string;
@@ -1545,7 +1571,7 @@ export type PostTabRead = {
 
 /** POST (Pato, 2026-11-23, MESITA-4714: a place pays a guest for an
  *  Instagram story, "20 OR 50, can setup in business console"): the amount,
- *  three steps, the guest's latest story here with its status, Connect
+ *  five steps (MESITA-4717), the guest's latest story here with its status, Connect
  *  Instagram when none is linked, and in test mode Simulate a story. The
  *  server decides every number; this formats them. */
 export function PostSection({
@@ -1586,35 +1612,31 @@ export function PostSection({
     );
   }
   const amount = whole(pesos(read.reward_cents, read.currency));
-  const tags = read.place_handle ? `Tag @mesita and @${read.place_handle}` : "Tag @mesita and this place";
-  const steps = ["Post an Instagram story", tags, "Keep it up. Your credit lands in 3 hours"];
+  const tags = read.place_handle ? `@mesita and @${read.place_handle}` : "@mesita and this place";
+  // MESITA-4717 (Pato: "ALL AUTOMATIC NO HUMANS IN THE LOOP"): five fixed steps.
+  const steps = [`Post a story tagging ${tags}`, "We check it", "Wait 10 hours", "We check it again", `Receive ${amount} in credits`];
   const latest = read.latest;
+  const recheckDue = latest?.recheck_at ? Date.parse(latest.recheck_at) <= Date.now() : false;
   const status = latest
     ? latest.state === "checking"
       ? { word: "Checking", line: "We’re checking your story." }
-      : latest.state === "rewarded"
+      : latest.state === "verified"
         ? {
-            word: `Rewarded +${whole(pesos(latest.reward_cents ?? 0, read.currency))}`,
-            line: latest.available_at ? `Lands ${readyClock(latest.available_at)}` : "Lands in 3 hours",
+            word: "Checked",
+            line: recheckDue || !latest.recheck_at ? "Rechecking now. Keep it up." : `Rechecking at ${readyClock(latest.recheck_at)}. Keep it up.`,
           }
-        : { word: "Rejected", line: latest.reason ?? "This story didn’t qualify." }
+        : latest.state === "rewarded"
+          ? {
+              word: `Received +${whole(pesos(latest.reward_cents ?? 0, read.currency))}`,
+              line: latest.available_at ? `In your credit since ${readyClock(latest.available_at)}` : "In your credit",
+            }
+          : { word: "Rejected", line: latest.reason ?? "This story didn’t qualify." }
     : null;
   const nextAt = read.next_at ? readyClock(read.next_at) : "";
   return (
     <>
-      <OfferSectionHead chip={`Get ${amount} for a story`} tone={POST_TONE} sub="One story reward per place every 7 days." />
-      <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="How it works" data-post-steps>
-        <ol className="divide-border divide-y">
-          {steps.map((s, i) => (
-            <li key={s} className="text-foreground flex items-center gap-3 px-4 py-3 text-sm">
-              <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold", POST_TONE)} aria-hidden>
-                {i + 1}
-              </span>
-              {s}
-            </li>
-          ))}
-        </ol>
-      </section>
+      <OfferSectionHead chip={`Get ${amount} for a story`} tone={POST_TONE} sub="Checked automatically. One story reward per place every 7 days." />
+      <NumberedSteps tone={POST_TONE} steps={steps} data-post-steps />
       {status && latest ? (
         <Box title="Your latest story here" data-post-latest={latest.state}>
           <p className="text-foreground text-sm font-semibold">

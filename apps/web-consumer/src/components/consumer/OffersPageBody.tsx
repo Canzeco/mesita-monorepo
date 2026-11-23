@@ -126,7 +126,7 @@ function usePostRead(placeId: string, open: boolean) {
     setSimulating(true);
     try {
       const r = await apiSimulateStory(supabase, placeId);
-      if (r.outcome === "rewarded") toast.success("Story simulated. Your reward is on its way.");
+      if (r.outcome === "verified") toast.success("Story simulated and checked. The recheck pays it in a few minutes.");
       else toast.error(r.story.reason ?? "This story didn’t qualify.");
       await load();
     } catch (err) {
