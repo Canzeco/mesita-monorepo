@@ -532,7 +532,8 @@ export const ENTRY_LABEL: Record<string, string> = {
   voucher: "Voucher",
   bonus: "Bonus",
   // MESITA-4698: earned on a paid bill, Pending 1 hour (MESITA-4717).
-  cashback: "Cashback",
+  // "Back", never "cashback" (Pato, MESITA-4725).
+  cashback: "Back",
   // MESITA-4714: paid at the story's recheck 10 hours after its first check, available at once (MESITA-4717).
   story: "Story",
   spend: "Paid",

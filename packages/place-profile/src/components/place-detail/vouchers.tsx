@@ -4,6 +4,7 @@ import { type ReactNode, type RefObject, useEffect, useRef, useState } from "rea
 import { createPortal } from "react-dom";
 import { Camera, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
+import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
@@ -803,24 +804,6 @@ function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   ).filter((r) => r.bps > 0);
 }
 
-/** A section's head (MESITA-4702): its colour chip and one line that says
- *  when the credit lands. NO TITLE UNDER A TAB (MESITA-4710): the tab already
- *  names it, so each tab opens with its promise; `title` is for a page that
- *  stacks the sections again. */
-function OfferSectionHead({ title, chip, tone, sub }: { title?: string; chip: string | null; tone: string; sub: string }) {
-  return (
-    <div className="flex flex-col items-start gap-1 px-1 pt-1">
-      {title || chip ? (
-        <div className="flex items-center gap-2">
-          {title ? <h2 className="text-foreground text-lg font-bold">{title}</h2> : null}
-          {chip ? <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", tone)}>{chip}</span> : null}
-        </div>
-      ) : null}
-      <p className="text-muted-foreground text-sm">{sub}</p>
-    </div>
-  );
-}
-
 /** MESITA-4698/4702: the place's cashback on the one Offers page. Two
  *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
  *  guest's own marked Yours, each with its (i). Nothing to buy: a
@@ -829,7 +812,7 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
   const rows = cashbackRows(cashback);
   if (rows.length === 0) return null;
   return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Cashback" data-promos="cashback">
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Back" data-promos="cashback">
       <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
           const mine = cashback.line === r.line;
@@ -872,6 +855,87 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
 }
 
 /** A cashback line's (i): how it is earned and when it lands. */
+/** HOW IT WORKS BEHIND AN (i) (Pato, 2026-11-23, MESITA-4725: "don't
+ *  overexplain there. just the boxes. then below or something an i icon to
+ *  see explanation, but don't show that always"): one quiet 44px text button
+ *  under a tab's boxes; a tap opens the voucher (i)'s centred window with the
+ *  tab's numbered steps and a short Good to know. */
+function HowItWorks({
+  title,
+  steps,
+  tone,
+  good,
+  tab,
+}: {
+  title: string;
+  steps: string[];
+  tone: string;
+  good: string[];
+  tab: string;
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  const host = typeof document === "undefined" ? null : document.getElementById("mesita-app-card");
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-start px-1 text-sm font-semibold"
+        data-how-it-works={tab}
+      >
+        <Info className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+        How it works
+      </button>
+      {open && typeof document !== "undefined"
+        ? createPortal(
+            <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={() => setOpen(false)} data-how-it-works-dialog={tab}>
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`how-${tab}-title`}
+                className="bg-background flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
+                  <h2 id={`how-${tab}-title`} className="text-foreground text-base font-semibold">
+                    {title}
+                  </h2>
+                  <button type="button" aria-label="Close" onClick={() => setOpen(false)} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
+                    <X className="h-6 w-6" strokeWidth={2.25} />
+                  </button>
+                </div>
+                <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+                  <NumberedSteps tone={tone} steps={steps} data-how-steps={tab} />
+                  {good.length > 0 ? (
+                    <Box title="Good to know">
+                      <ul className="flex flex-col gap-2">
+                        {good.map((g) => (
+                          <li key={g} className="text-foreground text-sm">
+                            {g}
+                          </li>
+                        ))}
+                      </ul>
+                    </Box>
+                  ) : null}
+                </div>
+              </div>
+            </div>,
+            host ?? document.body,
+          )
+        : null}
+    </>
+  );
+}
+
 function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -890,7 +954,7 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
   ];
   const good: { Icon: LucideIcon; text: string }[] = [
     { Icon: Utensils, text: row.who + "." },
-    { Icon: Wallet, text: "Credit you already hold earns no cashback when you spend it." },
+    { Icon: Wallet, text: "Credit you already hold earns no Back when you spend it." },
     { Icon: Clock, text: `Up to ${cap} per bill, once a day. No minimum.` },
     { Icon: Gift, text: "Never on the tip. Spend it here or send it to a friend." },
     { Icon: InfinityIcon, text: "It never expires." },
@@ -906,7 +970,7 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
       >
         <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
           <h2 id="cashback-info-title" className="text-foreground text-base font-semibold">
-            {row.title} · {pct} Cashback
+            {row.title} · {pct} Back
           </h2>
           <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
             <X className="h-6 w-6" strokeWidth={2.25} />
@@ -1077,13 +1141,11 @@ function PrepaySection({
   onPay: () => void;
 }) {
   const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
-  // The best bonus on sale, for the chip.
-  const topBonus = products.reduce((n, p) => Math.max(n, Number.parseInt(p.bonus, 10) || 0), 0);
   if (!loading && products.length === 0) {
     // EVERY TAB HAS AN EMPTY STATE (MESITA-4710): no row to show, no bar.
     return (
-      <p className="text-muted-foreground flex flex-col items-center gap-2 px-1 py-6 text-center text-sm" data-offers-none="prepay">
-        No prepay offers here yet.
+      <p className={cn(CARD, "text-muted-foreground flex shrink-0 flex-col items-center gap-2 px-4 py-6 text-center text-sm")} data-offers-none="prepay">
+        This place sells no prepay offers yet.
         {failed && actions?.onLoadVouchers ? (
           <button type="button" onClick={actions.onLoadVouchers} className="text-foreground min-h-9 font-semibold underline underline-offset-2">
             Retry
@@ -1094,16 +1156,6 @@ function PrepaySection({
   }
   return (
     <>
-      <OfferSectionHead
-        chip={topBonus > 0 ? `Up to ${topBonus}% Bonus` : "Bonus"}
-        tone={VOUCHER_TONE.voucher_200}
-        sub="Pay ahead, spend it here."
-      />
-      <NumberedSteps
-        tone={VOUCHER_TONE.voucher_200}
-        steps={["Pay for an offer below", "Wait 3 hours", "Receive what you paid plus the bonus, all at once"]}
-        data-prepay-steps
-      />
       {GROUPS.map((g) => {
         const list = products.filter((p) => g.keys.has(p.key));
         if (list.length === 0) return null;
@@ -1188,6 +1240,13 @@ function PrepaySection({
           </section>
         );
       })}
+      <HowItWorks
+        tab="prepay"
+        title="Prepay"
+        tone={VOUCHER_TONE.voucher_200}
+        steps={["Pay for an offer", "Wait 3 hours", "Receive what you paid plus the bonus, all at once"]}
+        good={["Spend it here, or send it to a friend.", "It never expires."]}
+      />
       {/* THE PAY BAR (MESITA-4647), ALWAYS THERE ON PREPAY (Pato,
           2026-11-22, MESITA-4659; MESITA-4710, d2a): sticky at the bottom,
           the same lines whatever is picked — Pay, Bonus (green), then under a
@@ -1291,32 +1350,29 @@ function CheckoutSection({
   onPay: (() => void) | undefined;
 }) {
   const rows = cashback ? cashbackRows(cashback) : [];
-  const top = rows.reduce((n, r) => Math.max(n, r.bps), 0) / 100;
-  // "N% Cashback" when every line earns the same, else "Up to N%".
-  const flat = rows.every((r) => r.bps === rows[0]?.bps);
   return (
     <>
-      <OfferSectionHead
-        chip={rows.length > 0 ? `${flat ? "" : "Up to "}${top}% Cashback` : null}
-        tone={CASHBACK_TONE}
-        // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
-        sub="Only on what you pay by card or cash, never on credit."
-      />
-      <NumberedSteps
-        tone={CASHBACK_TONE}
-        steps={["Pay your bill here", "Wait 1 hour", "Receive your cashback as credit here"]}
-        data-pay-steps
-      />
       {loading ? (
         <BoneRows n={2} />
       ) : cashback && rows.length > 0 ? (
         <CashbackPanel cashback={cashback} onInfo={onInfo} />
       ) : (
         // No cashback here, or the read failed: Pay Bill still works.
-        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none="pay">
-          This place gives no cashback yet. You can still pay your bill here.
+        <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
+          This place gives no Back yet. You can still pay your bill here.
         </p>
       )}
+      <HowItWorks
+        tab="pay"
+        title="Pay"
+        tone={CASHBACK_TONE}
+        steps={["Pay your bill here", "Wait 1 hour", "Receive your Back as credit here"]}
+        good={[
+          // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
+          "Only on what you pay by card or cash, never on credit.",
+          "Never on the tip. Once a day per place.",
+        ]}
+      />
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
           just have shortcut to Go to Pay bill at the bottom, purple color"),
           sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
@@ -1562,6 +1618,8 @@ export type PostTabRead = {
     reward_cents: number | null;
     /** Verified: when the second check runs (MESITA-4717). */
     recheck_at?: string | null;
+    /** The story the AI fetched (Meta's link; image stories only, MESITA-4725). */
+    image_url?: string | null;
     available_at: string | null;
     reason: string | null;
     posted_at: string;
@@ -1591,10 +1649,10 @@ export function PostSection({
   onSimulate?: () => void;
   simulating?: boolean;
 }) {
-  if (loading && !read) return <BoneRows n={2} />;
+  if (loading && !read) return <BoneRows n={1} />;
   if (failed && !read) {
     return (
-      <div className="flex flex-col items-center gap-3 px-1 py-6 text-center" data-post-failed>
+      <div className={cn(CARD, "flex shrink-0 flex-col items-center gap-3 px-4 py-6 text-center")} data-post-failed>
         <p className="text-muted-foreground text-sm">Couldn’t load this. Try again.</p>
         {onRetry ? (
           <button type="button" onClick={onRetry} className="border-border text-foreground h-10 rounded-full border px-4 text-sm font-semibold">
@@ -1606,24 +1664,27 @@ export function PostSection({
   }
   if (!read || read.reward_cents <= 0) {
     return (
-      <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none="post">
+      <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="post">
         This place doesn’t pay for stories yet.
       </p>
     );
   }
   const amount = whole(pesos(read.reward_cents, read.currency));
   const tags = read.place_handle ? `@mesita and @${read.place_handle}` : "@mesita and this place";
-  // MESITA-4717 (Pato: "ALL AUTOMATIC NO HUMANS IN THE LOOP"): five fixed steps.
-  const steps = [`Post a story tagging ${tags}`, "We check it", "Wait 10 hours", "We check it again", `Receive ${amount} in credits`];
+  // Pato's five steps, exactly (2026-11-23, MESITA-4725): the AI checks it
+  // twice, so hiding or deleting the story early does not work.
+  const steps = ["Post Story", "AI Validates Story", "Wait 10 Hours", "AI Validates Story", "Receive credits"];
   const latest = read.latest;
   const recheckDue = latest?.recheck_at ? Date.parse(latest.recheck_at) <= Date.now() : false;
   const status = latest
     ? latest.state === "checking"
-      ? { word: "Checking", line: "We’re checking your story." }
+      ? { word: "AI validating", line: "The AI is checking your story." }
       : latest.state === "verified"
         ? {
-            word: "Checked",
-            line: recheckDue || !latest.recheck_at ? "Rechecking now. Keep it up." : `Rechecking at ${readyClock(latest.recheck_at)}. Keep it up.`,
+            word: "Validated",
+            line: recheckDue || !latest.recheck_at
+              ? "The AI is checking it again now. Keep it up."
+              : `The AI checks it again at ${readyClock(latest.recheck_at)}. Don't hide or delete it.`,
           }
         : latest.state === "rewarded"
           ? {
@@ -1635,15 +1696,42 @@ export function PostSection({
   const nextAt = read.next_at ? readyClock(read.next_at) : "";
   return (
     <>
-      <OfferSectionHead chip={`Get ${amount} for a story`} tone={POST_TONE} sub="Checked automatically. One story reward per place every 7 days." />
-      <NumberedSteps tone={POST_TONE} steps={steps} data-post-steps />
+      {/* POST IS A BOX TOO (Pato, MESITA-4725: "even if its only one offer
+          is okey … maybe in the future we add google review post"): one
+          list of rows, the Instagram story the first. */}
+      <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Post" data-promos="post">
+        <ul className="divide-border divide-y">
+          <li className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2" data-post-offer="instagram_story">
+            <span className={cn(BADGE, POST_TONE)} aria-hidden>
+              <span className="text-lg leading-none font-bold tracking-tight">{amount}</span>
+              <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Credit</span>
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-foreground truncate text-base font-semibold">Instagram Story</span>
+              <span className="text-muted-foreground truncate text-sm">Tag {tags}</span>
+            </span>
+          </li>
+        </ul>
+      </section>
+      <HowItWorks
+        tab="post"
+        title="Post Story"
+        tone={POST_TONE}
+        steps={steps}
+        good={["Don't hide or delete the story for 10 hours.", "One story reward per place every 7 days.", "No person reviews it. An AI does, automatically."]}
+      />
       {status && latest ? (
         <Box title="Your latest story here" data-post-latest={latest.state}>
-          <p className="text-foreground text-sm font-semibold">
-            {status.word}
-            {latest.simulated ? <span className="text-muted-foreground font-normal"> · Simulated</span> : null}
-          </p>
-          <p className="text-muted-foreground text-sm">{status.line}</p>
+          <div className="flex items-start gap-3">
+            <StoryThumb src={latest.image_url ?? null} simulated={latest.simulated} />
+            <div className="flex min-w-0 flex-col">
+              <p className="text-foreground text-sm font-semibold">
+                {status.word}
+                {latest.simulated ? <span className="text-muted-foreground font-normal"> · Simulated</span> : null}
+              </p>
+              <p className="text-muted-foreground text-sm">{status.line}</p>
+            </div>
+          </div>
         </Box>
       ) : null}
       {nextAt ? (
@@ -1674,5 +1762,36 @@ export function PostSection({
         </button>
       ) : null}
     </>
+  );
+}
+
+/** THE STORY THE AI FETCHED (Pato, MESITA-4725: "An AI will automatically
+ *  fetch story and display it here"): Meta's link, 9:16. A link that no
+ *  longer answers (Meta expires them) or a simulated story shows the pink
+ *  placeholder with the Instagram mark. */
+function StoryThumb({ src, simulated }: { src: string | null; simulated: boolean }) {
+  const [broken, setBroken] = useState(false);
+  if (src && !broken) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={src}
+        alt="Your story"
+        onError={() => setBroken(true)}
+        className="bg-muted h-32 w-[4.5rem] shrink-0 rounded-xl object-cover"
+        data-post-story-image
+      />
+    );
+  }
+  return (
+    <span
+      className={cn("flex h-32 w-[4.5rem] shrink-0 flex-col items-center justify-center gap-1 rounded-xl text-center", POST_TONE)}
+      aria-label={simulated ? "Simulated story" : "Your story"}
+      role="img"
+      data-post-story-placeholder
+    >
+      <Instagram className="h-6 w-6" strokeWidth={2.25} />
+      {simulated ? <span className="type-meta font-bold uppercase">Test</span> : null}
+    </span>
   );
 }

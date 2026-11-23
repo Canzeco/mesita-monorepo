@@ -13,7 +13,7 @@ export type OfferSlide = {
   pill: string;
   /** The pill where room is short (Pato, 2026-11-23, MESITA-4709: "if not
    *  enough space, don't mention the full offer like UP TO X%"): no leading
-   *  "Up to", so "10% Cashback", "30% Bonus". The place screen's Offers tile
+   *  "Up to", so "10% Back", "30% Bonus". The place screen's Offers tile
    *  and the narrow cards read it; wide pills keep `pill`. */
   pillShort: string;
   /** The short word before the pill on Places 3.0's narrow card (MESITA-3671). */
@@ -86,7 +86,9 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 const BLUE = "bg-[#0A84FF] text-neutral-950";
 // POST IS PINK (Pato, 2026-11-23, MESITA-4714: Prepay · Pay · Post): the
 // third offer kind gets the third colour, neither blue nor green, black ink.
-const PINK = "bg-[#FF2D78] text-neutral-950";
+// A CLEARLY PINK PINK (Pato, MESITA-4725: "MUST BE PINK, BETTER COLOR"):
+// bubblegum #FF66C4; #FF2D78 read as red beside Reserve's red.
+const PINK = "bg-[#FF66C4] text-neutral-950";
 /** MESITA-4714: the Post slide and the Post tab's mark. */
 export const POST_TONE = PINK;
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
@@ -134,8 +136,9 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
     if (s.key === "cashback") {
       const { pct, flat } = cashbackOf(offers);
       if (pct <= 0) return [];
-      const words = `${flat ? "" : "Up to "}${pct}% Cashback`;
-      return [{ ...s, pill: words, pillShort: `${pct}% Cashback`, spoken: `Pay, ${words.toLowerCase()}` }];
+      // "Back", never "cashback" (Pato, MESITA-4725).
+      const words = `${flat ? "" : "Up to "}${pct}% Back`;
+      return [{ ...s, pill: words, pillShort: `${pct}% Back`, spoken: `Pay, ${words.toLowerCase()}` }];
     }
     if (s.key === "prepay")
       // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
@@ -144,8 +147,9 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
     if (s.key === "post") {
       const cents = storyOf(offers);
       if (cents <= 0) return [];
-      const words = "$" + String(Math.round(cents / 100)) + " Story";
-      return [{ ...s, pill: words, pillShort: words, spoken: "Post, " + words.toLowerCase() }];
+      // "Post Story", no amount (Pato, MESITA-4725: "Don't write $50 story
+      // that is weid. Write: Post Story").
+      return [{ ...s, pill: "Story", pillShort: "Story", spoken: "Post story" }];
     }
     return sell.has(s.key) ? [s] : [];
   });
