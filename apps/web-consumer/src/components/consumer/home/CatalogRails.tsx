@@ -57,6 +57,7 @@ import {
 } from "react";
 import { Compass, Heart, LayoutGrid, Store, Users, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Instagram } from "@/components/shared/instagram-icon";
 import {
   apiFillAreaPool,
   apiListAreaPool,
@@ -254,7 +255,7 @@ export function placesChips(): { key: string; label: string; emoji: string }[] {
     // A HEART, AND THE WORD IS SAVED, never Favorites (Pato, MESITA-3718).
     { key: SAVED_CHIP, label: SAVED_LABEL, emoji: "❤️" },
     // Social after Saved (MESITA-4758): the feed, not a pool.
-    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "👥" },
+    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "" },
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
@@ -651,9 +652,18 @@ export function CatalogRails() {
             // Every pill is a circle, strip and modal (MESITA-4570); only
             // the Menu tile keeps CAT_SQUARE.
             on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
+            // Specials are squares, families circles (MESITA-4761).
+            isSpecial(c.key) && CAT_SQUARE,
           )}
         >
-          {c.emoji}
+          {/* SOCIAL WEARS THE INSTAGRAM MARK (Pato, 2026-11-23, MESITA-4761:
+              "add the instagram icon instead of those ugly people"): pink on
+              the white circle, white on the chosen black one. */}
+          {c.key === SOCIAL_CHIP ? (
+            <Instagram className={cn("h-6 w-6", on ? "text-card" : "text-[#E1306C]")} strokeWidth={2.25} />
+          ) : (
+            c.emoji
+          )}
         </span>
         <span
           className={cn(
