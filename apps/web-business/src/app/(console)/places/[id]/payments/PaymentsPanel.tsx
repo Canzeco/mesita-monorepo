@@ -1,8 +1,8 @@
 "use client";
 
 // Offers (MESITA-3296; the Place states of Main §10 since MESITA-3589).
-// FIVE BOXES SINCE MESITA-4744 (six under MESITA-4732; Pato, 2026-11-23:
-// "credit limit must go into credits account"), each a card with its own
+// FOUR BOXES SINCE MESITA-4766 (Instagram Stories removed; five under
+// MESITA-4744, six under MESITA-4732), each a card with its own
 // anchor, which Monitor's "Turn on in Offers" links to:
 //   Credits Account    #credits-account    · Credits Agreement · Credits Balance
 //                                            (read-only) · Outstanding Credit
@@ -11,25 +11,21 @@
 //                                            Credits Payments (Loyalty Cards: on
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
-//   Visit Checkout     #visit-checkout     · Accept Cash Payments · Mesita Credits
-//                                            (always accepted, no switch) · Welcome
-//                                            and Returning Visit Rates (cashback)
+//   Visit Checkout     #visit-checkout     · Enabled · Welcome Everyone · Returning
+//                                            Regular · Returning VIP (cashback,
+//                                            three picks each, Off included)
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
 //                                            Small · Medium · Big
-//   Instagram Stories  #instagram-stories  · Enable Story Rewards · Place Username
-//                                            (read-only, from Profile) · Story Credit
-// The rates and the story reward are one saved record (business-web-set-
-// cashback). Story Rewards Off stores 0; On brings back the last amount, or
-// MX$20.
+// The rates and the voucher bonuses are one saved record (business-web-set-
+// cashback).
 // SAVE CHANGES (Pato, 2026-11-23, MESITA-4769: "don't enable to directly
 // configurate. it must have like a save changes button"): every switch and
-// pick in Visit Checkout, Prepaid Vouchers and Instagram Stories is a draft
-// until Save changes, in a bar at the foot of the screen while anything is
-// unsaved (Discard drops it). Agree and Enable on the Credits Agreement, the
-// Stripe button and cash Received stay instant: they are actions, not
-// settings.
+// pick in Visit Checkout and Prepaid Vouchers is a draft until Save changes,
+// in a bar at the foot of the screen while anything is unsaved (Discard drops
+// it). Agree and Enable on the Credits Agreement, the Stripe button and cash
+// Received stay instant: they are actions, not settings.
 // A switch that can't turn on is disabled and its row says the one missing
 // step, with a link to it. Never "Mesita Pay" (Pato, 2026-11-10).
 // The Loyalty Cards Agreement is independent of Stripe (Pato, 2026-11-09). A
@@ -46,7 +42,7 @@ import {
   ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
   ConfettiIcon,
-  InstagramLogoIcon,
+  CrownSimpleIcon,
   ReceiptIcon,
   StripeLogoIcon,
   TicketIcon,
@@ -63,8 +59,8 @@ import { moneyLabel } from "@mesita/place-profile/lib/money";
 import {
   CASHBACK_DEFAULTS,
   type CashbackRates,
-  STORY_REWARD_STEPS_CENTS,
   VISIT_PICKS_BPS,
+  type VisitRateField,
   VOUCHER_BONUS_PICKS_BPS,
   type VoucherBonusField,
 } from "@/lib/cashback";
@@ -140,15 +136,26 @@ function wholeMoney(cents: number, currency: string): string {
   }
 }
 
-/** Visit Checkout's two cashback lines (MESITA-4698; no VIP since MESITA-4709),
- *  two picks each (MESITA-4764). */
-const RATE_ROWS: Array<{ key: keyof typeof VISIT_PICKS_BPS; name: string; line: string; icon: Icon }> = [
-  { key: "welcome_bps", name: "Welcome Visit Rate", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
-  { key: "returning_bps", name: "Returning Visit Rate", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
+/** Visit Checkout's three cashback lines (MESITA-4698; VIP back since
+ *  MESITA-4766), each Off or one of two rates, all always shown. */
+const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; note?: string; icon: Icon }> = [
+  { key: "welcome_bps", id: "welcome-everyone", name: "Welcome Everyone", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
+  { key: "returning_bps", id: "returning-regular", name: "Returning Regular", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
+  {
+    key: "returning_vip_bps",
+    id: "returning-vip",
+    name: "Returning VIP",
+    line: "Cashback on every later bill of a VIP guest.",
+    note: "VIP guests: invitation code or more than 5,000 Instagram followers.",
+    icon: CrownSimpleIcon,
+  },
 ];
 const pct = (bps: number) => `${bps / 100}%`;
-/** The story amounts a place can pick (Off is the switch). */
-const STORY_AMOUNTS = STORY_REWARD_STEPS_CENTS.filter((c) => c > 0);
+/** A cashback pick: Off or the rate. */
+const ratePick = (bps: number) => (bps === 0 ? "Off" : pct(bps));
+/** Every visit rate at 0: what Enabled Off stores. */
+const NO_RATES = { welcome_bps: 0, returning_bps: 0, returning_vip_bps: 0 } as const;
+const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0 || r.returning_vip_bps > 0;
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
 function voucherProducts(currency: string, rates: CashbackRates): Product[] {
@@ -183,19 +190,19 @@ type DraftKey = "prepayments" | VoucherKey;
 const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
   "welcome_bps",
   "returning_bps",
-  "story_reward_cents",
+  "returning_vip_bps",
   "small_bonus_bps",
   "medium_bonus_bps",
   "big_bonus_bps",
 ];
 const sameRates = (a: CashbackRates, b: CashbackRates) => CASHBACK_FIELDS.every((k) => a[k] === b[k]);
 
-/** What a Visit Checkout or Story switch comes back to when turned on again. */
-const restoreRates = (c: CashbackRates) => ({
-  welcome_bps: c.welcome_bps > 0 ? c.welcome_bps : 1000,
-  returning_bps: c.returning_bps > 0 ? c.returning_bps : 500,
-});
-const restoreStory = (c: CashbackRates) => (c.story_reward_cents > 0 ? c.story_reward_cents : 2000);
+/** What Visit Checkout's Enabled switch comes back to when turned on again:
+ *  the set with any rate on, else the defaults. */
+const restoreRates = (c: CashbackRates): Pick<CashbackRates, VisitRateField> =>
+  anyRate(c)
+    ? { welcome_bps: c.welcome_bps, returning_bps: c.returning_bps, returning_vip_bps: c.returning_vip_bps }
+    : { welcome_bps: CASHBACK_DEFAULTS.welcome_bps, returning_bps: CASHBACK_DEFAULTS.returning_bps, returning_vip_bps: CASHBACK_DEFAULTS.returning_vip_bps };
 
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
@@ -249,12 +256,6 @@ function signedOn(c: LoyaltyCardsContract): string {
   return `Signed ${d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
 }
 
-/** "@handle" from a profile's Instagram link; the link itself if it has none. */
-function instagramHandle(url: string): string {
-  const m = url.match(/instagram\.com\/([A-Za-z0-9._]+)/i) ?? url.match(/^@?([A-Za-z0-9._]+)$/);
-  return m ? `@${m[1]}` : url;
-}
-
 /** What the Credit Limit box says about where the limit comes from. */
 function limitLine(c: CreditLimit): string {
   switch (c.tier) {
@@ -285,14 +286,13 @@ export function PaymentsPanel({
   // SAVED: what the server holds. The page draws the draft over it.
   const [cashback, setCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
   // THE DRAFT (MESITA-4769): switch edits over `settings`, and the whole
-  // cashback record once any rate, bonus or story amount is touched. An edit
-  // equal to the saved value is dropped, so "unsaved" means something differs.
+  // cashback record once any rate or bonus is touched. An edit equal to the
+  // saved value is dropped, so "unsaved" means something differs.
   const [edits, setEdits] = useState<Partial<Record<DraftKey, boolean>>>({});
   const [cashbackDraft, setCashbackDraft] = useState<CashbackRates | null>(null);
   const [saving, setSaving] = useState(false);
-  // The amount Story Rewards comes back to when switched on again (Off stores 0).
-  const [lastStory, setLastStory] = useState<number>(() => restoreStory(initial.cashback ?? CASHBACK_DEFAULTS));
-  // The rates Visit Checkout comes back to when enabled again (Off stores 0 for both; MESITA-4752).
+  // The rates Visit Checkout comes back to when enabled again (Off stores 0
+  // for all three; MESITA-4752): the last saved set with any rate on.
   const [lastRates, setLastRates] = useState(() => restoreRates(initial.cashback ?? CASHBACK_DEFAULTS));
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
@@ -302,7 +302,6 @@ export function PaymentsPanel({
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The tier moves when the Credits Account flips here; refetched then.
   const [creditLimit, setCreditLimit] = useState<CreditLimit | null>(initial.credit_limit ?? null);
-  const instagramUrl = initial.instagram_url ?? null;
   const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
@@ -345,7 +344,6 @@ export function PaymentsPanel({
     setEdits({});
     setCashbackDraft(null);
     setLastRates(restoreRates(cashback));
-    setLastStory(restoreStory(cashback));
     setError(null);
   }
 
@@ -361,7 +359,6 @@ export function PaymentsPanel({
         setCashback(r.data);
         setCashbackDraft(null);
         setLastRates(restoreRates(r.data));
-        setLastStory(restoreStory(r.data));
       }
       let saved = settings;
       const order = [...draftKeys].sort((a, b) => Number(b === "prepayments") - Number(a === "prepayments"));
@@ -417,8 +414,8 @@ export function PaymentsPanel({
     if (r.ok) setCreditLimit(r.data.credit_limit ?? null);
   }
 
-  /** Two picks as pills, the Story Reward's control (MESITA-4764): the picked
-   *  one filled. `shown` is what reads picked; Off reads the last pick, dimmed. */
+  /** Picks as pills (MESITA-4764): the picked one filled. `shown` is what
+   *  reads picked. */
   const picks = (label: string, values: readonly number[], shown: number, text: (v: number) => string, disabled: boolean, pick: (v: number) => void) => (
     <div className="flex gap-1" role="group" aria-label={label}>
       {values.map((v) => {
@@ -524,10 +521,7 @@ export function PaymentsPanel({
     );
   };
 
-  const visitOn = settings.loyalty_cards && (rates.welcome_bps > 0 || rates.returning_bps > 0);
-  const storyOn = rates.story_reward_cents > 0;
-  // A story pays only while the Credits Account is on (story_reward_grant).
-  const storyLive = settings.loyalty_cards && storyOn;
+  const visitOn = settings.loyalty_cards && anyRate(rates);
 
   return (
     <>
@@ -668,7 +662,7 @@ export function PaymentsPanel({
                 onClick={() => {
                   if (visitOn) {
                     setLastRates(restoreRates(rates));
-                    editRates({ ...rates, welcome_bps: 0, returning_bps: 0 });
+                    editRates({ ...rates, ...NO_RATES });
                   } else editRates({ ...rates, ...lastRates });
                 }}
                 label={`Visit Checkout: ${visitOn ? "on" : "off"}`}
@@ -676,14 +670,14 @@ export function PaymentsPanel({
             </li>
             {RATE_ROWS.map((row) => {
               return (
-                <li key={row.key} id={row.key === "welcome_bps" ? "welcome-visit-rate" : "returning-visit-rate"} className={MARK_ROW} data-place-state={row.key}>
+                <li key={row.key} id={row.id} className={MARK_ROW} data-place-state={row.key}>
                   <div className="min-w-0">
                     <p className="font-medium">{row.name}</p>
                     <p className="text-muted-foreground">{row.line}</p>
-                    {under(creditsBlock, null)}
+                    {under(creditsBlock, row.note ?? null)}
                   </div>
                   <span />
-                  {picks(row.name, VISIT_PICKS_BPS[row.key], visitOn ? rates[row.key] : lastRates[row.key], pct, pending || !visitOn, (b) =>
+                  {picks(row.name, VISIT_PICKS_BPS[row.key], settings.loyalty_cards ? rates[row.key] : 0, ratePick, pending || !!creditsBlock, (b) =>
                     editRates({ ...rates, [row.key]: b }),
                   )}
                 </li>
@@ -757,57 +751,6 @@ export function PaymentsPanel({
             {vouchers.map(voucherRow)}
           </ul>
           {!anyTierOn ? <p className={cn(NOTE, "px-5 pb-4 sm:px-6")}>No vouchers available</p> : null}
-        </Card>
-      </div>
-
-      {/* INSTAGRAM STORIES (MESITA-4714; a box since MESITA-4732): what a
-          verified story tagging @mesita and this place pays the guest, as
-          credit here 3 hours later, once per guest every 7 days. The handle
-          is the Profile's, read-only here. */}
-      <div id="instagram-stories" className="scroll-mt-24">
-        <Card className={SECTION}>
-          {head(InstagramLogoIcon, "Instagram Stories")}
-          <ul className="divide-border divide-y">
-            <li id="story-rewards" className={MARK_ROW} data-place-state="story_reward">
-              <div className="min-w-0">
-                <p className="font-medium">Enabled</p>
-                <p className="text-muted-foreground">Credit for a guest&apos;s story tagging this place, once every 7 days.</p>
-                {under(creditsBlock, null)}
-              </div>
-              <p className={cn("font-semibold whitespace-nowrap", !storyLive && "text-muted-foreground")}>{storyLive ? "On" : "Off"}</p>
-              <Switch
-                on={storyLive}
-                pending={pending || !!creditsBlock}
-                onClick={() => {
-                  if (storyOn) {
-                    setLastStory(restoreStory(rates));
-                    editRates({ ...rates, story_reward_cents: 0 });
-                  } else editRates({ ...rates, story_reward_cents: lastStory });
-                }}
-                label={`Instagram Stories: ${storyLive ? "on" : "off"}`}
-              />
-            </li>
-            <li className={MARK_ROW} data-place-state="place_username">
-              <div className="min-w-0">
-                <p className="font-medium">Place Username</p>
-                <p className="text-muted-foreground">Guests must tag this account and @mesita</p>
-              </div>
-              <p className={cn("font-semibold whitespace-nowrap", !instagramUrl && "text-muted-foreground")}>{instagramUrl ? instagramHandle(instagramUrl) : "Not set"}</p>
-              <a className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS, "shrink-0 whitespace-nowrap")} href={placeTabHref(placeId, "profile")}>
-                Edit on Profile
-              </a>
-            </li>
-            <li className={MARK_ROW} data-place-state="story_credit">
-              <div className="min-w-0">
-                <p className="font-medium">Story Reward</p>
-                <p className="text-muted-foreground">What one verified story pays the guest.</p>
-              </div>
-              <span />
-              {picks("Story Reward", STORY_AMOUNTS, storyOn ? rates.story_reward_cents : lastStory, (c) => wholeMoney(c, currency), pending || !storyOn, (c) =>
-                editRates({ ...rates, story_reward_cents: c }),
-              )}
-            </li>
-          </ul>
         </Card>
       </div>
 

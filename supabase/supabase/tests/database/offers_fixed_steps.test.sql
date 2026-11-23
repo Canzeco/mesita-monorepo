@@ -1,16 +1,14 @@
 -- MESITA-4717 — the Offers steps are the money's steps. Prepay: what the
 -- guest paid lands with its bonus 3 hours later; a refund inside those hours
 -- never eats other credit. Pay: cashback lands 1 hour after the bill, on cash
--- and card only. Post: the first check writes no money, the recheck 10 hours
--- later pays the promised amount once, a story gone or a place switched Off by
--- then is rejected, and a second story inside 7 days is refused while the
--- first is still waiting.
+-- and card only. (Post, the Instagram story reward, was removed by
+-- MESITA-4766; its cases went with it.)
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(23);
+select plan(13);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4717'),
@@ -115,67 +113,6 @@ select is(
 select is(
   (select amount_cents from public.wallet_entries where tab_id = '00000000-0000-4000-8000-0000000f4717' and kind = 'cashback'),
   1000, 'Welcome 10% of the MX$100 paid by card, not of the MX$300 bill (MX$200 was credit)');
-
--- ━━━ Post: check, wait 10 hours, recheck, receive ━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-insert into public.story_mentions (id, source, ig_story_id, consumer_id, mentioned_at, livemode)
-values
-  ('00000000-0000-4000-8000-000000a14717', 'meta', 'story-4717-a', '00000000-0000-4000-8000-0000000a4717', now(), false),
-  ('00000000-0000-4000-8000-000000a24717', 'meta', 'story-4717-b', '00000000-0000-4000-8000-0000000a4717', now(), false),
-  ('00000000-0000-4000-8000-000000a34717', 'meta', 'story-4717-c', '00000000-0000-4000-8000-0000000b4717', now() - interval '20 hours', false);
-
-select is(
-  story_reward_grant('00000000-0000-4000-8000-000000a14717', '00000000-0000-4000-8000-000000014717') ->> 'outcome',
-  'verified', 'the first check passes: verified');
-
-select ok(
-  (select state = 'verified' and reward_cents = 2000 and recheck_at = now() + interval '10 hours'
-     from public.story_mentions where id = '00000000-0000-4000-8000-000000a14717')
-  and not exists (select 1 from public.wallet_entries where story_mention_id = '00000000-0000-4000-8000-000000a14717'),
-  'verified, MX$20 promised, recheck in 10 hours, and no money yet');
-
-select is(
-  story_reward_grant('00000000-0000-4000-8000-000000a24717', '00000000-0000-4000-8000-000000014717') ->> 'reason',
-  'repeat', 'a second story here inside 7 days is refused while the first only waits');
-
-select is(
-  story_reward_pay('00000000-0000-4000-8000-000000a14717') ->> 'code',
-  'not_due', 'the recheck cannot pay early');
-
-select is(
-  story_reward_pay('00000000-0000-4000-8000-000000a14717', now() + interval '10 hours') ->> 'outcome',
-  'rewarded', 'at the recheck the story pays');
-
-select is(
-  (select array_agg(amount_cents::text || '@' || (available_at = now() + interval '10 hours')::text)
-     from public.wallet_entries where story_mention_id = '00000000-0000-4000-8000-000000a14717'),
-  array['2000@true'], 'one MX$20 story entry, available at the recheck');
-
-select is(
-  story_reward_pay('00000000-0000-4000-8000-000000a14717', now() + interval '11 hours') ->> 'already',
-  'true', 'paying it again does nothing');
-
--- A late first check: the recheck never runs past the story's 23rd hour.
-do $$ begin
-  perform story_reward_grant('00000000-0000-4000-8000-000000a34717', '00000000-0000-4000-8000-000000014717');
-end $$;
-
-select is(
-  (select recheck_at from public.story_mentions where id = '00000000-0000-4000-8000-000000a34717'),
-  now() - interval '20 hours' + interval '23 hours', 'recheck_at = posted + 23 hours when 10 more would pass it');
-
-select is(
-  story_reward_reject('00000000-0000-4000-8000-000000a34717', 'removed') ->> 'outcome',
-  'rejected', 'a story gone at the recheck is rejected (removed), no money');
-
--- MESITA-4746: a guest without the followers badge (500 followers) is refused at
--- the first check, before any reward is promised.
-insert into public.story_mentions (id, source, ig_story_id, consumer_id, mentioned_at, livemode)
-values ('00000000-0000-4000-8000-000000a44747', 'meta', 'story-4746-d', '00000000-0000-4000-8000-0000000d4747', now(), false);
-
-select is(
-  story_reward_grant('00000000-0000-4000-8000-000000a44747', '00000000-0000-4000-8000-000000014717') ->> 'reason',
-  'no_badge', 'a guest under 1,000 followers (or private) gets no story reward');
 
 select * from finish();
 rollback;

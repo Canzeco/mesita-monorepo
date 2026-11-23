@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 // Instagram gradient chip on the handle's other side. Never blue
 // (MESITA-4721's blue seal read as Instagram's own verification).
 // PINK, NOT YELLOW (Pato, 2026-11-23, MESITA-4734: "make the checker pink.
-// yellow looks like a warning"): Post's pink #FF66C4 with a white check.
+// yellow looks like a warning"): pink #FF66C4 with a white check.
 export const FOLLOWERS_BADGE_LABEL =
   "More than 1,000 followers, public account";
 

@@ -1,27 +1,30 @@
 "use client";
 
 // Admin › Offers › Cashbacks (MESITA-4700, Pato: "Yes, editable"): the
-// defaults every place without its own saved lines reads. Two rates (Welcome,
-// Returning; no VIP line since MESITA-4709), each
-// Off · 5 · 10 · 15 · 20 % (no cap per bill since MESITA-4728), one Save through
+// defaults every place without its own saved lines reads. Three rates
+// (Welcome, Returning, and Returning VIP since MESITA-4766), two picks each
+// (no cap per bill since MESITA-4728), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
-// win; this never touches them. MESITA-4714: and the Post story reward
-// (Off · $20 · $40), what a verified Instagram story pays a guest.
+// win; this never touches them.
 
 import { useState, useTransition } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { Button, Notice, SectionCard, SelectField, TBody, THead, Table, Td, Th, Tr } from "@/components/admin-ui";
 import { saveCashbackDefaults, type CashbackDefaults } from "./actions";
 
-// MESITA-4764: two picks each, as Business › Offers (Welcome 10 · 20, Returning 5 · 10).
-const STEPS = { welcome_bps: [0, 1000, 2000], returning_bps: [0, 500, 1000] } as const;
+// MESITA-4764: two picks each, as Business › Offers (Welcome 10 · 20, Returning 5 · 10,
+// Returning VIP 10 · 20 since MESITA-4766).
+const STEPS = {
+  welcome_bps: [0, 1000, 2000],
+  returning_bps: [0, 500, 1000],
+  returning_vip_bps: [0, 1000, 2000],
+} as const;
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
-const STORY_STEPS = [0, 2000, 4000] as const;
-const storyWord = (cents: number) => (cents === 0 ? "Off" : `$${cents / 100}`);
 
-const LINES: { key: "welcome_bps" | "returning_bps"; name: string; who: string }[] = [
+const LINES: { key: keyof typeof STEPS; name: string; who: string }[] = [
   { key: "welcome_bps", name: "New Customers", who: "Welcome: a guest's first bill at the place" },
   { key: "returning_bps", name: "Returning Customers", who: "Returning: every later bill at the place" },
+  { key: "returning_vip_bps", name: "Returning VIP", who: "Returning VIP: every later bill of a VIP guest at the place" },
 ];
 
 export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | null }) {
@@ -84,25 +87,6 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
                   </Td>
                 </Tr>
               ))}
-              <Tr data-cashback-line="story_reward">
-                <Td className="font-semibold">Post · Instagram story</Td>
-                <Td className="text-muted-foreground">A guest&apos;s story tagging @mesita and the place, once every 7 days</Td>
-                <Td numeric>
-                  <SelectField
-                    aria-label="Instagram story reward default"
-                    className="ml-auto w-28"
-                    value={String(draft.story_reward_cents)}
-                    disabled={pending}
-                    onChange={(v) => setDraft({ ...draft, story_reward_cents: Number(v) })}
-                  >
-                    {STORY_STEPS.map((cents) => (
-                      <option key={cents} value={cents}>
-                        {storyWord(cents)}
-                      </option>
-                    ))}
-                  </SelectField>
-                </Td>
-              </Tr>
             </TBody>
           </Table>
           <div className="flex items-center justify-end gap-3">

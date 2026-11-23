@@ -31,7 +31,7 @@ const ICON: Record<TicketRowKind, LucideIcon> = {
   refund: HandCoins,
   reversal: HandCoins,
   reservation: CalendarCheck,
-  // An Instagram story (MESITA-4738): the Instagram mark.
+  // A paid Instagram story credit from before Stories left (MESITA-4766).
   story: Instagram,
 };
 

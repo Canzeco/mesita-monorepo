@@ -14,7 +14,7 @@ import {
   ArrowLeftRight,
   BadgeCheck,
   AtSign,
-  Camera,
+  Gem,
   Copy,
   Eye,
   ImageIcon,
@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
+import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
+import { isVip } from "@/lib/vip";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Spinner } from "@/components/shared";
@@ -306,8 +308,9 @@ const ROW_BUTTON_CLASS =
 // a guest whose own Instagram is connected. NO VIP PERK (Pato, 2026-11-22,
 // MESITA-4709: "no more VIP"): the "Become VIP" row left; one perk stays.
 // TWO PERKS AGAIN (Pato, 2026-11-23, MESITA-4723: "See other people · story
-// rewards"): Story rewards is the Post offer (MESITA-4714), which needs a
-// connected Instagram, so its chip reads the same On/Off.
+// rewards"): Story rewards went with Instagram Stories (MESITA-4766); the
+// second perk is VIP, which more than VIP_MIN_FOLLOWERS followers earns (an
+// invitation code is the other way in, /me/vip).
 
 export function WhyConnect({ live = true }: { live?: boolean }) {
   return (
@@ -326,24 +329,17 @@ export function WhyConnect({ live = true }: { live?: boolean }) {
           </span>
           {live ? <SeeStatus /> : null}
         </li>
-        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="story">
+        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="vip">
           <IconChip tint="instagram">
-            <Camera className="h-[18px] w-[18px]" />
+            <Gem className="h-[18px] w-[18px]" />
           </IconChip>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">Story rewards</span>
+            <span className="block text-sm font-semibold">Become VIP</span>
             <span className="text-muted-foreground type-label block">
-              Post a story tagging a place and get credits there. Checked automatically.
-            </span>
-            {/* THE RULE, PLAIN (Pato, 2026-11-23, MESITA-4745: "make clearer
-                that the checker works when 1000 followers and public
-                instagram account"): the followers badge's rule
-                (_shared/instagram-badge.ts), in ink, not grey. */}
-            <span className="text-foreground type-label mt-1 block font-semibold" data-why-connect-rule="story">
-              Works with a public account with more than 1,000 followers.
+              More than {VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers makes you VIP: higher Back on return visits at places that offer it.
             </span>
           </span>
-          {live ? <StoryStatus /> : null}
+          {live ? <VipStatus /> : null}
         </li>
       </ul>
     </section>
@@ -361,16 +357,12 @@ function SeeStatus() {
   );
 }
 
-/** Story rewards' chip (MESITA-4745): On only when the server's followers
- *  badge is on (public account, more than 1,000 followers); else what is
- *  missing, so a connected guest under the bar never reads On. */
-function StoryStatus() {
-  const { igConnected } = useConsumerIdentity();
-  const qualifies = useConsumerProfile().data?.instagram_badge === true;
-  const on = igConnected && qualifies;
+/** VIP's chip (MESITA-4766): the server's Class, never worked out here. */
+function VipStatus() {
+  const on = isVip(useConsumerProfile().data);
   return (
-    <span className={cn(STATUS_CHIP, on && "bg-green-100 text-green-800")} data-why-connect-status="story">
-      {on ? "On" : igConnected ? "Needs 1,000+" : "Off"}
+    <span className={cn(STATUS_CHIP, on && "bg-green-100 text-green-800")} data-why-connect-status="vip">
+      {on ? "On" : "Off"}
     </span>
   );
 }

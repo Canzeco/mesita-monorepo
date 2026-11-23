@@ -1,11 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import {
-  PostSection,
-  type PostTabRead,
   readyClock,
   VouchersPane,
   type OffersTab,
@@ -15,7 +13,6 @@ import {
 } from "@mesita/place-profile";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
-import { apiGetStoryReward, apiSimulateStory } from "@/lib/api/story";
 import { apiSyncInstagram } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -30,6 +27,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
+import { isVip } from "@/lib/vip";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
@@ -84,59 +82,16 @@ function readFromPay(): boolean {
 /** THE TAB IS IN THE ADDRESS (MESITA-4710): `?rewards=` names it, so a
  *  reload or Back from Pay Bill returns to the same tab. `prepayment` and
  *  `special` (the carousel's and the Wallet's links) open Prepay, `cashback`
- *  Pay, `post` Post (MESITA-4714; the old `earned` of the retired Rewards
- *  tab opens Post too); anything else, or none, Prepay. An asked voucher
- *  opens Prepay whatever this says (the pane decides that). */
+ *  Pay; anything else (an old `post` or `earned` link since Post left with
+ *  Stories, MESITA-4766), or none, Prepay. An asked voucher opens Prepay
+ *  whatever this says (the pane decides that). */
 function tabOf(rewards: string | null): OffersTab {
   if (rewards === "cashback") return "pay";
-  if (rewards === "post" || rewards === "earned") return "post";
   return "prepay";
 }
 
 /** The `?rewards=` value a tab writes back. */
-const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", pay: "cashback", post: "post" };
-
-/** POST'S READ (MESITA-4714): consumer-web-get-story-reward, the first time
- *  the tab opens in a visit (on load too); Retry reads again. Simulate (test
- *  mode) posts a story through the emulator and reads again. */
-function usePostRead(placeId: string, open: boolean) {
-  const supabase = useBrowserSupabase();
-  const [read, setRead] = useState<PostTabRead | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const [simulating, setSimulating] = useState(false);
-  const load = useCallback(async () => {
-    setLoading(true);
-    setFailed(false);
-    try {
-      setRead(await apiGetStoryReward(supabase, placeId));
-    } catch {
-      setFailed(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase, placeId]);
-  const asked = useRef(false);
-  useEffect(() => {
-    if (!open || asked.current) return;
-    asked.current = true;
-    void load();
-  }, [open, load]);
-  const simulate = useCallback(async () => {
-    setSimulating(true);
-    try {
-      const r = await apiSimulateStory(supabase, placeId);
-      if (r.outcome === "verified") toast.success("Story simulated and checked. The recheck pays it in a few minutes.");
-      else toast.error(r.story.reason ?? "This story didn’t qualify.");
-      await load();
-    } catch (err) {
-      toast.error(errMsg(err, "Couldn’t simulate a story. Try again."));
-    } finally {
-      setSimulating(false);
-    }
-  }, [supabase, placeId, load]);
-  return { read, loading: loading || (open && !read && !failed), failed, reload: load, simulate, simulating };
-}
+const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", pay: "cashback" };
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
 // fuck are you showing me that … why it needs to pass across that page"):
@@ -159,9 +114,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const params = useSearchParams();
   const [initialTab] = useState<OffersTab>(() => tabOf(params?.get("rewards") ?? null));
   const [pick] = useState<string | null>(() => params?.get("pick") ?? params?.get("voucher") ?? null);
-  // Post reads the place's story reward the first time its tab opens.
-  const [postOpened, setPostOpened] = useState(initialTab === "post");
-  const post = usePostRead(fetched.id, postOpened);
   // A switch rewrites `?rewards=` in place (no push, no server round trip),
   // keeps `from=` and drops `pick=`/`voucher=`.
   const onTabChange = useCallback((t: OffersTab) => {
@@ -170,7 +122,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     q.delete("pick");
     q.delete("voucher");
     replaceAddress(`${window.location.pathname}?${q.toString()}`);
-    if (t === "post") setPostOpened(true);
   }, []);
   const keep = useKeptScroll<HTMLDivElement>();
 
@@ -261,6 +212,11 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     // "Link Instagram" on a VIP row without one (MESITA-4659): a push to Me ›
     // Instagram; Back returns here.
     onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
+    // "How to become VIP" under Pay's Returning VIP line (MESITA-4766): only
+    // for a signed-in guest the profile says is not VIP; a push to /me/vip.
+    ...(profile && !isVip(profile)
+      ? { onBecomeVip: () => navigateTo(router, CONSUMER_ROUTES.mePages.vip, { motion: "drill" }) }
+      : {}),
   };
 
   return (
@@ -330,18 +286,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             pick={pick}
             initialTab={initialTab}
             onTabChange={onTabChange}
-            renderPost={() => (
-              <PostSection
-                read={post.read}
-                loading={post.loading}
-                failed={post.failed}
-                onRetry={() => void post.reload()}
-                // "Connect Instagram" (MESITA-4714): a push to Me › Instagram; Back returns here.
-                onConnectInstagram={() => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" })}
-                onSimulate={() => void post.simulate()}
-                simulating={post.simulating}
-              />
-            )}
           />
         </div>
       </div>

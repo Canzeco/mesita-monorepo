@@ -19,6 +19,7 @@ import {
   useVisits,
 } from "@/components/consumer/activity/MeLists";
 import { isOpenVisit, isTicketVisit } from "@/lib/ticket-rows";
+import { VipRow } from "@/components/consumer/me/VipRow";
 
 // The Me surface — the identity header, then nine cells in Pato's order
 // (MESITA-3855):
@@ -157,6 +158,9 @@ export function ProfileClient() {
           instagramConnected={igFacts.igConnected || igFacts.unknown}
         />
       }
+      // VIP BACK (MESITA-4766): a VIP's row at the top of the list, or the
+      // quiet invitation code ask; nothing until the profile read lands.
+      lead={profile ? <VipRow profile={profile} /> : null}
       tile={(cell, shape) => (
         <DestTile
           shape={shape}

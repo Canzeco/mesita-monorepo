@@ -17,7 +17,7 @@
 //             pending_cents, outside_ok, test_mode,
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
 //             offers_ok, offers: { sell, cashback_pct, cashback_flat,
-//             welcome_pct, returning_pct, story_cents } }] }
+//             welcome_pct, returning_pct, returning_vip_pct } }] }
 //   MESITA-4748: welcome_pct | returning_pct, the two Back lines apart, for
 //   the Pay Bill sheet's two boxes.
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,

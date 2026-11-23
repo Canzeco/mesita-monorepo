@@ -111,10 +111,6 @@ export const CONSUMER_ROUTES = {
   // /me/tickets/gift/<giftId>, the gift found by its id in the wallet read;
   // a gift line's credit page forwards there.
   gift: { prefix: "/me/tickets/gift/" },
-  // ONE STORY, ONE TICKET (MESITA-4747, Pato: "Story 1. Post & Tag 2. Bot
-  // Checks 3. Wait 10 hours 4. Bot Rechecks 5. Get Reward"): a Stories row
-  // opens /me/tickets/stories/<storyId>. It was a 308 to the tab (MESITA-4738).
-  story: { prefix: "/me/tickets/stories/" },
   // PAY AND WALLET, TWO TABS (Pato, 2026-11-14, MESITA-3886: "separate pay
   // and wallet again. only pay and only wallet"): each its own bar tab and
   // page, no switch between them. They were two halves of the Pay tab under
@@ -154,6 +150,10 @@ export const CONSUMER_ROUTES = {
     // Instagram is an identity fact (a handle + the 1,000 bar), independent
     // of anything priced — it stays (Pato, MESITA-2080).
     instagram: "/me/instagram",
+    // BECOME VIP (Pato, 2026-11-23, MESITA-4766: "In order to be VIP, is
+    // either invitation code or 5000 followers on instagram"): the two ways
+    // in, a code field and Connect Instagram.
+    vip: "/me/vip",
     // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
@@ -279,8 +279,11 @@ export const CONSUMER_ROUTES = {
     // Refunds left Tickets for Settings (MESITA-4402).
     meTicketsRefunds: "/me/tickets/refunds",
     // No Stories at all (MESITA-4641): a place's Story offer lands on its
-    // Offers. One story's ticket is live again (MESITA-4747).
+    // Offers. Tickets › Stories and one story's ticket (MESITA-4738/4747)
+    // went with Instagram Stories (MESITA-4766): both land on Tickets.
     placeStory: "/place/:id/story",
+    meTicketsStories: "/me/tickets/stories",
+    meTicketsStoryPrefix: "/me/tickets/stories/",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) is live again. /me/class left for good with
@@ -347,13 +350,13 @@ export function placeReservePath(idOrSlug: string): string {
 
 /** The place's Offers page (MESITA-4379): a page under the place, never a
  *  sheet over its profile, so a tap lands on Offers without the profile
- *  loading first. `section` (prepayment | special | cashback | post) says why it opened;
+ *  loading first. `section` (prepayment | special | cashback) says why it opened;
  *  `fromWallet` marks a wallet screen that wants the guest back, so a paid
  *  offer pops to it instead of replacing Offers with the card. No forward
  *  control reads it (MESITA-4601). */
 export function placeOffersPath(
   idOrSlug: string,
-  section?: "prepayment" | "special" | "cashback" | "post" | null,
+  section?: "prepayment" | "special" | "cashback" | null,
   fromWallet = false,
 ): string {
   const q = new URLSearchParams();
@@ -431,11 +434,6 @@ export function creditEntryPath(
 /** One gift's page (MESITA-4066), by its wallet_gifts id. */
 export function giftTicketPath(giftId: string): string {
   return `${CONSUMER_ROUTES.gift.prefix}${giftId}`;
-}
-
-/** One Instagram story's ticket (MESITA-4747), by its story_mentions id. */
-export function storyTicketPath(storyId: string): string {
-  return `${CONSUMER_ROUTES.story.prefix}${storyId}`;
 }
 
 /** A paid bill's proof. */
@@ -574,9 +572,6 @@ export const ROUTE_MAP = {
   // A gift's ticket (MESITA-4637): Send · Receive · Receipt in the ticket
   // frame, no bar, like a voucher's ticket.
   gift: row("/me/tickets/gift/:giftId", "me", "page", "meTickets", false),
-  // One story's ticket (MESITA-4747), opened from Tickets › Stories, where
-  // a cold Back lands. No bar, like a gift's ticket.
-  story: row("/me/tickets/stories/:storyId", "me", "page", "meTicketsStories", false),
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
@@ -616,6 +611,8 @@ export const ROUTE_MAP = {
   sign: row("/sign", "me", "tab", null),
   meProfile: row("/me/profile", "me", "page", "me"),
   meInstagram: row("/me/instagram", "me", "page", "me"),
+  // Become VIP (MESITA-4766), pushed from Me's VIP row and the place's Pay tab.
+  meVip: row("/me/vip", "me", "page", "me"),
   // Opened from Settings since the Me cell went Soon (MESITA-3855).
   mePlan: row("/me/plan", "me", "page", "meSettings"),
   meGift: row("/me/gift", "me", "page", "me"),
@@ -627,9 +624,6 @@ export const ROUTE_MAP = {
   meTickets: row("/me/tickets", "me", "page", "me"),
   // One kind of ticket, /me/tickets/<kind>: the same page, chip picked.
   meTicketsKind: row("/me/tickets/:kind", "me", "page", "me"),
-  // The Stories tab named on its own (MESITA-4747), so a story's ticket has
-  // a parent to land Back on: the same [kind] page, chip picked.
-  meTicketsStories: row("/me/tickets/stories", "me", "page", "me"),
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
   meSettingsRefunds: row("/me/settings/refunds", "me", "page", "meSettings"),

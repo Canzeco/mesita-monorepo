@@ -1,9 +1,13 @@
-// Cashback (MESITA-4698; two lines since MESITA-4709, Pato 2026-11-22: "no
-// more VIP"). Docs › Credits, the MESITA-4698 section.
+// Cashback (MESITA-4698; three lines since MESITA-4766, Pato 2026-11-23: "NOW
+// THE PAY OFFERS ARE Welcome Everyone, Returning Regular, Returning VIP").
+// Docs › Credits, the MESITA-4698 section.
 //
-// A paid bill earns credit at the place: Welcome (the guest's first paid bill
-// here, Off · 10 · 20 %) or Returning (every later bill, Off · 5 · 10 %;
-// MESITA-4762), on the part not paid with credit (never the tip), Pending
+// A paid bill earns credit at the place: Welcome Everyone (the guest's first
+// paid bill here, VIP or not, Off · 10 · 20 %), else Returning VIP for a VIP
+// (Off · 10 · 20 %) or Returning Regular (Off · 5 · 10 %; MESITA-4762). Who is
+// VIP for money is ONE SQL rule, consumer_is_vip_for_money (an invitation code,
+// or a verified Instagram over 5,000 followers; live counts real followers
+// only); this file asks it and never re-implements it. on the part not paid with credit (never the tip), Pending
 // 1 hour (3 until MESITA-4717), only where Loyalty Cards is On. No ceiling and
 // no once-a-day rule (Pato, 2026-11-23, MESITA-4728: "there is no ceiling for
 // the cashback amount"): a bill earns once, on every peso paid by card or cash. The SQL trigger pay_tabs_grant_cashback
@@ -18,27 +22,24 @@ import { VOUCHER_BONUS_STEPS_BPS, type VoucherBonusBps } from "./money.ts";
  *  returning: 5% back or 10% back"). */
 export const WELCOME_STEPS_BPS = [0, 1000, 2000] as const;
 export const RETURNING_STEPS_BPS = [0, 500, 1000] as const;
+/** MESITA-4766: Returning VIP, Off · 10 · 20 %. */
+export const RETURNING_VIP_STEPS_BPS = [0, 1000, 2000] as const;
 
 export const CASHBACK_WAIT_SEC = 60 * 60;
 
-export type CashbackLine = "welcome" | "returning";
+export type CashbackLine = "welcome" | "returning" | "returning_vip";
 
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
-  /** MESITA-4714: what a verified Instagram story pays (Post), in cents:
-   *  0 (Off) · 2000 · 4000. Lives beside the cashback lines. */
-  story_reward_cents: number;
+  /** MESITA-4766: a later bill by a VIP guest. */
+  returning_vip_bps: number;
   /** MESITA-4762: the bonus each prepaid voucher gives here, in basis points:
    *  Small 10 · 20 %, Medium 20 · 40 %, Big 40 · 60 % (VOUCHER_BONUS_STEPS_BPS). */
   small_bonus_bps: number;
   medium_bonus_bps: number;
   big_bonus_bps: number;
 };
-
-/** MESITA-4714: the story rewards an owner can pick, in cents (0 = Off);
- *  MX$20 or MX$40 since MESITA-4762 (20 or 50 before). */
-export const STORY_REWARD_STEPS_CENTS = [0, 2000, 4000] as const;
 
 /** MESITA-4762: each voucher bonus field and its voucher. */
 export const VOUCHER_BONUS_FIELDS = {
@@ -58,19 +59,15 @@ export function voucherBonusFrom(r: Partial<Pick<CashbackRates, VoucherBonusFiel
   return out;
 }
 
-export function isStoryRewardCents(v: unknown): v is (typeof STORY_REWARD_STEPS_CENTS)[number] {
-  return typeof v === "number" && (STORY_REWARD_STEPS_CENTS as readonly number[]).includes(v);
-}
-
 /** The columns every rates read selects. */
-export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, story_reward_cents, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
+export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, returning_vip_bps, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
 
-/** The last fallback, 10 / 5 %: cashback_defaults' seed and
+/** The last fallback, 10 / 5 / 10 %: cashback_defaults' seed and
  *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
-  story_reward_cents: 2000,
+  returning_vip_bps: 1000,
   small_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_200[0],
   medium_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_1000[0],
   big_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_5000[0],
@@ -78,23 +75,24 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
 
 const isIn = (steps: readonly number[], v: unknown): v is number => typeof v === "number" && steps.includes(v);
 
-/** The owner's save: the two visit rates present and allowed, or why not.
- *  Pure. `story_reward_cents` (MESITA-4714) and the voucher bonuses
+/** The owner's save: Welcome and Returning Regular present and allowed, or
+ *  why not. Pure. Returning VIP (MESITA-4766) and the voucher bonuses
  *  (MESITA-4762) are optional; absent, the saved value stays as it is. A
- *  `cap_cents` an older console still sends is ignored (MESITA-4728). */
+ *  `cap_cents` or `story_reward_cents` an older console still sends is
+ *  ignored (MESITA-4728, MESITA-4766). */
 export function readCashbackInput(
   body: Record<string, unknown>,
 ): { ok: true; rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> } | { ok: false; error: string } {
-  const { welcome_bps, returning_bps, story_reward_cents } = body;
-  if (!isIn(WELCOME_STEPS_BPS, welcome_bps)) return { ok: false, error: "Welcome must be Off, 10% or 20%" };
-  if (!isIn(RETURNING_STEPS_BPS, returning_bps)) return { ok: false, error: "Returning must be Off, 5% or 10%" };
-  if (story_reward_cents !== undefined && !isStoryRewardCents(story_reward_cents)) {
-    return { ok: false, error: "The story reward must be Off, 20 or 40" };
+  const { welcome_bps, returning_bps, returning_vip_bps } = body;
+  if (!isIn(WELCOME_STEPS_BPS, welcome_bps)) return { ok: false, error: "Welcome Everyone must be Off, 10% or 20%" };
+  if (!isIn(RETURNING_STEPS_BPS, returning_bps)) return { ok: false, error: "Returning Regular must be Off, 5% or 10%" };
+  if (returning_vip_bps !== undefined && !isIn(RETURNING_VIP_STEPS_BPS, returning_vip_bps)) {
+    return { ok: false, error: "Returning VIP must be Off, 10% or 20%" };
   }
   const rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> = {
     welcome_bps,
     returning_bps,
-    ...(story_reward_cents !== undefined ? { story_reward_cents } : {}),
+    ...(returning_vip_bps !== undefined ? { returning_vip_bps } : {}),
   };
   for (const [field, key] of Object.entries(VOUCHER_BONUS_FIELDS) as Array<[VoucherBonusField, keyof typeof VOUCHER_BONUS_STEPS_BPS]>) {
     const v = body[field];
@@ -107,14 +105,31 @@ export function readCashbackInput(
   return { ok: true, rates };
 }
 
-/** Which line a bill falls in: Welcome when the guest has no earlier paid
- *  bill here, else Returning. Pure (mirrors the SQL). */
-export function cashbackLine(firstBill: boolean): CashbackLine {
-  return firstBill ? "welcome" : "returning";
+/** Which line a bill falls in: Welcome Everyone when the guest has no
+ *  earlier paid bill here (VIP or not), else Returning VIP for a VIP, else
+ *  Returning Regular. Pure (mirrors pay_tab_grant_cashback); `vip` is
+ *  consumer_is_vip_for_money's answer. */
+export function cashbackLine(firstBill: boolean, vip = false): CashbackLine {
+  if (firstBill) return "welcome";
+  return vip ? "returning_vip" : "returning";
 }
 
 export function rateFor(rates: CashbackRates, line: CashbackLine): number {
-  return line === "welcome" ? rates.welcome_bps : rates.returning_bps;
+  if (line === "welcome") return rates.welcome_bps;
+  if (line === "returning_vip") return rates.returning_vip_bps;
+  return rates.returning_bps;
+}
+
+/** The highest of the three lines ("Up to N% Back"). */
+export function maxCashbackBps(rates: Pick<CashbackRates, "welcome_bps" | "returning_bps" | "returning_vip_bps">): number {
+  return Math.max(rates.welcome_bps, rates.returning_bps, rates.returning_vip_bps);
+}
+
+/** MESITA-4766: whether this guest is paid as VIP, from the one SQL rule. */
+export async function readIsVipForMoney(admin: SupabaseClient, consumerId: string, livemode: boolean): Promise<boolean> {
+  const { data, error } = await admin.rpc("consumer_is_vip_for_money", { p_consumer: consumerId, p_livemode: livemode });
+  if (error) throw new Error(`consumer_is_vip_for_money: ${error.message}`);
+  return data === true;
 }
 
 /** What a bill earns: the rate on the part not paid with credit (no tip),
@@ -167,8 +182,8 @@ export async function readCashbackRatesMany(admin: SupabaseClient, placeIds: str
   return out;
 }
 
-/** A place's cashback as the guest screens read it (MESITA-4698, MESITA-4702):
- *  the two lines, and the line this caller's next bill falls in
+/** A place's cashback as the guest screens read it (MESITA-4698, MESITA-4702,
+ *  MESITA-4766): the three lines, and the line this caller's next bill falls in
  *  (null signed out). Null where Loyalty Cards is Off (no cashback is earned
  *  there) or the read fails (logged): no rate beats a wrong one. */
 export async function placeCashbackFor(
@@ -177,11 +192,12 @@ export async function placeCashbackFor(
 ): Promise<(CashbackRates & { line: CashbackLine | null }) | null> {
   if (!args.loyaltyCards) return null;
   try {
-    const [rates, firstBill] = await Promise.all([
+    const [rates, firstBill, vip] = await Promise.all([
       readCashbackRates(admin, args.placeId),
       args.consumerId ? readHasPaidBill(admin, args.consumerId, args.placeId, args.livemode).then((paid) => !paid) : Promise.resolve(null),
+      args.consumerId ? readIsVipForMoney(admin, args.consumerId, args.livemode) : Promise.resolve(false),
     ]);
-    return { ...rates, line: firstBill === null ? null : cashbackLine(firstBill) };
+    return { ...rates, line: firstBill === null ? null : cashbackLine(firstBill, vip) };
   } catch (err) {
     console.error(`[${args.who}] cashback`, err instanceof Error ? err.message : String(err));
     return null;

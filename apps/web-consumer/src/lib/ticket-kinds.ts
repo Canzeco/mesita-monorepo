@@ -21,15 +21,10 @@
 // REFUNDS LEFT TICKETS (Pato, 2026-11-18, MESITA-4402: "remove refunds from
 // there. but refunds as something in settings"): /me/settings/refunds.
 //
-// NO STORIES (MESITA-4641), then STORIES BACK (Pato, 2026-11-23,
-// MESITA-4738: "Vouchers Visits Stories Gifts"): the guest's own Instagram
-// stories (the Post offer, MESITA-4714). Order as the tabs.
-export const TICKET_KINDS = [
-  "vouchers",
-  "visits",
-  "stories",
-  "gifts",
-] as const;
+// NO STORIES (MESITA-4641), back (MESITA-4738), and gone again with
+// Instagram Stories (Pato, 2026-11-23, MESITA-4766: "REMOVE INSTAGRAM
+// STORIES"); /me/tickets/stories lands on Tickets. Order as the tabs.
+export const TICKET_KINDS = ["vouchers", "visits", "gifts"] as const;
 
 export type TicketKind = (typeof TICKET_KINDS)[number];
 
