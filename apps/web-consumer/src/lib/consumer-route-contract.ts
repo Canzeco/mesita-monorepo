@@ -347,13 +347,13 @@ export function placeReservePath(idOrSlug: string): string {
 
 /** The place's Offers page (MESITA-4379): a page under the place, never a
  *  sheet over its profile, so a tap lands on Offers without the profile
- *  loading first. `section` (prepayment | special) says why it opened;
+ *  loading first. `section` (prepayment | special | cashback) says why it opened;
  *  `fromWallet` marks a wallet screen that wants the guest back, so a paid
  *  offer pops to it instead of replacing Offers with the card. No forward
  *  control reads it (MESITA-4601). */
 export function placeOffersPath(
   idOrSlug: string,
-  section?: "prepayment" | "special" | null,
+  section?: "prepayment" | "special" | "cashback" | null,
   fromWallet = false,
 ): string {
   const q = new URLSearchParams();
