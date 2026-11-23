@@ -35,10 +35,10 @@ export default async function DiscoveryPage() {
       <JumpRow />
       <DiscoverySaveScope initialUpdatedAt={seed.initialUpdatedAt}>
         <div className="flex flex-col gap-6">
+          <ScoreOverlayBox {...seed} />
           <RankingBox {...seed} />
           <MixingBox {...seed} />
           <SocialDiscoveryBox {...seed} />
-          <ScoreOverlayBox {...seed} />
           <MapDisplayBox {...seed} />
           <SearchbarsBox {...seed} />
           <HowRankedCard />
