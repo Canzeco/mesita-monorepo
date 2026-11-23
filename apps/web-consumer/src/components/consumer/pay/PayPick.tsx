@@ -373,13 +373,13 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
       type="button"
       onClick={() => onPick(p.place_id)}
       aria-label={spoken}
-      className="hover:bg-muted/60 flex w-full flex-col px-4 py-3 text-left transition"
+      className="hover:bg-muted/60 flex w-full flex-col px-3.5 py-2.5 text-left transition"
       data-pay-pick-place
     >
       <span className="flex w-full items-start gap-3.5">
-        <PlacePhoto place={p} className="h-14 w-14 rounded-lg" />
+        <PlacePhoto place={p} className="h-11 w-11 rounded-lg" />
         <span className="min-w-0 flex-1 pt-0.5">
-          <span className="block truncate text-base font-semibold">{name}</span>
+          <span className="block truncate text-sm font-semibold">{name}</span>
           {p.address ? (
             <span className={cn("text-muted-foreground mt-0.5 text-sm", shown.length > 0 ? "block truncate" : "line-clamp-2")}>{p.address}</span>
           ) : null}
@@ -387,11 +387,13 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
         {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
       </span>
       {shown.length > 0 ? (
-        <span className={cn("mt-2.5 grid w-full gap-2", boxes === "cashback" && shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+        // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
+        // two boxes are halves, three are thirds; 14px words, shorter boxes.
+        <span className={cn("mt-2 grid w-full gap-2", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
           {shown.map((b) => (
-            <span key={b.key} className={cn("text-foreground min-w-0 rounded-xl px-2.5 py-2", b.tone)}>
-              <span className="block truncate text-base leading-tight font-semibold tabular-nums">{b.top}</span>
-              <span className="mt-0.5 block text-sm leading-tight font-semibold tabular-nums">{b.bottom}</span>
+            <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2.5 py-1.5", b.tone)}>
+              <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
+              <span className="mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums">{b.bottom}</span>
             </span>
           ))}
         </span>
@@ -497,7 +499,7 @@ function RowsSkeleton({ boxes = 0, bare = false }: { boxes?: number; bare?: bool
         <Fragment key={i}>
           <div className="px-4 py-3">
             <div className="flex items-start gap-3.5">
-              <Skeleton className="h-14 w-14 shrink-0 rounded-lg" />
+              <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
               <div className="flex-1 pt-1">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="mt-2 h-3 w-24" />
@@ -508,7 +510,7 @@ function RowsSkeleton({ boxes = 0, bare = false }: { boxes?: number; bare?: bool
             {boxes > 0 ? (
               <div className={cn("mt-2.5 grid gap-2", boxes === 2 ? "grid-cols-2" : "grid-cols-3")}>
                 {Array.from({ length: boxes }, (_, b) => (
-                  <Skeleton key={b} className="h-[52px] min-w-0 rounded-xl" />
+                  <Skeleton key={b} className="h-[42px] min-w-0 rounded-lg" />
                 ))}
               </div>
             ) : null}
