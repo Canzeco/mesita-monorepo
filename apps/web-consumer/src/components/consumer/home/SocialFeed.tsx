@@ -324,7 +324,7 @@ function CountryFlag({ address }: { address: string | null }) {
   return (
     <span
       aria-hidden
-      className={cn(MARK_CLASS, "bg-card -left-1 text-xs leading-none")}
+      className={cn(MARK_CLASS, "bg-foreground -left-1 text-xs leading-none")}
       data-social-flag={country}
     >
       {flagEmoji(country)}
