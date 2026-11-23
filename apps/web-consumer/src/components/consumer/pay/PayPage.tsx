@@ -533,8 +533,10 @@ function PlaceRows({
  *  name bottom left, so Pay Bill, Prepay and Send Gift read as one set,
  *  all one height (Pato, MESITA-4734: "purple and bottom buttons must be
  *  same height"). */
+// CENTRED (Pato, 2026-11-23, MESITA-4753: "prepay icon and pay bill icon
+// must be centered"): the icon disc and the name sit on the tile's middle line.
 const TILE =
-  "flex h-28 min-w-0 flex-col items-start justify-between rounded-2xl p-4 text-left transition active:scale-[0.99]";
+  "flex h-28 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-center transition active:scale-[0.99]";
 /** Explore Offers | Send Gift (MESITA-4748; order and grey since
  *  MESITA-4753, Pato: "make them black boxes or something … or gray boxes"):
  *  two 48px grey boxes without a border, icon then word, side by side;
