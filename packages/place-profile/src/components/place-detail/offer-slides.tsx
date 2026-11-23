@@ -27,7 +27,10 @@ export const OFFER_BEAT_MS = 2000;
  *  an offer (Pato, MESITA-4170: "not syncronized ... each one to change must
  *  be 1 second, and 500ms of difference"; one pair a second in MESITA-4160).
  *  One clock, so the gap holds whichever tile mounts first. */
-export const ROW_TICK_MS = 500;
+// EVERY 2 SECONDS (Pato, 2026-11-23, MESITA-4759: "moving too fast, instead
+// of every sec make it every 2 secs"): the tick is 1s, so each tile changes
+// every 2s and the two stay 1s apart.
+export const ROW_TICK_MS = 1000;
 export const ROW_TICKS_PER_CHANGE = 2;
 const SCROLL_QUIET_MS = 600;
 
