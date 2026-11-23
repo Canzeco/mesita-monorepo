@@ -13,11 +13,17 @@ export type LimitPlace = {
   place_name: string | null;
   currency: string;
   outstanding_cents: number;
-  /** The place's own limit; null = its currency's default. */
+  /** The place's own limit; null = its tier. */
   override_cents: number | null;
   /** The limit that binds it now; null when its currency has no default. */
   limit_cents: number | null;
   loyalty_cards: boolean;
+  /** What binds (MESITA-4733): custom = its own limit; none · credits ·
+   *  stripe = an MXN tier; default = its currency's default. */
+  tier?: "custom" | "none" | "credits" | "stripe" | "default";
+  /** What it would get without its own limit, and from which tier. */
+  tier_limit_cents?: number | null;
+  tier_name?: "none" | "credits" | "stripe" | "default";
 };
 
 export type CreditsLimit = { test_mode: boolean; defaults: LimitDefault[]; places: LimitPlace[] };

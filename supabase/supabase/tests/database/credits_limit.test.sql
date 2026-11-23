@@ -8,7 +8,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(23);
+select plan(25);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3947'),
@@ -121,8 +121,9 @@ select is(
   (select r - 'place_id' - 'place_name' - 'outstanding_cents'
      from jsonb_array_elements(public.admin_credit_limits(false) -> 'places') r
     where r ->> 'place_id' = '00000000-0000-4000-8000-000000003947'),
-  jsonb_build_object('currency', 'MXN', 'override_cents', 250000, 'limit_cents', 250000, 'loyalty_cards', false),
-  'a place holding credit is listed with its currency, its own limit and the limit that binds it'
+  jsonb_build_object('currency', 'MXN', 'override_cents', 250000, 'limit_cents', 250000, 'loyalty_cards', false,
+                     'tier', 'custom', 'tier_limit_cents', 0, 'tier_name', 'none'),
+  'a place holding credit is listed with its currency, its own limit, the limit that binds it and its tier (MESITA-4733)'
 );
 
 select ok(
@@ -190,6 +191,21 @@ select is(
     where r ->> 'place_id' = '00000000-0000-4000-8000-000000024732'),
   5000000::bigint,
   'the admin page shows the tiered limit'
+);
+
+-- ━━━ The tier alone (MESITA-4733) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+select is(
+  public.place_credit_limit_tier('00000000-0000-4000-8000-000000003947', false),
+  jsonb_build_object('limit_cents', 0, 'currency', 'MXN', 'tier', 'none',
+                     'next', jsonb_build_object('step', 'credits', 'limit_cents', 1000000)),
+  'the tier ignores a place''s own limit: what it would get without it'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.place_credit_limit_tier(uuid, boolean)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_credit_limit_tier(uuid, boolean)', 'EXECUTE'),
+  'place_credit_limit_tier is service-role only'
 );
 
 select ok(
