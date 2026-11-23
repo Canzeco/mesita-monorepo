@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Camera, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 import { Instagram } from "../brand-icons";
 
@@ -1005,10 +1005,14 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
  *  on the Loyalty Card and Tickets; the Rewards list went. */
 export type OffersTab = "prepay" | "pay" | "post";
 
-const OFFERS_TABS: { id: OffersTab; word: string; Icon: LucideIcon }[] = [
-  { id: "prepay", word: "Prepay", Icon: Ticket },
-  { id: "pay", word: "Pay", Icon: QrCode },
-  { id: "post", word: "Post", Icon: Camera },
+// THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726: "change the stupid icons
+// of prepay and pay and story"): Prepay a wallet (credit loaded ahead), Pay a
+// receipt (the bill), Post the Instagram mark (what you post). A ticket, a QR
+// code and a camera before.
+const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
+  { id: "prepay", word: "Prepay", Icon: Wallet },
+  { id: "pay", word: "Pay", Icon: ReceiptIcon },
+  { id: "post", word: "Post", Icon: Instagram },
 ];
 
 /** The tab bar (MESITA-4710), MESITA-4701's last approved bar: three equal
@@ -1081,7 +1085,9 @@ function OffersTabs({
             )}
             data-offers-tab={id}
           >
-            <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} aria-hidden />
+            <span className="flex" aria-hidden>
+              <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} />
+            </span>
             <span className="tabular-nums">{count ? `${word} · ${count}` : word}</span>
             <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
           </button>
@@ -1746,7 +1752,7 @@ export function PostSection({
           className="bg-foreground text-paper flex h-12 w-full shrink-0 items-center justify-center gap-2 rounded-full text-base font-semibold"
           data-post-connect
         >
-          <Camera className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          <Instagram className="h-5 w-5" strokeWidth={2.25} />
           Connect Instagram
         </button>
       ) : null}
