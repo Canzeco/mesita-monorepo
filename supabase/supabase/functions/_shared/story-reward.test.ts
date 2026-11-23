@@ -18,31 +18,37 @@ const NOW = Date.parse("2026-11-23T18:00:00Z");
 const DAY = 24 * 3600 * 1000;
 
 Deno.test("story reward: promises the place's amount, paid at the recheck 10 hours later (MESITA-4717)", () => {
-  const d = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW });
+  const d = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW });
   assertEquals(d, { pay: true, cents: 2000, recheckAtMs: NOW + STORY_RECHECK_SEC * 1000 });
-  const late = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW, postedAtMs: NOW - 20 * 3600_000 });
+  const late = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW, postedAtMs: NOW - 20 * 3600_000 });
   assertEquals(late.pay && late.recheckAtMs, NOW + 3 * 3600_000, "never past the story's 23rd hour");
-  const emu = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW, emulator: true });
+  const emu = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW, emulator: true });
   assertEquals(emu.pay && emu.recheckAtMs, NOW + 120_000, "test mode rechecks after 2 minutes");
-  const big = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 5000, lastRewardAtMs: null, nowMs: NOW });
+  const big = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 5000, lastRewardAtMs: null, nowMs: NOW });
   assertEquals(big.pay && big.cents, 5000);
 });
 
 Deno.test("story reward: Off pays nothing (the reward Off, or Loyalty Cards Off)", () => {
-  assertEquals(storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 0, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "off" });
-  assertEquals(storyRewardDecision({ guestMatched: true, loyaltyCards: false, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "off" });
+  assertEquals(storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 0, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "off" });
+  assertEquals(storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: false, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "off" });
 });
 
 Deno.test("story reward: a story from no verified guest pays nothing", () => {
-  assertEquals(storyRewardDecision({ guestMatched: false, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "no_guest" });
+  assertEquals(storyRewardDecision({ guestMatched: false, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "no_guest" });
+});
+
+Deno.test("story reward: no followers badge (public, more than 1,000 followers) pays nothing (MESITA-4746)", () => {
+  assertEquals(storyRewardDecision({ guestMatched: true, badge: false, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "no_badge" });
+  // An unmatched guest is no_guest first, as in story_reward_grant.
+  assertEquals(storyRewardDecision({ guestMatched: false, badge: false, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: null, nowMs: NOW }), { pay: false, reason: "no_guest" });
 });
 
 Deno.test("story reward: once per guest per place per 7 days", () => {
-  const within = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: NOW - 6 * DAY, nowMs: NOW });
+  const within = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: NOW - 6 * DAY, nowMs: NOW });
   assertEquals(within, { pay: false, reason: "repeat" });
-  const edge = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: NOW - STORY_REWARD_WINDOW_SEC * 1000 + 1, nowMs: NOW });
+  const edge = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: NOW - STORY_REWARD_WINDOW_SEC * 1000 + 1, nowMs: NOW });
   assertEquals(edge, { pay: false, reason: "repeat" });
-  const after = storyRewardDecision({ guestMatched: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: NOW - 7 * DAY, nowMs: NOW });
+  const after = storyRewardDecision({ guestMatched: true, badge: true, loyaltyCards: true, rewardCents: 2000, lastRewardAtMs: NOW - 7 * DAY, nowMs: NOW });
   assertEquals(after.pay, true);
   assertEquals(nextStoryRewardAt(NOW - 6 * DAY, NOW), new Date(NOW + DAY).toISOString());
   assertEquals(nextStoryRewardAt(NOW - 8 * DAY, NOW), null);

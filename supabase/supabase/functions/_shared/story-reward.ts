@@ -35,6 +35,7 @@ export const STORY_LIFE_SEC = 24 * 60 * 60;
 
 export type StoryRejectReason =
   | "no_guest"
+  | "no_badge"
   | "no_tag"
   | "several_places"
   | "not_a_story"
@@ -47,15 +48,19 @@ export type StoryRejectReason =
 
 export type StoryRewardDecision =
   | { pay: true; cents: number; recheckAtMs: number }
-  | { pay: false; reason: Extract<StoryRejectReason, "no_guest" | "off" | "repeat"> };
+  | { pay: false; reason: Extract<StoryRejectReason, "no_guest" | "no_badge" | "off" | "repeat"> };
 
 /** What one story that passed its first check at one place promises, pure
- *  (story_reward_grant's order): no verified guest → no_guest; Loyalty Cards
+ *  (story_reward_grant's order): no verified guest → no_guest; no followers
+ *  badge (public, more than 1,000 followers; MESITA-4746) → no_badge; Loyalty Cards
  *  Off or the reward Off → off; a story of this guest here paid or waiting in
  *  the last 7 days → repeat; else the place's reward now, paid at the recheck
  *  (10 hours later, never past the story's 23rd hour; emulator 2 minutes). */
 export function storyRewardDecision(args: {
   guestMatched: boolean;
+  /** The guest wears the followers badge (_shared/instagram-badge.ts): a
+   *  public Instagram with more than 1,000 followers (MESITA-4746). */
+  badge: boolean;
   loyaltyCards: boolean;
   rewardCents: number;
   /** The guest's latest story at this place paid or waiting (same mode), or null. */
@@ -66,6 +71,7 @@ export function storyRewardDecision(args: {
   emulator?: boolean;
 }): StoryRewardDecision {
   if (!args.guestMatched) return { pay: false, reason: "no_guest" };
+  if (!args.badge) return { pay: false, reason: "no_badge" };
   if (!args.loyaltyCards || !(args.rewardCents > 0)) return { pay: false, reason: "off" };
   if (args.lastRewardAtMs != null && args.nowMs - args.lastRewardAtMs < STORY_REWARD_WINDOW_SEC * 1000) {
     return { pay: false, reason: "repeat" };
@@ -89,6 +95,7 @@ export function nextStoryRewardAt(lastRewardAtMs: number | null, nowMs: number):
 /** The guest's words for a rejection. */
 export const STORY_REJECT_WORDS: Record<StoryRejectReason, string> = {
   no_guest: "Posted from an Instagram not linked to Mesita",
+  no_badge: "Needs a public Instagram with more than 1,000 followers",
   no_tag: "The place wasn't tagged",
   several_places: "Several places were tagged",
   not_a_story: "It didn't look like a story",
