@@ -33,6 +33,8 @@
 // all-places feed shows at most `discovery_config.social.latestEvents` events
 // (Admin › Discovery › Social discovery, default 100), then ends. The app
 // sends `shown`, how many it already holds. A place's own feed is not capped.
+// A signed-out visitor pages by `shown` too: their `next` is "more", never a
+// time (MESITA-4750).
 //
 // Body: { lat?, lng?, before?, place_id?, shown? }
 //   → { viewer: "member"|"anonymous", items: [{ placeId, kind, at, person, distanceKm, place }], next }
@@ -83,7 +85,12 @@ serveJson("consumer-web-list-activity", async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const before = body.before ?? null;
+  // SIGNED OUT, PAGED BY COUNT (Pato, 2026-11-23, MESITA-4750: "i want to
+  // load many events by scrolling"): an anonymous visitor's times are coarsened
+  // to the day, so an exact-time cursor would leak what coarseAt hides. They
+  // page by `shown` instead: the read starts at the newest event and skips the
+  // ones already held; their `next` is the opaque word "more", never a time.
+  const before = user ? (body.before ?? null) : null;
   if (before != null && (typeof before !== "string" || !Number.isFinite(Date.parse(before)))) {
     return json({ ok: false, error: "before must be a time" }, 400);
   }
@@ -104,6 +111,8 @@ serveJson("consumer-web-list-activity", async (req) => {
 
   const items: Array<FeedEvent & { distanceKm: number | null; place: Card }> = [];
   let cursor = before;
+  // Signed out (MESITA-4750): the events already held are skipped by count.
+  let skip = user ? 0 : shown;
   for (let scan = 0; scan < MAX_SCANS; scan++) {
     const feedRes = await admin.rpc("place_activity_feed", {
       p_limit: SCAN_ROWS,
@@ -125,12 +134,17 @@ serveJson("consumer-web-list-activity", async (req) => {
         : Number.POSITIVE_INFINITY;
       const distanceKm = Number.isFinite(km) ? km : null;
       if (!placeId && !nearYou(distanceKm, NO_SCREEN_RADIUS_KM, hasPoint)) continue;
+      if (skip > 0) {
+        skip--;
+        continue;
+      }
       items.push({ ...e, distanceKm, place });
       if (items.length === pageItems) {
-        // An anonymous visitor gets one page: the cursor is an exact time.
-        // The latest-events cap ends the feed here (MESITA-4572).
+        // The latest-events cap ends the feed here (MESITA-4572). A member's
+        // cursor is this event's time; a signed-out visitor's is the opaque
+        // "more" (MESITA-4750), so no exact time leaves for them.
         const capped = pageItems === room;
-        return json({ ok: true, viewer, items, next: user && !capped ? e.at : null });
+        return json({ ok: true, viewer, items, next: capped ? null : user ? e.at : "more" });
       }
     }
     // Fewer rows than asked for: the feed ends here.
