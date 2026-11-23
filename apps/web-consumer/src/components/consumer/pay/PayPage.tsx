@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Gift, QrCode, Wallet as WalletIcon } from "lucide-react";
+import { BadgePercent, ChevronRight, CreditCard, Gift, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -397,12 +397,12 @@ export function PayPage({
             {/* THE WALLET, Prepay's one mark (Pato, 2026-11-23, MESITA-4762: "i
                 don't like the icon for prepay"; the Offers Prepay tab's since
                 MESITA-4726). */}
-            <WalletIcon className="h-5 w-5" strokeWidth={2.25} />
+            <WalletIcon className="h-4 w-4" strokeWidth={2.25} />
           </span>
           <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
         </PushLink>
         {payBusy ? (
-          <Skeleton className="h-28 min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
+          <Skeleton className="h-20 min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
         ) : (
           <button
             type="button"
@@ -412,7 +412,7 @@ export function PayPage({
             data-pay-bill
           >
             <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
-              <QrCode className="h-5 w-5" strokeWidth={2.25} />
+              <QrCode className="h-4 w-4" strokeWidth={2.25} />
             </span>
             <span className={TILE_TITLE}>Pay Bill</span>
           </button>
@@ -424,7 +424,7 @@ export function PayPage({
           the Nearby Offers tab below. Grey Explore Offers | Send Gift boxes
           before (MESITA-4753). */}
       <PushLink href={CONSUMER_ROUTES.walletSend} className={SEND_GIFT} data-send-gift>
-        <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+        <Gift className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         <span className="truncate">Send Gift</span>
       </PushLink>
 
@@ -474,26 +474,28 @@ export function PayPage({
  *  same height"). */
 // CENTRED (Pato, 2026-11-23, MESITA-4753: "prepay icon and pay bill icon
 // must be centered"): the icon disc and the name sit on the tile's middle line.
+// SMALLER (Pato, 2026-11-23, MESITA-4778: "all in that page must be smaller
+// or shorter"; /plan-design-review pick): 80px (112 before), 32px disc, 14px.
 const TILE =
-  "flex h-28 min-w-0 flex-col items-center justify-center gap-2 rounded-2xl p-4 text-center transition active:scale-[0.99]";
+  "flex h-20 min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-3 text-center transition active:scale-[0.99]";
 /** Send Gift (MESITA-4765, D4): full width, 56px, black, white icon and
  *  word at the tiles' 16px. */
 const SEND_GIFT =
-  "mt-2 flex h-14 min-w-0 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-3 text-base font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]";
+  "mt-2 flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl bg-neutral-950 px-3 text-sm font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]";
 /** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
  *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
  *  size (18px before). */
-const TILE_TITLE = "text-base leading-tight font-semibold";
+const TILE_TITLE = "text-sm leading-tight font-semibold"; // 14px since MESITA-4778
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
  *  Card page's round buttons' look. The tiles grew 88 to 96px to hold it. */
-const ICON_CIRCLE = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white";
+const ICON_CIRCLE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white"; // 32px since MESITA-4778
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
 export function PayBillSkeleton() {
-  return <Skeleton className="mt-2 h-28 w-full rounded-2xl" aria-hidden />;
+  return <Skeleton className="mt-2 h-11 w-full rounded-xl" aria-hidden />;
 }
 
 /** The open bill on /pay (MESITA-4086): one panel, the place's photo and
@@ -562,12 +564,14 @@ const PENDING_ROW =
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
 
-/** PAY'S SWITCH (MESITA-4765, D1): the Offers page's segmented control
- *  (MESITA-4737), one light grey track, the chosen tab a white raised pill,
- *  48px, 16px semibold. Arrow keys move between the two. */
-const PAY_TABS: { id: PayTab; word: string }[] = [
-  { id: "offers", word: "Nearby Offers" },
-  { id: "cards", word: "Loyalty Cards" },
+/** PAY'S MENU (Pato, 2026-11-23, MESITA-4778: "nearby offers and loyalty
+ *  cards must look more like menu to select"): Me › Tickets' strip, two
+ *  halves, a little icon and the word, a bottom hairline, the chosen one ink
+ *  over a 3px ink line, the other grey. A grey segmented switch before
+ *  (MESITA-4765, D1). Arrow keys move between the two. */
+const PAY_TABS: { id: PayTab; word: string; icon: LucideIcon }[] = [
+  { id: "offers", word: "Nearby Offers", icon: BadgePercent },
+  { id: "cards", word: "Loyalty Cards", icon: CreditCard },
 ];
 
 function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
@@ -578,8 +582,8 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
     refs.current[to]?.focus();
   };
   return (
-    <div className="bg-muted flex gap-1 rounded-2xl p-1" role="tablist" aria-label="Pay" data-pay-tabs>
-      {PAY_TABS.map(({ id, word }, i) => {
+    <div className="border-border grid grid-cols-2 border-b" role="tablist" aria-label="Pay" data-pay-tabs>
+      {PAY_TABS.map(({ id, word, icon: Icon }, i) => {
         const on = tab === id;
         return (
           <button
@@ -601,11 +605,12 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
               }
             }}
             className={cn(
-              "flex h-12 min-w-0 flex-1 items-center justify-center rounded-xl px-2 text-base font-semibold transition",
-              on ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+              "-mb-px flex min-w-0 items-center justify-center gap-1.5 border-b-[3px] px-1 py-2.5 text-sm whitespace-nowrap transition",
+              on ? "border-foreground text-foreground font-bold" : "text-muted-foreground hover:text-foreground border-transparent font-semibold",
             )}
             data-pay-tab={id}
           >
+            <Icon className="h-4 w-4 shrink-0" strokeWidth={on ? 2.5 : 2} aria-hidden />
             <span className="truncate">{word}</span>
           </button>
         );
