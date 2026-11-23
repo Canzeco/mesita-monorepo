@@ -242,8 +242,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meTicketsGiftsIn: "/me/tickets/gifts-in",
         meTicketsGiftsOut: "/me/tickets/gifts-out",
         meTicketsRefunds: "/me/tickets/refunds",
-        meTicketsStories: "/me/tickets/stories",
-        // No Stories at all (MESITA-4641).
+        // One Story's old screen lands on the live Stories tab (MESITA-4738).
         meTicketsStoryPrefix: "/me/tickets/stories/",
         placeStory: "/place/:id/story",
         subscribe: "/subscribe/premium",
@@ -550,13 +549,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       {
-        source: "/me/tickets/stories",
-        destination: "/me/tickets/vouchers",
-        permanent: true,
-      },
-      {
         source: "/me/tickets/stories/:storyId",
-        destination: "/me/tickets/vouchers",
+        destination: "/me/tickets/stories",
         permanent: true,
       },
       {

@@ -16,6 +16,7 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
 import type { TicketRowKind } from "./ActivityRow";
 
 const ICON: Record<TicketRowKind, LucideIcon> = {
@@ -30,6 +31,8 @@ const ICON: Record<TicketRowKind, LucideIcon> = {
   refund: HandCoins,
   reversal: HandCoins,
   reservation: CalendarCheck,
+  // An Instagram story (MESITA-4738): the Instagram mark.
+  story: Instagram,
 };
 
 /** The kind's icon in an 18px white disc, for the bottom-right corner of a

@@ -24,3 +24,29 @@ export async function apiSimulateStory(
     { place_id: placeId },
   );
 }
+
+/** One of the guest's own Instagram stories, as consumer-web-list-stories
+ *  answers it (MESITA-4738, Me › Tickets › Stories). `place` is null while
+ *  the check has not tied the story to a place. `credit_cents` only when
+ *  rewarded. */
+export type GuestStory = {
+  id: string;
+  place: { id: string; name: string | null; slug: string | null; photo_url: string | null } | null;
+  state: "checking" | "verified" | "rewarded" | "rejected";
+  credit_cents: number | null;
+  currency: string | null;
+  posted_at: string;
+  decided_at: string | null;
+  simulated: boolean;
+};
+
+export async function apiListStories(
+  client: SupabaseClient,
+): Promise<{ stories: GuestStory[]; truncated: boolean }> {
+  return await invokeEF<{ stories: GuestStory[]; truncated: boolean }>(
+    client,
+    "consumer-web-list-stories",
+    {},
+    "Couldn't load your stories",
+  );
+}

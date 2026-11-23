@@ -457,6 +457,10 @@ verify_jwt = true
 [functions.consumer-web-list-visits]
 verify_jwt = true
 
+# MESITA-4738: Me › Tickets › Stories, the guest's own Instagram stories.
+[functions.consumer-web-list-stories]
+verify_jwt = true
+
 [functions.consumer-web-pay-tab]
 verify_jwt = true
 

@@ -274,10 +274,9 @@ export const CONSUMER_ROUTES = {
     meTicketsGiftsOut: "/me/tickets/gifts-out",
     // Refunds left Tickets for Settings (MESITA-4402).
     meTicketsRefunds: "/me/tickets/refunds",
-    // No Stories tab (MESITA-4627), and no Stories at all (MESITA-4641): the
-    // tab, one Story's screen and a place's Story offer land on Vouchers or
-    // that place's Offers.
-    meTicketsStories: "/me/tickets/stories",
+    // No Stories at all (MESITA-4641): a place's Story offer lands on its
+    // Offers. The Stories tab is live again (MESITA-4738, a ticket kind);
+    // one Story's old screen lands on it.
     meTicketsStoryPrefix: "/me/tickets/stories/",
     placeStory: "/place/:id/story",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
