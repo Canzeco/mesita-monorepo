@@ -14,7 +14,10 @@ export const SECTION_CARD = "border-border bg-card mt-2 overflow-hidden rounded-
 // the headers … a bit gray, just a bit, minimum"): the title strip is grey,
 // the rows stay white. A BIT DARKER (MESITA-4610, Pato: "better do payment
 // methods and loyalty cards a bit darker"): the full bg-muted, not 50%.
-export const SECTION_TITLE = "text-foreground border-border border-b px-3 py-3 text-base font-semibold bg-muted";
+// ALL WHITE (Pato, 2026-11-23, MESITA-4753: "make loyalty cards all white,
+// even in the header"): the strip is the card's own white; the hairline under
+// it stays.
+export const SECTION_TITLE = "text-foreground border-border bg-card border-b px-3 py-3 text-base font-semibold";
 export const SECTION_ROWS = "divide-border flex flex-col divide-y";
 
 // ONE SIZE SCALE (Pato, 2026-11-21, MESITA-4578: "standarize … sizes and

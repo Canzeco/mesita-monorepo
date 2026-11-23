@@ -414,14 +414,17 @@ export function PayPage({
           </button>
         )}
       </div>
+      {/* EXPLORE OFFERS LEFT, SEND GIFT RIGHT, BLACK (Pato, 2026-11-23,
+          MESITA-4753: "explore offers at the left, send gift at the right";
+          grey boxes, "black boxes or something … or gray boxes"). */}
       <div className={QUIET_ROW}>
-        <PushLink href={CONSUMER_ROUTES.walletSend} className={QUIET_BUTTON} data-send-gift>
-          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">Send Gift</span>
-        </PushLink>
         <PushLink href={`${CONSUMER_ROUTES.walletBuy}?offers=any`} className={QUIET_BUTTON} data-explore-offers>
           <Tag className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">Explore Offers</span>
+        </PushLink>
+        <PushLink href={CONSUMER_ROUTES.walletSend} className={QUIET_BUTTON} data-send-gift>
+          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">Send Gift</span>
         </PushLink>
       </div>
 
@@ -536,11 +539,13 @@ function PlaceRows({
  *  same height"). */
 const TILE =
   "flex h-28 min-w-0 flex-col items-start justify-between rounded-2xl p-4 text-left transition active:scale-[0.99]";
-/** Send Gift | Explore Offers (MESITA-4748): two quiet 48px outlined buttons,
- *  icon then word, side by side; stacked under 360px (the Me card's rule). */
+/** Explore Offers | Send Gift (MESITA-4748; order and grey since
+ *  MESITA-4753, Pato: "make them black boxes or something … or gray boxes"):
+ *  two 48px grey boxes without a border, icon then word, side by side;
+ *  stacked under 360px (the Me card's rule). Outlined white before. */
 const QUIET_ROW = "mt-2 grid grid-cols-2 gap-2 max-[359px]:grid-cols-1";
 const QUIET_BUTTON =
-  "border-border bg-card hover:bg-muted flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 text-base font-semibold transition active:scale-[0.99]";
+  "bg-muted text-foreground hover:bg-border flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold transition active:scale-[0.99]";
 /** A tile's name: one baseline across the two. */
 const TILE_TITLE = "text-lg leading-tight font-semibold";
 /** Prepay's promise rides a white pill top right, so its name stays level
