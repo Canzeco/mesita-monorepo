@@ -4,6 +4,7 @@
 
 import type { RewardsSection } from "../actions";
 import type { MoneyVoucherKey } from "../money-state";
+import { amountText } from "./money";
 
 /** One offer on the moving button (MESITA-3467). */
 export type OfferSlide = {
@@ -147,9 +148,12 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
     if (s.key === "post") {
       const cents = storyOf(offers);
       if (cents <= 0) return [];
-      // "Post Story", no amount (Pato, MESITA-4725: "Don't write $50 story
-      // that is weid. Write: Post Story").
-      return [{ ...s, pill: "Story", pillShort: "Story", spoken: "Post story" }];
+      // THE REWARD, NAMED (Pato, 2026-11-23, MESITA-4743: "post ($50MX
+      // Reward) or whatever is the amount"): "Post · $50MX Reward", whole
+      // pesos without cents. It read "Post Story" with no amount under
+      // MESITA-4725.
+      const reward = `$${amountText(cents)}MX Reward`;
+      return [{ ...s, pill: reward, pillShort: reward, spoken: `Post, ${reward.toLowerCase()}` }];
     }
     return sell.has(s.key) ? [s] : [];
   });
