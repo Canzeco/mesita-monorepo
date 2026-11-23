@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   CreditCard,
   Gem,
-  Medal,
   Gift,
   Heart,
   Settings as SettingsIcon,
@@ -155,17 +154,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Connect your account",
     href: CONSUMER_ROUTES.mePages.instagram,
   },
-  // CLASS IS BACK (Pato, 2026-11-22, MESITA-4657: "add again a class page
-  // in the boxes below … Class Plan"): /me/class, Regular or VIP and the
-  // steps to VIP. It left with MESITA-4306.
-  {
-    // A MEDAL, NOT THE CROWN (Pato, 2026-11-22, MESITA-4706: "change the icon
-    // of the class"): the crown stays VIP's own mark on the header chip.
-    Icon: Medal,
-    title: "Class",
-    summary: "Regular or VIP",
-    href: CONSUMER_ROUTES.mePages.class,
-  },
+  // NO CLASS (Pato, 2026-11-22, MESITA-4709: "no more VIP"): the Class
+  // tile and /me/class left again (back with MESITA-4657, first gone with
+  // MESITA-4306).
   // PLAN IS SOLD AGAIN (Pato, 2026-11-14, MESITA-3870: "Add the Plan
   // again"): the cell opens /me/plan — Free 3 reservation tickets a month, Pro 10
   // at $2 a month. It read Soon under MESITA-3855.

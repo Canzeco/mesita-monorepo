@@ -2,13 +2,7 @@
 
 import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, Gem, User } from "lucide-react";
-import {
-  CLASS_LABEL,
-  PLAN_LABEL,
-  type GuestClass,
-  type GuestPlan,
-} from "@/lib/guest-standing";
+import { User } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -193,13 +187,6 @@ export function IdentityCard({
 export const IDENTITY_PILL_CLASS =
   "border-border bg-card text-foreground hover:bg-muted/60 flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
 
-// NO BLACK PILLS (Pato, 2026-11-22, MESITA-4691: "don't mention that in
-// black … Just use a yellow crown … for plan use a green credit card"):
-// every pill is white; the colour is on the icon. VIP and Pro were filled
-// black under MESITA-4668 M2A.
-const CROWN_YELLOW = "text-yellow-500";
-const CARD_GREEN = "text-green-600";
-
 /** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
 function splitInstagramLabel(label: string): [string, string | null] {
   const at = label.indexOf(" · ");
@@ -211,37 +198,23 @@ export function IdentityModules({
   avatarUrl,
   instagram,
   nameHref,
-  guestClass = "regular",
-  classHref,
-  guestPlan = "free",
-  planHref,
 }: {
   name: string;
   avatarUrl: string | null;
   instagram: IdentityInstagram & { href: string };
   nameHref: string;
-  /** The guest's Class (MESITA-4639): Regular or VIP, computed by the server. */
-  guestClass?: GuestClass;
-  /** Where the Class pill goes (MESITA-4657): /me/class. */
-  classHref: string;
-  /** The guest's Plan (MESITA-4668): Free or Pro, from the profile. */
-  guestPlan?: GuestPlan;
-  /** Where the Plan pill goes (MESITA-4668): /me/plan. */
-  planHref: string;
 }) {
   // THE HANDLE ONLY (Pato, 2026-11-22, MESITA-4651: "don't mention the
   // number of followers there … only the instagram"): the count lives on Me
   // › Instagram.
   const [handle] = splitInstagramLabel(instagram.label);
-  // NAME / CLASS · PLAN / INSTAGRAM (Pato, 2026-11-22, MESITA-4668: "Name on
-  // top · Class on left, plan on right · Instagram on bottom · Regular Class
-  // or VIP Class. Free Plan or Pro Plan."). Name full width (opens Profile);
-  // Class | Plan in halves (open /me/class and /me/plan); Instagram full width
-  // (the handle, opens Me › Instagram; "Connect Instagram" when none). Every
-  // pill is white with a hairline and ink text; an earned or paid status
-  // (VIP, Pro) is filled black (MESITA-4668 M2A: the grey Regular read as
-  // disabled). MESITA-4659 had name | Class over Instagram. Pills are 40px
-  // (MESITA-4657).
+  // NAME / INSTAGRAM (Pato, 2026-11-23, MESITA-4709: "completely remove VIP
+  // class and put Free plan not in the header"): the photo, the name full
+  // width (opens Profile), then Instagram full width under it (the handle,
+  // opens Me › Instagram; "No Instagram" when none). No Class and no Plan
+  // pill: the Plan tile on the Me grid opens /me/plan. MESITA-4668 had Class
+  // | Plan in halves between them. Every pill is white with a hairline and
+  // ink text, 40px (MESITA-4657).
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
@@ -261,39 +234,20 @@ export function IdentityModules({
           )}
         </span>
       </PushLink>
-      <span className="grid w-full min-w-0 grid-cols-2 gap-2">
+      <span className="flex w-full min-w-0 flex-col gap-2">
         <PushLink
           href={nameHref}
           aria-label={`Profile: ${name}`}
-          className={cn(IDENTITY_PILL_CLASS, "col-span-2")}
+          className={IDENTITY_PILL_CLASS}
           data-identity-name
         >
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{name}</span>
         </PushLink>
         <PushLink
-          href={classHref}
-          className={IDENTITY_PILL_CLASS}
-          aria-label={`Class: ${CLASS_LABEL[guestClass]} Class`}
-          data-identity-class={guestClass}
-        >
-          {/* A yellow crown for every Class (MESITA-4667, MESITA-4691). */}
-          <Crown className={cn("h-4 w-4 shrink-0", CROWN_YELLOW)} strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{CLASS_LABEL[guestClass]} Class</span>
-        </PushLink>
-        <PushLink
-          href={planHref}
-          className={IDENTITY_PILL_CLASS}
-          aria-label={`Plan: ${PLAN_LABEL[guestPlan]} Plan`}
-          data-identity-plan={guestPlan}
-        >
-          <Gem className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
-        </PushLink>
-        <PushLink
           href={instagram.href}
           aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-          className={cn(IDENTITY_PILL_CLASS, "col-span-2")}
+          className={IDENTITY_PILL_CLASS}
           data-identity-instagram
         >
           <InstagramBadge connected={instagram.connected} />
@@ -306,21 +260,17 @@ export function IdentityModules({
 }
 
 /** ANOTHER GUEST'S HEADER, THE ME CARD'S FORMAT (Pato, 2026-11-22,
- *  MESITA-4695: "same format. mention class and plan"): the photo, the first
- *  name full width, Class | Plan in halves (yellow crown, green card), then
+ *  MESITA-4695: "same format"): the photo, the first name full width, then
  *  the Instagram row the caller decides (a handle, "No Instagram", or the
- *  add-yours box). Nothing here is a link but what the caller passes. */
+ *  add-yours box). No Class or Plan since MESITA-4709, as on Me's header.
+ *  Nothing here is a link but what the caller passes. */
 export function PersonModules({
   name,
   avatarUrl,
-  guestClass,
-  guestPlan,
   instagram,
 }: {
   name: string;
   avatarUrl: string | null;
-  guestClass: GuestClass;
-  guestPlan: GuestPlan;
   instagram: ReactNode;
 }) {
   const still = "hover:bg-card";
@@ -335,20 +285,12 @@ export function PersonModules({
           )}
         </span>
       </span>
-      <span className="grid w-full min-w-0 grid-cols-2 gap-2">
-        <span className={cn(IDENTITY_PILL_CLASS, still, "col-span-2")} data-identity-name>
+      <span className="flex w-full min-w-0 flex-col gap-2">
+        <span className={cn(IDENTITY_PILL_CLASS, still)} data-identity-name>
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{name}</span>
         </span>
-        <span className={cn(IDENTITY_PILL_CLASS, still)} data-identity-class={guestClass}>
-          <Crown className={cn("h-4 w-4 shrink-0", CROWN_YELLOW)} strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{CLASS_LABEL[guestClass]} Class</span>
-        </span>
-        <span className={cn(IDENTITY_PILL_CLASS, still)} data-identity-plan={guestPlan}>
-          <Gem className={cn("h-4 w-4 shrink-0", CARD_GREEN)} strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{PLAN_LABEL[guestPlan]} Plan</span>
-        </span>
-        <span className="col-span-2 min-w-0">{instagram}</span>
+        <span className="min-w-0">{instagram}</span>
       </span>
     </div>
   );

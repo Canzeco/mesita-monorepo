@@ -137,6 +137,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/subscribe/:plan", destination: "/me", permanent: true },
   // /web's anonymous "Get the app" screen (MESITA-2137): Home, behind the wall.
   { source: "/get-the-app", destination: "/home/places", permanent: true },
+  // No Class page (MESITA-4709).
+  { source: "/me/class", destination: "/me", permanent: true },
   { source: "/me/class/invite", destination: "/me", permanent: true },
   { source: "/me/diamond/invite", destination: "/me", permanent: true },
   { source: "/me/diamond", destination: "/me", permanent: true },

@@ -348,6 +348,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/qr",
     "/ticket/t1",
     "/gift/1234567890",
+    // No Class page (MESITA-4709).
+    "/me/class",
     "/me/diamond",
     "/me/settings/metrics",
     // Me › Transactions is Me › Tickets (MESITA-3855).
@@ -645,7 +647,7 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 // Integrations, MESITA-3954).
 // Plan read Soon under MESITA-3855 and opens again since it is sold
 // (MESITA-3870).
-describe("T8 — Me's grid is eleven cells, every one a live door", () => {
+describe("T8 — Me's grid is ten cells, every one a live door", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -654,7 +656,7 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders eleven cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -666,11 +668,11 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
     // MESITA-3855: Activity left the bar, its pages came to Me. MESITA-3880:
     // Share is on the bar only ("remove share button from here is redundant").
     // MESITA-4306: Class left ("LETS REMOVE THE CLASS"); MESITA-4657: back,
-    // and Integrations moved inside Settings.
+    // and Integrations moved inside Settings; MESITA-4709: gone again ("no
+    // more VIP").
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
-      "Class",
       "Plan",
       "Notifications",
       "Reservations",

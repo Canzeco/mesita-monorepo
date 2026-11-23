@@ -167,7 +167,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         profile: "/me/profile",
         instagram: "/me/instagram",
         plan: "/me/plan",
-        class: "/me/class",
         gift: "/me/gift",
         // Activity's chips as Me's pages (MESITA-3855).
         notifications: "/me/notifications",
@@ -230,6 +229,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meTicketsVisitPrefix: "/me/tickets/visit/",
         // Me's Second Stage boxes. All land on `me` (Metrics on Settings,
         // the Passport on Profile).
+        meClass: "/me/class",
         meClassInvite: "/me/class/invite",
         meDiamond: "/me/diamond",
         meDiamondInvite: "/me/diamond/invite",
@@ -403,7 +403,6 @@ describe("isModalContractPath (intercepted detail overlays)", () => {
     "/me/profile",
     "/me/instagram",
     "/me/plan",
-    "/me/class",
     "/me/connector",
     "/me/transactions",
     "/me/cards",
@@ -523,6 +522,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/subscribe", destination: "/me", permanent: true },
       { source: "/subscribe/:plan", destination: "/me", permanent: true },
       { source: "/get-the-app", destination: "/home/places", permanent: true },
+      { source: "/me/class", destination: "/me", permanent: true },
       { source: "/me/class/invite", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
       { source: "/me/diamond", destination: "/me", permanent: true },
