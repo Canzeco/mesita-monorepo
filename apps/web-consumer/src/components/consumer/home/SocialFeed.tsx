@@ -667,7 +667,7 @@ function PersonCard({
                   <PersonInstagramPill
                     label={`@${person.handle}`}
                     href={igUrl}
-                    // MESITA-4714: the server's yellow badge.
+                    // MESITA-4714: the server's followers badge (blue since MESITA-4721).
                     badge={person.instagramBadge === true}
                     onOpen={() =>
                       trackEvent(supabase, "social_open_instagram", {})
