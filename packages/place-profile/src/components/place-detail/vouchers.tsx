@@ -101,10 +101,12 @@ const STANDARD: Product[] = [
   // SMALL · MEDIUM · BIG (Pato, 2026-11-15, MESITA-4056): MX$200 +10%,
   // MX$500 +20% (the voucher_5000 key), MX$1,000 +30%. EACH KEY ITS PRICE
   // (Pato, 2026-11-16, MESITA-4152): Small MX$200 +10%, Medium MX$1,000 +20%
-  // (voucher_1000), Big MX$5,000 +30% (voucher_5000).
-  { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
+  // (voucher_1000), Big MX$5,000 +30% (voucher_5000). THE FULL NAME ON
+  // EVERY ROW (Pato, 2026-11-23, MESITA-4737: "call them Small Voucher,
+  // Medium Voucher, Big Voucher"): `short` reads the same as `name` now.
+  { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Voucher", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Voucher", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Voucher", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
@@ -442,9 +444,13 @@ type Step = {
 
 /** Every voucher (MESITA-4717): 1 Pay X · 2 Wait 3 hours · 3 Receive Y,
  *  all of it at once. */
-function sheetSteps(pay: string, get: string, card: { label: string; last4: string } | null): Step[] {
+/** NO CARD IN THE STEPS (Pato, 2026-11-23, MESITA-4737: "don't mention card
+ *  on the how it works. its weird. the how it works should not display
+ *  personal info"): Pay is the amount and "Here, in one tap", never the
+ *  saved card or its last four digits. */
+function sheetSteps(pay: string, get: string): Step[] {
   return [
-    { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `${card.label} ${card.last4}` : "By card" },
+    { Icon: CreditCard, title: "Pay", amount: pay, line: "Here, in one tap" },
     { Icon: Clock, title: "Wait 3 hours", short: "3 hours", line: "Nothing to do" },
     { Icon: Wallet, title: "Receive it all", short: "Receive", amount: get, line: "Credit and bonus together", green: true },
   ];
@@ -707,13 +713,11 @@ function OfferInfo({
   product,
   line,
   currency,
-  card,
   onClose,
 }: {
   product: Product;
   line: VoucherCatalogLine | undefined;
   currency: string;
-  card: { label: string; last4: string } | null;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -751,7 +755,7 @@ function OfferInfo({
         <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
           <OfferBox pay={pay} get={get} bonus={`+${product.bonus.replace(/ bonus$/, "")}`} />
           <Box title="How it works">
-            <StepList steps={sheetSteps(whole(pay), whole(get), card)} />
+            <StepList steps={sheetSteps(whole(pay), whole(get))} />
           </Box>
           <GoodToKnow productKey={product.key} />
         </div>
@@ -947,18 +951,23 @@ function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => v
   if (typeof document === "undefined") return null;
   const host = document.getElementById("mesita-app-card");
   const pct = `${row.bps / 100}%`;
+  // THE VOUCHER (i)'S STRUCTURE (Pato, 2026-11-23, MESITA-4737: "pay i must
+  // have same structure as this"): the deal box, How it works as three
+  // steps across, Good to know with an icon per line. No card and nothing
+  // personal in the steps ("the how it works should not display personal
+  // info").
   const steps: Step[] = [
-    { Icon: QrCode, title: "Pay your bill here", short: "Pay", line: "Cash or card; credit earns none" },
+    { Icon: QrCode, title: "Pay", short: "Pay", amount: "Your bill", line: "Here, or cash to the waiter" },
     { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
-    { Icon: Repeat, title: `Receive ${pct} back`, short: "Receive", amount: pct, line: "As credit at this place", green: true },
+    { Icon: Wallet, title: "Receive", short: "Receive", amount: `${pct} back`, line: "As credit at this place", green: true },
   ];
-  // ONLY PATO'S FACTS (2026-11-23, MESITA-4728: "fuck those rules. there is
-  // no ceiling"): who the line is for, card or cash only, and when it lands.
-  // The cap, once-a-day, tip and friend lines went.
+  // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day): who the line is
+  // for, never on credit, no minimum, and the credit's own rules.
   const good: { Icon: LucideIcon; text: string }[] = [
-    { Icon: Utensils, text: row.who + "." },
-    { Icon: Wallet, text: "Only on what you pay by card or cash, never on credit." },
-    { Icon: Clock, text: "It lands in 1 hour." },
+    { Icon: Repeat1, text: row.who + "." },
+    { Icon: Wallet, text: "Never on what you pay with credit." },
+    { Icon: Utensils, text: "Spend it on any bill here." },
+    { Icon: InfinityIcon, text: "It never expires." },
   ];
   return createPortal(
     <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-cashback-info>
@@ -971,21 +980,31 @@ function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => v
       >
         <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
           <h2 id="cashback-info-title" className="text-foreground text-base font-semibold">
-            {row.title} · {pct} Back
+            {row.title}
           </h2>
           <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
             <X className="h-6 w-6" strokeWidth={2.25} />
           </button>
         </div>
         <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+          <div className={cn(CARD, "flex shrink-0 items-end justify-between gap-3 px-4 py-3")} data-offer-deal>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-sm">You pay</span>
+              <span className="text-foreground text-2xl font-bold">Your bill</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-muted-foreground text-sm">You get</span>
+              <span className="text-2xl font-bold text-[#00A85A] tabular-nums">{pct} back</span>
+            </div>
+          </div>
           <Box title="How it works">
             <StepList steps={steps} />
           </Box>
           <Box title="Good to know">
             <ul className="flex flex-col gap-2">
               {good.map((g) => (
-                <li key={g.text} className="text-foreground flex items-start gap-2 text-sm">
-                  <g.Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                <li key={g.text} className="text-foreground flex items-start gap-2.5 text-base leading-snug">
+                  <g.Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
                   {g.text}
                 </li>
               ))}
@@ -1044,13 +1063,16 @@ function OffersTabs({
   return (
     <div
       ref={barRef}
-      // FULL WIDTH (Pato, 2026-11-23, MESITA-4727: "an actual full width
-      // with the menu"): edge to edge, white, one hairline under it; no card.
-      className="bg-card border-border flex shrink-0 border-b"
+      // A SEGMENTED CONTROL (Pato, 2026-11-23, MESITA-4737: "not line ...
+      // maybe slightly gray background or something NOT in the items"): one
+      // light grey track across the page, the chosen tab a white raised pill;
+      // no underline, no hairline. Full width since MESITA-4727.
+      className="bg-card shrink-0 px-4 pb-3"
       role="tablist"
       aria-label="Offers"
       data-offers-tabs
     >
+      <div className="bg-muted flex gap-1 rounded-2xl p-1">
       {OFFERS_TABS.map(({ id, word, Icon }, i) => {
         const on = tab === id;
         // "Prepay · N" while the basket holds anything (MESITA-4710).
@@ -1077,8 +1099,8 @@ function OffersTabs({
               }
             }}
             className={cn(
-              "relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-base font-semibold transition",
-              on ? "text-foreground" : "text-muted-foreground",
+              "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl text-base font-semibold transition",
+              on ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
               !on && !locked && "hover:text-foreground",
               locked && "cursor-not-allowed",
             )}
@@ -1087,11 +1109,11 @@ function OffersTabs({
             <span className="flex" aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} />
             </span>
-            <span className="tabular-nums">{count ? `${word} · ${count}` : word}</span>
-            <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
+            <span className="truncate tabular-nums">{count ? `${word} · ${count}` : word}</span>
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -1367,18 +1389,20 @@ function CheckoutSection({
           This place gives no Back yet. You can still pay your bill here.
         </p>
       )}
-      <HowItWorks
-        tab="pay"
-        title="Pay"
-        tone={CASHBACK_TONE}
-        steps={["Pay your bill here", "Wait 1 hour", "Receive your Back as credit here"]}
-        good={[
-          // "be clear that cashbacks don't work with pre-earned credits" (Pato,
-          // MESITA-4702). No cap and no once-a-day rule (MESITA-4728).
-          "Only on what you pay by card or cash, never on credit.",
-          "It lands in 1 hour.",
-        ]}
-      />
+      {/* ONE STRUCTURE (MESITA-4737): Pay's How it works opens the same
+          window as a line's (i), for the guest's own line (else the first). */}
+      {rows.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => onInfo(rows.find((r) => r.line === cashback?.line) ?? rows[0])}
+          aria-haspopup="dialog"
+          className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-start px-1 text-sm font-semibold"
+          data-how-it-works="pay"
+        >
+          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+          How it works
+        </button>
+      ) : null}
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
           just have shortcut to Go to Pay bill at the bottom, purple color"),
           sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
@@ -1559,7 +1583,7 @@ export function VouchersPane({
       </div>
       {cashInfo && cashback ? <CashbackInfo row={cashInfo} onClose={() => setCashInfo(null)} /> : null}
       {infoProduct ? (
-        <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
+        <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} onClose={() => setInfo(null)} />
       ) : null}
     </div>
   );
