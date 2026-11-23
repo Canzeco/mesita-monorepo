@@ -30,9 +30,11 @@ describe("offerSlides", () => {
       cashback_pct: 10,
       cashback_flat: false,
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Pay Up to 10% Back", "Prepay Up to 30% Bonus"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Pay Up to 10% Back", "Prepay Up to 40% Bonus"]);
     expect(slides.map((s) => s.section)).toEqual(["cashback", "prepayment"]);
     expect(slides[1]?.voucher).toBe("voucher_5000");
+    // The place's own pick wins (MESITA-4764).
+    expect(offerSlides({ sell: ["voucher_200", "voucher_5000"], voucher_pct: { voucher_200: 20, voucher_5000: 60 } })[0]?.pill).toBe("Up to 60% Bonus");
     // One rate on every line drops "Up to"; no cashback, no Pay slide.
     expect(offerSlides({ sell: [], cashback_pct: 5, cashback_flat: true }).map((s) => s.pill)).toEqual(["5% Back"]);
     expect(offerSlides({ sell: ["voucher_200"], cashback_pct: null }).map((s) => s.lead)).toEqual(["Prepay"]);

@@ -106,7 +106,9 @@ const STANDARD: Product[] = [
   // Medium Voucher, Big Voucher"): `short` reads the same as `name` now.
   { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Voucher", brief: "As many as you like" },
   { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Voucher", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Voucher", brief: "As many as you like" },
+  // MESITA-4764: the place picks each bonus (Small 10 · 20, Medium 20 · 40,
+  // Big 40 · 60); this copy is the default, the server's catalog line wins.
+  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $7,000.00MX.", limit: "As many as you like.", bonus: "40% bonus", short: "Big Voucher", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
@@ -142,6 +144,12 @@ function creditValue(product: Product, line: VoucherCatalogLine | undefined, cur
   if (line) return pesos(line.credit_cents, currency);
   const m = /get (\$[\d,.]+MX)/.exec(product.line);
   return m ? m[1] : product.name;
+}
+/** The bonus tag, "+20%": the server's line (the place's pick, MESITA-4764),
+ *  else the copy. */
+function bonusValue(product: Product, line: VoucherCatalogLine | undefined): string {
+  if (line && line.price_cents > 0) return `+${Math.round((line.bonus_cents * 100) / line.price_cents)}%`;
+  return `+${product.bonus.replace(/ bonus$/, "")}`;
 }
 /** What a guest pays: the server's, else from the copy. */
 function priceValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
@@ -402,7 +410,7 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
       key: p.key,
       title: p.short,
       chipClass: FACES[p.key].card,
-      bonus: `+${p.bonus.replace(/ bonus$/, "")}`,
+      bonus: bonusValue(p, line),
       pay: priceValue(p, line, currency),
       get: creditValue(p, line, currency),
       ready: READY_IN,
@@ -753,7 +761,7 @@ function OfferInfo({
           </button>
         </div>
         <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
-          <OfferBox pay={pay} get={get} bonus={`+${product.bonus.replace(/ bonus$/, "")}`} />
+          <OfferBox pay={pay} get={get} bonus={bonusValue(product, line)} />
           <Box title="How it works">
             <StepList steps={sheetSteps(whole(pay), whole(get))} />
           </Box>
@@ -1194,7 +1202,7 @@ function PrepaySection({
                 const pay = priceValue(p, line, currency);
                 const get = creditValue(p, line, currency);
                 const can = !loading && buyable(p.key);
-                const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
+                const bonus = bonusValue(p, line);
                 const blocked = !loading && !can;
                 const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
                 const n = basket[p.key] ?? 0;

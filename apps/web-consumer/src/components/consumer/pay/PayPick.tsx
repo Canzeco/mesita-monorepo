@@ -7,7 +7,7 @@ import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
-import { offerSlides, STANDARD_BONUS } from "@mesita/place-profile/lib/offers";
+import { offerSlides, voucherPct } from "@mesita/place-profile/lib/offers";
 import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
@@ -323,7 +323,7 @@ const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
  *  and below display like the amounts … ($200MX +20%) ($1,000MX + 30%)
  *  ($5,000MX + 30%)"; for the bill "Welcome (50% Back) Returning (X% Back)";
  *  /plan-design-review D6): small tinted boxes, the amount or the name over
- *  the bonus. The vouchers' bonuses are the catalog's (+10/+20/+30). Equal
+ *  the bonus. The vouchers' bonuses are the place's picks (MESITA-4764). Equal
  *  Welcome and Returning rates are one "Every bill" box. */
 export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
   const o = p.offers;
@@ -332,7 +332,7 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
     return VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => ({
       key: k,
       top: `$${pesos.format(Number(k.slice("voucher_".length)))}`,
-      bottom: `+${STANDARD_BONUS[k]}%`,
+      bottom: `+${voucherPct(o, k)}%`,
       tone: BOX_TINT.prepay,
     }));
   }

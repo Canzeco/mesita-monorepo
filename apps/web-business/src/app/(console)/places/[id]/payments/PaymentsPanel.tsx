@@ -51,7 +51,14 @@ import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { prepaymentsOn as prepaymentsLive, stripeTakesCards } from "@/lib/offers-state";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { CASHBACK_DEFAULTS, CASHBACK_STEPS_BPS, type CashbackRates, STORY_REWARD_STEPS_CENTS } from "@/lib/cashback";
+import {
+  CASHBACK_DEFAULTS,
+  type CashbackRates,
+  STORY_REWARD_STEPS_CENTS,
+  VISIT_PICKS_BPS,
+  VOUCHER_BONUS_PICKS_BPS,
+  type VoucherBonusField,
+} from "@/lib/cashback";
 import {
   setPlaceCashback,
   openPaymentDashboard,
@@ -81,11 +88,8 @@ const HEAD = "flex items-center gap-2 px-5 pt-4 pb-2 font-sans text-base font-se
 const NOTE = "text-muted-foreground text-xs";
 const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
 const SECTION = "flex flex-col p-0 sm:p-0";
-/** The rate select fills the control slot (6rem), like a switch's place. */
-const SELECT = "border-border bg-background w-24 rounded-full border px-3 py-1.5 text-sm";
-
-/** A voucher: its bonus, one objective line, and the Offers page's face. */
-type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string; icon: Icon };
+/** A voucher: its bonus field, one objective line, and the Offers page's face. */
+type Product = { key: PaymentKey; name: string; line: string; field: VoucherBonusField; tone: string; icon: Icon };
 
 // PRICED IN THE PLACE'S CURRENCY (MESITA-3914). TWIN of VOUCHER_PRICE_CENTS
 // in _shared/money.ts. The base price per currency, in whole units
@@ -100,13 +104,15 @@ const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEnt
   ]),
 );
 
-/** A voucher row before its price: the bonus in bps. */
-type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: number };
+/** A voucher row before its price. */
+type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey };
 
+// THE OWNER PICKS EACH BONUS (Pato, 2026-11-23, MESITA-4764: "small: 10% 20% ·
+// mid 20 40 · big 40 60"); the prices stay.
 const STANDARD: VoucherSeed[] = [
-  { key: "voucher_200", name: "Small Voucher", bps: 1000, value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_1000", name: "Medium Voucher", bps: 2000, value: "+20%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
-  { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_200", name: "Small Voucher", field: "small_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_1000", name: "Medium Voucher", field: "medium_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
+  { key: "voucher_5000", name: "Big Voucher", field: "big_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
 /** An amount in whole units where it is whole: MX$10,000, MX$20, $12.50. */
@@ -124,20 +130,22 @@ function wholeMoney(cents: number, currency: string): string {
   }
 }
 
-/** Visit Checkout's two cashback lines (MESITA-4698; no VIP since MESITA-4709). */
-const RATE_ROWS: Array<{ key: keyof Omit<CashbackRates, "story_reward_cents">; name: string; line: string; icon: Icon }> = [
+/** Visit Checkout's two cashback lines (MESITA-4698; no VIP since MESITA-4709),
+ *  two picks each (MESITA-4764). */
+const RATE_ROWS: Array<{ key: keyof typeof VISIT_PICKS_BPS; name: string; line: string; icon: Icon }> = [
   { key: "welcome_bps", name: "Welcome Visit Rate", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
   { key: "returning_bps", name: "Returning Visit Rate", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
 ];
-const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
+const pct = (bps: number) => `${bps / 100}%`;
 /** The story amounts a place can pick (Off is the switch). */
 const STORY_AMOUNTS = STORY_REWARD_STEPS_CENTS.filter((c) => c > 0);
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
-function voucherProducts(currency: string): Product[] {
+function voucherProducts(currency: string, rates: CashbackRates): Product[] {
   const prices = VOUCHER_PRICE[currency];
   if (!prices) return [];
-  return STANDARD.map(({ bps, ...p }) => {
+  return STANDARD.map((p) => {
+    const bps = rates[p.field];
     const price = prices[p.key];
     const credit = price + Math.floor((price * bps) / 10000);
     return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.` };
@@ -309,6 +317,31 @@ export function PaymentsPanel({
     setSettings(r.data);
   }
 
+  /** Two picks as pills, the Story Reward's control (MESITA-4764): the picked
+   *  one filled. `shown` is what reads picked; Off reads the last pick, dimmed. */
+  const picks = (label: string, values: readonly number[], shown: number, text: (v: number) => string, disabled: boolean, pick: (v: number) => void) => (
+    <div className="flex gap-1" role="group" aria-label={label}>
+      {values.map((v) => {
+        const picked = shown === v;
+        return (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={picked}
+            disabled={disabled}
+            onClick={() => pick(v)}
+            className={cn(
+              "rounded-full border px-3 py-1.5 text-sm font-semibold tabular-nums disabled:opacity-50",
+              picked ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
+            )}
+          >
+            {text(v)}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   /** Rates and the story reward are one record; each change saves it. */
   async function saveRates(next: CashbackRates) {
     const before = cashback;
@@ -380,10 +413,10 @@ export function PaymentsPanel({
   // stored choice is kept and comes back when it is on.
   const prepaymentsOn = prepaymentsLive(settings, takesCards);
   const prepaymentsBlocked = prepaymentsOn ? null : !takesCards ? needsStripe : creditsBlock;
-  const vouchers = voucherProducts(currency).filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]);
+  const vouchers = voucherProducts(currency, cashback).filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]);
   const anyTierOn = vouchers.some((p) => settings[p.key]);
 
-  const voucherRow = ({ key, name, line, value }: Product) => {
+  const voucherRow = ({ key, name, line, field }: Product) => {
     const on = settings[key] && prepaymentsOn;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
     const blocked = !takesCards ? needsStripe : !prepaymentsOn ? needsPrepayments : !on && !settings.loyalty_cards ? creditsBlock : null;
@@ -395,7 +428,9 @@ export function PaymentsPanel({
           <p className="text-muted-foreground">{line}</p>
           {under(blocked, note)}
         </div>
-        <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{value}</p>
+        {picks(`${name} bonus`, VOUCHER_BONUS_PICKS_BPS[field], cashback[field], (b) => `+${pct(b)}`, pending || !!blocked, (b) =>
+          void saveRates({ ...cashback, [field]: b }),
+        )}
         <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
       </li>
     );
@@ -555,19 +590,9 @@ export function PaymentsPanel({
                     {under(creditsBlock, null)}
                   </div>
                   <span />
-                  <select
-                    className={SELECT}
-                    aria-label={row.name}
-                    value={cashback[row.key]}
-                    disabled={pending}
-                    onChange={(e) => void saveRates({ ...cashback, [row.key]: Number(e.target.value) })}
-                  >
-                    {CASHBACK_STEPS_BPS.map((bps) => (
-                      <option key={bps} value={bps}>
-                        {pct(bps)}
-                      </option>
-                    ))}
-                  </select>
+                  {picks(row.name, VISIT_PICKS_BPS[row.key], visitOn ? cashback[row.key] : lastRates[row.key], pct, pending || !visitOn, (b) =>
+                    void saveRates({ ...cashback, [row.key]: b }),
+                  )}
                 </li>
               );
             })}
@@ -680,26 +705,9 @@ export function PaymentsPanel({
                 <p className="text-muted-foreground">What one verified story pays the guest.</p>
               </div>
               <span />
-              <div className="flex gap-1" role="group" aria-label="Story Reward">
-                {STORY_AMOUNTS.map((cents) => {
-                  const picked = (storyOn ? cashback.story_reward_cents : lastStory) === cents;
-                  return (
-                    <button
-                      key={cents}
-                      type="button"
-                      aria-pressed={picked}
-                      disabled={pending || !storyOn}
-                      onClick={() => void saveRates({ ...cashback, story_reward_cents: cents })}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-sm font-semibold tabular-nums disabled:opacity-50",
-                        picked ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
-                      )}
-                    >
-                      {wholeMoney(cents, currency)}
-                    </button>
-                  );
-                })}
-              </div>
+              {picks("Story Reward", STORY_AMOUNTS, storyOn ? cashback.story_reward_cents : lastStory, (c) => wholeMoney(c, currency), pending || !storyOn, (c) =>
+                void saveRates({ ...cashback, story_reward_cents: c }),
+              )}
             </li>
           </ul>
         </Card>

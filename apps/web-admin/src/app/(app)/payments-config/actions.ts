@@ -19,7 +19,7 @@ export type VoucherPriceRow = {
 export type CurrencyRow = { code: string; country: string; small: number; big: number; selling: boolean };
 
 /** MESITA-4700: the cashback defaults (basis points; no cap since MESITA-4728).
- *  MESITA-4714: and the Post story reward in cents (0 Off · 2000 · 5000). */
+ *  MESITA-4714: and the Post story reward in cents (0 Off · 2000 · 4000). */
 export type CashbackDefaults = { welcome_bps: number; returning_bps: number; story_reward_cents: number };
 
 /** A read from before Post carries no story reward: the default, MX$20. */
