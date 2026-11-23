@@ -20,7 +20,14 @@ export type CurrencyRow = { code: string; country: string; small: number; big: n
 
 /** MESITA-4700: the cashback defaults (basis points; no cap since MESITA-4728).
  *  MESITA-4766: and the Returning VIP rate (0 Off · 1000 · 2000). */
-export type CashbackDefaults = { welcome_bps: number; returning_bps: number; returning_vip_bps: number };
+export type CashbackDefaults = {
+  welcome_bps: number;
+  returning_bps: number;
+  returning_vip_bps: number;
+  /** MESITA-4775 (MESITA-4770): how the three lines pay out by default:
+   *  discount (off the bill, no Credits Agreement) or cashback (credit back). */
+  visit_mechanism: "discount" | "cashback";
+};
 
 /** A read from before Returning VIP carries none: Off. Anything else the server sends is dropped. */
 function readDefaults(d: Partial<CashbackDefaults> | null | undefined): CashbackDefaults | null {
@@ -29,6 +36,7 @@ function readDefaults(d: Partial<CashbackDefaults> | null | undefined): Cashback
     welcome_bps: Number(d.welcome_bps ?? 0),
     returning_bps: Number(d.returning_bps ?? 0),
     returning_vip_bps: typeof d.returning_vip_bps === "number" ? d.returning_vip_bps : 0,
+    visit_mechanism: d.visit_mechanism === "discount" ? "discount" : "cashback",
   };
 }
 
