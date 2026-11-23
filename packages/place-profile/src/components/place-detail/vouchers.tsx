@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
@@ -784,17 +784,19 @@ function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   ).filter((r) => r.bps > 0);
 }
 
-/** A section's head on the one Offers page (MESITA-4702): its word, its
- *  colour chip, and one line that says when the credit lands. */
-function OfferSectionHead({ id, title, chip, tone, sub }: { id: string; title: string; chip: string; tone: string; sub: string }) {
+/** A section's head (MESITA-4702): its colour chip and one line that says
+ *  when the credit lands. NO TITLE UNDER A TAB (MESITA-4710): the tab already
+ *  names it, so each tab opens with its promise; `title` is for a page that
+ *  stacks the sections again. */
+function OfferSectionHead({ title, chip, tone, sub }: { title?: string; chip: string | null; tone: string; sub: string }) {
   return (
-    <div className="flex flex-col gap-0.5 px-1 pt-1">
-      <div className="flex items-center gap-2">
-        <h2 id={id} className="text-foreground text-lg font-bold">
-          {title}
-        </h2>
-        <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", tone)}>{chip}</span>
-      </div>
+    <div className="flex flex-col items-start gap-1 px-1 pt-1">
+      {title || chip ? (
+        <div className="flex items-center gap-2">
+          {title ? <h2 className="text-foreground text-lg font-bold">{title}</h2> : null}
+          {chip ? <span className={cn("rounded-full px-2.5 py-0.5 text-sm font-bold", tone)}>{chip}</span> : null}
+        </div>
+      ) : null}
       <p className="text-muted-foreground text-sm">{sub}</p>
     </div>
   );
@@ -808,7 +810,7 @@ function CashbackPanel({ cashback, onInfo }: { cashback: PlaceCashback; onInfo: 
   const rows = cashbackRows(cashback);
   if (rows.length === 0) return null;
   return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby="offers-pay" data-promos="cashback">
+    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Cashback" data-promos="cashback">
       <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
           const mine = cashback.line === r.line;
@@ -912,19 +914,413 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
   );
 }
 
-/** Kept for old links (`?rewards=`); the page is one scroll since MESITA-4702. */
-export type OffersTab = "cashbacks" | "vouchers";
+/** THREE SUBPAGES (Pato, 2026-11-23, MESITA-4710: "THIS MUST HAVE 3
+ *  SUBPAGES — Prepay. Checkout. Rewards."): Prepay sells the vouchers,
+ *  Checkout is paying the bill here and the cashback it earns, Rewards is
+ *  what the guest earned here (the host draws it). The one scroll of
+ *  MESITA-4702 went; the two tabs of MESITA-4698/4701 before it. */
+export type OffersTab = "prepay" | "checkout" | "rewards";
+
+const OFFERS_TABS: { id: OffersTab; word: string; Icon: LucideIcon }[] = [
+  { id: "prepay", word: "Prepay", Icon: Ticket },
+  { id: "checkout", word: "Checkout", Icon: QrCode },
+  { id: "rewards", word: "Rewards", Icon: Gift },
+];
+
+/** The tab bar (MESITA-4710), MESITA-4701's last approved bar: three equal
+ *  thirds, an icon over the word, the open tab in ink with a 3px ink line
+ *  under it, no product colour. It scrolls with the page; only the bottom
+ *  bar is sticky. While a charge is out (`locked`) no tab switches. Arrow
+ *  keys move between tabs (roving tabIndex). */
+function OffersTabs({
+  tab,
+  onTab,
+  locked,
+  picked,
+  barRef,
+}: {
+  tab: OffersTab;
+  onTab: (t: OffersTab) => void;
+  locked: boolean;
+  picked: number;
+  barRef: RefObject<HTMLDivElement | null>;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const move = (from: number, step: number) => {
+    if (locked) return;
+    const to = (from + step + OFFERS_TABS.length) % OFFERS_TABS.length;
+    onTab(OFFERS_TABS[to].id);
+    refs.current[to]?.focus();
+  };
+  return (
+    <div ref={barRef} className={cn(CARD, "flex shrink-0 overflow-hidden")} role="tablist" aria-label="Offers" data-offers-tabs>
+      {OFFERS_TABS.map(({ id, word, Icon }, i) => {
+        const on = tab === id;
+        // "Prepay · N" while the basket holds anything (MESITA-4710).
+        const count = id === "prepay" && picked > 0 ? picked : 0;
+        return (
+          <button
+            key={id}
+            ref={(el) => {
+              refs.current[i] = el;
+            }}
+            type="button"
+            role="tab"
+            id={`offers-tab-${id}`}
+            aria-selected={on}
+            aria-controls={`offers-panel-${id}`}
+            aria-disabled={locked || undefined}
+            aria-label={count ? `${word}, ${count} picked` : undefined}
+            tabIndex={on ? 0 : -1}
+            onClick={() => onTab(id)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                e.preventDefault();
+                move(i, e.key === "ArrowRight" ? 1 : -1);
+              }
+            }}
+            className={cn(
+              "relative flex h-16 flex-1 flex-col items-center justify-center gap-1 text-base font-semibold transition",
+              on ? "text-foreground" : "text-muted-foreground",
+              !on && !locked && "hover:text-foreground",
+              locked && "cursor-not-allowed",
+            )}
+            data-offers-tab={id}
+          >
+            <Icon className="h-5 w-5" strokeWidth={on ? 2.5 : 2} aria-hidden />
+            <span className="tabular-nums">{count ? `${word} · ${count}` : word}</span>
+            <span className={cn("absolute inset-x-6 bottom-0 h-[3px] rounded-full", on ? "bg-foreground" : "bg-transparent")} aria-hidden />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Two grey bone rows while a read is out. */
+function BoneRows({ n }: { n: number }) {
+  return (
+    <div className={cn(CARD, "divide-border shrink-0 divide-y overflow-hidden")} aria-busy data-offers-bones>
+      {Array.from({ length: n }, (_, i) => (
+        <div key={i} className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2" aria-hidden>
+          <span className="bg-muted h-12 w-[4.75rem] shrink-0 animate-pulse rounded-xl" />
+          <span className="flex flex-1 flex-col gap-1.5">
+            <span className="bg-muted h-4 w-32 animate-pulse rounded" />
+            <span className="bg-muted h-3 w-44 animate-pulse rounded" />
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type Checkout = ReturnType<typeof useOfferCheckout>;
+
+/** PREPAY (MESITA-4710): the vouchers, their steppers and the voucher Pay
+ *  bar. A section of its own, so a page that stacks the sections again can
+ *  reuse it; the basket stays in VouchersPane. */
+function PrepaySection({
+  products,
+  co,
+  basket,
+  locked,
+  count,
+  totals,
+  failed,
+  actions,
+  onQty,
+  onInfo,
+  onPay,
+}: {
+  products: Product[];
+  co: Checkout;
+  basket: Basket;
+  locked: boolean;
+  count: number;
+  totals: ReturnType<typeof basketTotals>;
+  /** No offer was read at all (list-vouchers failed, or none came): the
+   *  empty line offers Retry. */
+  failed: boolean;
+  actions: PlaceActions | undefined;
+  onQty: (k: MoneyVoucherKey, n: number) => void;
+  onInfo: (k: MoneyVoucherKey) => void;
+  onPay: () => void;
+}) {
+  const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
+  // The best bonus on sale, for the chip.
+  const topBonus = products.reduce((n, p) => Math.max(n, Number.parseInt(p.bonus, 10) || 0), 0);
+  if (!loading && products.length === 0) {
+    // EVERY TAB HAS AN EMPTY STATE (MESITA-4710): no row to show, no bar.
+    return (
+      <p className="text-muted-foreground flex flex-col items-center gap-2 px-1 py-6 text-center text-sm" data-offers-none="prepay">
+        No prepay offers here yet.
+        {failed && actions?.onLoadVouchers ? (
+          <button type="button" onClick={actions.onLoadVouchers} className="text-foreground min-h-9 font-semibold underline underline-offset-2">
+            Retry
+          </button>
+        ) : null}
+      </p>
+    );
+  }
+  return (
+    <>
+      <OfferSectionHead
+        chip={topBonus > 0 ? `Up to ${topBonus}% Bonus` : "Bonus"}
+        tone={VOUCHER_TONE.voucher_200}
+        sub="Pay ahead, spend it here. Your bonus lands in 3 hours."
+      />
+      {GROUPS.map((g) => {
+        const list = products.filter((p) => g.keys.has(p.key));
+        if (list.length === 0) return null;
+        return (
+          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-label={g.title} data-promos={g.id}>
+            <ul className="divide-border divide-y" data-voucher-catalog>
+              {list.map((p) => {
+                const line = catalog[p.key];
+                const pay = priceValue(p, line, currency);
+                const get = creditValue(p, line, currency);
+                const can = !loading && buyable(p.key);
+                const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
+                const blocked = !loading && !can;
+                const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
+                const n = basket[p.key] ?? 0;
+                // ASK TO LINK (MESITA-4659): a VIP row locked because the
+                // guest has no verified Instagram offers "Link Instagram"
+                // where the stepper goes, when the host can open Me › Instagram.
+                const linkIg =
+                  blocked && guestLock(p.key) === "vip" && actions?.guest != null && !actions.guest.instagramLinked
+                    ? actions.onLinkInstagram
+                    : undefined;
+                // A PRODUCT ROW (Pato, 2026-11-22, MESITA-4647): left ONE
+                // green box, black "+10%" over "BONUS"; the name and the deal
+                // with the (i); − n + at the right. A blocked row says why,
+                // with a lock, and has no stepper.
+                return (
+                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && !linkIg && "opacity-50")}>
+                    <span
+                      className={cn(
+                        BADGE,
+                        // Each voucher's own colour: VIP yellow, the rest green
+                        // (MESITA-4688); VIP keeps it while locked, the row dims.
+                        blocked ? "bg-muted text-muted-foreground" : VOUCHER_TONE[p.key],
+                      )}
+                      aria-hidden
+                      data-offer-bonus
+                    >
+                      <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
+                      <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Bonus</span>
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <span className={cn("truncate text-base font-semibold", blocked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
+                        <button
+                          type="button"
+                          aria-label={`How ${p.short} works`}
+                          disabled={loading}
+                          onClick={() => onInfo(p.key)}
+                          className="text-muted-foreground hover:text-foreground -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                          data-offer-info-open
+                        >
+                          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                        </button>
+                      </span>
+                      <span className={cn("text-sm font-semibold tabular-nums", blocked ? "text-muted-foreground" : "text-foreground")}>
+                        Pay {whole(pay)} <span className="text-muted-foreground">·</span> Get {whole(get)}
+                      </span>
+                      {blocked ? (
+                        <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-voucher-why>
+                          <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} data-voucher-locked />
+                          <span className="truncate">{why.replace(/\.$/, "")}</span>
+                        </span>
+                      ) : null}
+                    </span>
+                    {can && co.live ? (
+                      <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => onQty(p.key, v)} />
+                    ) : linkIg ? (
+                      <button
+                        type="button"
+                        onClick={linkIg}
+                        className="bg-foreground text-background flex h-9 shrink-0 items-center rounded-full px-3 text-sm font-semibold"
+                        data-offer-link-instagram
+                      >
+                        Link Instagram
+                      </button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
+      {/* THE PAY BAR (MESITA-4647), ALWAYS THERE ON PREPAY (Pato,
+          2026-11-22, MESITA-4659; MESITA-4710, d2a): sticky at the bottom,
+          the same lines whatever is picked — Pay, Get immediately (the price
+          is credit now), Get in 3 hours (the bonus, green), then under a
+          hairline the total, You get (MESITA-4669, Pato: "a bit confusing,
+          add a line"). Then one black pill. Ready to charge with a saved
+          card, it splits in half (MESITA-4669, Pato: "50% of button for the
+          payment method, 50% right for the amount … pay x get y, even if a
+          bit redundant"): the card on the left (a tap cycles cards, the old
+          Change), Pay $X over Get $Y on the right. Every other state is the
+          one full-width button: with nothing picked every line reads $0 and
+          it says "Select an offer", disabled: an empty basket charges
+          nothing. The purple Go to Pay Bill moved to Checkout (MESITA-4710). */}
+      {(() => {
+        const sum = totals ?? { price: 0, bonus: 0 };
+        const amount = (cents: number) => whole(pesos(cents, currency));
+        const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");
+        const split = co.payCard !== null && !co.signedOut && count > 0 && totals !== null && !locked;
+        return (
+          <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 flex flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
+            <dl className="flex flex-col gap-0.5 text-base" data-offer-summary>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-foreground font-semibold">Pay</dt>
+                <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-pay>{amount(sum.price)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Get immediately</dt>
+                <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-now>{amount(sum.price)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-muted-foreground">Get in 3 hours</dt>
+                <dd className="font-semibold text-[#00A85A] tabular-nums" data-offer-sum-bonus>+{amount(sum.bonus)}</dd>
+              </div>
+              <div className="border-border mt-1.5 flex items-center justify-between gap-3 border-t pt-1.5 text-lg">
+                <dt className="text-foreground font-bold">You get</dt>
+                <dd className="text-foreground font-bold tabular-nums" data-offer-sum-total>{amount(sum.price + sum.bonus)}</dd>
+              </div>
+            </dl>
+            {co.payCards?.state === "error" ? (
+              <p className="flex items-center justify-between text-sm" role="alert">
+                <span className="text-foreground">Couldn&apos;t load your cards</span>
+                <button type="button" onClick={actions?.onRetryPayCards} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2">
+                  Retry
+                </button>
+              </p>
+            ) : null}
+            {split && co.payCard && totals ? (
+              <div className="bg-foreground text-paper flex h-14 w-full items-stretch overflow-hidden rounded-full" data-offer-pay-split>
+                <button
+                  type="button"
+                  disabled={!co.canChange}
+                  onClick={co.nextCard}
+                  className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-3 text-sm opacity-80 disabled:cursor-default"
+                  aria-label={co.canChange ? `Paying with ${co.payCard.label} ending ${co.payCard.last4}. Change card` : `Paying with ${co.payCard.label} ending ${co.payCard.last4}`}
+                  data-pay-card-line
+                >
+                  <CreditCard className="h-4 w-4 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {co.payCard.label} •••• {co.payCard.last4}
+                  </span>
+                  {co.canChange ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden /> : null}
+                </button>
+                <span className="bg-paper/25 my-3 w-px shrink-0" aria-hidden />
+                <button
+                  type="button"
+                  disabled={payDisabled}
+                  onClick={onPay}
+                  className="flex min-w-0 flex-1 flex-col items-center justify-center px-3 leading-tight disabled:opacity-60"
+                  data-offer-pay
+                >
+                  <span className="text-base font-semibold tabular-nums">Pay {amount(totals.price)}</span>
+                  <span className="text-xs tabular-nums opacity-70">Get {amount(totals.price + totals.bonus)}</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={payDisabled}
+                onClick={onPay}
+                className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
+                data-offer-pay
+              >
+                {count === 0 ? "Select an offer" : locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
+              </button>
+            )}
+          </div>
+        );
+      })()}
+    </>
+  );
+}
+
+/** CHECKOUT (MESITA-4710): paying the bill here and the cashback it earns.
+ *  The lines are the server's (removing the VIP line is MESITA-4709's job),
+ *  then the purple Go to Pay Bill at the bottom (MESITA-4699). Nothing to
+ *  buy: a confirmed bill earns it, 3 hours later, with no minimum. */
+function CheckoutSection({
+  cashback,
+  loading,
+  onInfo,
+  onPay,
+}: {
+  cashback: PlaceCashback | null;
+  loading: boolean;
+  onInfo: (r: CashbackLineRow) => void;
+  onPay: (() => void) | undefined;
+}) {
+  const rows = cashback ? cashbackRows(cashback) : [];
+  const top = rows.reduce((n, r) => Math.max(n, r.bps), 0) / 100;
+  // "N% Cashback" when every line earns the same, else "Up to N%".
+  const flat = rows.every((r) => r.bps === rows[0]?.bps);
+  return (
+    <>
+      <OfferSectionHead
+        chip={rows.length > 0 ? `${flat ? "" : "Up to "}${top}% Cashback` : null}
+        tone={CASHBACK_TONE}
+        // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
+        sub="Pay your bill here. Lands in 3 hours. Credit you spend earns none."
+      />
+      {loading ? (
+        <BoneRows n={2} />
+      ) : cashback && rows.length > 0 ? (
+        <CashbackPanel cashback={cashback} onInfo={onInfo} />
+      ) : (
+        // No cashback here, or the read failed: Pay Bill still works.
+        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none="checkout">
+          This place gives no cashback yet. You can still pay your bill here.
+        </p>
+      )}
+      {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
+          just have shortcut to Go to Pay bill at the bottom, purple color"),
+          sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
+      {onPay ? (
+        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-cashback-pay-bar>
+          <button
+            type="button"
+            onClick={onPay}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
+            data-cashback-pay-bill
+          >
+            <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+            Go to Pay Bill
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+}
 
 export function VouchersPane({
   place,
   actions,
   pick,
+  initialTab,
+  onTabChange,
+  renderRewards,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
   pick?: string | null;
-  /** The tab a link asks for (`?rewards=cashback|prepayment`). */
-  tab?: OffersTab | null;
+  /** The tab to open on (`?rewards=`), read once. An asked voucher (`pick`)
+   *  opens Prepay whatever this says. Absent: Prepay. */
+  initialTab?: OffersTab | null;
+  /** Called after each switch the pane accepts (the host keeps the address). */
+  onTabChange?: (tab: OffersTab) => void;
+  /** The Rewards tab's body, drawn by the host (MESITA-4710: no Rewards
+   *  data contract in this package). `switchTab` switches tabs in place. */
+  renderRewards?: (switchTab: (tab: OffersTab) => void) => ReactNode;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -933,7 +1329,12 @@ export function VouchersPane({
 
   const co = useOfferCheckout(place, actions);
   const [cashInfo, setCashInfo] = useState<CashbackLineRow | null>(null);
-  const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
+  const { loading, buyable, catalog, currency } = co;
+  // ONE OWNER FOR LINKED STATE (MESITA-4710): the open tab lives here with
+  // the basket and `locked`, so a switch never empties the basket and never
+  // happens while a charge is out.
+  const [tab, setTab] = useState<OffersTab>(() => (pick ? "prepay" : initialTab ?? "prepay"));
+  const barRef = useRef<HTMLDivElement>(null);
   // The guest's own picks; until the first tap, an asked voucher counts as one.
   const [picked, setPicked] = useState<Basket | null>(null);
   const [info, setInfo] = useState<MoneyVoucherKey | null>(null);
@@ -949,6 +1350,23 @@ export function VouchersPane({
   // Locked while a charge is out (MESITA-4647): the basket a card answers for
   // is the basket on screen.
   const locked = co.buying || payingNow;
+
+  const switchTab = (t: OffersTab) => {
+    // Refused while a charge is out, here and not only by styling (MESITA-4710).
+    if (locked || paying.current || t === tab) return;
+    setTab(t);
+    onTabChange?.(t);
+    // The new tab starts at the bar when the bar has scrolled away above.
+    const bar = barRef.current;
+    if (bar && typeof window !== "undefined") {
+      window.requestAnimationFrame(() => {
+        let scroller: HTMLElement | null = bar.parentElement;
+        while (scroller && !/(auto|scroll)/.test(window.getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+        const top = scroller ? scroller.getBoundingClientRect().top : 0;
+        if (bar.getBoundingClientRect().top < top) bar.scrollIntoView?.({ block: "start" });
+      });
+    }
+  };
 
   const setQty = (k: MoneyVoucherKey, n: number) => {
     if (locked) return;
@@ -999,240 +1417,50 @@ export function VouchersPane({
     }
   };
 
+  // The receipt replaces the page body and the tabs (MESITA-4710); its Done
+  // keeps the host's return rules.
   if (receipt) return <BasketReceipt receipt={receipt} onDone={() => (actions?.onOffersDone ? actions.onOffersDone() : setReceipt(null))} />;
 
   // HIDDEN ROWS ARE GONE (MESITA-4603), never drawn while list-vouchers is
   // still loading (every row is a grey bone then).
   const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
   const cashback = place.money?.cashback ?? null;
-  const hasCashback = !!cashback && (cashback.welcome_bps > 0 || cashback.regular_bps > 0 || cashback.vip_bps > 0);
-  // The best bonus on sale, for the Prepay chip.
-  const topBonus = products.reduce((n, p) => Math.max(n, Number.parseInt(p.bonus, 10) || 0), 0);
-  const topCashback = cashback ? Math.max(cashback.welcome_bps, cashback.regular_bps, cashback.vip_bps) / 100 : 0;
-  const flatCashback = !!cashback && cashback.welcome_bps === cashback.regular_bps && cashback.regular_bps === cashback.vip_bps;
   const infoProduct = info ? listedProducts().find((p) => p.key === info) ?? null : null;
 
   return (
-    // ON THE GREY PAGE (MESITA-4196): two white panels, Special then Classic
-    // (MESITA-4218), and the Pay bar under them, always (MESITA-4659).
+    // ON THE GREY PAGE (MESITA-4196): the tab bar, then one tab's white
+    // panels, its bar at the bottom (MESITA-4710).
     <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
-      {/* ONE PAGE (Pato, 2026-11-22, MESITA-4702: "MAKE ALL THE SAME PAGE"):
-          Pay (cashback, green) then Prepay (vouchers, blue), each with its
-          head; one sticky bar at the bottom. The tabs of MESITA-4698/4701
-          are gone. */}
-      {hasCashback && cashback ? (
-        <>
-          <OfferSectionHead
-            id="offers-pay"
-            title="Pay"
-            chip={`${flatCashback ? "" : "Up to "}${topCashback}% Cashback`}
-            tone={CASHBACK_TONE}
-            // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
-            sub="Pay your bill here. Lands in 3 hours. Credit you spend earns none."
+      <OffersTabs tab={tab} onTab={switchTab} locked={locked} picked={count} barRef={barRef} />
+      <div
+        role="tabpanel"
+        id={`offers-panel-${tab}`}
+        aria-labelledby={`offers-tab-${tab}`}
+        className="flex flex-1 shrink-0 flex-col gap-3"
+        data-offers-panel={tab}
+      >
+        {tab === "prepay" ? (
+          <PrepaySection
+            products={products}
+            co={co}
+            basket={basket}
+            locked={locked}
+            count={count}
+            totals={totals}
+            failed={!place.money}
+            actions={actions}
+            onQty={setQty}
+            onInfo={setInfo}
+            onPay={() => void pay()}
           />
-          <CashbackPanel cashback={cashback} onInfo={setCashInfo} />
-        </>
-      ) : null}
-      {!loading && products.length === 0 && !hasCashback ? (
-        <p className="text-muted-foreground px-1 py-6 text-center text-sm" data-offers-none>
-          No offers here yet.
-        </p>
-      ) : null}
-      {loading || products.length > 0 ? (
-        <OfferSectionHead
-          id="offers-prepay"
-          title="Prepay"
-          chip={topBonus > 0 ? `Up to ${topBonus}% Bonus` : "Bonus"}
-          tone={VOUCHER_TONE.voucher_200}
-          sub="Pay ahead, spend it here. Your bonus lands in 3 hours."
-        />
-      ) : null}
-      {GROUPS.map((g) => {
-        const list = products.filter((p) => g.keys.has(p.key));
-        if (list.length === 0) return null;
-        return (
-          // NO TITLE UNDER THE TAB (MESITA-4701): the tab already says Vouchers.
-          <section key={g.id} className={cn(CARD, "shrink-0 overflow-hidden")} aria-labelledby="offers-prepay" data-promos={g.id}>
-            <ul className="divide-border divide-y" data-voucher-catalog>
-              {list.map((p) => {
-                const line = catalog[p.key];
-                const pay = priceValue(p, line, currency);
-                const get = creditValue(p, line, currency);
-                const can = !loading && buyable(p.key);
-                const bonus = `+${p.bonus.replace(/ bonus$/, "")}`;
-                const blocked = !loading && !can;
-                const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
-                const n = basket[p.key] ?? 0;
-                // ASK TO LINK (MESITA-4659): a VIP row locked because the
-                // guest has no verified Instagram offers "Link Instagram"
-                // where the stepper goes, when the host can open Me › Instagram.
-                const linkIg =
-                  blocked && guestLock(p.key) === "vip" && actions?.guest != null && !actions.guest.instagramLinked
-                    ? actions.onLinkInstagram
-                    : undefined;
-                // A PRODUCT ROW (Pato, 2026-11-22, MESITA-4647): left ONE
-                // green box, black "+10%" over "BONUS"; the name and the deal
-                // with the (i); − n + at the right. A blocked row says why,
-                // with a lock, and has no stepper.
-                return (
-                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && !linkIg && "opacity-50")}>
-                    <span
-                      className={cn(
-                        BADGE,
-                        // Each voucher's own colour: VIP yellow, the rest green
-                        // (MESITA-4688); VIP keeps it while locked, the row dims.
-                        blocked ? "bg-muted text-muted-foreground" : VOUCHER_TONE[p.key],
-                      )}
-                      aria-hidden
-                      data-offer-bonus
-                    >
-                      <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
-                      <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Bonus</span>
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="flex min-w-0 items-center gap-1">
-                        <span className={cn("truncate text-base font-semibold", blocked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
-                        <button
-                          type="button"
-                          aria-label={`How ${p.short} works`}
-                          disabled={loading}
-                          onClick={() => setInfo(p.key)}
-                          className="text-muted-foreground hover:text-foreground -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                          data-offer-info-open
-                        >
-                          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
-                        </button>
-                      </span>
-                      <span className={cn("text-sm font-semibold tabular-nums", blocked ? "text-muted-foreground" : "text-foreground")}>
-                        Pay {whole(pay)} <span className="text-muted-foreground">·</span> Get {whole(get)}
-                      </span>
-                      {blocked ? (
-                        <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-voucher-why>
-                          <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} data-voucher-locked />
-                          <span className="truncate">{why.replace(/\.$/, "")}</span>
-                        </span>
-                      ) : null}
-                    </span>
-                    {can && co.live ? (
-                      <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => setQty(p.key, v)} />
-                    ) : linkIg ? (
-                      <button
-                        type="button"
-                        onClick={linkIg}
-                        className="bg-foreground text-background flex h-9 shrink-0 items-center rounded-full px-3 text-sm font-semibold"
-                        data-offer-link-instagram
-                      >
-                        Link Instagram
-                      </button>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
-      {/* THE PAY BAR (MESITA-4647), ALWAYS THERE (Pato, 2026-11-22,
-          MESITA-4659): sticky at the bottom, the same lines whatever is
-          picked — Pay, Get immediately (the price is credit now), Get in 3
-          hours (the bonus, green), then under a hairline the total, You get
-          (MESITA-4669, Pato: "a bit confusing, add a line"). Then one black
-          pill. Ready to charge with a saved card, it splits in half
-          (MESITA-4669, Pato: "50% of button for the payment method, 50% right
-          for the amount … pay x get y, even if a bit redundant"): the card on
-          the left (a tap cycles cards, the old Change), Pay $X over Get $Y on
-          the right. Every other state is the one full-width button: with
-          nothing picked every line reads $0 and it says "Select an offer",
-          disabled: an empty basket charges nothing. */}
-      {/* ONE BAR (MESITA-4702): nothing picked, the purple Go to Pay Bill
-          (where cashback is earned); a voucher picked, its Pay summary. */}
-      {count === 0 && actions?.onPay ? (
-        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-cashback-pay-bar>
-          <button
-            type="button"
-            onClick={actions.onPay}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
-            data-cashback-pay-bill
-          >
-            <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-            Go to Pay Bill
-          </button>
-        </div>
-      ) : products.length > 0 && (() => {
-        const sum = totals ?? { price: 0, bonus: 0 };
-        const amount = (cents: number) => whole(pesos(cents, currency));
-        const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");
-        const split = co.payCard !== null && !co.signedOut && count > 0 && totals !== null && !locked;
-        return (
-        <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 flex flex-col gap-2 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
-          <dl className="flex flex-col gap-0.5 text-base" data-offer-summary>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-foreground font-semibold">Pay</dt>
-              <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-pay>{amount(sum.price)}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">Get immediately</dt>
-              <dd className="text-foreground font-semibold tabular-nums" data-offer-sum-now>{amount(sum.price)}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-muted-foreground">Get in 3 hours</dt>
-              <dd className="font-semibold text-[#00A85A] tabular-nums" data-offer-sum-bonus>+{amount(sum.bonus)}</dd>
-            </div>
-            <div className="border-border mt-1.5 flex items-center justify-between gap-3 border-t pt-1.5 text-lg">
-              <dt className="text-foreground font-bold">You get</dt>
-              <dd className="text-foreground font-bold tabular-nums" data-offer-sum-total>{amount(sum.price + sum.bonus)}</dd>
-            </div>
-          </dl>
-          {co.payCards?.state === "error" ? (
-            <p className="flex items-center justify-between text-sm" role="alert">
-              <span className="text-foreground">Couldn&apos;t load your cards</span>
-              <button type="button" onClick={actions?.onRetryPayCards} className="text-foreground min-h-9 shrink-0 font-semibold underline underline-offset-2">
-                Retry
-              </button>
-            </p>
-          ) : null}
-          {split && co.payCard && totals ? (
-            <div className="bg-foreground text-paper flex h-14 w-full items-stretch overflow-hidden rounded-full" data-offer-pay-split>
-              <button
-                type="button"
-                disabled={!co.canChange}
-                onClick={co.nextCard}
-                className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-3 text-sm opacity-80 disabled:cursor-default"
-                aria-label={co.canChange ? `Paying with ${co.payCard.label} ending ${co.payCard.last4}. Change card` : `Paying with ${co.payCard.label} ending ${co.payCard.last4}`}
-                data-pay-card-line
-              >
-                <CreditCard className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="truncate">
-                  {co.payCard.label} •••• {co.payCard.last4}
-                </span>
-                {co.canChange ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden /> : null}
-              </button>
-              <span className="bg-paper/25 my-3 w-px shrink-0" aria-hidden />
-              <button
-                type="button"
-                disabled={payDisabled}
-                onClick={() => void pay()}
-                className="flex min-w-0 flex-1 flex-col items-center justify-center px-3 leading-tight disabled:opacity-60"
-                data-offer-pay
-              >
-                <span className="text-base font-semibold tabular-nums">Pay {amount(totals.price)}</span>
-                <span className="text-xs tabular-nums opacity-70">Get {amount(totals.price + totals.bonus)}</span>
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              disabled={payDisabled}
-              onClick={() => void pay()}
-              className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
-              data-offer-pay
-            >
-              {count === 0 ? "Select an offer" : locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
-            </button>
-          )}
-        </div>
-        );
-      })()}
+        ) : tab === "checkout" ? (
+          <CheckoutSection cashback={cashback} loading={loading} onInfo={setCashInfo} onPay={actions?.onPay} />
+        ) : (
+          // REWARDS (MESITA-4710, d1a): what the guest earned here, the
+          // host's read and rows; no bottom bar.
+          renderRewards?.(switchTab) ?? null
+        )}
+      </div>
       {cashInfo && cashback ? <CashbackInfo row={cashInfo} cap={whole(pesos(cashback.cap_cents, currency))} onClose={() => setCashInfo(null)} /> : null}
       {infoProduct ? (
         <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
