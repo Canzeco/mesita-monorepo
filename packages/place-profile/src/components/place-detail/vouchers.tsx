@@ -936,7 +936,7 @@ function HowItWorks({
   );
 }
 
-function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string; onClose: () => void }) {
+function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -952,12 +952,13 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
     { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
     { Icon: Repeat, title: `Receive ${pct} back`, short: "Receive", amount: pct, line: "As credit at this place", green: true },
   ];
+  // ONLY PATO'S FACTS (2026-11-23, MESITA-4728: "fuck those rules. there is
+  // no ceiling"): who the line is for, card or cash only, and when it lands.
+  // The cap, once-a-day, tip and friend lines went.
   const good: { Icon: LucideIcon; text: string }[] = [
     { Icon: Utensils, text: row.who + "." },
-    { Icon: Wallet, text: "Credit you already hold earns no Back when you spend it." },
-    { Icon: Clock, text: `Up to ${cap} per bill, once a day. No minimum.` },
-    { Icon: Gift, text: "Never on the tip. Spend it here or send it to a friend." },
-    { Icon: InfinityIcon, text: "It never expires." },
+    { Icon: Wallet, text: "Only on what you pay by card or cash, never on credit." },
+    { Icon: Clock, text: "It lands in 1 hour." },
   ];
   return createPortal(
     <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-cashback-info>
@@ -1372,9 +1373,10 @@ function CheckoutSection({
         tone={CASHBACK_TONE}
         steps={["Pay your bill here", "Wait 1 hour", "Receive your Back as credit here"]}
         good={[
-          // "be clear that cashbacks don't work with pre-earned credits" (Pato, MESITA-4702).
+          // "be clear that cashbacks don't work with pre-earned credits" (Pato,
+          // MESITA-4702). No cap and no once-a-day rule (MESITA-4728).
           "Only on what you pay by card or cash, never on credit.",
-          "Never on the tip. Once a day per place.",
+          "It lands in 1 hour.",
         ]}
       />
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
@@ -1555,7 +1557,7 @@ export function VouchersPane({
           renderPost?.(switchTab) ?? null
         )}
       </div>
-      {cashInfo && cashback ? <CashbackInfo row={cashInfo} cap={whole(pesos(cashback.cap_cents, currency))} onClose={() => setCashInfo(null)} /> : null}
+      {cashInfo && cashback ? <CashbackInfo row={cashInfo} onClose={() => setCashInfo(null)} /> : null}
       {infoProduct ? (
         <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
       ) : null}

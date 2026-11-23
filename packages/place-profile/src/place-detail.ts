@@ -63,7 +63,6 @@ export type PlaceMoney = {
 export type PlaceCashback = {
   welcome_bps: number;
   returning_bps: number;
-  cap_cents: number;
   line: "welcome" | "returning" | null;
   /** MESITA-4714 (Post): what a verified Instagram story pays here, in cents
    *  (0 = Off). Absent on older reads. */
