@@ -26,7 +26,7 @@ import {
 } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { errMsg } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -266,30 +266,27 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-offers-route>
       {/* ONE LINE (Pato, 2026-11-17, MESITA-4224: "the header must only have
-          one line ... the place name and profile picture"); a hairline under
-          the bar (MESITA-3474). */}
-      <header className="bg-card border-border z-20 flex h-14 shrink-0 items-center gap-1 border-b px-1.5">
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={back}
-          className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-        >
-          <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
-        </button>
-        <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-3">
-          {place.profilePhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={place.profilePhoto} alt="" className="bg-muted h-8 w-8 shrink-0 rounded-full object-cover" />
-          ) : null}
-          <h1 className="text-foreground truncate text-base leading-tight font-semibold">{place.name}</h1>
+          one line ... the place name and profile picture"), then the black
+          Balance card in the same white block (MESITA-4727). Signed out, the
+          name row alone with its hairline (MESITA-3474). */}
+      <header className={cn("bg-card z-20 flex shrink-0 flex-col", !credit && "border-border border-b")}>
+        <div className="flex h-14 shrink-0 items-center gap-1 px-1.5">
+          <button
+            type="button"
+            aria-label="Back"
+            onClick={back}
+            className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+          >
+            <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-3">
+            {place.profilePhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={place.profilePhoto} alt="" className="bg-muted h-8 w-8 shrink-0 rounded-full object-cover" />
+            ) : null}
+            <h1 className="text-foreground truncate text-base leading-tight font-semibold">{place.name}</h1>
+          </div>
         </div>
-      </header>
-      {/* The grey page under the panels (MESITA-4196), as the Reserve page. */}
-      <div
-        ref={keep}
-        className="scrollbar-thin-dark bg-background flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4"
-      >
         {/* READY NOW, PENDING AND WHEN (Pato, 2026-11-17, MESITA-4224, D3).
             Signed out there is no balance and no card (D6).
             THE AMOUNT ONLY, NO LINK (MESITA-4633): Offers never opens the
@@ -299,10 +296,13 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             a full card, not MESITA-4701's thin strip nor MESITA-4714's white
             card joined to the tabs. "Balance" at 70% white over the amount in
             large bold white, one 70% "+$X lands at <time>" while anything
-            waits; the tab bar is its own card 12px under it. */}
+            waits.
+            ONE HEADER (Pato, 2026-11-23, MESITA-4727: "name and black box
+            must be in the same part"): the card sits in the fixed white
+            header under the name row, no line between them. */}
         {credit ? (
           <div
-            className="bg-foreground text-paper flex w-full shrink-0 flex-col gap-1 rounded-2xl p-4"
+            className="bg-foreground text-paper mx-4 mb-3 flex shrink-0 flex-col gap-1 rounded-2xl p-4"
             role="group"
             aria-label={credit.label}
             data-offers-balance
@@ -316,7 +316,14 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             ) : null}
           </div>
         ) : null}
-        <div className={credit ? "flex flex-1 shrink-0 flex-col pt-3" : "flex flex-1 shrink-0 flex-col"}>
+      </header>
+      {/* ALL WHITE (Pato, 2026-11-23, MESITA-4727: "I DON'T WANT GRAY
+          BACKGROUNDS"): the grey page of MESITA-4196 is gone. */}
+      <div
+        ref={keep}
+        className="scrollbar-thin-dark bg-card flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4"
+      >
+        <div className="flex flex-1 shrink-0 flex-col">
           <VouchersPane
             place={place}
             actions={actions}

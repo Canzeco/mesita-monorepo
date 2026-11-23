@@ -737,7 +737,7 @@ function OfferInfo({
         role="dialog"
         aria-modal="true"
         aria-labelledby="offer-info-title"
-        className="bg-background flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
+        className="bg-card flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
@@ -902,7 +902,7 @@ function HowItWorks({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={`how-${tab}-title`}
-                className="bg-background flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
+                className="bg-card flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
@@ -965,7 +965,7 @@ function CashbackInfo({ row, cap, onClose }: { row: CashbackLineRow; cap: string
         role="dialog"
         aria-modal="true"
         aria-labelledby="cashback-info-title"
-        className="bg-background flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
+        className="bg-card flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
@@ -1026,16 +1026,12 @@ function OffersTabs({
   locked,
   picked,
   barRef,
-  attached,
 }: {
   tab: OffersTab;
   onTab: (t: OffersTab) => void;
   locked: boolean;
   picked: number;
   barRef: RefObject<HTMLDivElement | null>;
-  /** Under the host's Balance card (MESITA-4714): one card, the shared
-   *  border is the card's, so the bar drops its top edge and top corners. */
-  attached?: boolean;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const move = (from: number, step: number) => {
@@ -1047,7 +1043,9 @@ function OffersTabs({
   return (
     <div
       ref={barRef}
-      className={cn(CARD, "flex shrink-0 overflow-hidden", attached && "rounded-t-none border-t-0")}
+      // FULL WIDTH (Pato, 2026-11-23, MESITA-4727: "an actual full width
+      // with the menu"): edge to edge, white, one hairline under it; no card.
+      className="bg-card border-border flex shrink-0 border-b"
       role="tablist"
       aria-label="Offers"
       data-offers-tabs
@@ -1406,7 +1404,6 @@ export function VouchersPane({
   initialTab,
   onTabChange,
   renderPost,
-  attached,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -1419,8 +1416,6 @@ export function VouchersPane({
   /** The Post tab's body (MESITA-4714): the host reads the place's story
    *  reward and draws PostSection with it. `switchTab` switches in place. */
   renderPost?: (switchTab: (tab: OffersTab) => void) => ReactNode;
-  /** The tab bar sits directly under the host's Balance card. */
-  attached?: boolean;
 }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
@@ -1528,15 +1523,15 @@ export function VouchersPane({
   const infoProduct = info ? listedProducts().find((p) => p.key === info) ?? null : null;
 
   return (
-    // ON THE GREY PAGE (MESITA-4196): the tab bar, then one tab's white
-    // panels, its bar at the bottom (MESITA-4710).
-    <div className={cn("-mx-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pb-4", attached ? "" : "-mt-4 pt-4")} data-promos-page>
-      <OffersTabs tab={tab} onTab={switchTab} locked={locked} picked={count} barRef={barRef} attached={attached} />
+    // THE MENU EDGE TO EDGE, THEN ONE TAB'S BOXES ON WHITE (MESITA-4727),
+    // its bar at the bottom (MESITA-4710).
+    <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col pb-4" data-promos-page>
+      <OffersTabs tab={tab} onTab={switchTab} locked={locked} picked={count} barRef={barRef} />
       <div
         role="tabpanel"
         id={`offers-panel-${tab}`}
         aria-labelledby={`offers-tab-${tab}`}
-        className="flex flex-1 shrink-0 flex-col gap-3"
+        className="flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4"
         data-offers-panel={tab}
       >
         {tab === "prepay" ? (
