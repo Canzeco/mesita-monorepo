@@ -27,5 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Search }) {
   if (isRouteId(tab)) redirect(payBillPath(tab));
   const place = one(sp.place);
   if (isRouteId(place)) redirect(payPlacePath(place));
-  return <PayPage pick={one(sp.pick) === "1"} />;
+  // ?tab=cards (MESITA-4765, D6): the Loyalty Cards tab the guest left. An
+  // id there is an old bill reload, forwarded above.
+  return <PayPage pick={one(sp.pick) === "1"} tab={tab === "cards" ? "cards" : "offers"} />;
 }

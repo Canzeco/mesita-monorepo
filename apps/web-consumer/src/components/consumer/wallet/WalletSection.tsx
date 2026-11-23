@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Plus, Wallet as WalletIcon } from "lucide-react";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
@@ -12,7 +12,7 @@ import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
-import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "@/components/consumer/pay/pay-sections";
+import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB, SECTION_ROWS } from "@/components/consumer/pay/pay-sections";
 import { GiftClaimSheet } from "./SendCredit";
 import { cn } from "@/lib/utils";
 import { useWallet } from "./use-wallet";
@@ -132,7 +132,6 @@ function soonestPendingAt(entries: { pending: boolean; available_at?: string | n
 /** Photos of the first cards load eagerly; the rest lazily. The page waits
  *  for these to decode before it shows (MESITA-3814). */
 const EAGER_CARDS = 3;
-const EMPTY_IDS: ReadonlySet<string> = new Set();
 /** The longest the page waits on those photos: a slow photo never holds it. */
 const PHOTO_WAIT_MS = 800;
 
@@ -146,32 +145,18 @@ function decodeAll(urls: string[], ms: number): Promise<void> {
   return Promise.race([Promise.all(each).then(() => undefined), new Promise<void>((r) => setTimeout(r, ms))]);
 }
 
+// PAY'S LOYALTY CARDS TAB (Pato, 2026-11-23, MESITA-4765: "loyalty cards at
+// the right you are going to display, well, the loyalty cards"): only the
+// cards, then Add Loyalty Card; the tab names the box, so it has no title.
+// The nearby places that led the box (MESITA-4497) are the Nearby Offers tab,
+// so every card is listed here and draws its own pending box.
 export function WalletSection({
   giftToken = null,
   onReady,
-  hidePending = false,
-  lead = null,
-  leadIds = EMPTY_IDS,
-  leadCount = 0,
-  leadSettled = true,
-  query = "",
 }: {
-  /** The place rows, first in the panel (MESITA-4497). */
-  lead?: ReactNode;
-  /** The places `lead` lists; null while they load. Their cards are not listed again. */
-  leadIds?: ReadonlySet<string> | null;
-  /** How many place rows `lead` shows now. */
-  leadCount?: number;
-  /** The places answered (not loading, not failed). */
-  leadSettled?: boolean;
-  /** The search bar's words: cards filter by name. */
-  query?: string;
   giftToken?: string | null;
   /** Told once the Wallet has painted (MESITA-4376): /pay keeps its buttons in bones until then. */
   onReady?: () => void;
-  /** On Pay (MESITA-4623, MESITA-4625): the cards here draw no blue pending
-   *  box; Pay's own place rows carry it. */
-  hidePending?: boolean;
 }) {
   const router = useRouter();
   const { wallet, failed, credits, reread } = useWallet({ withCards: true });
@@ -238,95 +223,66 @@ export function WalletSection({
     );
   }
 
-  const q = fold(query.trim());
-  // A place already listed above with Pay is not listed again (MESITA-4497).
-  const cards = (credits ?? []).filter((r) => !leadIds?.has(r.placeId) && (!q || fold(r.card.name ?? "").includes(q)));
-  // One state drives the card rows, the empty block and the error.
+  const cards = credits ?? [];
+  // One state drives the card rows and the error.
   const creditsState: "loading" | "failed" | "empty" | "rows" =
-    failed && !wallet
-      ? "failed"
-      : !ready || !wallet || credits === null || leadIds === null
-        ? "loading"
-        : cards.length === 0
-          ? "empty"
-          : "rows";
-  const settled = creditsState === "rows" || creditsState === "empty";
+    failed && !wallet ? "failed" : !ready || !wallet || credits === null ? "loading" : cards.length === 0 ? "empty" : "rows";
 
   return (
     <div className="flex flex-col" data-wallet>
       {wallet?.settling ? (
-        <p className="text-muted-foreground mt-2 px-2 text-sm" role="status">
+        <p className="text-muted-foreground px-3 pt-3 text-sm" role="status">
           Confirming a payment…
         </p>
       ) : null}
 
-      {/* ONE BOX OF ROWS (MESITA-4560, /plan-design-review D1): a grey
-          "Loyalty Cards" title over one white box, a hairline between places. */}
-      {/* The title inside its own card on white (MESITA-4574). */}
-      <section className={SECTION_CARD} aria-label="Loyalty Cards">
-        <h2 className={SECTION_TITLE}>Loyalty Cards</h2>
-        <div className={SECTION_ROWS}>
-          {lead}
-          {creditsState === "rows"
-            ? cards.map((row) => {
-                const gone = row.balance.place === null;
-                const name = row.card.name || "A Mesita place";
-                return (
-                  <PlaceActionRow
-                    key={row.card.key}
-                    name={name}
-                    photo={row.card.photo}
-                    amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
-                    subtitle={gone ? "Ask Mesita support to use it." : null}
-                    pending={!hidePending && !gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
-                    pendingAt={soonestPendingAt(row.balance.entries)}
-                    disabled={gone}
-                    placeId={row.placeId}
-                    onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
-                  />
-                );
-              })
-            : null}
-          {creditsState === "loading" ? (
-            <>
-              <LoyaltyCardBoxSkeleton />
-              <LoyaltyCardBoxSkeleton />
-            </>
-          ) : null}
-          {settled && q && leadCount === 0 && creditsState === "empty" ? (
-            <p className="text-muted-foreground px-4 py-4 text-sm">No place matches “{query.trim()}”.</p>
-          ) : null}
-          {creditsState === "empty" && !q && leadCount === 0 && leadSettled ? (
-            // One plain line (MESITA-4519): Pay Bill above opens the sheet.
-            <p className="text-muted-foreground px-2 py-4 text-sm" data-wallet-empty>
-              No Mesita places near you yet. Tap Pay Bill to find one.
-            </p>
-          ) : null}
-          {/* ADD ANOTHER CARD, LAST (Pato, 2026-11-21, MESITA-4573: "in
-              loyalty cards below offer option to add extra card"): one row
-              in the cards' shape, opening MESITA-4088's "Loyalty Cards add
-              themselves" dialog (buy credits at a place, or get a gift) with
-              its Find a place. Not while the cards load or a search narrows
-              the list. */}
-          {creditsState !== "loading" && !q ? (
-            <button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              className={PAY_ROW}
-              data-wallet-add-card
-            >
-              <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
-                <Plus className="h-4 w-4" strokeWidth={2.25} />
-              </span>
-              <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>Add Loyalty Card</span>
-              <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-            </button>
-          ) : null}
-        </div>
-      </section>
+      {/* ONE BOX OF ROWS (MESITA-4560): a hairline between places. Pay's tab
+          panel is the box (MESITA-4765). */}
+      <div className={SECTION_ROWS}>
+        {creditsState === "rows"
+          ? cards.map((row) => {
+              const gone = row.balance.place === null;
+              const name = row.card.name || "A Mesita place";
+              return (
+                <PlaceActionRow
+                  key={row.card.key}
+                  name={name}
+                  photo={row.card.photo}
+                  amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
+                  subtitle={gone ? "Ask Mesita support to use it." : null}
+                  pending={!gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
+                  pendingAt={soonestPendingAt(row.balance.entries)}
+                  disabled={gone}
+                  placeId={row.placeId}
+                  onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
+                />
+              );
+            })
+          : null}
+        {creditsState === "loading" ? (
+          <>
+            <LoyaltyCardBoxSkeleton />
+            <LoyaltyCardBoxSkeleton />
+          </>
+        ) : null}
+        {/* ADD ANOTHER CARD, LAST (Pato, 2026-11-21, MESITA-4573: "in
+            loyalty cards below offer option to add extra card"): one row in
+            the cards' shape, opening MESITA-4088's "Loyalty Cards add
+            themselves" dialog. With no card it is the tab's one row
+            (MESITA-4765, D5). Not while the cards load. */}
+        {creditsState !== "loading" ? (
+          <button type="button" onClick={() => setAddOpen(true)} className={PAY_ROW} data-wallet-add-card>
+            <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
+              <Plus className="h-4 w-4" strokeWidth={2.25} />
+            </span>
+            <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>Add Loyalty Card</span>
+            <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+          </button>
+        ) : null}
+      </div>
       <AddCreditsCardDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {creditsState === "failed" ? (
-        <div className="mt-2">
+        <div className="p-3">
           <EmptyState
             inline
             icon={WalletIcon}
@@ -355,9 +311,4 @@ export function BalanceLines({ available, pending }: { available: string | null;
       ))}
     </span>
   );
-}
-
-/** Accents and case do not matter in the Wallet's search. */
-export function fold(v: string): string {
-  return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
