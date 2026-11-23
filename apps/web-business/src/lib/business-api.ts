@@ -476,7 +476,39 @@ export type PlacePayments = {
   /** MESITA-4698: the two cashback lines (Welcome, Returning; MESITA-4709) (basis points) and the cap per
    *  bill; older servers lack it. */
   cashback?: CashbackRates;
+  /** MESITA-4732: the place's credit limit and the step that raises it;
+   *  older servers lack it (null: the Credit Limit box hides). */
+  credit_limit: CreditLimit | null;
+  /** MESITA-4732: the profile's Instagram link, shown read-only as the
+   *  Place Username of Instagram Stories. */
+  instagram_url: string | null;
 };
+
+/** MESITA-4732: own admin-set limit ("custom") wins; MXN places step
+ *  none → credits (MX$10,000) → stripe (MX$50,000); others keep "default". */
+export type CreditLimit = {
+  limit_cents: number | null;
+  outstanding_cents: number;
+  currency: string;
+  tier: "none" | "credits" | "stripe" | "custom" | "default";
+  next: { step: "credits" | "stripe"; limit_cents: number } | null;
+};
+
+function readCreditLimit(v: unknown): CreditLimit | null {
+  if (!v || typeof v !== "object") return null;
+  const o = v as Record<string, unknown>;
+  const tiers = ["none", "credits", "stripe", "custom", "default"] as const;
+  const tier = tiers.find((t) => t === o.tier);
+  if (!tier) return null;
+  const n = o.next as Record<string, unknown> | null | undefined;
+  return {
+    limit_cents: typeof o.limit_cents === "number" ? o.limit_cents : null,
+    outstanding_cents: Number(o.outstanding_cents) || 0,
+    currency: typeof o.currency === "string" ? o.currency.toUpperCase() : "MXN",
+    tier,
+    next: n && (n.step === "credits" || n.step === "stripe") && typeof n.limit_cents === "number" ? { step: n.step, limit_cents: n.limit_cents } : null,
+  };
+}
 
 
 export type PlaceFee = {
@@ -508,6 +540,8 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
       cash_due: Array.isArray(r.data.cash_due) ? r.data.cash_due : [],
       cashback: r.data.cashback ? withStoryReward(r.data.cashback) : CASHBACK_DEFAULTS,
+      credit_limit: readCreditLimit(r.data.credit_limit),
+      instagram_url: typeof r.data.instagram_url === "string" && r.data.instagram_url.trim() ? r.data.instagram_url.trim() : null,
     },
   };
 }

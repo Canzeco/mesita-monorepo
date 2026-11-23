@@ -8,7 +8,7 @@ import { maskGuest } from "./money-admin.ts";
 import type { StripeCall } from "./stripe.ts";
 import { StripeError } from "./stripe.ts";
 
-export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits"] as const;
+export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits", "stories"] as const;
 export type MonitorKind = (typeof MONITOR_KINDS)[number];
 
 /** A per-place guest key: md5 hex (place_customer_key). */

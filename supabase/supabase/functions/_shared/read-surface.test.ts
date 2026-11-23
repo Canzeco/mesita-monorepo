@@ -192,6 +192,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/foursquare-places.ts", // name, coordinates, address and the stored Foursquare id before a match or a popularity-only refresh (MESITA-4515)
   "_shared/place-scores.ts", // stars, review count, Google id and the saved Foursquare score for the Profile Scores box (MESITA-4515)
   "business-web-update-place/index.ts", // the links before a save, to run Update Reviews on a change (MESITA-3161)
+  "business-web-get-payments/index.ts", // instagram_url only, the read-only Place Username on Offers (MESITA-4732)
   "_shared/place-reservable.ts", // the switch + number gate the Reserve doors share (MESITA-3622)
   "eleven-a4-cancel-reservation/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",

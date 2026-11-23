@@ -5,7 +5,7 @@
 
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 
-export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits"] as const;
+export const MONITOR_KINDS = ["visits", "vouchers", "gifts", "payments", "credits", "stories"] as const;
 export type MonitorKind = (typeof MONITOR_KINDS)[number];
 
 export type LinkKind = "visit" | "payment" | "voucher" | "credit";
@@ -177,6 +177,37 @@ const PAYOUT: Record<string, string> = {
   canceled: "Canceled",
 };
 const GIFT: Record<string, string> = { open: "Open link", claimed: "Claimed", taken_back: "Taken back" };
+/** An Instagram story's state (story_mentions, MESITA-4732). */
+// `verified` (MESITA-4717) passed the first check and waits for the 10-hour
+// recheck: still Pending to the owner.
+const STORY: Record<string, string> = { checking: "Pending", verified: "Pending", rejected: "Rejected", rewarded: "Credited" };
+/** Why a story paid nothing (story_mentions.reject_reason). */
+const STORY_REJECT: Record<string, string> = {
+  no_guest: "Not a Mesita guest",
+  no_tag: "Place not tagged",
+  several_places: "Several places tagged",
+  not_a_story: "Not a story",
+  video: "Video",
+  unreadable: "Couldn't be read",
+  off: "Story rewards were off",
+  repeat: "Already rewarded this week",
+  expired: "Expired",
+  removed: "Removed before the recheck",
+};
+
+/** The reward a story paid, or null: only a Credited story shows money (a
+ *  verified one has reward_cents stored but nothing paid until the recheck). */
+export function storyCredit(row: MonitorRow): string | null {
+  const p = row.payload;
+  if (p.status !== "rewarded" || p.reward_cents == null) return null;
+  return money(Number(p.reward_cents), String(p.currency ?? "mxn"));
+}
+
+/** The reason a story was rejected, or null. */
+export function storyRejectReason(row: MonitorRow): string | null {
+  const r = row.payload.reject_reason;
+  return r ? (STORY_REJECT[String(r)] ?? raw(r)) : null;
+}
 
 export function payoutStatus(status: string): string {
   return PAYOUT[status] ?? raw(status);
@@ -189,6 +220,7 @@ export function rowStatus(kind: MonitorKind, row: MonitorRow): string {
   if (kind === "vouchers") return PURCHASE[String(p.status)] ?? raw(p.status);
   if (kind === "payments") return PAYMENT[String(p.status)] ?? raw(p.status);
   if (kind === "gifts") return GIFT[String(p.status)] ?? raw(p.status);
+  if (kind === "stories") return STORY[String(p.status)] ?? raw(p.status);
   return creditLabel(row);
 }
 
@@ -205,7 +237,7 @@ export function creditLabel(row: MonitorRow): string {
     case "cashback":
       return "Cashback on a bill";
     case "story":
-      return "Story reward";
+      return "Instagram Story credited";
     case "spend":
       return "Spent on a visit";
     case "refund":
@@ -263,6 +295,7 @@ export function rowAmount(kind: MonitorKind, row: MonitorRow): string {
   if (kind === "vouchers") return money(n("amount_cents"));
   if (kind === "payments") return money(n("amount_cents") + n("tip_cents") + n("outside_cents"));
   if (kind === "gifts") return money(n("amount_cents"), String(p.currency ?? "mxn"));
+  if (kind === "stories") return storyCredit(row) ?? "—";
   return signedMoney(n("amount_cents"), String(p.currency ?? "mxn"));
 }
 
@@ -340,6 +373,7 @@ export const EMPTY: Record<MonitorKind | "customers" | "views", string> = {
   payments: "No payments yet.",
   credits: "No credit movements yet.",
   gifts: "No gifts claimed yet.",
+  stories: "No Instagram Stories yet.",
   customers: "No customers yet.",
   views: "No views yet.",
 };
@@ -350,4 +384,5 @@ export const NOUN: Record<MonitorKind, { one: string; many: string }> = {
   payments: { one: "payment", many: "payments" },
   credits: { one: "credit movement", many: "credit movements" },
   gifts: { one: "gift", many: "gifts" },
+  stories: { one: "story", many: "stories" },
 };

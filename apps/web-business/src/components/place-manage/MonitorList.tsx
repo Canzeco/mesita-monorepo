@@ -39,7 +39,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
 import { MonitorTable } from "./MonitorTable";
-import { MONITOR_COLUMNS, TABLE_KINDS, type TableKind } from "@/lib/monitor-columns";
+import { MONITOR_COLUMNS, TABLE_KINDS, unmatchedHandle, type TableKind } from "@/lib/monitor-columns";
 import { CardBadge, CashBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
 import type { Icon } from "@phosphor-icons/react";
 import { CoinsIcon, CreditCardIcon, ReceiptIcon, TicketIcon, UserCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
@@ -171,7 +171,8 @@ export function MonitorRowItem({ placeId, kind, row, timezone }: { placeId: stri
 /** A table's guest cell: the face and the name, linked to the guest on
  *  Customers (MESITA-4682). */
 export function GuestCell({ placeId, row }: { placeId: string; row: MonitorRow }) {
-  const name = row.guest ?? "Deleted guest";
+  // A story whose poster no guest matched shows their @handle (MESITA-4732).
+  const name = row.guest ?? unmatchedHandle(row) ?? "Deleted guest";
   return (
     <span className="flex items-center gap-2.5">
       <GuestAvatar face={row.customer ? (row.face ?? null) : null} size={28} />
