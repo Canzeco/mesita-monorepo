@@ -5,7 +5,6 @@ import {
   CalendarCheck,
   CreditCard,
   Gem,
-  Gift,
   Heart,
   Settings as SettingsIcon,
   Ticket,
@@ -138,13 +137,13 @@ export type HubTile = {
 
 /** The grid cells, in reading order; Settings is the last (MESITA-4736:
  *  Profile · Instagram / Reservations · Notifications / Tickets · Cards /
- *  Saved · Plan / Gift · Share / Settings). */
+ *  Saved · Plan / Share · Settings; no Gift since MESITA-4740). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // GROUPED BY TOPIC (Pato, 2026-11-23, MESITA-4736: "redo the order of
   // those bottom boxes"), two to a row: you (Profile · Instagram), your
   // bookings (Reservations · Notifications), your money (Tickets · Cards),
-  // your list and your plan (Saved · Plan), other people (Gift · Share),
-  // then Settings. The comments below keep each cell's history.
+  // your list and your plan (Saved · Plan), then Share · Settings (no
+  // Gift since MESITA-4740). The comments below keep each cell's history.
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // tile only names the page (MESITA-2607).
   {
@@ -216,15 +215,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
   },
-  // GIFT IS BACK ON ME (Pato, 2026-11-22, MESITA-4670: "Add Gift button
-  // here too"): beside Share, both about other people; it opens Send Gift's
-  // place list, the Loyalty Card's Send Gift flow. Gone since MESITA-4523.
-  {
-    Icon: Gift,
-    title: "Gift",
-    summary: "Send credit",
-    href: CONSUMER_ROUTES.walletSend,
-  },
+  // NO GIFT BOX (Pato, 2026-11-23, MESITA-4740: "remove gift from here is
+  // redundant"): Send Gift is Pay's black tile. Back on Me with MESITA-4670.
   // SHARE REPLACES GIFT (Pato, 2026-11-14, MESITA-3940: "here add share
   // instead of gift"): the cell opens /share, the channel-rows page Wallet
   // opens too (MESITA-3886). /me/gift stays a live address; gifting credit
