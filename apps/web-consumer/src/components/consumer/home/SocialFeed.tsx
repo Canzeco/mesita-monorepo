@@ -56,13 +56,13 @@
 // glows in a light grey that fades out (FRESH_MS), the way a new
 // notification lands.
 //
-// NEW EVENTS WAIT BEHIND THE PILL (MESITA-4083, Pato picked A of a mock):
-// the 30-second re-read never lays rows in by itself, at the top or not;
-// what it found waits behind the ink "↑ N new" pill, sticky at the top of
-// the pane (MESITA-2536), and a tap lays them in and goes to the top.
-// Opening Social, a moved location and pulling the list down from the top
-// (touch) lay a read straight in. No other refresh control: the "Updated
-// just now · Refresh" line is gone. (The Social tab's "new" dot went with
+// NEW EVENTS WAIT BEHIND THE BANNER (MESITA-4083; the blue banner replaced
+// its ink "↑ N new" pill with MESITA-4715): the 30-second re-read never lays
+// rows in by itself; what it found waits behind the blue "N new events"
+// banner, sticky under the tabs, and its Reload lays them in and goes to the
+// top (with nothing held, Reload reads again). Opening Social, a moved
+// location and pulling the list down from the top (touch) lay a read
+// straight in. The "Updated just now · Refresh" line stays gone. (The Social tab's "new" dot went with
 // MESITA-4044.)
 //
 // ONE WHITE BAND (Pato, MESITA-2540: "make a fucking normal box. maybe the
@@ -71,8 +71,8 @@
 // MESITA-4070, Pato: "that gray refresh looks like shit ... try white
 // background"; the band keeps its hairlines), EDGE TO EDGE with only a top and bottom
 // hairline, never side borders or a rounded card (MESITA-2542: "don't add
-// lateral borders, its literally an infiite scrolloing"). Nothing above
-// it (MESITA-4083 removed MESITA-2543's "Updated just now · Refresh").
+// lateral borders, its literally an infiite scrolloing"). Above it only the
+// new-events banner (MESITA-4715).
 //
 // TWO TARGETS PER ROW, never both (Pato, MESITA-2542: "you can click the
 // profile or you can click the palce, but not both. if i click a profile,
@@ -98,16 +98,7 @@ import { Suspense, useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  ArrowUp,
-  Clock,
-  Eye,
-  Heart,
-  MapPin,
-  RotateCw,
-  Users,
-  X,
-} from "lucide-react";
+import { Clock, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -1154,7 +1145,7 @@ function SocialFeedBody() {
   );
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const freshTimer = useRef<number | undefined>(undefined);
-  // The pane, and what the live re-read found and holds behind the pill
+  // The pane, and what the live re-read found and holds behind the banner
   // (MESITA-4083): the page and how many of its events are new.
   const rootRef = useRef<HTMLDivElement>(null);
   const heldRef = useRef<ActivityFeedPage | null>(null);
@@ -1212,7 +1203,7 @@ function SocialFeedBody() {
 
   useEffect(() => {
     let cancelled = false;
-    // live: the 30-second re-read, which holds new events behind the pill
+    // live: the 30-second re-read, which holds new events behind the banner
     // (MESITA-4083); the first read of the effect lays its page in.
     const load = (live: boolean) =>
       apiListActivityFeed(
@@ -1417,22 +1408,39 @@ function SocialFeedBody() {
       }}
     >
       {personModal}
-      {pendingNew > 0 ? (
-        <div className="sticky top-2 z-10 flex h-0 justify-center">
-          <button
-            type="button"
-            onClick={() => {
-              if (heldRef.current) show(heldRef.current);
-              scroller()?.scrollTo({ top: 0 });
-            }}
-            className="bg-foreground text-paper shadow-elev flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold"
-            data-social-new-pill
-          >
-            <ArrowUp className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            {pendingNew} new
-          </button>
-        </div>
-      ) : null}
+      {/* THE NEW-EVENTS BANNER (Pato, MESITA-4715: "below social maybe a
+          blue banner that says 0 new events … and button to reload"): always
+          drawn between the tabs and the rows, sticky. Reload lays the held
+          events in and goes to the top; with none held it reads again. */}
+      <div
+        className="sticky top-0 z-10 flex h-11 items-center gap-3 border-b border-blue-100 bg-blue-50 pr-2 pl-5"
+        data-social-new-banner
+      >
+        <p
+          className="min-w-0 flex-1 truncate text-sm font-semibold text-blue-700"
+          aria-live="polite"
+        >
+          {pendingNew === 0
+            ? "No new events"
+            : `${pendingNew} new ${pendingNew === 1 ? "event" : "events"}`}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            if (heldRef.current) show(heldRef.current);
+            else if (!refreshing) refresh();
+            scroller()?.scrollTo({ top: 0 });
+          }}
+          className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-3.5 text-sm font-semibold text-white outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        >
+          <RotateCw
+            className={cn("h-4 w-4", refreshing && "animate-spin")}
+            strokeWidth={2.25}
+            aria-hidden
+          />
+          Reload
+        </button>
+      </div>
       <div
         aria-hidden
         className="flex items-end justify-center overflow-hidden transition-[height] duration-150"
