@@ -951,18 +951,23 @@ function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => v
   if (typeof document === "undefined") return null;
   const host = document.getElementById("mesita-app-card");
   const pct = `${row.bps / 100}%`;
+  // THE VOUCHER (i)'S STRUCTURE (Pato, 2026-11-23, MESITA-4737: "pay i must
+  // have same structure as this"): the deal box, How it works as three
+  // steps across, Good to know with an icon per line. No card and nothing
+  // personal in the steps ("the how it works should not display personal
+  // info").
   const steps: Step[] = [
-    { Icon: QrCode, title: "Pay your bill here", short: "Pay", line: "Cash or card; credit earns none" },
+    { Icon: QrCode, title: "Pay", short: "Pay", amount: "Your bill", line: "Here, or cash to the waiter" },
     { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
-    { Icon: Repeat, title: `Receive ${pct} back`, short: "Receive", amount: pct, line: "As credit at this place", green: true },
+    { Icon: Wallet, title: "Receive", short: "Receive", amount: `${pct} back`, line: "As credit at this place", green: true },
   ];
-  // ONLY PATO'S FACTS (2026-11-23, MESITA-4728: "fuck those rules. there is
-  // no ceiling"): who the line is for, card or cash only, and when it lands.
-  // The cap, once-a-day, tip and friend lines went.
+  // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day): who the line is
+  // for, never on credit, no minimum, and the credit's own rules.
   const good: { Icon: LucideIcon; text: string }[] = [
-    { Icon: Utensils, text: row.who + "." },
-    { Icon: Wallet, text: "Only on what you pay by card or cash, never on credit." },
-    { Icon: Clock, text: "It lands in 1 hour." },
+    { Icon: Repeat1, text: row.who + "." },
+    { Icon: Wallet, text: "Never on what you pay with credit." },
+    { Icon: Utensils, text: "Spend it on any bill here." },
+    { Icon: InfinityIcon, text: "It never expires." },
   ];
   return createPortal(
     <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-cashback-info>
@@ -975,21 +980,31 @@ function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => v
       >
         <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
           <h2 id="cashback-info-title" className="text-foreground text-base font-semibold">
-            {row.title} · {pct} Back
+            {row.title}
           </h2>
           <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
             <X className="h-6 w-6" strokeWidth={2.25} />
           </button>
         </div>
         <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+          <div className={cn(CARD, "flex shrink-0 items-end justify-between gap-3 px-4 py-3")} data-offer-deal>
+            <div className="flex flex-col">
+              <span className="text-muted-foreground text-sm">You pay</span>
+              <span className="text-foreground text-2xl font-bold">Your bill</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-muted-foreground text-sm">You get</span>
+              <span className="text-2xl font-bold text-[#00A85A] tabular-nums">{pct} back</span>
+            </div>
+          </div>
           <Box title="How it works">
             <StepList steps={steps} />
           </Box>
           <Box title="Good to know">
             <ul className="flex flex-col gap-2">
               {good.map((g) => (
-                <li key={g.text} className="text-foreground flex items-start gap-2 text-sm">
-                  <g.Icon className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                <li key={g.text} className="text-foreground flex items-start gap-2.5 text-base leading-snug">
+                  <g.Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
                   {g.text}
                 </li>
               ))}
@@ -1374,28 +1389,20 @@ function CheckoutSection({
           This place gives no Back yet. You can still pay your bill here.
         </p>
       )}
-      <HowItWorks
-        tab="pay"
-        title="Pay"
-        tone={CASHBACK_TONE}
-        // MORE INFO (Pato, 2026-11-23, MESITA-4737: "more info in how it
-        // works"): four steps from the bill to the credit, then the place's
-        // own rates and every rule a guest asks about.
-        steps={[
-          "When the bill comes, tap Go to Pay Bill",
-          "Pay here, or hand the cash to the waiter",
-          "The waiter confirms your bill",
-          "1 hour later, your Back lands here as credit",
-        ]}
-        good={[
-          ...rows.map((r) => `${r.title}: ${r.bps / 100}% back on ${r.line === "welcome" ? "your first bill here" : "every later bill"}.`),
-          // "be clear that cashbacks don't work with pre-earned credits" (Pato,
-          // MESITA-4702). No cap and no once-a-day rule (MESITA-4728).
-          "Back counts what you pay, never what you pay with credit.",
-          "No minimum bill.",
-          "Spend your credit here on a later bill, or send it to a friend. It never expires.",
-        ]}
-      />
+      {/* ONE STRUCTURE (MESITA-4737): Pay's How it works opens the same
+          window as a line's (i), for the guest's own line (else the first). */}
+      {rows.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => onInfo(rows.find((r) => r.line === cashback?.line) ?? rows[0])}
+          aria-haspopup="dialog"
+          className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-start px-1 text-sm font-semibold"
+          data-how-it-works="pay"
+        >
+          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+          How it works
+        </button>
+      ) : null}
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
           just have shortcut to Go to Pay bill at the bottom, purple color"),
           sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
