@@ -101,10 +101,12 @@ const STANDARD: Product[] = [
   // SMALL · MEDIUM · BIG (Pato, 2026-11-15, MESITA-4056): MX$200 +10%,
   // MX$500 +20% (the voucher_5000 key), MX$1,000 +30%. EACH KEY ITS PRICE
   // (Pato, 2026-11-16, MESITA-4152): Small MX$200 +10%, Medium MX$1,000 +20%
-  // (voucher_1000), Big MX$5,000 +30% (voucher_5000).
-  { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
+  // (voucher_1000), Big MX$5,000 +30% (voucher_5000). THE FULL NAME ON
+  // EVERY ROW (Pato, 2026-11-23, MESITA-4737: "call them Small Voucher,
+  // Medium Voucher, Big Voucher"): `short` reads the same as `name` now.
+  { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Voucher", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Voucher", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Voucher", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
@@ -442,9 +444,13 @@ type Step = {
 
 /** Every voucher (MESITA-4717): 1 Pay X · 2 Wait 3 hours · 3 Receive Y,
  *  all of it at once. */
-function sheetSteps(pay: string, get: string, card: { label: string; last4: string } | null): Step[] {
+/** NO CARD IN THE STEPS (Pato, 2026-11-23, MESITA-4737: "don't mention card
+ *  on the how it works. its weird. the how it works should not display
+ *  personal info"): Pay is the amount and "Here, in one tap", never the
+ *  saved card or its last four digits. */
+function sheetSteps(pay: string, get: string): Step[] {
   return [
-    { Icon: CreditCard, title: "Pay", amount: pay, line: card ? `${card.label} ${card.last4}` : "By card" },
+    { Icon: CreditCard, title: "Pay", amount: pay, line: "Here, in one tap" },
     { Icon: Clock, title: "Wait 3 hours", short: "3 hours", line: "Nothing to do" },
     { Icon: Wallet, title: "Receive it all", short: "Receive", amount: get, line: "Credit and bonus together", green: true },
   ];
@@ -707,13 +713,11 @@ function OfferInfo({
   product,
   line,
   currency,
-  card,
   onClose,
 }: {
   product: Product;
   line: VoucherCatalogLine | undefined;
   currency: string;
-  card: { label: string; last4: string } | null;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -751,7 +755,7 @@ function OfferInfo({
         <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
           <OfferBox pay={pay} get={get} bonus={`+${product.bonus.replace(/ bonus$/, "")}`} />
           <Box title="How it works">
-            <StepList steps={sheetSteps(whole(pay), whole(get), card)} />
+            <StepList steps={sheetSteps(whole(pay), whole(get))} />
           </Box>
           <GoodToKnow productKey={product.key} />
         </div>
@@ -1379,7 +1383,7 @@ function CheckoutSection({
         // own rates and every rule a guest asks about.
         steps={[
           "When the bill comes, tap Go to Pay Bill",
-          "Pay by card, or hand the cash to the waiter",
+          "Pay here, or hand the cash to the waiter",
           "The waiter confirms your bill",
           "1 hour later, your Back lands here as credit",
         ]}
@@ -1387,7 +1391,7 @@ function CheckoutSection({
           ...rows.map((r) => `${r.title}: ${r.bps / 100}% back on ${r.line === "welcome" ? "your first bill here" : "every later bill"}.`),
           // "be clear that cashbacks don't work with pre-earned credits" (Pato,
           // MESITA-4702). No cap and no once-a-day rule (MESITA-4728).
-          "Back counts what you pay by card or cash, never what you pay with credit.",
+          "Back counts what you pay, never what you pay with credit.",
           "No minimum bill.",
           "Spend your credit here on a later bill, or send it to a friend. It never expires.",
         ]}
@@ -1572,7 +1576,7 @@ export function VouchersPane({
       </div>
       {cashInfo && cashback ? <CashbackInfo row={cashInfo} onClose={() => setCashInfo(null)} /> : null}
       {infoProduct ? (
-        <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} card={co.payCard} onClose={() => setInfo(null)} />
+        <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} onClose={() => setInfo(null)} />
       ) : null}
     </div>
   );
