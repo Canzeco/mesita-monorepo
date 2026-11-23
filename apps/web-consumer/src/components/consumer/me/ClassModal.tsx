@@ -12,7 +12,7 @@
 // page only reads it and never decides it.
 
 import { useState } from "react";
-import { Check, Crown, RefreshCw, Tag } from "lucide-react";
+import { Check, Crown, RefreshCw, Repeat } from "lucide-react";
 import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { SettingsGroup, RowDivider } from "@/components/consumer/me/settings-rows";
@@ -92,12 +92,14 @@ export function ClassModal() {
         <SettingsGroup title={vip ? "What VIP gets you" : "Why be VIP"}>
           <div className="flex items-center gap-3 px-4 py-3" data-class-perk>
             <span className="bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full" aria-hidden>
-              <Tag className="h-4 w-4" strokeWidth={2.25} />
+              <Repeat className="h-4 w-4" strokeWidth={2.25} />
             </span>
+            {/* MORE CASHBACK, NOT VIP OFFERS (MESITA-4707): the VIP voucher left
+                with MESITA-4698; VIP's benefit is the Returning VIP cashback line. */}
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">Better offers</span>
+              <span className="block text-sm font-semibold">More cashback</span>
               <span className="text-muted-foreground type-label block">
-                VIP Offers with bigger bonuses, like Pay $100 · Get $200, at places that have them.
+                A higher Returning VIP cashback on every bill after your first, at places that offer it. It lands in 3 hours.
               </span>
             </span>
           </div>
