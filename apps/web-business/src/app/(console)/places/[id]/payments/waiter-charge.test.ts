@@ -1,6 +1,7 @@
-// Money (MESITA-3306; MESITA-4485): Cash Payments is a switch. It does not
-// wait on a waiter code, and this page has no control for accepting codes.
-// Loyalty Cards and App Payments are not gated on a code either.
+// Money (MESITA-3306; MESITA-4485): cash is never gated on a waiter code, and
+// this page has no control for accepting codes. Since MESITA-4752 cash, card
+// and credits are always accepted at the visit: the page asks nothing about
+// them (cash_payments is on for every place, migration 20261123163000).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -8,17 +9,14 @@ import { describe, expect, it } from "vitest";
 const PANEL = readFileSync(join(__dirname, "PaymentsPanel.tsx"), "utf8");
 
 describe("the place code on Payments", () => {
-  it("does not gate Cash Payments on a waiter code, and links the waiter's screen", () => {
+  it("does not gate cash on a waiter code, and links the waiter's screen", () => {
     expect(PANEL).not.toContain("<WaiterCodeRow");
     expect(PANEL).not.toContain("Set the waiter code first.");
-    expect(PANEL).toContain('accept: { key: "cash_payments" }');
     expect(PANEL).toContain("/charge/${encodeURIComponent(placeId)}");
   });
 
-  it("never gates Loyalty Cards or App Payments on the place code", () => {
-    const hc = PANEL.slice(PANEL.indexOf('key: "loyalty_cards"'), PANEL.indexOf('key: "cash_payments"'));
-    const mp = PANEL.slice(PANEL.indexOf('key: "pay_cards"'), PANEL.indexOf('id: "credits-payments"'));
-    expect(hc).not.toMatch(/codeSet/);
-    expect(mp).not.toMatch(/codeSet/);
+  it("never lets an owner turn cash off (it is always accepted)", () => {
+    expect(PANEL).not.toContain('flip("cash_payments"');
+    expect(PANEL).not.toContain('key: "cash_payments"');
   });
 });

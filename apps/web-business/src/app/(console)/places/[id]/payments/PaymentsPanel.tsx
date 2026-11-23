@@ -41,7 +41,6 @@ import {
   CreditCardIcon,
   GaugeIcon,
   InstagramLogoIcon,
-  MoneyIcon,
   PiggyBankIcon,
   ReceiptIcon,
   SignatureIcon,
@@ -251,6 +250,11 @@ export function PaymentsPanel({
   const [cashback, setCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
   // The amount Story Rewards comes back to when switched on again (Off stores 0).
   const [lastStory, setLastStory] = useState<number>((initial.cashback?.story_reward_cents ?? 0) > 0 ? initial.cashback!.story_reward_cents : 2000);
+  // The rates Visit Checkout comes back to when enabled again (Off stores 0 for both; MESITA-4752).
+  const [lastRates, setLastRates] = useState(() => ({
+    welcome_bps: (initial.cashback?.welcome_bps ?? 0) > 0 ? initial.cashback!.welcome_bps : 1000,
+    returning_bps: (initial.cashback?.returning_bps ?? 0) > 0 ? initial.cashback!.returning_bps : 500,
+  }));
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
@@ -271,7 +275,6 @@ export function PaymentsPanel({
   const takesCards = stripeTakesCards(initial);
   // The same rule the server sells and pays by (money-state, one source).
   const state = moneyState({ ...settings, has_place_code: true }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
-  const balance = initial.credits_balance ?? null;
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -322,6 +325,7 @@ export function PaymentsPanel({
     }
     setCashback(r.data);
     if (r.data.story_reward_cents > 0) setLastStory(r.data.story_reward_cents);
+    if (r.data.welcome_bps > 0 || r.data.returning_bps > 0) setLastRates({ welcome_bps: r.data.welcome_bps, returning_bps: r.data.returning_bps });
   }
 
   async function agree() {
@@ -332,6 +336,9 @@ export function PaymentsPanel({
     setAgreeing(false);
     if (!r.ok) return setError(r.error);
     setContract(r.data);
+    // CREDITS ARE ALWAYS ON (Pato, 2026-11-23, MESITA-4752: "it's all in. If
+    // they owe credits, they will accept in visit"): signing turns them on.
+    if (!settings.loyalty_cards) await flip("loyalty_cards", true);
   }
 
   async function stripe() {
@@ -366,46 +373,14 @@ export function PaymentsPanel({
     </a>
   );
   const needsContract = step("Sign the Credits Agreement first.", "#loyalty-cards-agreement");
-  const needsCredits = step("Turn the Credits Account on first.", "#credits-account");
+  const needsCredits = step("Enable the Credits Account first.", "#loyalty-cards-agreement");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
-  const needsPrepayments = step("Turn Accept Prepayments on first.", "#accept-prepayments");
+  const needsPrepayments = step("Enable Prepaid Vouchers first.", "#accept-prepayments");
   const creditsBlock = settings.loyalty_cards ? null : contract.signed ? needsCredits : needsContract;
 
   /** A row's one line under its title: the missing step if blocked, else its note. */
   const under = (blocked: React.ReactNode, note: React.ReactNode) =>
     blocked ? <p className={BLOCKED}>{blocked}</p> : note ? <p className={NOTE}>{note}</p> : null;
-
-  /** One way to pay at the visit: Accept with its switch, or "always" with none. */
-  const pairRow = (args: {
-    id: string;
-    name: string;
-    line: string;
-    icon: Icon;
-    tone: string;
-    accept: "always" | { key: PaymentKey; blocked?: React.ReactNode };
-  }) => {
-    const a = args.accept;
-    const aOn = a === "always" ? true : settings[a.key];
-    const aBlocked = a === "always" || aOn ? undefined : a.blocked;
-    return (
-      <li key={args.id} id={args.id} className={MARK_ROW} data-place-state={a === "always" ? "credits_payments" : a.key}>
-        {mark(args.icon, aOn, args.tone)}
-        <div className="min-w-0">
-          <p className="font-medium">{args.name}</p>
-          <p className="text-muted-foreground">{args.line}</p>
-          {under(aBlocked, null)}
-        </div>
-        <p className={cn("font-semibold whitespace-nowrap", (!aOn || a === "always") && "text-muted-foreground")}>
-          {a === "always" ? "Always accepted" : aOn ? "On" : "Off"}
-        </p>
-        {a === "always" ? (
-          <span />
-        ) : (
-          <Switch on={aOn} pending={pending || !!aBlocked} onClick={() => void flip(a.key, !aOn)} label={`${args.name}: ${aOn ? "on" : "off"}`} />
-        )}
-      </li>
-    );
-  };
 
   // Accept Prepayments is over every voucher (MESITA-4300): while it reads
   // Off, each voucher reads Off with its switch disabled and the one step; the
@@ -434,6 +409,7 @@ export function PaymentsPanel({
     );
   };
 
+  const visitOn = settings.loyalty_cards && (cashback.welcome_bps > 0 || cashback.returning_bps > 0);
   const storyOn = cashback.story_reward_cents > 0;
   // A story pays only while the Credits Account is on (story_reward_grant).
   const storyLive = settings.loyalty_cards && storyOn;
@@ -467,76 +443,54 @@ export function PaymentsPanel({
                 <p className="text-muted-foreground">Your agreement with Mesita to run credits here. Separate from Stripe.</p>
               </div>
               <p className={cn("font-semibold whitespace-nowrap", !contract.signed && "text-muted-foreground")}>{contract.signed ? signedOn(contract) : "Not signed"}</p>
-              {contract.signed ? (
+              {contract.signed && settings.loyalty_cards ? (
                 <span />
+              ) : contract.signed ? (
+                <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => void flip("loyalty_cards", true)}>
+                  Enable
+                </button>
               ) : (
                 <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => setAgreeing(true)}>
                   Agree
                 </button>
               )}
             </li>
-            {/* CREDITS BALANCE (MESITA-3946): what guests hold here now,
-                Available + Pending, in the one currency. Read-only. */}
-            <li id="credits-balance" className={MARK_ROW} data-place-state="credits_balance">
-              {mark(PiggyBankIcon, true, "bg-emerald-100 text-emerald-700")}
-              <div className="min-w-0">
-                <p className="font-medium">Credits Balance</p>
-                <p className="text-muted-foreground">
-                  What guests hold here now: your debt, in {CURRENCY_NAME[currency] ?? currency}, always honoured.
-                  {balance && balance.pending_cents > 0 ? ` ${moneyLabel(balance.pending_cents, currency)} of it is still pending.` : ""}
-                </p>
-              </div>
-              <p className={cn("font-semibold whitespace-nowrap tabular-nums", !balance && "text-muted-foreground")}>
-                {balance ? moneyLabel(balance.available_cents + balance.pending_cents, currency) : "—"}
-              </p>
-              <span />
-            </li>
-            {/* CREDIT LIMIT, INSIDE CREDITS ACCOUNT (Pato, 2026-11-23,
-                MESITA-4744: "credit limit must go into credits account"; its
-                own box since MESITA-4732): how much credit guests may hold
-                here, and the next step that raises it, under the balance.
-                Older servers send nothing: no row. */}
+            {/* CREDITS LIMIT · CREDITS OUTSTANDING (Pato, 2026-11-23, MESITA-4752:
+                "Credits Agreement · Credits Limit · Credits Outstanding (remove
+                Credit Balance, it's redundant)"). The Accept Credits Payments
+                switch is gone: signing turns credits on, and they stay on.
+                Older servers send no limit: no rows. */}
             {creditLimit ? (
               <li id="credit-limit" className={cn(MARK_ROW, "scroll-mt-24")} data-place-state="credit_limit">
                 {mark(GaugeIcon, (creditLimit.limit_cents ?? 0) > 0, "bg-emerald-100 text-emerald-700")}
                 <div className="min-w-0">
-                  <p className="font-medium">Outstanding Credit</p>
+                  <p className="font-medium">Credits Limit</p>
                   <p className="text-muted-foreground">{limitLine(creditLimit)}</p>
                   {creditLimit.next ? (
                     <p className={BLOCKED}>
                       {creditLimit.next.step === "credits"
-                        ? step(`Enable Credits Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#credits-account")
+                        ? step(`Enable Credits Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#loyalty-cards-agreement")
                         : step(`Connect Stripe Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#stripe-account")}
                     </p>
                   ) : null}
                 </div>
-                <p className="font-semibold whitespace-nowrap tabular-nums">
-                  {wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}
-                  <span className="text-muted-foreground font-normal">
-                    {creditLimit.limit_cents === null ? " · no new credit" : ` of ${wholeMoney(creditLimit.limit_cents, creditLimit.currency)}`}
-                  </span>
+                <p className={cn("font-semibold whitespace-nowrap tabular-nums", creditLimit.limit_cents === null && "text-muted-foreground")}>
+                  {creditLimit.limit_cents === null ? "No new credit" : wholeMoney(creditLimit.limit_cents, creditLimit.currency)}
                 </p>
                 <span />
               </li>
             ) : null}
-            {/* ACCEPT CREDITS PAYMENTS CAN'T TURN DOWN (MESITA-3946): the
-                Loyalty Cards switch, on once the agreement is signed and then
-                locked; a guest's credit is always honoured. */}
-            <li id="loyalty-cards" className={MARK_ROW} data-place-state="loyalty_cards">
-              {mark(WalletIcon, settings.loyalty_cards, "bg-emerald-100 text-emerald-700")}
-              <div className="min-w-0">
-                <p className="font-medium">Accept Credits Payments</p>
-                <p className="text-muted-foreground">Guests earn credit here and pay with it. Once on, it stays on.</p>
-                {under(settings.loyalty_cards || contract.signed ? undefined : needsContract, null)}
-              </div>
-              <p className={cn("font-semibold whitespace-nowrap", !settings.loyalty_cards && "text-muted-foreground")}>{settings.loyalty_cards ? "Always on" : "Off"}</p>
-              <Switch
-                on={settings.loyalty_cards}
-                pending={pending || settings.loyalty_cards || !contract.signed}
-                onClick={() => void flip("loyalty_cards", true)}
-                label={`Accept Credits Payments: ${settings.loyalty_cards ? "always on" : "off"}`}
-              />
-            </li>
+            {creditLimit ? (
+              <li id="credits-outstanding" className={MARK_ROW} data-place-state="credits_outstanding">
+                {mark(PiggyBankIcon, creditLimit.outstanding_cents > 0, "bg-emerald-100 text-emerald-700")}
+                <div className="min-w-0">
+                  <p className="font-medium">Credits Outstanding</p>
+                  <p className="text-muted-foreground">What guests hold here now: your debt, always honoured.</p>
+                </div>
+                <p className="font-semibold whitespace-nowrap tabular-nums">{wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}</p>
+                <span />
+              </li>
+            ) : null}
           </ul>
         </Card>
       </div>
@@ -587,24 +541,24 @@ export function PaymentsPanel({
         <Card className={SECTION}>
           {head(ReceiptIcon, "Visit Checkout")}
           <ul className="divide-border divide-y">
-            {pairRow({
-              id: "cash-payments",
-              name: "Accept Cash Payments",
-              line: settings.cash_payments
-                ? "Open cash amounts appear below. Mark each one received when you have the cash."
-                : "Guests can't pay cash at this place until this is on.",
-              icon: MoneyIcon,
-              tone: "bg-lime-100 text-lime-700",
-              accept: { key: "cash_payments" },
-            })}
-            {pairRow({
-              id: "credits-payments",
-              name: "Mesita Credits",
-              line: "The credit a guest holds here, applied first. Never on the tip.",
-              icon: WalletIcon,
-              tone: "bg-emerald-100 text-emerald-700",
-              accept: "always",
-            })}
+            {/* ENABLED (Pato, 2026-11-23, MESITA-4752): cash, card and credits
+                are always accepted at the visit, so no switch asks; Enabled is
+                whether a bill here earns cashback (Off stores 0 for both rates). */}
+            <li id="visit-checkout-enabled" className={MARK_ROW} data-place-state="visit_checkout">
+              {mark(ReceiptIcon, visitOn, "bg-green-100 text-green-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Enabled</p>
+                <p className="text-muted-foreground">Guests pay the bill here by card, cash or credit, and earn cashback.</p>
+                {under(creditsBlock, null)}
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !visitOn && "text-muted-foreground")}>{visitOn ? "On" : "Off"}</p>
+              <Switch
+                on={visitOn}
+                pending={pending || !!creditsBlock}
+                onClick={() => void saveRates(visitOn ? { ...cashback, welcome_bps: 0, returning_bps: 0 } : { ...cashback, ...lastRates })}
+                label={`Visit Checkout: ${visitOn ? "on" : "off"}`}
+              />
+            </li>
             {RATE_ROWS.map((row) => {
               const on = settings.loyalty_cards && cashback[row.key] > 0;
               return (
@@ -660,7 +614,7 @@ export function PaymentsPanel({
             </ul>
           ) : null}
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-            A confirmed bill earns cashback on the part not paid with credit, never the tip, 3 hours later. Waiter&apos;s screen:{" "}
+            A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later. Waiter&apos;s screen:{" "}
             <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
               {chargeUrl.replace("https://", "")}
             </a>
@@ -682,7 +636,7 @@ export function PaymentsPanel({
             <li id="accept-prepayments" className={MARK_ROW} data-place-state="prepayments">
               {mark(CreditCardIcon, prepaymentsOn, "bg-teal-100 text-teal-700")}
               <div className="min-w-0">
-                <p className="font-medium">Accept Prepayments</p>
+                <p className="font-medium">Enabled</p>
                 <p className="text-muted-foreground">Guests pay by card through your Stripe Account</p>
                 {under(
                   prepaymentsBlocked,
@@ -694,7 +648,7 @@ export function PaymentsPanel({
                 on={prepaymentsOn}
                 pending={pending || !!prepaymentsBlocked}
                 onClick={() => void flipPrepayments(!prepaymentsOn)}
-                label={`Accept Prepayments: ${prepaymentsOn ? "on" : "off"}`}
+                label={`Prepaid Vouchers: ${prepaymentsOn ? "on" : "off"}`}
               />
             </li>
             {/* Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
@@ -715,7 +669,7 @@ export function PaymentsPanel({
             <li id="story-rewards" className={MARK_ROW} data-place-state="story_reward">
               {mark(InstagramLogoIcon, storyLive, "bg-pink-100 text-pink-700")}
               <div className="min-w-0">
-                <p className="font-medium">Enable Story Rewards</p>
+                <p className="font-medium">Enabled</p>
                 <p className="text-muted-foreground">Credit for a guest&apos;s story tagging this place, once every 7 days.</p>
                 {under(creditsBlock, null)}
               </div>
@@ -724,7 +678,7 @@ export function PaymentsPanel({
                 on={storyLive}
                 pending={pending || !!creditsBlock}
                 onClick={() => void saveRates({ ...cashback, story_reward_cents: storyOn ? 0 : lastStory })}
-                label={`Enable Story Rewards: ${storyLive ? "on" : "off"}`}
+                label={`Instagram Stories: ${storyLive ? "on" : "off"}`}
               />
             </li>
             <li className={MARK_ROW} data-place-state="place_username">
@@ -741,11 +695,11 @@ export function PaymentsPanel({
             <li className={MARK_ROW} data-place-state="story_credit">
               {mark(PiggyBankIcon, storyLive, "bg-pink-100 text-pink-700")}
               <div className="min-w-0">
-                <p className="font-medium">Story Credit</p>
+                <p className="font-medium">Story Reward</p>
                 <p className="text-muted-foreground">What one verified story pays the guest.</p>
               </div>
               <span />
-              <div className="flex gap-1" role="group" aria-label="Story Credit">
+              <div className="flex gap-1" role="group" aria-label="Story Reward">
                 {STORY_AMOUNTS.map((cents) => {
                   const picked = (storyOn ? cashback.story_reward_cents : lastStory) === cents;
                   return (
