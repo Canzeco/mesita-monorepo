@@ -848,8 +848,8 @@ function SubpageTabs<K extends string>({
 
 /** Tickets' kinds as the place profile's strip (MESITA-4322, Pato: "a menu
  *  similar to the mesita profile … each item takes 25% and selected item is
- *  blue"; it was a scrolling row of icon pills, MESITA-3993): four equal
- *  tabs, a little icon and the word (icons back in MESITA-4324), white with a bottom hairline, the chosen one blue-600
+ *  blue"; it was a scrolling row of icon pills, MESITA-3993): three equal
+ *  tabs (four before MESITA-4623; a third each since MESITA-4776), a little icon and the word (icons back in MESITA-4324), white with a bottom hairline, the chosen one blue-600
  *  bold over a 3px blue-600 line, the rest muted (packages/place-profile
  *  PlaceTabBar, size for size). `on` null is the loading frame: words in
  *  place, none chosen. */
@@ -872,8 +872,9 @@ function TicketPills({
   return (
     <nav
       aria-label="Kinds of ticket"
-      // EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each").
-      className={cn("bg-card border-border grid shrink-0 grid-cols-4 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
+      // EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each"; three tabs
+      // since MESITA-4623, so a third each, MESITA-4776: "33% each").
+      className={cn("bg-card border-border grid shrink-0 grid-cols-3 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
       data-ticket-pills
     >
       {TICKET_TABS.map((t) => {
