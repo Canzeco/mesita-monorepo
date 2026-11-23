@@ -1,7 +1,7 @@
 -- MESITA-4487 — place_ticket_desk is one place and one universe. A visit
 -- is a paid tab, and a guest's own bill only after Verify; a waiter's open
--- bill counts. An unpaid voucher does not. A Story purchase made before
--- Stories went (MESITA-4642) is still a voucher row; the stories kind is
+-- bill counts. An unpaid voucher does not. The Story voucher is gone
+-- (MESITA-4642, its columns MESITA-4720); the stories kind is
 -- gone. A gift at another place does not count. The cursor skips nothing.
 -- Nobody but the service role runs it.
 
@@ -50,7 +50,7 @@ values
    '00000000-0000-4000-8000-0000000b4487', repeat('1', 64), 'paid', 'mxn', 1000, 0,
    now() - interval '40 days', now() - interval '39 days', now() - interval '40 days');
 
--- A paid voucher and one still open. A Story voucher bought before MESITA-4642.
+-- A paid voucher and one still open. A VIP voucher.
 insert into public.wallet_purchases (id, consumer_id, place_id, amount_cents, currency, status, stripe_account_id,
                                      voucher, bonus_cents, paid_at, created_at)
 values
@@ -62,7 +62,7 @@ values
    'voucher_welcome', 10000, null, now()),
   ('00000000-0000-4000-8000-000000134487', '00000000-0000-4000-8000-0000000b4487',
    '00000000-0000-4000-8000-000000014487', 10000, 'mxn', 'paid', 'acct_test_4487',
-   'voucher_story', 4000, now() - interval '1 day', now() - interval '1 day');
+   'voucher_vip', 10000, now() - interval '1 day', now() - interval '1 day');
 
 insert into public.wallet_gifts (id, sender_id, place_id, amount_cents, currency, token_hash, status, request_id, created_at)
 values
@@ -98,7 +98,7 @@ select is(
 select is(
   (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'vouchers', false, 'America/Mexico_City') -> 'totals' ->> 'vouchers')::int,
   2,
-  'a voucher ticket is a paid purchase, including a Story voucher bought before MESITA-4642; an open checkout is not');
+  'a voucher ticket is a paid purchase; an open checkout is not');
 
 select is(
   (public.place_ticket_desk('00000000-0000-4000-8000-000000014487', 'vouchers', false, 'America/Mexico_City') -> 'totals' ->> 'paid_cents')::int,
