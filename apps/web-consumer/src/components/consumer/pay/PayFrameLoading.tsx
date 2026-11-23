@@ -12,7 +12,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
   if (body === "list") {
     // /pay (Pato, 2026-11-21, MESITA-4523: "update placeholders when loading
     // page"): the page as MESITA-4559 draws it. The white Mesita Wallet header
-    // with its Tickets icon, green Get Offers | purple Pay Bill, half and half
+    // with its Tickets icon, green Get Discounts | purple Pay Bill, half and half
     // (MESITA-4587), then the Payment method and Loyalty Cards cards on white.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
