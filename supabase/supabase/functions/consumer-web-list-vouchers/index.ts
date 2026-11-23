@@ -11,7 +11,7 @@
 // Response: { ok: true, money: { test_mode, currency, charges_enabled, vouchers,
 //                               sell, unavailable, catalog, balance, paused },
 //            in_wallet?: boolean (MESITA-3582, signed in only),
-//            cashback: null | { welcome_bps, returning_bps, cap_cents,
+//            cashback: null | { welcome_bps, returning_bps,
 //                               line: welcome|returning|null } }
 //   MESITA-4698: the place's two cashback lines (MESITA-4709), null where Loyalty Cards
 //   is Off (no cashback is earned there); `line` is the one this caller's

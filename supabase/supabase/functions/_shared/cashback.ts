@@ -3,9 +3,10 @@
 //
 // A paid bill earns credit at the place: Welcome (the guest's first paid bill
 // here) or Returning (every later bill), each Off · 5 ·
-// 10 · 15 · 20 %, on the part not paid with credit (never the tip), capped
-// per bill, Pending 1 hour (3 until MESITA-4717), one per guest per place per Monterrey day, only
-// where Loyalty Cards is On. The SQL trigger pay_tabs_grant_cashback
+// 10 · 15 · 20 %, on the part not paid with credit (never the tip), Pending
+// 1 hour (3 until MESITA-4717), only where Loyalty Cards is On. No ceiling and
+// no once-a-day rule (Pato, 2026-11-23, MESITA-4728: "there is no ceiling for
+// the cashback amount"): a bill earns once, on every peso paid by card or cash. The SQL trigger pay_tabs_grant_cashback
 // (20261123010000_cashback_mvp) is the one writer; this file reads and
 // validates the owner's lines and says what a bill would earn.
 
@@ -15,9 +16,6 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 export const CASHBACK_STEPS_BPS = [0, 500, 1000, 1500, 2000] as const;
 export type CashbackBps = (typeof CASHBACK_STEPS_BPS)[number];
 
-/** The cap per bill an owner can type, in cents (MX$0 to MX$10,000). */
-export const CASHBACK_CAP_MAX_CENTS = 1_000_000;
-
 export const CASHBACK_WAIT_SEC = 60 * 60;
 
 export type CashbackLine = "welcome" | "returning";
@@ -25,7 +23,6 @@ export type CashbackLine = "welcome" | "returning";
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
-  cap_cents: number;
   /** MESITA-4714: what a verified Instagram story pays (Post), in cents:
    *  0 (Off) · 2000 · 5000. Lives beside the cashback lines. */
   story_reward_cents: number;
@@ -39,14 +36,13 @@ export function isStoryRewardCents(v: unknown): v is (typeof STORY_REWARD_STEPS_
 }
 
 /** The columns every rates read selects. */
-export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, cap_cents, story_reward_cents";
+export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, story_reward_cents";
 
-/** The last fallback, 10 / 5 %, MX$200: cashback_defaults' seed and
+/** The last fallback, 10 / 5 %: cashback_defaults' seed and
  *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
-  cap_cents: 20000,
   story_reward_cents: 2000,
 };
 
@@ -56,23 +52,21 @@ export function isCashbackBps(v: unknown): v is CashbackBps {
 
 /** The owner's save: every field present and allowed, or why not. Pure.
  *  `story_reward_cents` (MESITA-4714) is optional, so a build from before
- *  Post still saves its lines; absent, the saved reward stays as it is. */
+ *  Post still saves its lines; absent, the saved reward stays as it is. A
+ *  `cap_cents` an older console still sends is ignored (MESITA-4728). */
 export function readCashbackInput(
   body: Record<string, unknown>,
 ): { ok: true; rates: Omit<CashbackRates, "story_reward_cents"> & { story_reward_cents?: number } } | { ok: false; error: string } {
-  const { welcome_bps, returning_bps, cap_cents, story_reward_cents } = body;
+  const { welcome_bps, returning_bps, story_reward_cents } = body;
   if (!isCashbackBps(welcome_bps) || !isCashbackBps(returning_bps)) {
     return { ok: false, error: "Each rate must be Off, 5%, 10%, 15% or 20%" };
-  }
-  if (typeof cap_cents !== "number" || !Number.isInteger(cap_cents) || cap_cents < 0 || cap_cents > CASHBACK_CAP_MAX_CENTS) {
-    return { ok: false, error: "The cap must be a whole amount from 0 to 10,000" };
   }
   if (story_reward_cents !== undefined && !isStoryRewardCents(story_reward_cents)) {
     return { ok: false, error: "The story reward must be Off, 20 or 50" };
   }
   return {
     ok: true,
-    rates: { welcome_bps, returning_bps, cap_cents, ...(story_reward_cents !== undefined ? { story_reward_cents } : {}) },
+    rates: { welcome_bps, returning_bps, ...(story_reward_cents !== undefined ? { story_reward_cents } : {}) },
   };
 }
 
@@ -87,11 +81,11 @@ export function rateFor(rates: CashbackRates, line: CashbackLine): number {
 }
 
 /** What a bill earns: the rate on the part not paid with credit (no tip),
- *  rounded down, capped. Pure (mirrors pay_tab_grant_cashback). */
+ *  rounded down, no ceiling (MESITA-4728). Pure (mirrors pay_tab_grant_cashback). */
 export function cashbackCents(rates: CashbackRates, line: CashbackLine, earnCents: number): number {
   const bps = rateFor(rates, line);
-  if (bps <= 0 || rates.cap_cents <= 0 || earnCents <= 0) return 0;
-  return Math.min(Math.floor((earnCents * bps) / 10000), rates.cap_cents);
+  if (bps <= 0 || earnCents <= 0) return 0;
+  return Math.floor((earnCents * bps) / 10000);
 }
 
 /** The place's lines now (its row, else the defaults). */
@@ -130,13 +124,13 @@ export async function readCashbackRatesMany(admin: SupabaseClient, placeIds: str
     .in("place_id", placeIds);
   if (error) throw new Error(`place_cashback_settings: ${error.message}`);
   for (const r of (data ?? []) as unknown as Array<CashbackRates & { place_id: string }>) {
-    out.set(r.place_id, { welcome_bps: r.welcome_bps, returning_bps: r.returning_bps, cap_cents: r.cap_cents, story_reward_cents: r.story_reward_cents });
+    out.set(r.place_id, { welcome_bps: r.welcome_bps, returning_bps: r.returning_bps, story_reward_cents: r.story_reward_cents });
   }
   return out;
 }
 
 /** A place's cashback as the guest screens read it (MESITA-4698, MESITA-4702):
- *  the two lines and the cap, and the line this caller's next bill falls in
+ *  the two lines, and the line this caller's next bill falls in
  *  (null signed out). Null where Loyalty Cards is Off (no cashback is earned
  *  there) or the read fails (logged): no rate beats a wrong one. */
 export async function placeCashbackFor(

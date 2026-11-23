@@ -7,7 +7,7 @@
 // MESITA-4714: and the story reward (story_reward_cents: 0 Off · 2000 · 5000,
 // optional) every place without its own row pays for a verified story.
 //
-// Body: { welcome_bps, returning_bps, cap_cents, story_reward_cents? }
+// Body: { welcome_bps, returning_bps, story_reward_cents? } (a cap_cents is ignored; MESITA-4728)
 // Response: { ok: true, cashback_defaults } · 400 bad input
 // Super-admins only. A change applies to the next confirmed bill; cashback
 // already earned stays as it was.
