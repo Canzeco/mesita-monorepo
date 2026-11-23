@@ -21,12 +21,13 @@
 // REFUNDS LEFT TICKETS (Pato, 2026-11-18, MESITA-4402: "remove refunds from
 // there. but refunds as something in settings"): /me/settings/refunds.
 //
-// NO STORIES (MESITA-4641): the old Stories addresses forward to Vouchers
-// (legacy-redirects.ts). Order as the tabs (MESITA-4623: "Vouchers Visits
-// Gifts").
+// NO STORIES (MESITA-4641), then STORIES BACK (Pato, 2026-11-23,
+// MESITA-4738: "Vouchers Visits Stories Gifts"): the guest's own Instagram
+// stories (the Post offer, MESITA-4714). Order as the tabs.
 export const TICKET_KINDS = [
   "vouchers",
   "visits",
+  "stories",
   "gifts",
 ] as const;
 

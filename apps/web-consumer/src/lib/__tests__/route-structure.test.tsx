@@ -624,10 +624,10 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
 
-  it("Tickets has three kinds: Vouchers · Visits · Gifts; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4627)", () => {
+  it("Tickets has four kinds: Vouchers · Visits · Stories · Gifts; Refunds is a Settings page (MESITA-3855, MESITA-4402, MESITA-4738)", () => {
     // Gifts split into Gifts-In and Gifts-Out (MESITA-3941), one list
-    // again (MESITA-4036). No Stories (MESITA-4627, MESITA-4641).
-    expect([...TICKET_KINDS]).toEqual(["vouchers", "visits", "gifts"]);
+    // again (MESITA-4036). Stories back as a tab (MESITA-4738).
+    expect([...TICKET_KINDS]).toEqual(["vouchers", "visits", "stories", "gifts"]);
   });
 
   it("no box routes into a container any more", () => {

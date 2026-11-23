@@ -6,6 +6,7 @@
 
 import { ENTRY_LABEL, money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import type { GuestVisit } from "@/lib/api/tab";
+import type { GuestStory } from "@/lib/api/story";
 import {
   payReceiptPath,
   payBillPath,
@@ -62,6 +63,7 @@ export const KIND_WORD: Record<TicketRowKind, string> = {
   refund: "Refund",
   reversal: "Refund",
   reservation: "Reservation",
+  story: "Instagram Story",
 };
 
 export const join = (...parts: Array<string | null | false | undefined>) =>
@@ -171,6 +173,43 @@ export function visitRows(
       action: open
         ? { label: total ? "Continue paying" : "Open", href }
         : undefined,
+    };
+  });
+}
+
+// ─── Stories ────────────────────────────────────────────────────────────────
+
+/** A story's state in one word, Business Monitor's (MESITA-4732): a story
+ *  checked once and waiting for its recheck is still Pending. */
+const STORY_PILL: Record<GuestStory["state"], [string, StatusTone]> = {
+  checking: ["Pending", "ink"],
+  verified: ["Pending", "ink"],
+  rejected: ["Rejected", "grey"],
+  rewarded: ["Credited", "green"],
+};
+
+/** The guest's own Instagram stories (MESITA-4738): the place, how long ago,
+ *  the state, and the credit once it landed. */
+export function storyRows(stories: GuestStory[]): Row[] {
+  return stories.map((s) => {
+    const [label, tone] = STORY_PILL[s.state] ?? [s.state, "grey" as StatusTone];
+    const credited = s.state === "rewarded" && s.credit_cents != null;
+    const pending = s.state === "checking" || s.state === "verified";
+    return {
+      key: `s-${s.id}`,
+      type: "stories",
+      kind: "story",
+      at: s.posted_at,
+      upcoming: false,
+      pending,
+      place: s.place?.name ?? (s.place ? "A Mesita place" : "Checking the place"),
+      photo: s.place?.photo_url ?? null,
+      status: { label, tone },
+      big: credited ? money(s.credit_cents!, s.currency ?? "mxn") : "",
+      money: credited,
+      sign: credited ? "+" : null,
+      line: "Instagram Story",
+      dim: s.state === "rejected",
     };
   });
 }

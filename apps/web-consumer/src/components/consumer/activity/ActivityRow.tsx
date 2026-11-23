@@ -44,7 +44,8 @@ export type TicketRowKind =
   | "gift_link"
   | "refund"
   | "reversal"
-  | "reservation";
+  | "reservation"
+  | "story";
 
 export type ActivityItem = {
   key: string;
