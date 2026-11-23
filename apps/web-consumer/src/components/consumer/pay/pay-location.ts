@@ -17,6 +17,12 @@ const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
 
 const round = (v: number) => Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
 
+/** A point as the list read carries it (MESITA-4748: the Prepay list's
+ *  chosen location, a saved place or the phone's fix). */
+export function roundLocation(at: { lat: number; lng: number }): { lat: number; lng: number } {
+  return { lat: round(at.lat), lng: round(at.lng) };
+}
+
 export type Loc =
   | { state: "unknown" }
   | { state: "prime" }

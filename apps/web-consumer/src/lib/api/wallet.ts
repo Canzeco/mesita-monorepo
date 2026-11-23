@@ -486,7 +486,16 @@ export type PayPlace = {
   /** What the guest can buy here now (MESITA-4519), the card's offer
    *  slides, plus the Pay (cashback) and Post (story) offers the server
    *  already sends (MESITA-4731). Absent from an older server reads as none. */
-  offers?: { sell: string[]; cashback_pct?: number | null; story_cents?: number | null };
+  offers?: {
+    sell: string[];
+    cashback_pct?: number | null;
+    cashback_flat?: boolean;
+    /** MESITA-4748: the two Back lines apart, for the Pay Bill sheet's boxes.
+     *  Absent from an older server reads as no boxes. */
+    welcome_pct?: number | null;
+    returning_pct?: number | null;
+    story_cents?: number | null;
+  };
 };
 
 /** Which of a place's Offers tabs have something on (MESITA-4731, D5). */

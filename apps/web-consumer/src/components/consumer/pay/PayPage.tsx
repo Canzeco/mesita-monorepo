@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { BadgePercent, ChevronRight, Gift, QrCode } from "lucide-react";
+import { BadgePercent, ChevronRight, Gift, QrCode, Tag } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
@@ -371,60 +371,59 @@ export function PayPage({
           lands on their Prepay tab; Explore Offers lists places with any offer
           and lands on their first one (D5). History: Get Discounts | Pay Bill
           half and half (MESITA-4587 … 4704). */}
-      {/* ONE FAMILY OF TILES (Pato, 2026-11-23, MESITA-4735: "call them like
-          this: Pay Bill / Prepay, Get Bonus / Send Gift. BETTER DESIGN"). The
-          three share one anatomy: the icon disc top left, the name bottom left,
-          all 112px tall; Prepay's "Get Bonus" is a white pill top right. Pay
-          Bill runs full width; Prepay | Send Gift split the row under it. */}
-      {payBusy ? (
-        <Skeleton className="mt-2 h-28 w-full rounded-2xl bg-[#635BFF]/40" aria-hidden />
-      ) : (
-        <button
-          type="button"
-          className={cn(TILE, "mt-2 w-full bg-[#635BFF] text-white hover:bg-[#5249e6]")}
-          aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
-          onClick={paySelected}
-          data-pay-bill
-        >
-          <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
-            <QrCode className="h-5 w-5" strokeWidth={2.25} />
-          </span>
-          <span className={TILE_TITLE}>Pay Bill</span>
-        </button>
-      )}
+      {/* PREPAY LEFT, PAY BILL RIGHT (Pato, 2026-11-23, MESITA-4748: "Prepay
+          at the left. Pay at the right. Gift Credits somewhere, and maybe
+          explore offers too"; /plan-design-review D2-D5): the two coloured
+          112px tiles share one row, Pay Bill under the right thumb; Send Gift
+          and Explore Offers follow as two quiet 48px outlined buttons (black
+          Send Gift and a full-width Explore Offers row before, MESITA-4735).
+          Under 360px the quiet pair stacks and the pill reads "Bonus", so
+          nothing is cut. */}
       <div className="mt-2 grid grid-cols-2 gap-2">
         <PushLink
           href={`${CONSUMER_ROUTES.walletBuy}?offers=vouchers`}
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
+          aria-label="Prepay, Get Bonus"
           data-prepay
         >
-          <span className="flex w-full items-center justify-between gap-2">
+          <span className="flex w-full min-w-0 items-center justify-between gap-2">
             <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
               <BadgePercent className="h-5 w-5" strokeWidth={2.5} />
             </span>
-            <span className={TILE_PILL}>Get Bonus</span>
+            <span className={TILE_PILL} aria-hidden>
+              <span className="max-[359px]:hidden">Get Bonus</span>
+              <span className="min-[360px]:hidden">Bonus</span>
+            </span>
           </span>
           <span className={TILE_TITLE}>Prepay</span>
         </PushLink>
-        <PushLink
-          href={CONSUMER_ROUTES.walletSend}
-          className={cn(TILE, "bg-neutral-950 text-white hover:bg-neutral-800")}
-          data-send-gift
-        >
-          <span className={cn(ICON_CIRCLE, "text-neutral-950")} aria-hidden>
-            <Gift className="h-5 w-5" strokeWidth={2.25} />
-          </span>
-          <span className={TILE_TITLE}>Send Gift</span>
+        {payBusy ? (
+          <Skeleton className="h-28 min-w-0 rounded-2xl bg-[#635BFF]/40" aria-hidden />
+        ) : (
+          <button
+            type="button"
+            className={cn(TILE, "bg-[#635BFF] text-white hover:bg-[#5249e6]")}
+            aria-label={bill === "open" ? "Pay your open bill" : "Pay Bill"}
+            onClick={paySelected}
+            data-pay-bill
+          >
+            <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
+              <QrCode className="h-5 w-5" strokeWidth={2.25} />
+            </span>
+            <span className={TILE_TITLE}>Pay Bill</span>
+          </button>
+        )}
+      </div>
+      <div className={QUIET_ROW}>
+        <PushLink href={CONSUMER_ROUTES.walletSend} className={QUIET_BUTTON} data-send-gift>
+          <Gift className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">Send Gift</span>
+        </PushLink>
+        <PushLink href={`${CONSUMER_ROUTES.walletBuy}?offers=any`} className={QUIET_BUTTON} data-explore-offers>
+          <Tag className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+          <span className="truncate">Explore Offers</span>
         </PushLink>
       </div>
-      <PushLink
-        href={`${CONSUMER_ROUTES.walletBuy}?offers=any`}
-        className="border-border bg-card hover:bg-muted mt-2 flex h-12 w-full items-center justify-between rounded-xl border px-4 text-base font-semibold"
-        data-explore-offers
-      >
-        Explore Offers
-        <ChevronRight className="text-muted-foreground h-5 w-5" aria-hidden />
-      </PushLink>
 
       {/* ALL WHITE (Pato, 2026-11-21, MESITA-4574: "MAKE ALL BACKGROUND
           WHITE"): the cards sit on the page's own white, each with its
@@ -537,7 +536,12 @@ function PlaceRows({
  *  same height"). */
 const TILE =
   "flex h-28 min-w-0 flex-col items-start justify-between rounded-2xl p-4 text-left transition active:scale-[0.99]";
-/** A tile's name: one baseline across the three. */
+/** Send Gift | Explore Offers (MESITA-4748): two quiet 48px outlined buttons,
+ *  icon then word, side by side; stacked under 360px (the Me card's rule). */
+const QUIET_ROW = "mt-2 grid grid-cols-2 gap-2 max-[359px]:grid-cols-1";
+const QUIET_BUTTON =
+  "border-border bg-card hover:bg-muted flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 text-base font-semibold transition active:scale-[0.99]";
+/** A tile's name: one baseline across the two. */
 const TILE_TITLE = "text-lg leading-tight font-semibold";
 /** Prepay's promise rides a white pill top right, so its name stays level
  *  with Send Gift's. */

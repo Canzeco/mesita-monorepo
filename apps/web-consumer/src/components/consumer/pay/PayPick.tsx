@@ -7,10 +7,14 @@ import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
+import { offerSlides, STANDARD_BONUS } from "@mesita/place-profile/lib/offers";
 import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
+import { useActiveLocation } from "@/lib/active-location";
+import { useUserLocation } from "@/lib/use-user-location";
+import { cn } from "@/lib/utils";
 import { PlacePhoto } from "./pay-common";
 import { TicketHeader } from "./pay-flow";
-import { distanceText, type Loc, usePayLocation } from "./pay-location";
+import { distanceText, type Loc, roundLocation, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 
 // PAY BILL'S PLACE PICKER (Pato, 2026-11-17, MESITA-4232: "WHEN YOU CLICK
@@ -79,8 +83,16 @@ export function PlacePickBody({
    *  (Explore Offers). */
   offers?: "vouchers" | "any";
 }) {
-  const { loc, askLocation, notNow } = usePayLocation({ prime: true });
-  const { places: all, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
+  // THE LIST SORTS FROM THE HEADER'S BOX (MESITA-4748, D7): on /wallet/buy
+  // a saved location wins, else the phone's fix; no priming card there (the
+  // box asks). Pay Bill's sheet keeps its own card and the phone's fix.
+  const { loc, askLocation, notNow } = usePayLocation({ prime: !prepay });
+  const active = useActiveLocation();
+  const fix = useUserLocation();
+  const phone = loc.state === "on" ? loc.at : null;
+  const at = prepay ? (active ? roundLocation(active) : fix ? roundLocation(fix) : phone) : phone;
+  const { places: all, failed, refresh } = usePayPlaces(at);
+  const boxes: BoxKind = prepay ? offers : "cashback";
   // MESITA-4698: Get Discounts lists the places with offers (Loyalty
   // Cards On). MESITA-4708: no card_ok fallback (a bill has no card part).
   const places =
@@ -129,6 +141,7 @@ export function PlacePickBody({
             onUseLocation={askLocation}
             onNotNow={notNow}
             prepay={prepay}
+            boxes={boxes}
           />
         ) : failed ? (
           <div className="px-5 py-4">
@@ -141,7 +154,7 @@ export function PlacePickBody({
             />
           </div>
         ) : (
-          <RowsSkeleton />
+          <RowsSkeleton boxes={boxes === "cashback" ? 2 : 3} />
         )}
       </div>
       {/* PICK IS STEP 0 (Pato, 2026-11-21, MESITA-4635: "don't even mention
@@ -167,8 +180,10 @@ function PlaceList({
   onUseLocation,
   onNotNow,
   prepay = false,
+  boxes,
 }: {
   prepay?: boolean;
+  boxes: BoxKind;
   places: PayPlace[];
   query: string;
   loc: Loc;
@@ -191,7 +206,7 @@ function PlaceList({
   const cards = matches.filter((p) => holds(p) && !nearIds.has(p.place_id));
   return (
     <div className="flex flex-col">
-      {loc.state === "prime" ? (
+      {prepay ? null : loc.state === "prime" ? (
         <div className="px-5 py-3">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
@@ -217,7 +232,7 @@ function PlaceList({
       ) : null}
 
       {loc.state === "asking" && places.length === 0 ? (
-        <RowsSkeleton />
+        <RowsSkeleton boxes={boxes === "cashback" ? 2 : 3} />
       ) : places.length === 0 ? (
         <div className="px-5 py-4">
           <EmptyState
@@ -239,19 +254,19 @@ function PlaceList({
         // (MESITA-4280) with a hairline between them.
         <div data-pay-places>
           {q ? (
-            <Section title="Results" places={prepay ? matches : shown} onPick={onPick} prepay={prepay} />
+            <Section title="Results" places={prepay ? matches : shown} onPick={onPick} boxes={boxes} />
           ) : prepay ? (
             <>
               {/* NO "NEAR YOU" (Pato, 2026-11-21, MESITA-4606: "its ugly and
                   kinda obvious"): the closest places come first untitled. */}
-              <Section places={nearest} onPick={onPick} prepay />
-              <Section title="Your Loyalty Cards" places={cards} onPick={onPick} prepay />
+              <Section places={nearest} onPick={onPick} boxes={boxes} />
+              <Section title="Your Loyalty Cards" places={cards} onPick={onPick} boxes={boxes} />
             </>
           ) : (
             <>
               {/* ONE LIST, CARDS FIRST (MESITA-4598, Pato picked it): no group
                   titles; the places he holds credit at, then the nearest. */}
-              <Section places={shown} onPick={onPick} />
+              <Section places={shown} onPick={onPick} boxes={boxes} />
             </>
           )}
           {hidden > 0 ? (
@@ -274,12 +289,12 @@ function Section({
   title,
   places,
   onPick,
-  prepay = false,
+  boxes,
 }: {
   title?: string;
   places: PayPlace[];
   onPick: (placeId: string) => void;
-  prepay?: boolean;
+  boxes: BoxKind;
 }) {
   if (places.length === 0) return null;
   return (
@@ -287,50 +302,126 @@ function Section({
       {title ? <p className="type-eyebrow text-muted-foreground px-5 pb-2">{title}</p> : null}
       <div className="border-border divide-border divide-y border-y">
         {places.map((p) => (
-          <PlaceRow key={p.place_id} p={p} onPick={onPick} prepay={prepay} />
+          <PlaceRow key={p.place_id} p={p} onPick={onPick} boxes={boxes} />
         ))}
       </div>
     </section>
   );
 }
 
-/** A place: photo, name, "1.0 km · address", then the QR chip and a chevron. */
-function PlaceRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void; prepay?: boolean }) {
+/** Which offers a row previews (MESITA-4748): Prepay's vouchers, every kind
+ *  on Explore Offers, or Pay Bill's two Back lines. */
+type BoxKind = "vouchers" | "any" | "cashback";
+type OfferBox = { top: string; bottom: string; tone: string; key: string };
+
+/** The tints: Prepay green, Pay purple, Post pink (D9), light under black ink. */
+const BOX_TINT = { prepay: "bg-[#00D66F]/15", pay: "bg-[#635BFF]/12", post: "bg-[#FF66C4]/20" } as const;
+const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
+const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+
+/** THE OFFERS UNDER A PLACE (Pato, 2026-11-23, MESITA-4748: "list the place,
+ *  and below display like the amounts … ($200MX +20%) ($1,000MX + 30%)
+ *  ($5,000MX + 30%)"; for the bill "Welcome (50% Back) Returning (X% Back)";
+ *  /plan-design-review D6): small tinted boxes, the amount or the name over
+ *  the bonus. The vouchers' bonuses are the catalog's (+10/+20/+30). Equal
+ *  Welcome and Returning rates are one "Every bill" box. */
+export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
+  const o = p.offers;
+  if (!o) return [];
+  if (kind === "vouchers") {
+    return VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => ({
+      key: k,
+      top: `$${pesos.format(Number(k.slice("voucher_".length)))}`,
+      bottom: `+${STANDARD_BONUS[k]}%`,
+      tone: BOX_TINT.prepay,
+    }));
+  }
+  if (kind === "cashback") {
+    const w = o.welcome_pct ?? null;
+    const r = o.returning_pct ?? null;
+    if (w !== null && w === r) return [{ key: "every", top: "Every bill", bottom: `${w}% Back`, tone: BOX_TINT.pay }];
+    return [
+      ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% Back`, tone: BOX_TINT.pay }] : []),
+      ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% Back`, tone: BOX_TINT.pay }] : []),
+    ];
+  }
+  // Explore Offers: one box per kind, Prepay · Pay · Post, in offerSlides' words.
+  const order: Record<string, number> = { prepay: 0, cashback: 1, post: 2 };
+  return offerSlides(o)
+    .filter((sl) => sl.key in order)
+    .sort((a, b) => order[a.key] - order[b.key])
+    .map((sl) => ({
+      key: sl.key,
+      top: sl.lead,
+      bottom: sl.pillShort,
+      tone: sl.key === "prepay" ? BOX_TINT.prepay : sl.key === "cashback" ? BOX_TINT.pay : BOX_TINT.post,
+    }));
+}
+
+/** A place: photo, name, the address on one line and the distance; under
+ *  them its offer boxes (MESITA-4748). The row is the one button (D8): the
+ *  boxes are a preview, read aloud in the row's label. */
+function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string) => void; boxes: BoxKind }) {
   const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
-  // A PLACE, INKIND'S ROW (MESITA-4598; Prepay & Get Credits too since
-  // MESITA-4619): a 56px rounded-square photo, the name over its address (two
-  // lines at most), the distance at the right; no QR chip, no ›.
+  const name = p.name ?? "A Mesita place";
+  const shown = offerBoxes(p, boxes);
+  const spoken = [name, distance, ...shown.map((b) => `${b.top} ${b.bottom}`)].filter(Boolean).join(", ");
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      className="hover:bg-muted/60 flex w-full items-start gap-3.5 px-4 py-3 text-left transition"
+      aria-label={spoken}
+      className="hover:bg-muted/60 flex w-full flex-col px-4 py-3 text-left transition"
       data-pay-pick-place
     >
-      <PlacePhoto place={p} className="h-14 w-14 rounded-lg" />
-      <span className="min-w-0 flex-1 pt-0.5">
-        <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
-        {p.address ? <span className="text-muted-foreground mt-0.5 line-clamp-2 text-sm">{p.address}</span> : null}
+      <span className="flex w-full items-start gap-3.5">
+        <PlacePhoto place={p} className="h-14 w-14 rounded-lg" />
+        <span className="min-w-0 flex-1 pt-0.5">
+          <span className="block truncate text-base font-semibold">{name}</span>
+          {p.address ? (
+            <span className={cn("text-muted-foreground mt-0.5 text-sm", shown.length > 0 ? "block truncate" : "line-clamp-2")}>{p.address}</span>
+          ) : null}
+        </span>
+        {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
       </span>
-      {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
+      {shown.length > 0 ? (
+        <span className={cn("mt-2.5 grid w-full gap-2", boxes === "cashback" ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+          {shown.map((b) => (
+            <span key={b.key} className={cn("text-foreground min-w-0 rounded-xl px-2.5 py-2", b.tone)}>
+              <span className="block truncate text-base leading-tight font-semibold tabular-nums">{b.top}</span>
+              <span className="mt-0.5 block text-sm leading-tight font-semibold tabular-nums">{b.bottom}</span>
+            </span>
+          ))}
+        </span>
+      ) : null}
     </button>
   );
 }
 
-function RowsSkeleton() {
+function RowsSkeleton({ boxes = 0 }: { boxes?: number }) {
   return (
     <div className="mt-3" aria-busy>
       <Skeleton className="mx-5 mb-2 h-3 w-20" />
       <div className="border-border divide-border divide-y border-y">
       {[0, 1, 2].map((i) => (
         <Fragment key={i}>
-          <div className="flex min-h-[4.5rem] items-center gap-3 px-5 py-3">
-            <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
-            <div className="flex-1">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="mt-1.5 h-3 w-24" />
+          <div className="px-4 py-3">
+            <div className="flex items-start gap-3.5">
+              <Skeleton className="h-14 w-14 shrink-0 rounded-lg" />
+              <div className="flex-1 pt-1">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="mt-2 h-3 w-24" />
+              </div>
+              <Skeleton className="mt-1 h-3 w-10" />
             </div>
-            <Skeleton className="h-5 w-16" />
+            {/* The offer boxes' bones (MESITA-4748): the row's own shape. */}
+            {boxes > 0 ? (
+              <div className={cn("mt-2.5 grid gap-2", boxes === 2 ? "grid-cols-2" : "grid-cols-3")}>
+                {Array.from({ length: boxes }, (_, b) => (
+                  <Skeleton key={b} className="h-[52px] min-w-0 rounded-xl" />
+                ))}
+              </div>
+            ) : null}
           </div>
         </Fragment>
       ))}

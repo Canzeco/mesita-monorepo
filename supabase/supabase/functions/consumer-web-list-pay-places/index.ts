@@ -16,7 +16,10 @@
 //             distance_m | null, currency, available_cents,
 //             pending_cents, outside_ok, test_mode,
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
-//             offers_ok, offers: { sell } }] }
+//             offers_ok, offers: { sell, cashback_pct, cashback_flat,
+//             welcome_pct, returning_pct, story_cents } }] }
+//   MESITA-4748: welcome_pct | returning_pct, the two Back lines apart, for
+//   the Pay Bill sheet's two boxes.
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
 //   and vouchers where sold): Pay's Get Offers lists these.
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
@@ -33,7 +36,7 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { listRowMoney, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
+import { listRowMoney, NO_LIST_ROW_OFFERS, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
@@ -144,6 +147,6 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   const offers = new Map(withOffers.map((r) => [r.id, r.offers]));
   return json({
     ok: true,
-    places: listed.map((p) => ({ ...p, offers: offers.get(p.place_id) ?? { sell: [], cashback_pct: null, cashback_flat: false, story_cents: null } })),
+    places: listed.map((p) => ({ ...p, offers: offers.get(p.place_id) ?? NO_LIST_ROW_OFFERS })),
   });
 });
