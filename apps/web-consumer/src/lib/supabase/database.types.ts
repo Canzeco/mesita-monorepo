@@ -178,7 +178,6 @@ export type Database = {
       }
       cashback_defaults: {
         Row: {
-          cap_cents: number
           id: boolean
           returning_bps: number
           story_reward_cents: number
@@ -187,7 +186,6 @@ export type Database = {
           welcome_bps: number
         }
         Insert: {
-          cap_cents?: number
           id?: boolean
           returning_bps?: number
           story_reward_cents?: number
@@ -196,7 +194,6 @@ export type Database = {
           welcome_bps?: number
         }
         Update: {
-          cap_cents?: number
           id?: boolean
           returning_bps?: number
           story_reward_cents?: number
@@ -1024,7 +1021,6 @@ export type Database = {
       }
       place_cashback_settings: {
         Row: {
-          cap_cents: number
           place_id: string
           returning_bps: number
           story_reward_cents: number
@@ -1033,7 +1029,6 @@ export type Database = {
           welcome_bps: number
         }
         Insert: {
-          cap_cents?: number
           place_id: string
           returning_bps?: number
           story_reward_cents?: number
@@ -1042,7 +1037,6 @@ export type Database = {
           welcome_bps?: number
         }
         Update: {
-          cap_cents?: number
           place_id?: string
           returning_bps?: number
           story_reward_cents?: number
@@ -4661,7 +4655,6 @@ export type Database = {
       place_cashback_rates: {
         Args: { p_place_id: string }
         Returns: {
-          cap_cents: number
           returning_bps: number
           story_reward_cents: number
           welcome_bps: number
