@@ -30,7 +30,7 @@ function AddCreditsCardRow() {
   );
 }
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { BadgePercent, Gift, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ListLocationBox } from "./ListLocationBox";
@@ -45,7 +45,7 @@ import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
 import { placeHref } from "@/lib/place-route";
 import { useWallet } from "./use-wallet";
 import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
-import { AddRow, CreditsRow, RowsSkeleton, WalletPanelList } from "./WalletLists";
+import { AddRow, CreditsRow, RowsSkeleton } from "./WalletLists";
 
 /** A place's prepay page from the Prepay picker: its Offers at Prepayments.
  *  A paid offer ends on the Loyalty Card, which replaces Offers (MESITA-4601). */
@@ -114,43 +114,55 @@ export function BuyCreditsPage({ offers = "any" }: { offers?: "vouchers" | "any"
 /** /wallet/send — pick the Loyalty Card to send credit from. */
 export function SendGiftPage() {
   const { wallet, credits, failed, reread } = useWallet();
+  // CLEANER (Pato, 2026-11-23, MESITA-4760: "this must be cleaner, like
+  // select a card"): the banner says the task, then the cards edge to edge,
+  // hairlines between, like Prepay's list. No "Your places" box. Empty and
+  // error states keep their 20px inset. The banner itself is MESITA-4755's.
+  const flushList = (rows: ReactNode[]) => (
+    <ul role="list" className="divide-border border-border divide-y border-b" data-send-gift-cards>
+      {rows.map((row, i) => (
+        <li key={i}>{row}</li>
+      ))}
+    </ul>
+  );
   return (
     <Screen title="Send Gift" paper flush>
-      {/* A BANNER LIKE PREPAY'S (Pato, 2026-11-23, MESITA-4755: "add a banner
-          in send gift, between header and searchbar"): one line, full bleed,
-          black like the old Send Gift tile, the gift in a white disc. The page
-          is flush for it; the list keeps the 20px inset below. */}
       <p role="note" className="flex shrink-0 items-center gap-2.5 bg-neutral-950 px-4 py-2.5 text-base font-semibold text-white" data-list-banner>
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-neutral-950" aria-hidden>
           <Gift className="h-4 w-4" strokeWidth={2.5} />
         </span>
-        <span className="min-w-0">Send credit to a friend</span>
+        <span className="min-w-0">Choose a card to send from</span>
       </p>
-      <div className="px-5 py-5">
       {credits === null && failed ? (
-        <EmptyState
-          icon={Gift}
-          title="Couldn't load your Wallet"
-          description="Check your connection and try again."
-          action={{ label: "Try again", onClick: reread }}
-        />
+        <div className="px-5 py-5">
+          <EmptyState
+            icon={Gift}
+            title="Couldn't load your Wallet"
+            description="Check your connection and try again."
+            action={{ label: "Try again", onClick: reread }}
+          />
+        </div>
       ) : credits === null ? (
-        <WalletPanelList title="Your places">
-          <RowsSkeleton count={3} />
-          <AddRow line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />
-        </WalletPanelList>
+        flushList([
+          <RowsSkeleton key="bones" count={3} />,
+          <AddRow key="add" line="Add a Loyalty Card" ariaLabel="Add a Loyalty Card" disabled />,
+        ])
       ) : wallet?.can_send !== true ? (
-        <EmptyState icon={Gift} title="Sending credit isn't open yet" />
+        <div className="px-5 py-5">
+          <EmptyState icon={Gift} title="Sending credit isn't open yet" />
+        </div>
       ) : credits.length === 0 ? (
-        <EmptyState
-          icon={Gift}
-          title="No Loyalty Cards yet"
-          description="Buy credits at a place first."
-          action={{ label: "Buy Credits", href: CONSUMER_ROUTES.walletBuy }}
-        />
+        <div className="px-5 py-5">
+          <EmptyState
+            icon={Gift}
+            title="No Loyalty Cards yet"
+            description="Buy credits at a place first."
+            action={{ label: "Buy Credits", href: CONSUMER_ROUTES.walletBuy }}
+          />
+        </div>
       ) : (
-        <WalletPanelList title="Your places">
-          {credits.map((r, i) => (
+        flushList([
+          ...credits.map((r, i) => (
             <CreditsRow
               key={r.placeId}
               card={r.card}
@@ -158,11 +170,10 @@ export function SendGiftPage() {
               href={walletSendPath(r.placeId)}
               eager={i < 4}
             />
-          ))}
-          <AddCreditsCardRow />
-        </WalletPanelList>
+          )),
+          <AddCreditsCardRow key="add" />,
+        ])
       )}
-      </div>
     </Screen>
   );
 }

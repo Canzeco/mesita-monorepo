@@ -1,6 +1,4 @@
 import { Screen } from "@/components/consumer/nav/Screen";
-import { Panel } from "@/components/shared/Panel";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { RowsSkeleton } from "@/components/consumer/wallet/WalletLists";
 
 // /wallet/send's frame (MESITA-4096): the header in place and the list in
@@ -10,17 +8,10 @@ import { RowsSkeleton } from "@/components/consumer/wallet/WalletLists";
 export default function Loading() {
   return (
     <Screen title="Send Gift" paper flush>
-      {/* The banner's bar (MESITA-4755), no words. */}
+      {/* The banner's bar and the edge-to-edge rows (MESITA-4755, MESITA-4760), no words. */}
       <div className="bg-neutral-950 h-12 shrink-0" aria-hidden />
-      <div aria-busy className="px-5 py-5">
-        <Panel className="mt-2">
-          <div className="px-4 pt-4">
-            <Skeleton className="h-5 w-28 rounded-md" />
-          </div>
-          <div className="mt-3 flex flex-col">
-            <RowsSkeleton count={4} />
-          </div>
-        </Panel>
+      <div aria-busy className="divide-border border-border flex flex-col divide-y border-b">
+        <RowsSkeleton count={4} />
       </div>
     </Screen>
   );
