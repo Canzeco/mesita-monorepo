@@ -5,7 +5,7 @@
 // server decides who may see or change a place, never these wrappers.
 
 import { efInvoke } from "@/lib/supabase-ef";
-import { CASHBACK_DEFAULTS, type CashbackRates } from "@/lib/cashback";
+import { CASHBACK_DEFAULTS, type CashbackRates, withStoryReward } from "@/lib/cashback";
 import type { RefillOrigin } from "@/lib/premier-origin";
 import type { CustomerCursor, CustomersPage, MonitorCursor, MonitorFilter, MonitorKind, MonitorPage, PayoutsAnswer } from "@/lib/monitor";
 
@@ -507,7 +507,7 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
         : null,
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
       cash_due: Array.isArray(r.data.cash_due) ? r.data.cash_due : [],
-      cashback: r.data.cashback ?? CASHBACK_DEFAULTS,
+      cashback: r.data.cashback ? withStoryReward(r.data.cashback) : CASHBACK_DEFAULTS,
     },
   };
 }
@@ -600,7 +600,7 @@ export async function setPlacePayment(placeId: string, key: PaymentKey, enabled:
 export async function setPlaceCashback(placeId: string, rates: CashbackRates): Promise<Result<CashbackRates>> {
   const r = await efInvoke<{ cashback: CashbackRates }>("business-web-set-cashback", { place_id: placeId, ...rates });
   if (!r.ok) return fail(r);
-  return { ok: true, data: r.data.cashback };
+  return { ok: true, data: withStoryReward(r.data.cashback) };
 }
 
 /** The owner agrees to the Loyalty Cards Agreement (MESITA-3589). */
