@@ -9,6 +9,8 @@ import { OpenStripeButton } from "./OpenStripeButton";
 import { ExportButton, MonitorToolbar } from "./ExportButton";
 import { Payouts } from "./Payouts";
 import { MonitorAnalytics } from "./MonitorAnalytics";
+import { CapabilityNote, CapabilityOff, monitorCapabilityOff } from "./CapabilityOff";
+import { MONITOR_COLUMNS, TABLE_KINDS, type TableKind } from "@/lib/monitor-columns";
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -26,8 +28,22 @@ export async function MonitorPage({
 }) {
   const sp = await searchParams;
   const filter = { id: uuidParam(sp.id), customer: customerParam(sp.customer) };
-  const r = await listMonitor(placeId, kind, filter);
+  // Vouchers and Stories say when their capability is off (MESITA-4732).
+  const capKind = kind === "vouchers" || kind === "stories" ? kind : null;
+  const [r, payments] = await Promise.all([listMonitor(placeId, kind, filter), capKind ? getPlacePayments(placeId) : null]);
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
+  const off = capKind && payments?.ok ? monitorCapabilityOff(capKind, payments.data) : null;
+  const filtered = Boolean(filter.id || filter.customer);
+  if (off && !filtered && r.data.rows.length === 0) {
+    const columns = TABLE_KINDS.includes(kind)
+      ? ["Guest", ...MONITOR_COLUMNS[kind as TableKind].map((c) => c.label)]
+      : undefined;
+    return (
+      <div className="flex flex-col gap-4 pb-8">
+        <CapabilityOff placeId={placeId} off={off} columns={columns} />
+      </div>
+    );
+  }
   // Analytics on top (MESITA-4677): the server sends them on the first,
   // unfiltered page of Visits and Vouchers only.
   const analytics =
@@ -39,6 +55,7 @@ export async function MonitorPage({
       <MonitorToolbar>
         <ExportButton placeId={placeId} kind={kind} filter={filter} name={page === "money" ? "payments" : page} />
       </MonitorToolbar>
+      {off ? <CapabilityNote placeId={placeId} off={off} /> : null}
       {analytics ? <MonitorAnalytics analytics={analytics} /> : null}
       <MonitorCard>
         <MonitorList
@@ -62,6 +79,16 @@ export async function PayoutsPage({ placeId }: { placeId: string }) {
   if (!r.ok) return <MonitorError code={r.code} error={r.error} />;
   // Open Stripe only with a connected account (the dashboard needs one).
   const stripe = payments.ok && payments.data.account.state !== "none";
+  // MESITA-4732: no Stripe account that can charge. With no account at all
+  // there are no payouts, so the empty frame; otherwise past payouts show.
+  const off = payments.ok ? monitorCapabilityOff("payouts", payments.data) : null;
+  if (off && !stripe) {
+    return (
+      <div className="flex flex-col gap-4 pb-8">
+        <CapabilityOff placeId={placeId} off={off} />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4 pb-8">
       {stripe ? (
@@ -69,6 +96,7 @@ export async function PayoutsPage({ placeId }: { placeId: string }) {
           <OpenStripeButton placeId={placeId} />
         </MonitorToolbar>
       ) : null}
+      {off ? <CapabilityNote placeId={placeId} off={off} /> : null}
       <MonitorCard>
         <Payouts placeId={placeId} timezone={r.data.timezone} />
       </MonitorCard>

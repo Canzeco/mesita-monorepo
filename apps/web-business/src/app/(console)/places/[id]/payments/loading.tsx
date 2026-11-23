@@ -1,9 +1,9 @@
-// Payments while business-web-get-payments answers (MESITA-3600): section
-// cards of rows, as the page draws them.
+// Offers while business-web-get-payments answers (MESITA-3600): the six
+// boxes of rows (MESITA-4732), as the page draws them.
 export default function PaymentsLoading() {
   return (
     <div className="flex flex-col gap-4 pb-8" aria-busy="true" aria-label="Loading Offers">
-      {[1, 2, 3].map((rows, n) => (
+      {[1, 3, 1, 4, 4, 3].map((rows, n) => (
         <div key={n} className="border-border bg-card divide-border divide-y rounded-2xl border">
           {Array.from({ length: rows }, (_, i) => (
             <div key={i} className="flex items-center gap-4 px-5 py-4">

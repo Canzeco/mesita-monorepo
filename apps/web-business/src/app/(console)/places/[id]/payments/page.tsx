@@ -7,9 +7,9 @@ export const metadata = { title: "Offers" };
 
 // The money guests pay a place (MESITA-3296, Pato: "connect the Stripe account
 // with the Sandbox for the moment"): the place's Stripe account, then the
-// switches: each way to pay, and Prepaid Vouchers, six. Rates, bonuses
-// and prices are not here (MESITA-3272 keeps them open with owners), so
-// nothing charges yet. What the place pays Mesita is Billing. Configuration
+// six boxes of MESITA-4732: Credit Limit · Credits Account · Stripe Account ·
+// Visit Checkout · Prepaid Vouchers · Instagram Stories. What the place pays
+// Mesita is Billing. Configuration
 // only (MESITA-3596): the owner's money and its log are Operations › Money.
 export default async function PaymentsPage({
   params,

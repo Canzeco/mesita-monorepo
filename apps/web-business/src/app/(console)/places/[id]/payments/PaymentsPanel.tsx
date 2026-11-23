@@ -1,58 +1,33 @@
 "use client";
 
 // Offers (MESITA-3296; the Place states of Main §10 since MESITA-3589).
-// MESITA-4698 (Pato, 2026-11-22: "we must have Vouchers and we must have
-// Coupons as Offers ... New Customers · Returning Customers · VIP Customers ·
-// Wholesale Presales ... ADD STAGES IN OFFERS ... Cashbacks (activate
-// credits). Vouchers (activate credits + stripe)"): after the Stripe and
-// Credits accounts and Payments, the offers come in two stages:
-//   Stage 1 · Cashbacks  needs Credits only: New Customers (Welcome) and
-//                        Returning Customers (Returning), each Off · 5 · 10 ·
-//                        15 · 20 %, and a cap per bill. No VIP line since
-//                        MESITA-4709 (Pato, 2026-11-22: "no more VIP").
-//   Stage 2 · Vouchers   needs Credits + Stripe: Wholesale Presales, App
-//                        Prepayments then Small · Medium · Big.
-// App Payments (card for the bill) left the page: the bill is paid with
-// credit and the rest outside (MESITA-4698; the code went in MESITA-4708).
-// SINCE MESITA-3946 THE PAGE IS THREE CARDS, then Vouchers and Waiter Code:
-//   Stripe Account   · the account (a standard pill since MESITA-4534; was large, MESITA-4024) · Accept Stripe Payments
-//   Credits Account  · Credits Agreement · Credits Balance (read-only) · Accept
-//                      Credits Payments (Loyalty Cards: on once signed, then locked)
-//   Payments         · one row per way to pay, Accept only: Cash · App · Credits
-//                      (always) · Prepayments.
-// The history below is how it got here.
-// Configuration only (MESITA-3596, Pato: "in payments its just to configure"):
-// the owner's money and its log live on Operations › Money, and there is no
-// table QR (the guest shows the QR). One list again (MESITA-3600, Pato on the
-// card grid: "make the list UI again. that looks like shit and its
-// confusing"): the test pill, an unpaid fee banner (MESITA-3461), the
-// numbered to-do strip (MESITA-3602; removed by MESITA-4024, Pato: "remove the
-// stupid progress bar on top"), then section cards of rows, each row a mark, a title and one line, its value and
-// its control:
-//   (MESITA-3827, Pato: "Main Configuration · Cash Payments · Credits
-//   Payments · Mesita Payments · Mesita Prepayments":)
-//   Main Configuration · the Stripe Account row and its button, then the
-//     Loyalty Cards Agreement and the Loyalty Cards switch it unlocks;
-//   Cash Payments · Cash Payments;
-//   Credits Payments · Credits Payments (Always on);
-//   Mesita Payments · Mesita Payments;
-//   Mesita Prepayments · Mesita Prepayments, then one row per voucher;
-//   Waiter Code · its own section, last (MESITA-3824; inside Cash Payments
-//     from MESITA-3625, moved from Settings by MESITA-3600): waiters sign
-//     any payment's QR with it, cash or card;
-//   (Credits Payments, one row, Always on, sits last in Loyalty Cards:
-//     MESITA-3703, Pato: "Add field call it Credits Payments to maintain
-//     symmetry", then MESITA-3704: "credits payments must go in the Loyalty
-//     Cards section". Guests pay with the credit they hold here. No
-//     switch: a guest's credit is the place's debt, always honoured; Loyalty
-//     Cards Off stops new credit only.)
+// SIX BOXES SINCE MESITA-4732 (Pato, 2026-11-23, design review D1–D4), each
+// a card with its own anchor, which Monitor's "Turn on in Offers" links to:
+//   Credit Limit       #credit-limit       · Outstanding Credit of the limit, and
+//                                            the next step that raises it
+//   Credits Account    #credits-account    · Credits Agreement · Credits Balance
+//                                            (read-only) · Accept Credits Payments
+//                                            (Loyalty Cards: on once signed, then locked)
+//   Stripe Account     #stripe-account     · the account and its button
+//   Visit Checkout     #visit-checkout     · Accept Cash Payments · Mesita Credits
+//                                            (always accepted, no switch) · Welcome
+//                                            and Returning Visit Rates (cashback)
+//   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
+//                                            (the `prepayments` key, and
+//                                            `stripe_payments` under it), then
+//                                            Small · Medium · Big
+//   Instagram Stories  #instagram-stories  · Enable Story Rewards · Place Username
+//                                            (read-only, from Profile) · Story Credit
+// The rates and the story reward are one saved record (business-web-set-
+// cashback); each change saves at once. Story Rewards Off stores 0; On brings
+// back the last amount, or MX$20.
 // A switch that can't turn on is disabled and its row says the one missing
 // step, with a link to it. Never "Mesita Pay" (Pato, 2026-11-10).
-// The Loyalty Cards Agreement is independent of Stripe (Pato, 2026-11-09):
-// signing opens a plain Agree dialog whose text is a placeholder until a
-// lawyer writes it. A guest's credit is the place's debt: Loyalty Cards Off
-// stops new credit, never what guests hold. The owner and Mesita staff change
-// these; the server refuses anyone else and repeats each rule.
+// The Loyalty Cards Agreement is independent of Stripe (Pato, 2026-11-09). A
+// guest's credit is the place's debt: Loyalty Cards Off stops new credit,
+// never what guests hold. The owner and Mesita staff change these; the
+// server refuses anyone else and repeats each rule. Configuration only
+// (MESITA-3596): the money and its log live on Monitor.
 
 import { useState } from "react";
 import { moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
@@ -62,9 +37,11 @@ import {
   ArrowsClockwiseIcon,
   ConfettiIcon,
   CreditCardIcon,
+  GaugeIcon,
   InstagramLogoIcon,
   MoneyIcon,
   PiggyBankIcon,
+  ReceiptIcon,
   SignatureIcon,
   StripeLogoIcon,
   TicketIcon,
@@ -75,11 +52,14 @@ import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
+import { prepaymentsOn as prepaymentsLive, stripeTakesCards } from "@/lib/offers-state";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { CASHBACK_DEFAULTS, CASHBACK_STEPS_BPS, type CashbackRates, STORY_REWARD_STEPS_CENTS } from "@/lib/cashback";
 import {
   setPlaceCashback,
   openPaymentDashboard,
+  type CreditLimit,
+  getPlacePayments,
   type LoyaltyCardsContract,
   type PaymentAccount,
   type PaymentKey,
@@ -93,27 +73,19 @@ import {
 
 /** One row: mark · title and line · value · control; the line wraps, the rest hold. */
 const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
-/** A way to pay (MESITA-3946): mark · title and line · Accept.
- *  On a phone the control drops under the words. */
-const PAIR_ROW =
-  "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 px-5 py-3 text-sm sm:grid-cols-[auto_minmax(0,1fr)_9.5rem] sm:px-6";
-const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
+const HEAD = "flex items-center gap-2 px-5 pt-4 pb-2 font-semibold sm:px-6";
 const NOTE = "text-muted-foreground text-xs";
 const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
 const SECTION = "flex flex-col p-0 sm:p-0";
+const SELECT = "border-border bg-background rounded-full border px-3 py-1.5 text-sm";
 
-/** A voucher: its bonus in its own colour (MESITA-3298) and one objective line. */
-/** A voucher: its bonus, one objective line, and the Offers page's face
- *  (Pato, MESITA-3839: "change the colors and icons of the prepayments"):
- *  the guest and the owner see the same colour and mark. */
+/** A voucher: its bonus, one objective line, and the Offers page's face. */
 type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string; icon: Icon };
 
-// PRICED IN THE PLACE'S CURRENCY (MESITA-3914, Pato: "100 MX 10% · 1000 MX
-// 20% · 10 USD 10% · 100 USD 20% ... all small must start with 1 and big be
-// 10X that"). TWIN of VOUCHER_PRICE_CENTS in _shared/money.ts.
-// The base price per currency, in whole units (MESITA-3943: the three); Small
-// 2×, Medium 10×, Big 50× (MESITA-4152), Welcome and VIP at the base. TWIN of
-// VOUCHER_CURRENCY_LIST in _shared/money.ts.
+// PRICED IN THE PLACE'S CURRENCY (MESITA-3914). TWIN of VOUCHER_PRICE_CENTS
+// in _shared/money.ts. The base price per currency, in whole units
+// (MESITA-3943); Small 2×, Medium 10×, Big 50× (MESITA-4152), Welcome and VIP
+// at the base. TWIN of VOUCHER_CURRENCY_LIST in _shared/money.ts.
 const SMALL: Record<string, number> = { MXN: 100, USD: 10, CAD: 10 };
 const TIMES: Record<VoucherKey, number> = { voucher_200: 2, voucher_1000: 10, voucher_5000: 50, voucher_welcome: 1, voucher_vip: 1 };
 const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEntries(
@@ -123,8 +95,8 @@ const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEnt
   ]),
 );
 
-/** A voucher row before its price: the bonus in bps and what follows the deal. */
-type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: number; tail?: string };
+/** A voucher row before its price: the bonus in bps. */
+type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey; bps: number };
 
 const STANDARD: VoucherSeed[] = [
   { key: "voucher_200", name: "Small Voucher", bps: 1000, value: "+10%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
@@ -132,37 +104,46 @@ const STANDARD: VoucherSeed[] = [
   { key: "voucher_5000", name: "Big Voucher", bps: 3000, value: "+30%", tone: "bg-green-100 text-green-700", icon: TicketIcon },
 ];
 
-// MESITA-4698: Welcome is a cashback line now (Stage 1), not a voucher.
-
-/** MESITA-4714: a story reward's word: Off, $20, $50 (the place's currency units). */
-function storyWord(cents: number): string {
-  return cents > 0 ? `$${cents / 100}` : "Off";
+/** An amount in whole units where it is whole: MX$10,000, MX$20, $12.50. */
+function wholeMoney(cents: number, currency: string): string {
+  const whole = Math.round(cents) % 100 === 0;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(cents / 100);
+  } catch {
+    return moneyLabel(cents, currency);
+  }
 }
 
-/** Stage 1 · Cashbacks: one row per solution, the line it sets. */
-const CASHBACK_ROWS: Array<{ key: keyof Omit<CashbackRates, "story_reward_cents">; name: string; line: string; tone: string; icon: Icon }> = [
-  { key: "welcome_bps", name: "New Customers", line: "Welcome cashback on a guest's first bill here.", tone: "bg-green-100 text-green-700", icon: ConfettiIcon },
-  { key: "returning_bps", name: "Returning Customers", line: "Returning cashback on every later bill here.", tone: "bg-green-100 text-green-700", icon: ArrowsClockwiseIcon },
+/** Visit Checkout's two cashback lines (MESITA-4698; no VIP since MESITA-4709). */
+const RATE_ROWS: Array<{ key: keyof Omit<CashbackRates, "story_reward_cents">; name: string; line: string; icon: Icon }> = [
+  { key: "welcome_bps", name: "Welcome Visit Rate", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
+  { key: "returning_bps", name: "Returning Visit Rate", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
 ];
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
+/** The story amounts a place can pick (Off is the switch). */
+const STORY_AMOUNTS = STORY_REWARD_STEPS_CENTS.filter((c) => c > 0);
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
 function voucherProducts(currency: string): Product[] {
   const prices = VOUCHER_PRICE[currency];
   if (!prices) return [];
-  return STANDARD.map(({ bps, tail, ...p }) => {
+  return STANDARD.map(({ bps, ...p }) => {
     const price = prices[p.key];
     const credit = price + Math.floor((price * bps) / 10000);
-    return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.${tail ? ` ${tail}` : ""}` };
+    return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.` };
   });
 }
 
-/** What a card payment costs the place (MESITA-3461; the 5% fee is billed
- *  apart), in the place's currency (MESITA-3913). */
+/** What a card payment costs the place (MESITA-3461), in its currency (MESITA-3913). */
 const per100 = (currency: string) =>
   `Per ${moneyLabel(100_00, currency)} by card: Stripe's card fee + ${moneyLabel(5_00, currency)} to Mesita.`;
 
-/** The currency's name in the plural, for the Credits Currency row (MESITA-3913). */
+/** The currency's name in the plural (MESITA-3913). */
 const CURRENCY_NAME: Record<string, string> = {
   MXN: "Mexican pesos", USD: "US dollars", CAD: "Canadian dollars", EUR: "euros", GBP: "pounds sterling",
   BRL: "Brazilian reais", COP: "Colombian pesos", CLP: "Chilean pesos", PEN: "Peruvian soles", JPY: "Japanese yen",
@@ -177,7 +158,7 @@ const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_"
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_account: "Not for sale until the Stripe Account takes cards.",
-  needs_loyalty_cards: "Not for sale until Loyalty Cards is on.",
+  needs_loyalty_cards: "Not for sale until the Credits Account is on.",
   needs_billing: "Not for sale until Mesita's invoice is paid.",
   not_yet: "Not on sale yet.",
   needs_card_payments: "On sale once card payments are on.",
@@ -200,13 +181,13 @@ const COUNTRY: Record<string, string> = {
   ES: "Spain", FR: "France", DE: "Germany", IT: "Italy", NL: "Netherlands", PT: "Portugal", IE: "Ireland", BE: "Belgium", AT: "Austria",
 };
 
-/** The quiet grey pill (Cancel in the Agreement dialog). */
+/** The quiet grey pill (Cancel in the Agreement dialog, Open Stripe). */
 const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opacity-100";
 
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
     case "none":
-      return { line: "Your own account, where App Payments and App Prepayments land. Not needed for Loyalty Cards or cash.", button: "Connect Stripe", open: false };
+      return { line: "Your own account, where prepaid vouchers land. Not needed for credits or cash.", button: "Connect Stripe", open: false };
     case "onboarding":
       return { line: "Setup not finished.", button: "Continue setup", open: false };
     case "restricted":
@@ -226,6 +207,28 @@ function signedOn(c: LoyaltyCardsContract): string {
   return `Signed ${d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
 }
 
+/** "@handle" from a profile's Instagram link; the link itself if it has none. */
+function instagramHandle(url: string): string {
+  const m = url.match(/instagram\.com\/([A-Za-z0-9._]+)/i) ?? url.match(/^@?([A-Za-z0-9._]+)$/);
+  return m ? `@${m[1]}` : url;
+}
+
+/** What the Credit Limit box says about where the limit comes from. */
+function limitLine(c: CreditLimit): string {
+  switch (c.tier) {
+    case "none":
+      return "No new credit until the Credits Account is on.";
+    case "credits":
+      return "Credits Account on.";
+    case "stripe":
+      return "Credits Account on and the Stripe Account takes cards.";
+    case "custom":
+      return "Set by Mesita for this place.";
+    case "default":
+      return `The standard limit in ${CURRENCY_NAME[c.currency] ?? c.currency}.`;
+  }
+}
+
 export function PaymentsPanel({
   placeId,
   initial,
@@ -238,27 +241,29 @@ export function PaymentsPanel({
   const [settings, setSettings] = useState(initial.settings);
   const [cashDue, setCashDue] = useState(initial.cash_due ?? []);
   const [cashback, setCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
-  const [savedCashback, setSavedCashback] = useState<CashbackRates>(initial.cashback ?? CASHBACK_DEFAULTS);
+  // The amount Story Rewards comes back to when switched on again (Off stores 0).
+  const [lastStory, setLastStory] = useState<number>((initial.cashback?.story_reward_cents ?? 0) > 0 ? initial.cashback!.story_reward_cents : 2000);
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | "cashback" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
-  // The Waiter code row sets it here, so Cash Payments unlocks without a reload.
+  // The tier moves when the Credits Account flips here; refetched then.
+  const [creditLimit, setCreditLimit] = useState<CreditLimit | null>(initial.credit_limit ?? null);
+  const instagramUrl = initial.instagram_url ?? null;
   const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
   const ready = account.state === "ready";
   const stage: StripeStage = account.stage ?? (ready ? "connected" : account.state === "none" ? "none" : "onboarding");
   const pending = !canEdit || busy !== null;
-  // Mesita Payments, Mesita Prepayments and every voucher need
-  // the Stripe Account to take cards in the server's mode (MESITA-3599; the
-  // set EF and SQL refuse otherwise): until then they read Off and cannot be
-  // switched.
-  const takesCards = account.charges_enabled && account.livemode === !testMode;
+  // Prepayments and every voucher need the Stripe Account to take cards in
+  // the server's mode (MESITA-3599; the set EF and SQL refuse otherwise).
+  const takesCards = stripeTakesCards(initial);
   // The same rule the server sells and pays by (money-state, one source).
   const state = moneyState({ ...settings, has_place_code: true }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
+  const balance = initial.credits_balance ?? null;
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -267,17 +272,48 @@ export function PaymentsPanel({
     setBusy(null);
     if (!r.ok) return setError(r.error);
     setSettings(r.data);
+    if (key === "loyalty_cards") void refreshCreditLimit();
   }
 
-  const cashbackDirty = JSON.stringify(cashback) !== JSON.stringify(savedCashback);
-  async function saveCashback() {
-    setBusy("cashback");
+  /** The Credit Limit box's tier follows the Credits Account; read it again. */
+  async function refreshCreditLimit() {
+    const r = await getPlacePayments(placeId);
+    if (r.ok) setCreditLimit(r.data.credit_limit ?? null);
+  }
+
+  /** Accept Prepayments (MESITA-4732): one switch over `prepayments` and the
+   *  `stripe_payments` gate above it (MESITA-3946), which has no row now. */
+  async function flipPrepayments(enabled: boolean) {
+    setBusy("prepayments");
     setError(null);
-    const r = await setPlaceCashback(placeId, cashback);
+    if (enabled && !settings.stripe_payments) {
+      const s = await setPlacePayment(placeId, "stripe_payments", true);
+      if (!s.ok) {
+        setBusy(null);
+        return setError(s.error);
+      }
+      setSettings(s.data);
+    }
+    const r = await setPlacePayment(placeId, "prepayments", enabled);
     setBusy(null);
     if (!r.ok) return setError(r.error);
+    setSettings(r.data);
+  }
+
+  /** Rates and the story reward are one record; each change saves it. */
+  async function saveRates(next: CashbackRates) {
+    const before = cashback;
+    setCashback(next);
+    setBusy("cashback");
+    setError(null);
+    const r = await setPlaceCashback(placeId, next);
+    setBusy(null);
+    if (!r.ok) {
+      setCashback(before);
+      return setError(r.error);
+    }
     setCashback(r.data);
-    setSavedCashback(r.data);
+    if (r.data.story_reward_cents > 0) setLastStory(r.data.story_reward_cents);
   }
 
   async function agree() {
@@ -307,109 +343,74 @@ export function PaymentsPanel({
     </span>
   );
 
-  /** The one missing step, linked to the row (or page) that does it. */
+  /** A box's heading, with its Phosphor mark. */
+  const head = (Mark: Icon, title: string) => (
+    <h2 className={HEAD}>
+      <Mark size={18} weight="bold" aria-hidden className="text-muted-foreground" />
+      {title}
+    </h2>
+  );
+
+  /** The one missing step, linked to the box that does it. */
   const step = (text: string, href: string) => (
     <a className="underline underline-offset-2" href={href}>
       {text}
     </a>
   );
-  const needsContract = step("Sign the Loyalty Cards Agreement first.", "#loyalty-cards-agreement");
-  const needsLoyaltyCards = step("Turn Loyalty Cards on first.", "#loyalty-cards");
+  const needsContract = step("Sign the Credits Agreement first.", "#loyalty-cards-agreement");
+  const needsCredits = step("Turn the Credits Account on first.", "#credits-account");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
-  const needsPrepayments = step("Turn App Prepayments on first.", "#mesita-prepayments");
-  const needsStripePayments = step("Turn Accept Stripe Payments on first.", "#accept-stripe-payments");
-  const balance = initial.credits_balance ?? null;
+  const needsPrepayments = step("Turn Accept Prepayments on first.", "#accept-prepayments");
+  const creditsBlock = settings.loyalty_cards ? null : contract.signed ? needsCredits : needsContract;
 
   /** A row's one line under its title: the missing step if blocked, else its note. */
   const under = (blocked: React.ReactNode, note: React.ReactNode) =>
     blocked ? <p className={BLOCKED}>{blocked}</p> : note ? <p className={NOTE}>{note}</p> : null;
 
-  /** One on/off state: its value, its switch, and the step that unlocks it. */
-  const switchRow = (args: {
-    key: PaymentKey;
-    id: string;
-    name: string;
-    line: string;
-    icon: Icon;
-    tone: string;
-    /** Why it can't turn on yet; the switch stays off and disabled. */
-    blocked?: React.ReactNode;
-    note?: React.ReactNode;
-    /** Needs the Stripe Account to take cards: Off and disabled until it does. */
-    stripe?: boolean;
-  }) => {
-    const gated = args.stripe === true && !takesCards;
-    const on = settings[args.key] && !gated;
-    const blocked = gated ? needsStripe : !on && args.blocked;
-    return (
-      <li key={args.key} id={args.id} className={MARK_ROW} data-place-state={args.key}>
-        {mark(args.icon, on, args.tone)}
-        <div className="min-w-0">
-          <p className="font-medium">{args.name}</p>
-          <p className="text-muted-foreground">{args.line}</p>
-          {under(blocked, args.note)}
-        </div>
-        <p className={cn("font-semibold whitespace-nowrap", !on && "text-muted-foreground")}>{on ? "On" : "Off"}</p>
-        <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(args.key, !on)} label={`${args.name}: ${on ? "on" : "off"}`} />
-      </li>
-    );
-  };
-
-  /** One way to pay (MESITA-3946): its Accept control. Accept "always" is
-   *  Credits Payments (always on, no switch). */
+  /** One way to pay at the visit: Accept with its switch, or "always" with none. */
   const pairRow = (args: {
     id: string;
     name: string;
     line: string;
     icon: Icon;
     tone: string;
-    accept: "always" | { key: PaymentKey; stripe?: boolean; blocked?: React.ReactNode };
+    accept: "always" | { key: PaymentKey; blocked?: React.ReactNode };
   }) => {
     const a = args.accept;
-    const aGated = a !== "always" && a.stripe === true && !takesCards;
-    // Accept Stripe Payments is over both card products (MESITA-3946).
-    const aStripeOff = a !== "always" && a.stripe === true && !settings.stripe_payments;
-    const aOn = a === "always" ? true : settings[a.key] && !aGated && !aStripeOff;
-    const aBlocked = a === "always" ? undefined : aGated ? needsStripe : aStripeOff ? needsStripePayments : !aOn ? a.blocked : undefined;
-    const blocked = aBlocked;
+    const aOn = a === "always" ? true : settings[a.key];
+    const aBlocked = a === "always" || aOn ? undefined : a.blocked;
     return (
-      <li key={args.id} id={args.id} className={PAIR_ROW} data-place-state={a === "always" ? "credits_payments" : a.key}>
+      <li key={args.id} id={args.id} className={MARK_ROW} data-place-state={a === "always" ? "credits_payments" : a.key}>
         {mark(args.icon, aOn, args.tone)}
         <div className="min-w-0">
           <p className="font-medium">{args.name}</p>
           <p className="text-muted-foreground">{args.line}</p>
-          {under(blocked, null)}
+          {under(aBlocked, null)}
         </div>
-        <div className="col-start-2 flex items-center gap-3 sm:col-start-3 sm:justify-end">
-          <span className="text-muted-foreground text-xs sm:hidden">Accept</span>
-          <p className={cn("font-semibold whitespace-nowrap", (!aOn || a === "always") && "text-muted-foreground")}>
-            {a === "always" ? "Always on" : aOn ? "On" : "Off"}
-          </p>
-          {a === "always" ? (
-            <Switch on pending label={`${args.name}: always on`} onClick={() => undefined} />
-          ) : (
-            <Switch on={aOn} pending={pending || !!aBlocked} onClick={() => void flip(a.key, !aOn)} label={`${args.name}: ${aOn ? "on" : "off"}`} />
-          )}
-        </div>
+        <p className={cn("font-semibold whitespace-nowrap", (!aOn || a === "always") && "text-muted-foreground")}>
+          {a === "always" ? "Always accepted" : aOn ? "On" : "Off"}
+        </p>
+        {a === "always" ? (
+          <span />
+        ) : (
+          <Switch on={aOn} pending={pending || !!aBlocked} onClick={() => void flip(a.key, !aOn)} label={`${args.name}: ${aOn ? "on" : "off"}`} />
+        )}
       </li>
     );
   };
 
+  // Accept Prepayments is over every voucher (MESITA-4300): while it reads
+  // Off, each voucher reads Off with its switch disabled and the one step; the
+  // stored choice is kept and comes back when it is on.
+  const prepaymentsOn = prepaymentsLive(settings, takesCards);
+  const prepaymentsBlocked = prepaymentsOn ? null : !takesCards ? needsStripe : creditsBlock;
+  const vouchers = voucherProducts(currency).filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key]);
+  const anyTierOn = vouchers.some((p) => settings[p.key]);
+
   const voucherRow = ({ key, name, line, value, tone, icon }: Product) => {
-    // App Prepayments is over every voucher (MESITA-4300, Pato: "how are you
-    // accepting Prepayments but not accepting Vouchers"): while it reads Off,
-    // each voucher reads Off with its switch disabled and the one step; the
-    // stored choice is kept and comes back when App Prepayments is on.
-    const prepaymentsOn = settings.prepayments && takesCards && settings.stripe_payments;
     const on = settings[key] && prepaymentsOn;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
-    const blocked = !takesCards
-      ? needsStripe
-      : !prepaymentsOn
-        ? needsPrepayments
-        : !on && !settings.loyalty_cards
-          ? needsLoyaltyCards
-          : null;
+    const blocked = !takesCards ? needsStripe : !prepaymentsOn ? needsPrepayments : !on && !settings.loyalty_cards ? creditsBlock : null;
     const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
     return (
       <li key={key} className={MARK_ROW} data-place-state={key}>
@@ -424,6 +425,10 @@ export function PaymentsPanel({
       </li>
     );
   };
+
+  const storyOn = cashback.story_reward_cents > 0;
+  // A story pays only while the Credits Account is on (story_reward_grant).
+  const storyLive = settings.loyalty_cards && storyOn;
 
   return (
     <>
@@ -442,275 +447,326 @@ export function PaymentsPanel({
           ) : null}
         </p>
       ) : null}
-      {/* THREE CARDS (Pato, 2026-11-14, MESITA-3946, on the mock: "yes, ies
-          okey. build the fucking business app there"): Stripe Account ·
-          Credits Account · Payments, then Vouchers. Each way to pay is ONE
-          row with its Accept control. */}
-      <Card className={SECTION}>
-        <h2 className={HEAD}>Credits Account</h2>
-        <ul className="divide-border divide-y">
-          <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
-            {mark(SignatureIcon, contract.signed, "bg-emerald-100 text-emerald-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Credits Agreement</p>
-              <p className="text-muted-foreground">Your agreement with Mesita to run credits here. Separate from Stripe.</p>
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap", !contract.signed && "text-muted-foreground")}>{contract.signed ? signedOn(contract) : "Not signed"}</p>
-            {contract.signed ? (
-              <span />
-            ) : (
-              <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => setAgreeing(true)}>
-                Agree
-              </button>
-            )}
-          </li>
-          {/* CREDITS BALANCE (Pato, MESITA-3946): what guests hold here now,
-              Available + Pending, in the one currency (the Credits Currency
-              row folded in here). Read-only. */}
-          <li id="credits-balance" className={MARK_ROW} data-place-state="credits_balance">
-            {mark(PiggyBankIcon, true, "bg-emerald-100 text-emerald-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Credits Balance</p>
-              <p className="text-muted-foreground">
-                What guests hold here now: your debt, in {CURRENCY_NAME[currency] ?? currency}, always honoured.
-                {balance && balance.pending_cents > 0 ? ` ${moneyLabel(balance.pending_cents, currency)} of it is still pending.` : ""}
-              </p>
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap tabular-nums", !balance && "text-muted-foreground")}>
-              {balance ? moneyLabel(balance.available_cents + balance.pending_cents, currency) : "—"}
-            </p>
-            <span />
-          </li>
-          {/* ACCEPT CREDITS PAYMENTS CAN'T TURN DOWN (Pato, MESITA-3946): the
-              Loyalty Cards switch, on once the agreement is signed and then
-              locked; a guest's credit is always honoured. */}
-          <li id="loyalty-cards" className={MARK_ROW} data-place-state="loyalty_cards">
-            {mark(WalletIcon, settings.loyalty_cards, "bg-emerald-100 text-emerald-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Accept Credits Payments</p>
-              <p className="text-muted-foreground">Guests earn credit here and pay with it. Once on, it stays on.</p>
-              {under(settings.loyalty_cards || contract.signed ? undefined : needsContract, null)}
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap", !settings.loyalty_cards && "text-muted-foreground")}>{settings.loyalty_cards ? "Always on" : "Off"}</p>
-            <Switch
-              on={settings.loyalty_cards}
-              pending={pending || settings.loyalty_cards || !contract.signed}
-              onClick={() => void flip("loyalty_cards", true)}
-              label={`Accept Credits Payments: ${settings.loyalty_cards ? "always on" : "off"}`}
-            />
-          </li>
-        </ul>
-      </Card>
-      <Card className={SECTION}>
-        <h2 className={HEAD}>Payments</h2>
-        <div className={cn(PAIR_ROW, "hidden min-h-0 py-1 sm:grid")} aria-hidden>
-          <span />
-          <span />
-          <p className="text-muted-foreground text-right text-xs font-semibold">Accept</p>
+
+      {/* CREDIT LIMIT (MESITA-4732): how much credit guests may hold here,
+          and the next step that raises it. Older servers send nothing: no box. */}
+      {creditLimit ? (
+        <div id="credit-limit" className="scroll-mt-24">
+          <Card className={SECTION}>
+            {head(GaugeIcon, "Credit Limit")}
+            <ul className="divide-border divide-y">
+              <li className={MARK_ROW} data-place-state="credit_limit">
+                {mark(GaugeIcon, (creditLimit.limit_cents ?? 0) > 0, "bg-emerald-100 text-emerald-700")}
+                <div className="min-w-0">
+                  <p className="font-medium">Outstanding Credit</p>
+                  <p className="text-muted-foreground">{limitLine(creditLimit)}</p>
+                  {creditLimit.next ? (
+                    <p className={BLOCKED}>
+                      {creditLimit.next.step === "credits"
+                        ? step(`Enable Credits Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#credits-account")
+                        : step(`Connect Stripe Account → ${wholeMoney(creditLimit.next.limit_cents, creditLimit.currency)}`, "#stripe-account")}
+                    </p>
+                  ) : null}
+                </div>
+                <p className="font-semibold whitespace-nowrap tabular-nums">
+                  {wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}
+                  <span className="text-muted-foreground font-normal">
+                    {creditLimit.limit_cents === null ? " · no new credit" : ` of ${wholeMoney(creditLimit.limit_cents, creditLimit.currency)}`}
+                  </span>
+                </p>
+                <span />
+              </li>
+            </ul>
+          </Card>
         </div>
-        <ul className="divide-border divide-y">
-          {pairRow({
-            id: "cash-payments",
-            name: "Cash Payments",
-            line: settings.cash_payments
-              ? "Open cash amounts appear below. Mark each one received when you have the cash."
-              : "Guests can't pay cash at this place until this is on.",
-            icon: MoneyIcon,
-            tone: "bg-lime-100 text-lime-700",
-            accept: { key: "cash_payments" },
-          })}
-          {/* App Payments (card for the bill) is gone (MESITA-4698, its code
-              MESITA-4708): guests pay the rest outside. */}
-          {pairRow({
-            id: "credits-payments",
-            name: "Credits Payments",
-            line: "The credit a guest holds here, applied first. Never on the tip.",
-            icon: WalletIcon,
-            tone: "bg-emerald-100 text-emerald-700",
-            accept: "always",
-          })}
-        </ul>
-        {cashDue.length > 0 ? (
-          <ul className="divide-border divide-y" data-cash-due>
-            {cashDue.map((row) => (
-              <li key={row.attempt_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm sm:px-6">
-                <span>
-                  <span className="font-semibold">{moneyLabel(row.cash_cents, currency)}</span>
-                  <span className="text-muted-foreground"> · {row.guest_label} · {new Date(row.created_at).toLocaleString()}</span>
-                </span>
+      ) : null}
+
+      <div id="credits-account" className="scroll-mt-24">
+        <Card className={SECTION}>
+          {head(WalletIcon, "Credits Account")}
+          <ul className="divide-border divide-y">
+            <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
+              {mark(SignatureIcon, contract.signed, "bg-emerald-100 text-emerald-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Credits Agreement</p>
+                <p className="text-muted-foreground">Your agreement with Mesita to run credits here. Separate from Stripe.</p>
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !contract.signed && "text-muted-foreground")}>{contract.signed ? signedOn(contract) : "Not signed"}</p>
+              {contract.signed ? (
+                <span />
+              ) : (
+                <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => setAgreeing(true)}>
+                  Agree
+                </button>
+              )}
+            </li>
+            {/* CREDITS BALANCE (MESITA-3946): what guests hold here now,
+                Available + Pending, in the one currency. Read-only. */}
+            <li id="credits-balance" className={MARK_ROW} data-place-state="credits_balance">
+              {mark(PiggyBankIcon, true, "bg-emerald-100 text-emerald-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Credits Balance</p>
+                <p className="text-muted-foreground">
+                  What guests hold here now: your debt, in {CURRENCY_NAME[currency] ?? currency}, always honoured.
+                  {balance && balance.pending_cents > 0 ? ` ${moneyLabel(balance.pending_cents, currency)} of it is still pending.` : ""}
+                </p>
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap tabular-nums", !balance && "text-muted-foreground")}>
+                {balance ? moneyLabel(balance.available_cents + balance.pending_cents, currency) : "—"}
+              </p>
+              <span />
+            </li>
+            {/* ACCEPT CREDITS PAYMENTS CAN'T TURN DOWN (MESITA-3946): the
+                Loyalty Cards switch, on once the agreement is signed and then
+                locked; a guest's credit is always honoured. */}
+            <li id="loyalty-cards" className={MARK_ROW} data-place-state="loyalty_cards">
+              {mark(WalletIcon, settings.loyalty_cards, "bg-emerald-100 text-emerald-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Accept Credits Payments</p>
+                <p className="text-muted-foreground">Guests earn credit here and pay with it. Once on, it stays on.</p>
+                {under(settings.loyalty_cards || contract.signed ? undefined : needsContract, null)}
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !settings.loyalty_cards && "text-muted-foreground")}>{settings.loyalty_cards ? "Always on" : "Off"}</p>
+              <Switch
+                on={settings.loyalty_cards}
+                pending={pending || settings.loyalty_cards || !contract.signed}
+                onClick={() => void flip("loyalty_cards", true)}
+                label={`Accept Credits Payments: ${settings.loyalty_cards ? "always on" : "off"}`}
+              />
+            </li>
+          </ul>
+        </Card>
+      </div>
+
+      <div id="stripe-account" className="scroll-mt-24">
+        <Card className={SECTION}>
+          {head(StripeLogoIcon, "Stripe Account")}
+          <ul className="divide-border divide-y">
+            <li className={MARK_ROW} data-place-state="stripe">
+              {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Stripe Account</p>
+                <p className="text-muted-foreground">
+                  {ready
+                    ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
+                    : `${copy.line}${testMode ? " Sandbox." : ""}`}
+                </p>
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
+              {copy.button ? (
                 <button
                   type="button"
-                  className={PILL_BUTTON_CLASS}
-                  onClick={() => {
-                    const amount = moneyLabel(row.cash_cents, currency);
-                    if (!window.confirm(`Mark ${amount} received?`)) return;
-                    void receiveGuestCash(placeId, row.attempt_id, row.cash_cents).then((r) => {
-                      if (!r.ok) return setError(r.code === "amount_changed" ? "Amount changed. Refresh this list." : r.error);
-                      setCashDue((rows) => rows.filter((x) => x.attempt_id !== row.attempt_id));
-                    });
-                  }}
-                >
-                  Received
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-          Waiter&apos;s screen:{" "}
-          <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
-            {chargeUrl.replace("https://", "")}
-          </a>
-          {" · "}Staff list:{" "}
-          <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
-            {staffListUrl.replace("https://", "")}
-          </a>
-        </p>
-      </Card>
-      <Card className={SECTION}>
-        <div className={HEAD}>
-          <h2>Stage 1 · Cashbacks</h2>
-          <p className={cn(NOTE, "font-normal")}>
-            Needs Credits only. A confirmed bill earns credit here on the part not paid with credit, never the tip. It lands 3 hours later, one per guest
-            per day. Mesita takes no fee.
-          </p>
-          {!settings.loyalty_cards ? <p className={cn(BLOCKED, "font-normal")}>{contract.signed ? needsLoyaltyCards : needsContract}</p> : null}
-        </div>
-        <ul className="divide-border divide-y" data-place-state="cashbacks">
-          {CASHBACK_ROWS.map((row) => {
-            const on = settings.loyalty_cards && cashback[row.key] > 0;
-            return (
-              <li key={row.key} className={MARK_ROW} data-place-state={row.key}>
-                {mark(row.icon, on, row.tone)}
-                <div className="min-w-0">
-                  <p className="font-medium">{row.name}</p>
-                  <p className="text-muted-foreground">{row.line}</p>
-                </div>
-                <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{pct(cashback[row.key])}</p>
-                <select
-                  className="border-border bg-background rounded-full border px-3 py-1.5 text-sm"
-                  aria-label={`${row.name} cashback`}
-                  value={cashback[row.key]}
+                  // Standard pill size (MESITA-4534): Stripe's purple while
+                  // setup is unfinished, a quiet grey link once connected.
+                  className={cn(
+                    PILL_BUTTON_CLASS,
+                    "shrink-0 whitespace-nowrap",
+                    ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
+                  )}
                   disabled={pending}
-                  onChange={(e) => setCashback((c) => ({ ...c, [row.key]: Number(e.target.value) }))}
+                  onClick={() => void stripe()}
                 >
-                  {CASHBACK_STEPS_BPS.map((bps) => (
-                    <option key={bps} value={bps}>
-                      {pct(bps)}
-                    </option>
-                  ))}
-                </select>
-              </li>
-            );
-          })}
-          {/* POST (Pato, 2026-11-23, MESITA-4714: "20 OR 50, can setup in
-              business console"): what a verified Instagram story tagging
-              @mesita and this place pays the guest, as credit here 3 hours
-              later, once per guest every 7 days. Saved with the cashbacks. */}
-          <li className={MARK_ROW} data-place-state="story_reward">
-            {mark(InstagramLogoIcon, settings.loyalty_cards && cashback.story_reward_cents > 0, "bg-pink-100 text-pink-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Post · Instagram story</p>
-              <p className="text-muted-foreground">Credit for a guest&apos;s story tagging @mesita and this place, once every 7 days.</p>
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap tabular-nums", !(settings.loyalty_cards && cashback.story_reward_cents > 0) && "text-muted-foreground")}>
-              {storyWord(cashback.story_reward_cents)}
-            </p>
-            <select
-              className="border-border bg-background rounded-full border px-3 py-1.5 text-sm"
-              aria-label="Instagram story reward"
-              value={cashback.story_reward_cents}
-              disabled={pending}
-              onChange={(e) => setCashback((c) => ({ ...c, story_reward_cents: Number(e.target.value) }))}
-            >
-              {STORY_REWARD_STEPS_CENTS.map((cents) => (
-                <option key={cents} value={cents}>
-                  {storyWord(cents)}
-                </option>
+                  {busy === "stripe" ? "Opening…" : copy.button}
+                  {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
+                </button>
+              ) : (
+                <span />
+              )}
+            </li>
+          </ul>
+        </Card>
+      </div>
+
+      {/* VISIT CHECKOUT (MESITA-4732): how a guest pays the bill at the visit,
+          and the cashback it earns. Mesita Credits has no switch: a guest's
+          credit is the place's debt, always honoured. */}
+      <div id="visit-checkout" className="scroll-mt-24">
+        <Card className={SECTION}>
+          {head(ReceiptIcon, "Visit Checkout")}
+          <ul className="divide-border divide-y">
+            {pairRow({
+              id: "cash-payments",
+              name: "Accept Cash Payments",
+              line: settings.cash_payments
+                ? "Open cash amounts appear below. Mark each one received when you have the cash."
+                : "Guests can't pay cash at this place until this is on.",
+              icon: MoneyIcon,
+              tone: "bg-lime-100 text-lime-700",
+              accept: { key: "cash_payments" },
+            })}
+            {pairRow({
+              id: "credits-payments",
+              name: "Mesita Credits",
+              line: "The credit a guest holds here, applied first. Never on the tip.",
+              icon: WalletIcon,
+              tone: "bg-emerald-100 text-emerald-700",
+              accept: "always",
+            })}
+            {RATE_ROWS.map((row) => {
+              const on = settings.loyalty_cards && cashback[row.key] > 0;
+              return (
+                <li key={row.key} id={row.key === "welcome_bps" ? "welcome-visit-rate" : "returning-visit-rate"} className={MARK_ROW} data-place-state={row.key}>
+                  {mark(row.icon, on, "bg-green-100 text-green-700")}
+                  <div className="min-w-0">
+                    <p className="font-medium">{row.name}</p>
+                    <p className="text-muted-foreground">{row.line}</p>
+                    {under(creditsBlock, null)}
+                  </div>
+                  <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{pct(cashback[row.key])}</p>
+                  <select
+                    className={SELECT}
+                    aria-label={row.name}
+                    value={cashback[row.key]}
+                    disabled={pending}
+                    onChange={(e) => void saveRates({ ...cashback, [row.key]: Number(e.target.value) })}
+                  >
+                    {CASHBACK_STEPS_BPS.map((bps) => (
+                      <option key={bps} value={bps}>
+                        {pct(bps)}
+                      </option>
+                    ))}
+                  </select>
+                </li>
+              );
+            })}
+          </ul>
+          {cashDue.length > 0 ? (
+            <ul className="divide-border border-border divide-y border-t" data-cash-due>
+              {cashDue.map((row) => (
+                <li key={row.attempt_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm sm:px-6">
+                  <span>
+                    <span className="font-semibold">{moneyLabel(row.cash_cents, currency)}</span>
+                    <span className="text-muted-foreground"> · {row.guest_label} · {new Date(row.created_at).toLocaleString()}</span>
+                  </span>
+                  <button
+                    type="button"
+                    className={PILL_BUTTON_CLASS}
+                    onClick={() => {
+                      const amount = moneyLabel(row.cash_cents, currency);
+                      if (!window.confirm(`Mark ${amount} received?`)) return;
+                      void receiveGuestCash(placeId, row.attempt_id, row.cash_cents).then((r) => {
+                        if (!r.ok) return setError(r.code === "amount_changed" ? "Amount changed. Refresh this list." : r.error);
+                        setCashDue((rows) => rows.filter((x) => x.attempt_id !== row.attempt_id));
+                      });
+                    }}
+                  >
+                    Received
+                  </button>
+                </li>
               ))}
-            </select>
-          </li>
-        </ul>
-        {canEdit ? (
-          <div className="flex justify-end px-5 pb-4 sm:px-6">
-            <button type="button" className={PILL_BUTTON_CLASS} disabled={pending || !cashbackDirty} onClick={() => void saveCashback()}>
-              {busy === "cashback" ? "Saving…" : cashbackDirty ? "Save cashbacks" : "Saved"}
-            </button>
-          </div>
-        ) : null}
-      </Card>
-      <Card className={SECTION}>
-        <div className={HEAD}>
-          <h2>Stage 2 · Vouchers</h2>
-          <p className={cn(NOTE, "font-normal")}>
-            Wholesale Presales. Needs Credits and Stripe. Guests pay ahead in the app; you get the money now, minus Mesita&apos;s 5%. The bonus lands 3
-            hours later.
+            </ul>
+          ) : null}
+          <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
+            A confirmed bill earns cashback on the part not paid with credit, never the tip, 3 hours later. Waiter&apos;s screen:{" "}
+            <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
+              {chargeUrl.replace("https://", "")}
+            </a>
+            {" · "}Staff list:{" "}
+            <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
+              {staffListUrl.replace("https://", "")}
+            </a>
           </p>
-        </div>
-        <ul className="divide-border divide-y" data-place-state="vouchers">
-          {/* THE STRIPE ROWS LIVE HERE (MESITA-4698, Pato: "don't complicate
-              shit"): Stripe only matters for vouchers, so its account and
-              switch sit inside Stage 2, not in a card of their own. */}
-          <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
-            {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
-            <div className="min-w-0">
-              <p className="font-medium">Stripe Account</p>
-              <p className="text-muted-foreground">
-                {ready
-                  ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
-                  : `${copy.line}${testMode ? " Sandbox." : ""}`}
-              </p>
-            </div>
-            <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
-            {copy.button ? (
-              <button
-                type="button"
-                // Standard pill size (MESITA-4534, Pato: "make stripe smaller…
-                // it only matters for the onboarding"): Stripe's purple while
-                // setup is unfinished, a quiet grey link once connected.
-                className={cn(
-                  PILL_BUTTON_CLASS,
-                  "shrink-0 whitespace-nowrap",
-                  ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
+        </Card>
+      </div>
+
+      {/* PREPAID VOUCHERS (MESITA-4732): ONE master switch, Accept Prepayments,
+          over the tiers. It stands for `prepayments` and the old Accept Stripe
+          Payments (`stripe_payments`) gate, which no longer has a row. */}
+      <div id="prepaid-vouchers" className="scroll-mt-24">
+        <Card className={SECTION}>
+          {head(TicketIcon, "Prepaid Vouchers")}
+          <ul className="divide-border divide-y" data-place-state="vouchers">
+            <li id="accept-prepayments" className={MARK_ROW} data-place-state="prepayments">
+              {mark(CreditCardIcon, prepaymentsOn, "bg-teal-100 text-teal-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Accept Prepayments</p>
+                <p className="text-muted-foreground">Guests pay by card through your Stripe Account</p>
+                {under(
+                  prepaymentsBlocked,
+                  prepaymentsOn && fee.hold ? "Off until Mesita's invoice is paid." : `${per100(currency)} You get the money now; the bonus lands 3 hours later.`,
                 )}
-                disabled={pending}
-                onClick={() => void stripe()}
-              >
-                {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
-              </button>
-            ) : (
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !prepaymentsOn && "text-muted-foreground")}>{prepaymentsOn ? "On" : "Off"}</p>
+              <Switch
+                on={prepaymentsOn}
+                pending={pending || !!prepaymentsBlocked}
+                onClick={() => void flipPrepayments(!prepaymentsOn)}
+                label={`Accept Prepayments: ${prepaymentsOn ? "on" : "off"}`}
+              />
+            </li>
+            {/* Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
+            {vouchers.map(voucherRow)}
+          </ul>
+          {!anyTierOn ? <p className={cn(NOTE, "px-5 pb-4 sm:px-6")}>No vouchers available</p> : null}
+        </Card>
+      </div>
+
+      {/* INSTAGRAM STORIES (MESITA-4714; a box since MESITA-4732): what a
+          verified story tagging @mesita and this place pays the guest, as
+          credit here 3 hours later, once per guest every 7 days. The handle
+          is the Profile's, read-only here. */}
+      <div id="instagram-stories" className="scroll-mt-24">
+        <Card className={SECTION}>
+          {head(InstagramLogoIcon, "Instagram Stories")}
+          <ul className="divide-border divide-y">
+            <li id="story-rewards" className={MARK_ROW} data-place-state="story_reward">
+              {mark(InstagramLogoIcon, storyLive, "bg-pink-100 text-pink-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Enable Story Rewards</p>
+                <p className="text-muted-foreground">Credit for a guest&apos;s story tagging this place, once every 7 days.</p>
+                {under(creditsBlock, null)}
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !storyLive && "text-muted-foreground")}>{storyLive ? "On" : "Off"}</p>
+              <Switch
+                on={storyLive}
+                pending={pending || !!creditsBlock}
+                onClick={() => void saveRates({ ...cashback, story_reward_cents: storyOn ? 0 : lastStory })}
+                label={`Enable Story Rewards: ${storyLive ? "on" : "off"}`}
+              />
+            </li>
+            <li className={MARK_ROW} data-place-state="place_username">
+              {mark(InstagramLogoIcon, instagramUrl !== null, "bg-pink-100 text-pink-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Place Username</p>
+                <p className="text-muted-foreground">Guests must tag this account and @mesita</p>
+              </div>
+              <p className={cn("font-semibold whitespace-nowrap", !instagramUrl && "text-muted-foreground")}>{instagramUrl ? instagramHandle(instagramUrl) : "Not set"}</p>
+              <a className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS, "shrink-0 whitespace-nowrap")} href={placeTabHref(placeId, "profile")}>
+                Edit on Profile
+              </a>
+            </li>
+            <li className={MARK_ROW} data-place-state="story_credit">
+              {mark(PiggyBankIcon, storyLive, "bg-pink-100 text-pink-700")}
+              <div className="min-w-0">
+                <p className="font-medium">Story Credit</p>
+                <p className="text-muted-foreground">What one verified story pays the guest.</p>
+              </div>
               <span />
-            )}
-          </li>
-          {switchRow({
-            key: "stripe_payments",
-            id: "accept-stripe-payments",
-            name: "Accept Stripe Payments",
-            line: "Cards, Apple Pay and Google Pay in the app. Off stops App Payments and App Prepayments.",
-            icon: CreditCardIcon,
-            tone: "bg-indigo-100 text-indigo-700",
-            stripe: true,
-          })}
-          {pairRow({
-            id: "mesita-prepayments",
-            name: "App Prepayments",
-            line:
-              settings.prepayments && fee.hold
-                ? "Off until Mesita's invoice is paid."
-                : settings.prepayments && state.sell.length === 0
-                  ? "Switch on at least one voucher below to sell."
-                  : `Vouchers by card in the app. ${per100(currency)}`,
-            icon: TicketIcon,
-            tone: "bg-teal-100 text-teal-700",
-            accept: { key: "prepayments", stripe: true },
-          })}
-          {/* Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
-          {voucherProducts(currency)
-            .filter((p) => !isVoucherKey(p.key) || !NOT_YET_SELLABLE[p.key])
-            .map(voucherRow)}
-        </ul>
-      </Card>
+              <div className="flex gap-1" role="group" aria-label="Story Credit">
+                {STORY_AMOUNTS.map((cents) => {
+                  const picked = (storyOn ? cashback.story_reward_cents : lastStory) === cents;
+                  return (
+                    <button
+                      key={cents}
+                      type="button"
+                      aria-pressed={picked}
+                      disabled={pending || !storyOn}
+                      onClick={() => void saveRates({ ...cashback, story_reward_cents: cents })}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-sm font-semibold tabular-nums disabled:opacity-50",
+                        picked ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
+                      )}
+                    >
+                      {wholeMoney(cents, currency)}
+                    </button>
+                  );
+                })}
+              </div>
+            </li>
+          </ul>
+        </Card>
+      </div>
+
       {agreeing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)}>
           <div
@@ -721,12 +777,12 @@ export function PaymentsPanel({
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="hc-agreement-title" className="text-base font-semibold">
-              Loyalty Cards Agreement
+              Credits Agreement
             </h2>
             <p className="text-muted-foreground mt-2">{contract.text ?? "The full agreement will be added before launch."}</p>
             {/* MESITA-3923: the currency is agreed here, and fixed by the signature. */}
             <p className="mt-2 font-medium" data-agreement-currency>
-              Your Loyalty Cards run in {currency} ({CURRENCY_NAME[currency] ?? currency}). Signing fixes it.
+              Your credits run in {currency} ({CURRENCY_NAME[currency] ?? currency}). Signing fixes it.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS)} disabled={busy === "contract"} onClick={() => setAgreeing(false)}>
@@ -743,7 +799,7 @@ export function PaymentsPanel({
         <p className="text-muted-foreground text-sm">Stripe is still checking your details. This page updates when it answers.</p>
       ) : null}
       {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
-      {!canEdit ? <p className="text-muted-foreground text-sm">Only the owner can change payments.</p> : null}
+      {!canEdit ? <p className="text-muted-foreground text-sm">Only the owner can change offers.</p> : null}
     </>
   );
 }

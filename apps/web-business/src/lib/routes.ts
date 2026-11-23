@@ -32,8 +32,9 @@ export const ACCOUNT = "/account";
 // Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
 // configure no or yes") holds its one switch, moved from Settings › Actions.
 // General (MESITA-4528) gathers the pages the rail no longer lists.
-// No Stories (MESITA-4641): /places/<id>/stories redirects to General.
-export const PLACE_TABS = ["views", "visits", "vouchers", "gifts", "money", "payouts", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
+// Stories (MESITA-4732; gone with the Story voucher, MESITA-4641): every
+// Instagram Story at the place and whether it paid.
+export const PLACE_TABS = ["views", "visits", "vouchers", "stories", "gifts", "money", "payouts", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 /** The tabs that are sections of General, not pages (MESITA-4534). */

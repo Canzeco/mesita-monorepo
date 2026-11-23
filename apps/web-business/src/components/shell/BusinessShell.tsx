@@ -7,7 +7,8 @@
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Monitor (MESITA-4528; was Operations) ───┐
-//   │ Views · Visits · Vouchers · Gifts          │
+//   │ Customers · Views · Visits · Vouchers ·    │
+//   │ Stories · Gifts · Payouts                  │
 //   └────────────────────────────────────────────┘
 //   ┌ Manage (MESITA-4528; Capabilities folded in) ┐
 //   │ Profile · Premier · Payments · General        │  General: Reservations,
@@ -96,7 +97,10 @@ function menu(
       // MESITA-4698 (Pato: "Don't build payments since we don't have payments
       // anymore ... payments only exist in vouchers"): no Payments row; Visits
       // holds each bill and its cashback.
-      monitor: [tab("customers"), tab("views"), tab("visits"), tab("vouchers"), tab("gifts"), tab("payouts")],
+      // MESITA-4732 (Pato, 2026-11-23): every row always shows, Stories
+      // between Vouchers and Gifts; a page whose capability is off says so
+      // and links to its box on Offers.
+      monitor: [tab("customers"), tab("views"), tab("visits"), tab("vouchers"), tab("stories"), tab("gifts"), tab("payouts")],
       manage: [
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),
