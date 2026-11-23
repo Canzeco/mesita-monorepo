@@ -38,12 +38,8 @@ import {
   ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
   ConfettiIcon,
-  CreditCardIcon,
-  GaugeIcon,
   InstagramLogoIcon,
-  PiggyBankIcon,
   ReceiptIcon,
-  SignatureIcon,
   StripeLogoIcon,
   TicketIcon,
   WalletIcon,
@@ -72,14 +68,16 @@ import {
   startPaymentOnboarding,
 } from "@/lib/business-api";
 
-/** One row: mark · title and line · value · control; the line wraps, the rest hold.
+/** One row: title and line · value · control; the line wraps, the rest hold.
+ *  CLEANER (Pato, 2026-11-23, MESITA-4756: "make it cleaner … use a better
+ *  design"): no coloured icon square in front of each row.
  *  SYMMETRY (Pato, 2026-11-23, MESITA-4744: "keep symmetry."): every row is
  *  its own grid, so auto value and control tracks landed at a different x on
  *  each row. Both get the same minimum width and sit right-aligned, so every
  *  value and every switch or select line up down the page. */
 const MARK_ROW =
-  "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_minmax(8rem,auto)_minmax(6rem,auto)] items-center gap-4 px-5 py-3 text-sm sm:px-6 [&>*:nth-child(3)]:justify-self-end [&>*:nth-child(3)]:text-right [&>*:nth-child(4)]:justify-self-end";
-const HEAD = "flex items-center gap-2 px-5 pt-4 pb-2 font-semibold sm:px-6";
+  "grid min-h-14 scroll-mt-24 grid-cols-[minmax(0,1fr)_minmax(7rem,auto)_minmax(6rem,auto)] items-center gap-4 px-5 py-3 text-sm sm:px-6 [&>*:nth-child(2)]:justify-self-end [&>*:nth-child(2)]:text-right [&>*:nth-child(3)]:justify-self-end";
+const HEAD = "flex items-center gap-2 px-5 pt-4 pb-2 font-sans text-base font-semibold sm:px-6";
 const NOTE = "text-muted-foreground text-xs";
 const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
 const SECTION = "flex flex-col p-0 sm:p-0";
@@ -352,11 +350,6 @@ export function PaymentsPanel({
     window.location.assign(r.data.url);
   }
 
-  const mark = (Mark: Icon, on: boolean, tone: string) => (
-    <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", on ? tone : "bg-muted text-muted-foreground")}>
-      <Mark size={22} weight={on ? "fill" : "regular"} aria-hidden />
-    </span>
-  );
 
   /** A box's heading, with its Phosphor mark. */
   const head = (Mark: Icon, title: string) => (
@@ -397,7 +390,6 @@ export function PaymentsPanel({
     const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
     return (
       <li key={key} className={MARK_ROW} data-place-state={key}>
-        {mark(icon, on, tone)}
         <div className="min-w-0">
           <p className="font-medium">{name}</p>
           <p className="text-muted-foreground">{line}</p>
@@ -437,7 +429,6 @@ export function PaymentsPanel({
           {head(WalletIcon, "Credits Account")}
           <ul className="divide-border divide-y">
             <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
-              {mark(SignatureIcon, contract.signed, "bg-emerald-100 text-emerald-700")}
               <div className="min-w-0">
                 <p className="font-medium">Credits Agreement</p>
                 <p className="text-muted-foreground">Your agreement with Mesita to run credits here. Separate from Stripe.</p>
@@ -462,7 +453,6 @@ export function PaymentsPanel({
                 Older servers send no limit: no rows. */}
             {creditLimit ? (
               <li id="credit-limit" className={cn(MARK_ROW, "scroll-mt-24")} data-place-state="credit_limit">
-                {mark(GaugeIcon, (creditLimit.limit_cents ?? 0) > 0, "bg-emerald-100 text-emerald-700")}
                 <div className="min-w-0">
                   <p className="font-medium">Credits Limit</p>
                   <p className="text-muted-foreground">{limitLine(creditLimit)}</p>
@@ -482,7 +472,6 @@ export function PaymentsPanel({
             ) : null}
             {creditLimit ? (
               <li id="credits-outstanding" className={MARK_ROW} data-place-state="credits_outstanding">
-                {mark(PiggyBankIcon, creditLimit.outstanding_cents > 0, "bg-emerald-100 text-emerald-700")}
                 <div className="min-w-0">
                   <p className="font-medium">Credits Outstanding</p>
                   <p className="text-muted-foreground">What guests hold here now: your debt, always honoured.</p>
@@ -500,7 +489,6 @@ export function PaymentsPanel({
           {head(StripeLogoIcon, "Stripe Account")}
           <ul className="divide-border divide-y">
             <li className={MARK_ROW} data-place-state="stripe">
-              {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
               <div className="min-w-0">
                 <p className="font-medium">Stripe Account</p>
                 <p className="text-muted-foreground">
@@ -545,7 +533,6 @@ export function PaymentsPanel({
                 are always accepted at the visit, so no switch asks; Enabled is
                 whether a bill here earns cashback (Off stores 0 for both rates). */}
             <li id="visit-checkout-enabled" className={MARK_ROW} data-place-state="visit_checkout">
-              {mark(ReceiptIcon, visitOn, "bg-green-100 text-green-700")}
               <div className="min-w-0">
                 <p className="font-medium">Enabled</p>
                 <p className="text-muted-foreground">Guests pay the bill here by card, cash or credit, and earn cashback.</p>
@@ -563,13 +550,12 @@ export function PaymentsPanel({
               const on = settings.loyalty_cards && cashback[row.key] > 0;
               return (
                 <li key={row.key} id={row.key === "welcome_bps" ? "welcome-visit-rate" : "returning-visit-rate"} className={MARK_ROW} data-place-state={row.key}>
-                  {mark(row.icon, on, "bg-green-100 text-green-700")}
                   <div className="min-w-0">
                     <p className="font-medium">{row.name}</p>
                     <p className="text-muted-foreground">{row.line}</p>
                     {under(creditsBlock, null)}
                   </div>
-                  <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{pct(cashback[row.key])}</p>
+                  <span />
                   <select
                     className={SELECT}
                     aria-label={row.name}
@@ -614,13 +600,13 @@ export function PaymentsPanel({
             </ul>
           ) : null}
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-            A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later. Waiter&apos;s screen:{" "}
-            <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
-              {chargeUrl.replace("https://", "")}
+            A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later.{" "}
+            <a className="underline underline-offset-2" href={chargeUrl} target="_blank" rel="noreferrer">
+              Waiter&apos;s screen
             </a>
-            {" · "}Staff list:{" "}
-            <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
-              {staffListUrl.replace("https://", "")}
+            {" · "}
+            <a className="underline underline-offset-2" href={staffListUrl} target="_blank" rel="noreferrer">
+              Staff list
             </a>
           </p>
         </Card>
@@ -634,7 +620,6 @@ export function PaymentsPanel({
           {head(TicketIcon, "Prepaid Vouchers")}
           <ul className="divide-border divide-y" data-place-state="vouchers">
             <li id="accept-prepayments" className={MARK_ROW} data-place-state="prepayments">
-              {mark(CreditCardIcon, prepaymentsOn, "bg-teal-100 text-teal-700")}
               <div className="min-w-0">
                 <p className="font-medium">Enabled</p>
                 <p className="text-muted-foreground">Guests pay by card through your Stripe Account</p>
@@ -667,7 +652,6 @@ export function PaymentsPanel({
           {head(InstagramLogoIcon, "Instagram Stories")}
           <ul className="divide-border divide-y">
             <li id="story-rewards" className={MARK_ROW} data-place-state="story_reward">
-              {mark(InstagramLogoIcon, storyLive, "bg-pink-100 text-pink-700")}
               <div className="min-w-0">
                 <p className="font-medium">Enabled</p>
                 <p className="text-muted-foreground">Credit for a guest&apos;s story tagging this place, once every 7 days.</p>
@@ -682,7 +666,6 @@ export function PaymentsPanel({
               />
             </li>
             <li className={MARK_ROW} data-place-state="place_username">
-              {mark(InstagramLogoIcon, instagramUrl !== null, "bg-pink-100 text-pink-700")}
               <div className="min-w-0">
                 <p className="font-medium">Place Username</p>
                 <p className="text-muted-foreground">Guests must tag this account and @mesita</p>
@@ -693,7 +676,6 @@ export function PaymentsPanel({
               </a>
             </li>
             <li className={MARK_ROW} data-place-state="story_credit">
-              {mark(PiggyBankIcon, storyLive, "bg-pink-100 text-pink-700")}
               <div className="min-w-0">
                 <p className="font-medium">Story Reward</p>
                 <p className="text-muted-foreground">What one verified story pays the guest.</p>
