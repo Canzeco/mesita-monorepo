@@ -138,14 +138,23 @@ export function BillScreen({ billId }: { billId: string }) {
     }
   }
 
+  const [named, setNamed] = useState(false);
   const [askName, setAskName] = useState(false);
   async function unlock(code: string | null, name: string | null = null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
     const r = await checkCode(code, { bill_id: billId }, name);
-    if (r !== "failed" && "refused" in r && r.name_required) setAskName(true);
     setBusy(null);
+    if (r !== "failed" && "refused" in r) {
+      if (r.name_required) setNamed(true);
+      if (r.code === "name_needed" && !name) {
+        setAskName(true);
+        return true;
+      }
+      // Refused: the code is typed again.
+      setAskName(false);
+    }
     if (r !== "failed" && "refused" in r && r.code === "ticket_closed") {
       setGone(true);
       setLocked(false);
@@ -166,6 +175,7 @@ export function BillScreen({ billId }: { billId: string }) {
     }
     keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token, waiter: r.waiter?.name ?? null });
     setUnreached(false);
+    setAskName(false);
     setLocked(false);
     return true;
   }
@@ -191,7 +201,20 @@ export function BillScreen({ billId }: { billId: string }) {
       </main>
     );
   }
-  if (locked) return <CodeEntry label="Open bill" askName={askName} busy={busy === "code"} error={error} onCode={unlock} />;
+  if (locked) return (
+    <CodeEntry
+      label="Open bill"
+      named={named}
+      askName={askName}
+      busy={busy === "code"}
+      error={error}
+      onCode={unlock}
+      onBack={() => {
+        setError(null);
+        setAskName(false);
+      }}
+    />
+  );
   if (gone) {
     return (
       <main className="proof pay-end" data-bill="gone">
@@ -296,7 +319,7 @@ export function BillScreen({ billId }: { billId: string }) {
     // RECEIPT.
     return (
       <main className="wp" data-bill="paid">
-        <WaiterSteps at={4} />
+        <WaiterSteps at="Receipt" named={waiter !== null} />
         {band}
         {ticket("green", collected > 0 ? "✓ Paid · Cash or card" : "✓ Paid with credits", m(collected > 0 ? collected : bill.credit_cents), [
           billLine,
@@ -376,7 +399,7 @@ export function BillScreen({ billId }: { billId: string }) {
     const waiting = ready && !guestReady;
     return (
       <main className="wp" data-bill="handshake" data-ready={ready}>
-        <WaiterSteps at={3} />
+        <WaiterSteps at="Payment" named={waiter !== null} />
         {band}
         {reconnecting}
         {ticket(
@@ -440,6 +463,7 @@ export function BillScreen({ billId }: { billId: string }) {
   // TYPE THE BILL: open, declined, or an edit.
   return (
     <BillEntry
+      named={waiter !== null}
       key={bill.state === "declined" ? `declined-${bill.version}` : "type"}
       start={bill.bill_cents ? { bill: bill.bill_cents, tip: bill.tip_cents } : undefined}
       busy={busy === "send"}
