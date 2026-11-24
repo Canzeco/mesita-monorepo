@@ -6,8 +6,8 @@ export default function VipLoading() {
   return (
     <VipFrame>
       <div className="flex flex-col gap-5">
-        <Skeleton className="h-[100px] w-full rounded-2xl" />
-        <Skeleton className="h-[170px] w-full rounded-2xl" />
+        <Skeleton className="h-44 w-full rounded-2xl" />
+        <Skeleton className="h-20 w-full rounded-2xl" />
       </div>
       <p role="status" className="sr-only">
         Loading Class
