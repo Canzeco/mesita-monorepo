@@ -178,9 +178,9 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 // A plus badge (pay and get extra) and coins (Pato, 2026-11-24, MESITA-4843);
 // the wallet and the bank card before. The same marks everywhere.
 const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: BadgePlus, ink: "text-indigo-500" },
-  cards: { word: "Credits", icon: Coins, ink: "text-foreground" },
-  pay: { word: "Pay", icon: QrCode, ink: "text-neutral-950" },
+  prepay: { word: "Prepay", icon: BadgePlus, ink: "bg-white text-indigo-500" },
+  cards: { word: "Credits", icon: Coins, ink: "bg-white text-foreground" },
+  pay: { word: "Pay", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
@@ -236,7 +236,7 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
           >
             {/* The
                 keyboard's ring is here: on the tile it cut the joined shape. */}
-            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", "bg-white", ink)} aria-hidden>
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", ink)} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>
