@@ -9,7 +9,6 @@ import {
   CATALOG_ORDER_CAP,
   CATALOG_SCAN_PAGE,
   CATALOG_SCORING_COLUMNS,
-  catalogNearestArgs,
   catalogRankLanesArgs,
   type CatalogRankRpc,
   CatalogReadError,
@@ -99,16 +98,11 @@ function fakeRead(rows: PoolRow[], opts: { fail?: Fail; dropFromCards?: string[]
 
 const wire = (rows: unknown[]) => rows as PoolRow[];
 
-/** A fake `catalog_rank` and `catalog_rank_lanes`: each answers this order
- *  (the lanes add `premier`) or an error, and records its arguments. */
+/** A fake `catalog_rank_lanes`: answers this order and `premier`, or an
+ *  error, and records its arguments. */
 function fakeRank(order: string[], opts: { fail?: boolean; read?: number; premier?: string[] } = {}) {
-  const calls: Record<string, unknown>[] = [];
   const lanesCalls: Record<string, unknown>[] = [];
   const fail = { data: null, error: { message: "boom: relation detail", code: "57014" } };
-  const rank: CatalogRankRpc = (args) => {
-    calls.push(args);
-    return Promise.resolve(opts.fail ? fail : { data: { read: opts.read ?? order.length, ids: order }, error: null });
-  };
   const rankLanes: CatalogRankRpc = (args) => {
     lanesCalls.push(args);
     return Promise.resolve(
@@ -127,7 +121,7 @@ function fakeRank(order: string[], opts: { fail?: boolean; read?: number; premie
       },
     );
   };
-  return { rank, rankLanes, calls, lanesCalls };
+  return { rankLanes, lanesCalls };
 }
 
 function pool(
@@ -137,7 +131,6 @@ function pool(
     pageSize?: number;
     failRank?: boolean;
     temperature?: number;
-    nearest?: boolean;
     premier?: string[];
     adEvery?: number;
     seed?: number;
@@ -169,20 +162,17 @@ function pool(
     },
   };
   const run = selectCatalogPool({
-    rank: ranker.rank,
     rankLanes: ranker.rankLanes,
     read: fake.read,
     cfg,
-    nearest: opts.nearest,
     mode: "popular",
     seed: opts.seed ?? 7,
     location: resolveAreaLocation(CENTER, null),
     families: [],
     cardColumns: CARDS,
     wire,
-    pageSize: opts.pageSize ?? 100,
   });
-  return { run, seen: fake.seen, calls: ranker.calls, lanesCalls: ranker.lanesCalls };
+  return { run, seen: fake.seen, lanesCalls: ranker.lanesCalls };
 }
 
 Deno.test("walkScoringRows: 2,500 rows, every id once, keyset by the last id, stops on an empty page", async () => {
@@ -216,10 +206,10 @@ Deno.test("the Catalog never walks: one SQL rank, then only the first page's car
   // 1,250 places, past any page; the SQL order is the answer's order.
   const rows = Array.from({ length: 1250 }, (_, i) => row(i, { google_review_count: 10 + i }));
   const order = rows.map((r) => r.id).reverse();
-  const { run, seen, calls, lanesCalls } = pool(rows, order, { pageSize: 100 });
+  const { run, seen, lanesCalls } = pool(rows, order, { pageSize: 100 });
   const out = await run;
   // Popular: its two lanes and its close ranking (MESITA-4548).
-  assertEquals([lanesCalls.length, calls.length], [3, 0]);
+  assertEquals(lanesCalls.length, 3);
   // No scoring-column walk at all, so no 10,000-row cap.
   assertEquals(seen.filter((s) => s.columns === CATALOG_SCORING_COLUMNS).length, 0);
   const asked = seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
@@ -278,20 +268,14 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
       .p_organic_half_km,
     cfg.params.recipes.catalogFamilyClose.halfKm,
   );
-  // `nearest` keeps catalog_rank's old arguments: distance alone, no variety.
-  const nearest = catalogNearestArgs(cfg, resolveAreaLocation(CENTER, null), []);
-  assertEquals([nearest.p_nearest, nearest.p_repeat], [true, 1]);
-  for (const k of ["p_half_km", "p_exponent", "p_root", "p_stars_power"]) assert(k in nearest, k);
 });
 
-Deno.test("the shuffle after the merge: same ids, a new first page, never for nearest", async () => {
+Deno.test("the shuffle after the merge: same ids, a new first page", async () => {
   const rows = Array.from({ length: 60 }, (_, i) => row(i));
   const order = rows.map((r) => r.id);
   const hot = await pool(rows, order, { temperature: 5 }).run;
   assertEquals([...hot.order].sort(), [...order].sort());
   assert(hot.order.join() !== order.join(), "a temperature of 5 kept the sort exactly");
-  const near = await pool(rows, order, { temperature: 5, nearest: true }).run;
-  assertEquals(near.order, order);
   const cold = await pool(rows, order, { temperature: 0 }).run;
   assertEquals(cold.order, order);
   // Same seed, same order; only the first page moves.
@@ -305,14 +289,14 @@ Deno.test("the shuffle after the merge: same ids, a new first page, never for ne
   for (const [id, rank] of Object.entries(paged.preShuffle)) assertEquals(order[rank - 1], id);
 });
 
-Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad cards wear `ad`; nearest has no lanes (MESITA-4454)", async () => {
+Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad cards wear `ad` (MESITA-4454)", async () => {
   const rows = Array.from({ length: 30 }, (_, i) => row(i, i === 25 || i === 28 ? { boost_tier: 2 } : {}));
   const organic = rows.map((r) => r.id);
   const premier = [pid(28), pid(25)];
-  const { run, calls, lanesCalls } = pool(rows, organic, { premier, pageSize: 10 });
+  const { run, lanesCalls } = pool(rows, organic, { premier, pageSize: 10 });
   const out = await run;
   // Popular: its two lanes and its close ranking (MESITA-4548).
-  assertEquals([lanesCalls.length, calls.length], [3, 0]);
+  assertEquals(lanesCalls.length, 3);
   assertEquals(out.order.slice(0, 5), [pid(0), pid(28), pid(1), pid(25), pid(2)]);
   assertEquals(out.order.length, 30);
   assertEquals(new Set(out.order).size, 30);
@@ -332,12 +316,6 @@ Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad ca
   // adEvery 0: no ad slots at all.
   const off = await pool(rows, organic, { premier, adEvery: 0 }).run;
   assertEquals([off.adIds, off.order], [[], organic]);
-  // nearest: catalog_rank alone, no ads, no lanes, no shuffle.
-  const nearest = pool(rows, organic, { premier, nearest: true, temperature: 5 });
-  const n = await nearest.run;
-  assertEquals([nearest.calls.length, nearest.lanesCalls.length], [1, 0]);
-  assertEquals([n.adIds, n.order, n.preShuffle], [[], organic, {}]);
-  assertEquals(n.places.some((p) => p.ad), false);
 });
 
 Deno.test("rankMode: absent is family with familyKeys else popular; anything else is refused (DX-c)", () => {
@@ -372,9 +350,8 @@ Deno.test("list-catalog: every refusal is a 400 with its code before any read (M
   for (const key of ["adIds: pool.adIds", "lanes: true", "preShuffle: pool.preShuffle", "seed: seeded.seed", "updatedAt: loaded.updatedAt"]) {
     assert(src.includes(key), key);
   }
-  // The rank goes through the lanes; `nearest` keeps catalog_rank.
+  // The rank goes through the lanes.
   assert(src.includes('admin.rpc("catalog_rank_lanes", args)'));
-  assert(src.includes('admin.rpc("catalog_rank", args)'));
 });
 
 Deno.test("a kept id pass 2 does not return is skipped and counted, never backfilled", async () => {

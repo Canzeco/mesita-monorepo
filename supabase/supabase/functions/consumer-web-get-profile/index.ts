@@ -26,7 +26,7 @@ serveJson("consumer-web-get-profile", async (req) => {
   const userId = user.id;
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_proved_at, instagram_vip_status, instagram_synced_at, use_instagram_photo, instagram_handle_shown, social_private, instagram_followers_emulated, instagram_is_private, guest_class, plan, vip_partner_id, vip_until, vip_invited_at, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_proved_at, instagram_vip_status, instagram_synced_at, use_instagram_photo, instagram_handle_shown, social_private, instagram_followers_emulated, guest_class, plan, vip_partner_id, vip_invited_at, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -109,13 +109,11 @@ serveJson("consumer-web-get-profile", async (req) => {
 
   // MESITA-4662: Me › Instagram shows the follower emulator in Stripe test
   // mode only.
-  // The privacy flag itself stays on the server.
   const livemode = paymentsLivemode();
-  const { instagram_is_private: _private, ...shown } = rest as typeof rest & { instagram_is_private?: boolean | null };
   return json({
     ok: true,
     consumer: {
-      ...shown,
+      ...rest,
       // MESITA-4850: the privacy level and why it is locked, if it is.
       social_level: socialLevel(rest as unknown as SocialFacts),
       social_lock: socialLock((rest as { birth_year?: number | null }).birth_year),

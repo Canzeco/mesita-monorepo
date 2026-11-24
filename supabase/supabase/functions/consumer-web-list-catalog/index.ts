@@ -38,7 +38,7 @@
 // `params.popularity.starsPower`, `params.shuffle.temperature`.
 //
 // Request: POST { lat?, lng?, familyKeys?, rankMode?, shuffleSeed?,
-//   seedLat?, seedLng?, nearest?, fill?, adIds? }   (any request without
+//   seedLat?, seedLng?, fill?, adIds? }   (any request without
 //   `fill` is a rank)
 //   rankMode     "nearby" | "popular" | "family"; absent → familyKeys ?
 //                family : popular. Anything else = 400 `rank_mode_invalid`
@@ -52,8 +52,6 @@
 //   lat/lng      a POINT; required for a rank (MESITA-4542). A fill without
 //                one scores with Proximity 1.
 //   familyKeys   the family row's families (MESITA-2438); absent = every one.
-//   nearest      true: `order` is distance alone (the Reward tab,
-//                MESITA-3214): no lanes, no ads (`adIds: []`), no shuffle.
 //   fill         1..100 Mesita ids (uuids, duplicates collapsed): their cards
 //                only, in that order; anything else = 400 `fill_invalid`.
 //   adIds        with `fill`: the rank's `adIds` (uuids); those cards score
@@ -136,7 +134,6 @@ type Body = {
   /** Ignored since MESITA-3058: every non-fill request is a rank. */
   ids?: unknown;
   /** Sort by distance alone (the Reward tab, MESITA-3214). */
-  nearest?: unknown;
   /** Ids from an `order` whose cards Home wants (MESITA-3057). */
   fill?: unknown;
   /** nearby | popular | family (MESITA-4454). */
@@ -227,7 +224,6 @@ serveJson("consumer-web-list-catalog", async (req) => {
   const nearby = decideNearby(body as Record<string, unknown>);
   const center = readSeedPoint(body as Record<string, unknown>) ??
     (nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null);
-  const nearest = body.nearest === true;
   // EVERY RANK NEEDS A POINT (Pato, 2026-11-21, MESITA-4542: "you must
   // have location"): Home shows the location chooser instead of asking.
   // A product rule, not a data limit. Fills carry the rank's point and are
@@ -327,8 +323,6 @@ serveJson("consumer-web-list-catalog", async (req) => {
   try {
     pool = await selectCatalogPool<PoolRow>({
       // The rank itself is SQL (MESITA-3059): every gated place, no row cap.
-      // `nearest` keeps the distance-only rank; every mode ranks two lanes.
-      rank: (args) => admin.rpc("catalog_rank", args),
       rankLanes: (args) => admin.rpc("catalog_rank_lanes", args),
       growthBases: (args) => admin.rpc("discovery_growth_bases", args),
       read,
@@ -339,12 +333,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
       // pool does not select it (MESITA-2328).
       cardColumns: PLACE_CARD_COLUMNS,
       wire: wirePlaces,
-      nearest,
       mode: rankMode,
       seed: seeded.seed,
-      // `nearest` answers 20 cards; every mode's page is its first weave
-      // (MESITA-4517), and `order` carries the rest by id.
-      pageSize: 20,
     });
   } catch (err) {
     if (!(err instanceof CatalogReadError)) throw err;
@@ -369,7 +359,6 @@ serveJson("consumer-web-list-catalog", async (req) => {
     requestId,
     mode,
     rankMode,
-    nearest,
     ms: Date.now() - started,
     location: location.kind,
     familyKeys: families,

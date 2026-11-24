@@ -728,9 +728,6 @@ verify_jwt = true
 [functions.admin-web-reinstate-guest]
 verify_jwt = true
 
-[functions.admin-web-set-guest-standing]
-verify_jwt = true
-
 # VIP partners (MESITA-2556): add or rename the partners a VIP comes through,
 # and mark which are Mesita venues. Names no rate. Super-admin only.
 [functions.admin-web-save-vip-partner]
@@ -911,15 +908,6 @@ verify_jwt = true
 
 # The Loyalty Cards Agreement, signed by the owner (MESITA-3589).
 [functions.business-web-sign-loyalty-cards-contract]
-verify_jwt = true
-
-# Business › Payments, the owner's money (MESITA-3307): totals and rows,
-# owner and Mesita staff only.
-[functions.business-web-get-place-money]
-verify_jwt = true
-
-# MESITA-4487: Operations ticket desk (visits, vouchers, gifts).
-[functions.business-web-list-place-tickets]
 verify_jwt = true
 
 [functions.business-web-list-place-monitor]
