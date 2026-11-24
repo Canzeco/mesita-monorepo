@@ -826,6 +826,23 @@ export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   ).filter((r) => r.bps > 0);
 }
 
+/** Why this guest cannot get a tier here (Pato, 2026-11-23, MESITA-4791:
+ *  "if offer blocked, block the offer"), from the server's `line` for their
+ *  next bill: a VIP tier for a Regular, a Regular tier for a VIP, a Welcome
+ *  tier once their first bill here is paid. Null = theirs to get, or signed
+ *  out (no line). The row stays, dimmed with a lock; a tier the place
+ *  turned Off is not a row at all (cashbackRows). Pure. */
+export function lockedWhy(row: CashbackLineRow["line"], guest: PlaceCashback["line"] | null | undefined): string | null {
+  if (!guest) return null;
+  const guestVip = guest === "welcome_vip" || guest === "returning_vip";
+  const rowVip = row === "welcome_vip" || row === "returning_vip";
+  if (rowVip && !guestVip) return "For VIP guests";
+  if (!rowVip && guestVip) return "For Regular guests";
+  const guestFirst = guest === "welcome" || guest === "welcome_vip";
+  if ((row === "welcome" || row === "welcome_vip") && !guestFirst) return "First bill only";
+  return null;
+}
+
 /** The row marked "You": the server's `line` for this guest's next bill,
  *  never worked out from the guest's Class (MESITA-4766). None signed out
  *  (`line` null) or when that line pays nothing here. */
@@ -855,15 +872,16 @@ function CashbackPanel({
       <ul className="divide-border divide-y" data-cashback-lines>
         {rows.map((r) => {
           const mine = you === r.line;
+          const why = lockedWhy(r.line, cashback?.line);
           return (
-            <li key={r.line} data-cashback={r.line} className="flex min-h-16 flex-wrap items-center gap-2.5 px-3 py-2">
-              <span className={cn(BADGE, visitTone(r.mech))} aria-hidden>
+            <li key={r.line} data-cashback={r.line} data-cashback-locked={why ? "" : undefined} className="flex min-h-16 flex-wrap items-center gap-2.5 px-3 py-2">
+              <span className={cn(BADGE, why ? "bg-muted text-muted-foreground" : visitTone(r.mech))} aria-hidden>
                 <span className="text-base leading-none font-bold tracking-tight">{r.bps / 100}%</span>
                 <span className="mt-1 type-meta leading-none font-bold tracking-wide uppercase">{visitWord(r.mech)}</span>
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-1">
-                  <span className="text-foreground truncate text-base font-semibold">{r.title}</span>
+                  <span className={cn("truncate text-base font-semibold", why ? "text-muted-foreground" : "text-foreground")}>{r.title}</span>
                   {/* THE (i) ON CASHBACK TOO (Pato, MESITA-4702: "add the letter i in this cashbacks too"). */}
                   <button
                     type="button"
@@ -877,7 +895,15 @@ function CashbackPanel({
                 </span>
                 {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702); 1 hour since MESITA-4717. */}
                 {/* MESITA-4770: a Discount comes off the bill at the table. */}
-                <span className="text-muted-foreground text-sm">{r.who} · {r.mech === "discount" ? "off the bill" : "lands in 1 hour"}</span>
+                {why ? (
+                  // LOCKED, LIKE PREPAY'S VIP VOUCHER (MESITA-4791): a lock and the reason.
+                  <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-cashback-why>
+                    <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
+                    <span className="truncate">{why}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">{r.who} · {r.mech === "discount" ? "off the bill" : "lands in 1 hour"}</span>
+                )}
               </span>
               {mine ? (
                 <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
