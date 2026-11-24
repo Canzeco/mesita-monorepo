@@ -291,9 +291,6 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
-  // Instagram verify (MESITA-2578) reads avatar_url alone, error checked, to
-  // keep an uploaded photo; the write goes through writeConsumer.
-  "_shared/instagram-avatar.ts",
   // Manage › Guests (MESITA-2550): the guest list and search, and the closed-
   // account check after a Class or Plan change (MESITA-2553). Writes go through the admin_set_guest_standing RPC.
   "admin-web-list-guests/index.ts",
@@ -343,8 +340,8 @@ const CONSUMER_READ_ALLOWLIST = [
   // way to pay. Read-only, error logged (null falls back to the card).
   // Writes go through the consumer_set_pay_method RPC.
   "_shared/cards.ts",
-  // The yellow Instagram badge (MESITA-4714): verified time, follower counts
-  // and the privacy flag of the members a Social list shows, one batched
+  // The verified Instagram badge (MESITA-4858): the handle and its proof of
+  // the members a Social list shows, one batched
   // read; only the boolean leaves the server. Read-only, error logged.
   "_shared/instagram-badge.ts",
 ];

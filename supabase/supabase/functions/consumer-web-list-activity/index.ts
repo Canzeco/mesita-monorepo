@@ -54,7 +54,6 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withInstagramBadges } from "../_shared/instagram-badge.ts";
-import { paymentsLivemode } from "../_shared/stripe.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { consumerOrAnonymousRequest } from "../_shared/request.ts";
 import { anonClient } from "../_shared/auth.ts";
@@ -127,7 +126,7 @@ serveJson("consumer-web-list-activity", async (req) => {
     if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
     // MESITA-4714: the yellow badge (members only).
     const rawRows = (feedRes.data ?? []) as ActivityRow[];
-    const rows = user ? await withInstagramBadges(admin, rawRows, paymentsLivemode()) : rawRows;
+    const rows = user ? await withInstagramBadges(admin, rawRows) : rawRows;
     const events = user ? feedEvents(rows, user.id, canSee) : anonymousFeedEvents(rows);
     const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);

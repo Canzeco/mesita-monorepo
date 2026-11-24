@@ -78,14 +78,12 @@ Deno.test("a viewer who does not show their Instagram gets masked handles", () =
   assertEquals(feedEvents([row({})], "z", false)[0].person.handle, "per***");
 });
 
-Deno.test("seesHandles: a verified Instagram and the viewer's own handle shown (MESITA-4659, MESITA-4690)", () => {
+Deno.test("seesHandles: any member who sees Social (MESITA-4858)", () => {
   const at = "2026-10-20T00:00:00Z";
-  const adult = { birth_year: 1990, social_private: false, instagram_verified_at: at, instagram_proved_at: at, instagram_handle_shown: true };
+  const adult = { birth_year: 1990, social_private: false, instagram_verified_at: at, instagram_handle_shown: true };
   assertEquals(seesHandles(adult), true);
-  // Give to get: no choice (null) or a hidden handle sees masks.
-  assertEquals(seesHandles({ ...adult, instagram_handle_shown: null }), false);
-  assertEquals(seesHandles({ ...adult, instagram_handle_shown: false }), false);
-  assertEquals(seesHandles({ ...adult, instagram_verified_at: null }), false);
+  assertEquals(seesHandles({ ...adult, instagram_handle_shown: null }), true);
+  assertEquals(seesHandles({ ...adult, instagram_verified_at: null }), true);
   // Private, a minor, or no year: masks (MESITA-4850).
   assertEquals(seesHandles({ ...adult, social_private: true }), false);
   assertEquals(seesHandles({ ...adult, birth_year: new Date().getUTCFullYear() - 16 }), false);

@@ -150,9 +150,9 @@ select ok(
 
 update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(
-  (select public.consumer_social_level(c) = 'public' and public.place_shown_handle(c) is null
+  (select public.consumer_social_level(c) = 'instagram' and public.place_shown_handle(c) = 'probe.3219'
      from public.consumers c where id = '00000000-0000-4000-8000-0000000a3219'),
-  'opted in without proof: not shared (MESITA-4856)'
+  'opted in without proof: shared, unverified (MESITA-4858)'
 );
 update public.consumers set instagram_proved_at = now() where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(

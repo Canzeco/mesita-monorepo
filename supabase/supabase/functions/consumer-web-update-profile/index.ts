@@ -34,7 +34,7 @@ import {
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_proved_at, instagram_synced_at, social_private, instagram_followers_emulated, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_proved_at, instagram_vip_status, instagram_synced_at, social_private, instagram_followers_emulated, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -100,7 +100,7 @@ serveJson("consumer-web-update-profile", async (req) => {
   // and a caller may send only one of them (MESITA-1806).
   const existing = await admin
     .from("consumers")
-    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private, instagram_handle, instagram_verified_at, instagram_proved_at, instagram_handle_shown")
+    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private, instagram_handle, instagram_verified_at, instagram_handle_shown")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
@@ -162,6 +162,14 @@ serveJson("consumer-web-update-profile", async (req) => {
     patch,
     select: CONSUMER_PROFILE_SELECT,
   });
+  // MESITA-4858: another account verified this handle; a typed one never shows.
+  if (!update.ok && update.error.includes("handle_proved_elsewhere")) {
+    return json({
+      ok: false,
+      code: "handle_taken",
+      error: "Another Mesita account verified this Instagram. Verify it to show it.",
+    }, 409);
+  }
   if (!update.ok) {
     return json({ ok: false, error: `consumer_update: ${update.error}` }, 500);
   }

@@ -3,7 +3,7 @@
 import { SexFace } from "./SexFace";
 import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, User } from "lucide-react";
+import { BadgeCheck, Crown, User } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -328,10 +328,13 @@ export function PersonModules({
  *  Instagram) or "No Instagram" (MESITA-4695). */
 export function PersonInstagramPill({
   label,
+  verified = false,
   href,
   onOpen,
 }: {
   label: string;
+  /** Mesita verified this member owns the account (MESITA-4858). */
+  verified?: boolean;
   href?: string | null;
   /** Counts the tap (social_open_instagram). */
   onOpen?: () => void;
@@ -340,6 +343,12 @@ export function PersonInstagramPill({
     <>
       <InstagramBadge connected={label.startsWith("@")} />
       <span className="truncate">{label}</span>
+      {verified && (
+        <span className="flex shrink-0" title="Mesita verified ownership of this Instagram account">
+          <BadgeCheck className="h-4 w-4" aria-hidden />
+          <span className="sr-only">Mesita verified ownership of this Instagram account</span>
+        </span>
+      )}
     </>
   );
   return href ? (

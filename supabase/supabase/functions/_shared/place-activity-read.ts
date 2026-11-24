@@ -27,8 +27,7 @@ export async function readCards(
 }
 
 /** What this member may see of others: nothing while they are private
- *  (socialBlocked, MESITA-4854), and full handles only while they share their
- *  own (MESITA-2594). An unreadable row is an error, never a guess. */
+ *  (socialBlocked, MESITA-4854), else every shared handle (MESITA-4858). An unreadable row is an error, never a guess. */
 export async function readViewer(
   admin: SupabaseClient,
   viewerId: string,

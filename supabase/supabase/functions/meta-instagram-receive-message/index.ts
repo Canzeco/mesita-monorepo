@@ -1,13 +1,11 @@
 // Supabase Edge Function — meta-instagram-receive-message (caller: Meta)
 //
-// MESITA-2575. Meta's Instagram messaging webhook. A guest proves their
-// Instagram account by sending Mesita's account the one-time code from
-// Me › Instagram; this function finds the pending DM claim by that code,
-// asks Meta's User Profile API who sent it (username, follower count,
-// photo), verifies the guest through consumer_instagram_verify, copies the
-// photo into consumer-avatars as the guest's picture unless they switched
-// "Use my Instagram photo" off or uploaded their own (MESITA-2585,
-// _shared/instagram-avatar.ts), and replies on Instagram. Mesita never messages anyone first.
+// MESITA-2575, MESITA-4858. Meta's Instagram messaging webhook. A guest proves
+// their Instagram account by sending Mesita's account the one-time code from
+// Me › Instagram; this function finds the pending claim by that code, asks
+// Meta's User Profile API who sent it (the username; the follower count only
+// when the guest allowed the VIP check; never a photo) and hands it to
+// consumer_instagram_prove, which decides. Mesita never messages anyone first.
 //
 //   GET   Meta's subscribe handshake: hub.verify_token must match
 //         META_IG_VERIFY_TOKEN; answers hub.challenge.
@@ -35,12 +33,12 @@ import {
   type InstagramDmConfig,
   META_GRAPH_VERSION,
   pickAccessToken,
+  profileFields,
   readDmProfile,
   readInstagramDmConfig,
   signatureIsValid,
   verifyHandshake,
 } from "../_shared/instagram-dm.ts";
-import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { serveJson } from "../_shared/http.ts";
 
@@ -50,8 +48,8 @@ function text(body: string, status: number): Response {
   return new Response(body, { status, headers: { "Content-Type": "text/plain" } });
 }
 
-async function profileOf(cfg: InstagramDmConfig, igsid: string): Promise<DmProfile | null> {
-  const url = `${GRAPH}/${encodeURIComponent(igsid)}?fields=username,follower_count,profile_pic&access_token=${
+async function profileOf(cfg: InstagramDmConfig, igsid: string, vipCheck: boolean): Promise<DmProfile | null> {
+  const url = `${GRAPH}/${encodeURIComponent(igsid)}?fields=${profileFields(vipCheck)}&access_token=${
     encodeURIComponent(cfg.accessToken)
   }`;
   const res = await fetch(url);
@@ -59,7 +57,7 @@ async function profileOf(cfg: InstagramDmConfig, igsid: string): Promise<DmProfi
     console.error("ig_profile_failed", res.status, (await res.text()).slice(0, 300));
     return null;
   }
-  return readDmProfile(await res.json());
+  return readDmProfile(await res.json(), vipCheck);
 }
 
 async function reply(cfg: InstagramDmConfig, igsid: string, message: string): Promise<void> {
@@ -76,56 +74,42 @@ async function reply(cfg: InstagramDmConfig, igsid: string, message: string): Pr
 
 async function handle(
   admin: SupabaseClient,
-  supabaseUrl: string,
   cfg: InstagramDmConfig,
   senderId: string,
   code: string,
 ): Promise<void> {
   const { data: claim, error } = await admin
     .from("consumer_instagram_claims")
-    .select("consumer_id, handle, created_at")
+    .select("vip_check, created_at")
     .eq("code", code)
     .maybeSingle();
   if (error) {
     console.error("ig_claim_read_failed", error.message);
     return reply(cfg, senderId, DM_REPLY.failed);
   }
-  // Only a live DM claim (no handle) is spent here; a bio-code claim is not.
-  if (!claim || claim.handle !== null || !claimIsLive(claim.created_at, Date.now())) {
+  if (!claim || !claimIsLive(claim.created_at, Date.now())) {
     return reply(cfg, senderId, DM_REPLY.unknownCode);
   }
 
-  const profile = await profileOf(cfg, senderId);
+  const profile = await profileOf(cfg, senderId, claim.vip_check === true) ??
+    // The count can be what Meta refused: ownership still stands alone.
+    (claim.vip_check === true ? await profileOf(cfg, senderId, false) : null);
   if (!profile) return reply(cfg, senderId, DM_REPLY.failed);
 
-  const { error: verifyErr } = await admin.rpc("consumer_instagram_verify", {
-    p_consumer_id: claim.consumer_id,
+  const { data: outcome, error: proveErr } = await admin.rpc("consumer_instagram_prove", {
+    p_code: code,
     p_handle: profile.handle,
     p_followers: profile.followers,
-    // The message is the proof (MESITA-4856).
-    p_proved: true,
+    p_private: profile.isPrivate,
   });
-  if (verifyErr) {
-    console.error("ig_verify_failed", verifyErr.message);
+  if (proveErr) {
+    console.error("ig_prove_failed", proveErr.message);
     return reply(cfg, senderId, DM_REPLY.failed);
   }
-  console.log("instagram_dm_verified", JSON.stringify({
-    consumerId: claim.consumer_id,
-    followers: profile.followers,
-    photo: profile.photoUrl !== null,
-  }));
-  // The shared door (MESITA-2585): only with the guest's switch on, never
-  // over an uploaded photo, JPEG/PNG/WEBP up to the bucket's 2 MiB.
-  const photo = await adoptInstagramAvatar(
-    admin,
-    supabaseUrl,
-    claim.consumer_id,
-    profile.photoUrl,
-  );
-  if (!photo.ok && !["no_photo", "photo_off"].includes(photo.reason)) {
-    console.error("ig_photo_failed", claim.consumer_id, photo.reason);
-  }
-  await reply(cfg, senderId, DM_REPLY.verified(profile.handle));
+  console.log("instagram_dm", JSON.stringify({ outcome }));
+  if (outcome === "verified") return reply(cfg, senderId, DM_REPLY.verified(profile.handle));
+  if (outcome === "wrong_account") return reply(cfg, senderId, DM_REPLY.wrongAccount);
+  await reply(cfg, senderId, DM_REPLY.unknownCode);
 }
 
 serveJson("meta-instagram-receive-message", async (req) => {
@@ -164,7 +148,7 @@ serveJson("meta-instagram-receive-message", async (req) => {
     // A message without a code is a normal DM to Mesita: no auto-reply.
     if (!code) continue;
     try {
-      await handle(admin, envRes.env.url, live, m.senderId, code);
+      await handle(admin, live, m.senderId, code);
     } catch (e) {
       console.error("ig_dm_failed", e instanceof Error ? e.message : e);
     }

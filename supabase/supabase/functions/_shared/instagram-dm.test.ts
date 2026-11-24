@@ -4,6 +4,7 @@ import {
   dmLink,
   pickAccessToken,
   inboundMessages,
+  profileFields,
   readDmProfile,
   readInstagramDmConfig,
   readRefreshAnswer,
@@ -58,17 +59,15 @@ Deno.test("only guest-sent text messages count: no echoes, no reads, no other ob
   assertEquals(inboundMessages(null), []);
 });
 
-Deno.test("the profile gives the handle, followers and an https photo, or nothing", () => {
-  assertEquals(
-    readDmProfile({ username: "Vale.Soto", follower_count: 9300.7, profile_pic: "https://cdn/x.jpg" }),
-    { handle: "vale.soto", followers: 9300, photoUrl: "https://cdn/x.jpg" },
-  );
-  assertEquals(
-    readDmProfile({ username: "vale", follower_count: -1, profile_pic: "http://cdn/x.jpg" }),
-    { handle: "vale", followers: 0, photoUrl: null },
-  );
-  assertEquals(readDmProfile({ follower_count: 5 }), null);
-  assertEquals(readDmProfile(null), null);
+Deno.test("the follower count is asked for and read only with the guest's yes; never a photo", () => {
+  assertEquals(profileFields(false), "username");
+  assertEquals(profileFields(true), "username,follower_count");
+  const raw = { username: "Vale.Soto", follower_count: 9300.7, profile_pic: "https://cdn/x.jpg" };
+  assertEquals(readDmProfile(raw, true), { handle: "vale.soto", followers: 9300, isPrivate: null });
+  assertEquals(readDmProfile(raw, false), { handle: "vale.soto", followers: null, isPrivate: null });
+  assertEquals(readDmProfile({ username: "vale", follower_count: -1 }, true)?.followers, null);
+  assertEquals(readDmProfile({ follower_count: 5 }, true), null);
+  assertEquals(readDmProfile(null, true), null);
 });
 
 Deno.test("the subscribe handshake answers only the right token", () => {

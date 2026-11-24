@@ -8,23 +8,17 @@ import {
   VouchersPane,
   type OffersTab,
   type PlaceActions,
-  type VoucherBasketItem,
-  type VoucherBuyOutcome,
 } from "@mesita/place-profile";
 import { useHydrated } from "@/components/consumer/console-layout";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
-import { apiSyncInstagram } from "@/lib/api/profile";
-import { EFError } from "@/lib/api/_invoke";
 import {
   CONSUMER_ROUTES,
   placePath,
   payCodePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
-import { cn, errMsg } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -47,21 +41,6 @@ function creditHere(place: PlaceDetail, clock: boolean): { label: string; ready:
     ? `+${money(balance.pending_cents, currency)} ${at ? `lands at ${at}` : "lands soon"}`
     : null;
   return { label: `Balance ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
-}
-
-/** VIP IS CHECKED AT CLAIM (Pato, 2026-11-22, MESITA-4659: "verify that
- *  they meet the follower requirement when they claim the offer"): the
- *  server refuses a VIP basket (`vip_recheck`) unless the follower count was
- *  read within the last hour, so the page re-reads it first when it is older. */
-const VIP_CHECK_MAX_AGE_MS = 60 * 60 * 1000;
-
-/** When the guest's follower count was last read: the later of connect and
- *  sync. Null when neither is known. */
-function lastInstagramCheck(profile: { instagram_synced_at?: string | null; instagram_verified_at?: string | null } | null | undefined): number | null {
-  const times = [profile?.instagram_synced_at, profile?.instagram_verified_at]
-    .map((v) => (typeof v === "string" ? Date.parse(v) : NaN))
-    .filter((t) => Number.isFinite(t));
-  return times.length ? Math.max(...times) : null;
 }
 
 function noopSubscribe() {
@@ -154,39 +133,11 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
   const credit = creditHere(place, useHydrated());
 
-  // A VIP basket re-reads the follower count first when the last read is over
-  // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`
-  // means a sync just ran, so it counts as fresh. Any other refusal shows its
-  // message and charges nothing.
-  const supabase = useBrowserSupabase();
-  const { buy } = vouchers;
-  const buyChecked = useCallback(
-    async (items: VoucherBasketItem[], cardId: string | null): Promise<VoucherBuyOutcome> => {
-      const hasVip = items.some((i) => i.voucher === "voucher_vip");
-      const last = lastInstagramCheck(profile);
-      // MESITA-4662: an emulated count in test mode is always fresh; a sync
-      // would change nothing the server reads.
-      const emulating = profile?.emulator_available === true && profile.instagram_followers_emulated != null;
-      if (hasVip && !emulating && (last == null || Date.now() - last > VIP_CHECK_MAX_AGE_MS)) {
-        try {
-          await apiSyncInstagram(supabase);
-        } catch (err) {
-          if (!(err instanceof EFError && err.code === "slow_down")) {
-            toast.error(errMsg(err, "Couldn’t check your Instagram. Try again."));
-            return "failed";
-          }
-        }
-      }
-      return buy(items, cardId);
-    },
-    [buy, profile, supabase],
-  );
-
   const actions: PlaceActions = {
     // MESITA-4699: Checkout's purple Pay Bill (MESITA-4710), a push to this
     // place's bill; Back returns here.
     onPay: () => navigateTo(router, payCodePath(fetched.id), { motion: "drill" }),
-    onBuyVoucher: buyChecked,
+    onBuyVoucher: vouchers.buy,
     onOfferOpened: vouchers.opened,
     onOffersDone: finish,
     buyingVoucher: vouchers.buying,

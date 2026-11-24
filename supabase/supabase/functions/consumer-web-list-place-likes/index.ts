@@ -18,7 +18,6 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { withInstagramBadges } from "../_shared/instagram-badge.ts";
-import { paymentsLivemode } from "../_shared/stripe.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { consumerOrAnonymousRequest } from "../_shared/request.ts";
 import { type ActivityRow, anonymousPerson, isMesitaPlaceId, socialLine, toPerson } from "../_shared/place-activity.ts";
@@ -58,7 +57,7 @@ serveJson("consumer-web-list-place-likes", async (req) => {
   // MESITA-4714: the yellow badge (members only; an anonymous visitor sees none).
   // A private member sees nobody (MESITA-4854); their own like stays.
   const rawRows = seen.blocked ? [] : (peopleRes.data ?? []) as ActivityRow[];
-  const rows = user ? await withInstagramBadges(admin, rawRows, paymentsLivemode()) : rawRows;
+  const rows = user ? await withInstagramBadges(admin, rawRows) : rawRows;
   const people = rows.map((r) => (user ? toPerson(r, user.id, canSee) : anonymousPerson(r)));
   const total = rows.length > 0 ? Number(rows[0].total ?? rows.length) : 0;
   const mine = new Set(((mineRes.data ?? []) as { kind: string }[]).map((r) => r.kind));

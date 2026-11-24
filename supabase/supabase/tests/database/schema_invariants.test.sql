@@ -665,11 +665,11 @@ select ok(
       and column_name = 'guest_class') like '%vip_invited_at%'
     and (select generation_expression from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'guest_class') not like '%instagram%'
+      and column_name = 'guest_class') like '%instagram_proved_at IS NOT NULL%'
     and (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'plan') like '''free''%',
-  'consumers.guest_class is by invitation code only (MESITA-4849), and consumers.plan defaults to free (MESITA-2553)'
+  'consumers.guest_class is an invitation code or a proved Instagram (MESITA-4858), and consumers.plan defaults to free (MESITA-2553)'
 );
 
 -- MESITA-4659: "Show my handle on Mesita" is nullable with no default (null =
@@ -797,21 +797,21 @@ select ok(
   'consumer_instagram_claims is EF-only (RLS on, no client SELECT)'
 );
 
--- MESITA-2575: a DM claim has no handle until Meta names the sender, and the
--- webhook finds the claim by its code, so a code is unique.
+-- MESITA-4858: a code is tied to one handle, and the webhook finds the claim
+-- by its code, so a code is unique.
 select ok(
-  (select is_nullable = 'YES' from information_schema.columns
+  (select is_nullable = 'NO' from information_schema.columns
     where table_schema = 'public' and table_name = 'consumer_instagram_claims'
       and column_name = 'handle')
     and exists (select 1 from pg_indexes
       where schemaname = 'public' and tablename = 'consumer_instagram_claims'
         and indexdef ilike 'create unique index%(code)%'),
-  'consumer_instagram_claims: handle may be null (DM claim) and code is unique (MESITA-2575)'
+  'consumer_instagram_claims: handle is required and code is unique (MESITA-4858)'
 );
 
 select ok(
-  not has_function_privilege('authenticated', 'public.consumer_instagram_verify(uuid, text, integer, boolean, boolean)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.consumer_instagram_verify(uuid, text, integer, boolean, boolean)', 'EXECUTE'),
+  not has_function_privilege('authenticated', 'public.consumer_instagram_prove(text, text, integer, boolean)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.consumer_instagram_prove(text, text, integer, boolean)', 'EXECUTE'),
   'client roles cannot stamp a handle verified'
 );
 

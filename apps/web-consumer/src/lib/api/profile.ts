@@ -34,9 +34,10 @@ export type ConsumerProfile = {
   // the card's "Updated …" is the later one. Optional (older EF payloads).
   instagram_verified_at?: string | null;
   instagram_synced_at?: string | null;
-  // MESITA-4856: when the guest proved the account is theirs; sharing needs
-  // it. Optional (older EF payloads).
+  // MESITA-4858: when a DM proved the account is theirs (the verified badge),
+  // and what the VIP follower check answered, if the guest allowed it.
   instagram_proved_at?: string | null;
+  instagram_vip_status?: "eligible" | "not_enough" | "not_public" | "unconfirmed" | null;
   // MESITA-4659: may other guests and places see the @handle? Only true
   // shows it; null (no choice recorded) and false hide it. Linking never
   // sets it. Optional (older EF payloads).
@@ -51,9 +52,7 @@ export type ConsumerProfile = {
   // (older EF payloads read as off).
   instagram_followers_emulated?: number | null;
   emulator_available?: boolean;
-  // MESITA-4714: the followers badge (a yellow disc, MESITA-4722) right of the @handle (verified, more than
-  // 1,000 followers, public account; the emulated count in test mode only).
-  // The server decides it. Optional (older EF payloads read as none).
+  // MESITA-4858: the verified badge; the server decides it.
   instagram_badge?: boolean;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
@@ -97,12 +96,6 @@ type ConsumerAvatarPatch = {
   avatar_url: string | null;
 };
 
-// "Use my Instagram photo" on Me › Instagram (MESITA-2585). Off also takes
-// down a picture that was copied from Instagram.
-type ConsumerInstagramPhotoPatch = {
-  use_instagram_photo: boolean;
-};
-
 // "Show my handle on Mesita" on Me › Instagram (MESITA-4659).
 type ConsumerHandleShownPatch = {
   instagram_handle_shown: boolean;
@@ -113,21 +106,13 @@ type ConsumerSocialLevelPatch = {
   social_level: SocialLevel;
 };
 
-// The follower emulator on Me › Instagram (MESITA-4662): a number in test
-// mode only (403 emulator_live otherwise); null is Reset to real.
-type ConsumerFollowersEmulatedPatch = {
-  instagram_followers_emulated: number | null;
-};
-
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
   input:
     | ConsumerOnboardingInput
     | ConsumerAvatarPatch
-    | ConsumerInstagramPhotoPatch
     | ConsumerHandleShownPatch
-    | ConsumerSocialLevelPatch
-    | ConsumerFollowersEmulatedPatch,
+    | ConsumerSocialLevelPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
     client,
@@ -155,134 +140,51 @@ export async function apiFetchConsumerProfile(
 
 // ─── Instagram claim ─────────────────────────────────────────────────────
 
-// By DM (MESITA-2575): the guest sends the code to Mesita's Instagram and
-// the server learns the handle, followers and photo from Meta. `channel`
-// says whether that is switched on; until then the bio flow above is used.
-export type InstagramChannel =
-  { channel: "dm"; account: string; link: string } | { channel: "bio" };
+// MESITA-4858: the handle is saved unverified and never looked up; a DM proves
+// it. `channel` says whether the bot is switched on.
+export type InstagramChannel = { channel: "dm"; account: string; link: string } | { channel: "off" };
 
-export async function apiInstagramChannel(
-  client: SupabaseClient,
-): Promise<InstagramChannel> {
-  return await invokeEF<InstagramChannel>(
-    client,
-    "consumer-web-claim-instagram",
-    {
-      action: "channel",
-    },
-  );
+const CLAIM_EF = "consumer-web-claim-instagram";
+
+export async function apiInstagramChannel(client: SupabaseClient): Promise<InstagramChannel> {
+  return await invokeEF<InstagramChannel>(client, CLAIM_EF, { action: "channel" });
 }
 
-export type InstagramDmClaim = {
-  code: string;
-  account: string;
-  link: string;
-  issuedAt: string;
-};
-
-export async function apiStartInstagramDm(
+/** Saves the handle, unverified. `show` absent keeps the choice, or starts hidden. */
+export async function apiSetInstagram(
   client: SupabaseClient,
-): Promise<InstagramDmClaim> {
-  return await invokeEF<InstagramDmClaim>(
-    client,
-    "consumer-web-claim-instagram",
-    {
-      action: "start_dm",
-    },
-  );
+  handle: string,
+  show?: boolean,
+): Promise<{ handle: string; shown: boolean }> {
+  return await invokeEF(client, CLAIM_EF, { action: "set", handle, ...(show === undefined ? {} : { show }) });
+}
+
+/** Takes the Instagram off the account. The page confirms first. */
+export async function apiDisconnectInstagram(client: SupabaseClient): Promise<void> {
+  await invokeEF(client, CLAIM_EF, { action: "disconnect" });
+}
+
+export type InstagramDmClaim = { code: string; handle: string; account: string; link: string };
+
+/** `vipCheck`: the guest said yes to the follower check. */
+export async function apiStartInstagramDm(client: SupabaseClient, vipCheck: boolean): Promise<InstagramDmClaim> {
+  return await invokeEF<InstagramDmClaim>(client, CLAIM_EF, { action: "start_dm", vipCheck });
 }
 
 export type InstagramDmStatus = {
-  pending: boolean;
+  status: "pending" | "wrong_account" | "expired" | "none";
   handle: string | null;
-  verifiedAt: string | null;
+  provedAt: string | null;
+  vipStatus: ConsumerProfile["instagram_vip_status"];
 };
 
-export async function apiInstagramDmStatus(
-  client: SupabaseClient,
-): Promise<InstagramDmStatus> {
-  return await invokeEF<InstagramDmStatus>(
-    client,
-    "consumer-web-claim-instagram",
-    {
-      action: "dm_status",
-    },
-  );
+export async function apiInstagramDmStatus(client: SupabaseClient): Promise<InstagramDmStatus> {
+  return await invokeEF<InstagramDmStatus>(client, CLAIM_EF, { action: "dm_status" });
 }
 
-// ─── Instagram connect by username (MESITA-3039) ─────────────────────────
-
-// While the DM channel is off: the server scrapes the typed username (Apify)
-// and stores the handle, followers and photo on the account. For testing:
-// the username is trusted. `photo` says what happened to the picture.
-// MESITA-3060: `result` says which path ran — typing the connected handle
-// runs a Sync — and a Sync also returns the count it replaced.
-export type InstagramLookup = {
-  result: "connected" | "synced";
-  source: "apify";
-  profile: {
-    username: string;
-    profilePictureUrl: string | null;
-    followerCount: number;
-  };
-  photo: "updated" | "off" | "failed";
-  previousFollowers?: number | null;
-};
-
-/** Re-reads the connected handle's followers and photo (MESITA-3060). */
-export async function apiSyncInstagram(
-  client: SupabaseClient,
-): Promise<InstagramLookup> {
-  return await invokeEF<InstagramLookup>(
-    client,
-    "consumer-web-lookup-instagram",
-    { action: "sync" },
-  );
-}
-
-export async function apiLookupInstagram(
-  client: SupabaseClient,
-  username: string,
-): Promise<InstagramLookup> {
-  return await invokeEF<InstagramLookup>(
-    client,
-    "consumer-web-lookup-instagram",
-    { username, confirmed: true },
-  );
-}
-
-/** Takes the Instagram off the account: handle, followers and a picture
- *  copied from it (MESITA-3052). The page confirms first. */
-export async function apiDisconnectInstagram(
-  client: SupabaseClient,
-): Promise<void> {
-  await invokeEF(client, "consumer-web-claim-instagram", {
-    action: "disconnect",
-  });
-}
-
-/** The DM landed: the claim is spent and the account was proved after the
- *  code was issued. */
-export function dmVerified(
-  status: InstagramDmStatus,
-  issuedAt: string,
-): boolean {
-  if (status.pending || !status.handle || !status.verifiedAt) return false;
-  return Date.parse(status.verifiedAt) >= Date.parse(issuedAt);
-}
-
-// PROOF BY BIO (MESITA-4856, MESITA-2461's server): a one-time code the guest
-// puts in their Instagram bio and the server reads there.
-export async function apiStartInstagramProof(client: SupabaseClient, handle: string): Promise<string> {
-  const { code } = await invokeEF<{ code: string }>(client, "consumer-web-claim-instagram", {
-    action: "start",
-    handle,
-  });
-  return code;
-}
-
-export async function apiCheckInstagramProof(client: SupabaseClient): Promise<void> {
-  await invokeEF(client, "consumer-web-claim-instagram", { action: "check" });
+/** The DM landed: the code is spent and this handle is proved. */
+export function dmVerified(status: InstagramDmStatus, handle: string): boolean {
+  return status.status === "none" && status.handle === handle && status.provedAt != null;
 }
 
 // ─── Account deletion ────────────────────────────────────────────────────
