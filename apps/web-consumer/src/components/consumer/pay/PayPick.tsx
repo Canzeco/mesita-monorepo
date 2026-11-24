@@ -207,8 +207,8 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 }
 
 /** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo,
- *  the name over its address, a green circle with what this guest's next bill gets
- *  (5% OFF, or BACK for cashback; MESITA-4865) and a black Pay box. No credits: the Wallet's box has them. */
+ *  the name over its address, a green box with what this guest's next bill gets
+ *  (Discount or Cashback; MESITA-4865) and a black Pay box. No credits: the Wallet's box has them. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p);
@@ -227,11 +227,11 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
         <span className="line-clamp-2 text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
         {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight max-[429px]:text-xs">{p.address}</span> : null}
       </span>
-      <span className="flex shrink-0 items-center gap-2" aria-hidden>
+      <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
         {bps > 0 ? (
-          <span className={cn("flex h-14 w-14 flex-col items-center justify-center rounded-full font-semibold", offerShade(bps / 100))}>
-            <span className="text-base leading-none tabular-nums">{bps / 100}%</span>
-            <span className="mt-0.5 text-xs leading-none">{discount > 0 ? "OFF" : "BACK"}</span>
+          <span className={cn("flex h-12 w-[76px] flex-col items-center justify-center rounded-xl font-semibold max-[374px]:w-[68px]", offerShade(bps / 100))}>
+            <span className="text-lg leading-none tabular-nums">{bps / 100}%</span>
+            <span className="mt-0.5 text-xs leading-none">{word}</span>
           </span>
         ) : null}
         <span className="bg-foreground text-background flex h-12 w-[58px] items-center justify-center rounded-xl text-base font-semibold max-[374px]:w-12 max-[374px]:text-sm">
