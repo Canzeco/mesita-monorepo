@@ -42,7 +42,7 @@ describe("the onboarding form renders all fields on one screen", () => {
     expect(html).toContain('name="first_name"');
     expect(html).toContain('name="last_name"');
     expect(html).toContain('role="radiogroup"');
-    expect(html.match(/role="radio"/g) ?? []).toHaveLength(2);
+    expect(html.match(/role="radio"/g) ?? []).toHaveLength(3);
   });
 
   it("does not render a stepped progress bar", () => {

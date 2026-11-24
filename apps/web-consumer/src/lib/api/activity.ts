@@ -8,12 +8,15 @@ import type { Place } from "./places";
 export type ActivityKind = "saved" | "viewed";
 
 /** A member as Social shows them (MESITA-4850): first name, photo and @handle
- *  when they share their Instagram; else their approximate age and sex
- *  ("Woman, mid 20s"), no photo, no handle (`anonymous`). */
+ *  when they share their Instagram; else their first name, age and sex
+ *  ("Sofia, 25"), no photo, no handle (`anonymous`). */
 export type ActivityPerson = {
   name: string;
   /** Adults only; null is undisclosed. Optional (older EF payloads). */
-  sex?: "female" | "male" | null;
+  sex?: "female" | "male" | "other" | null;
+  /** A Public member's age, drawn in their face (MESITA-4854). Optional
+   *  (older EF payloads). */
+  age?: number | null;
   avatarUrl: string | null;
   /** The verified Instagram username, without "@" (MESITA-2590), or
    *  "per***" when handleLocked. */
@@ -104,6 +107,24 @@ export async function apiTrackActivity(
 export type ActivityFeedPage = {
   items: ActivityFeedItem[];
   next: string | null;
+  /** The viewer is private, so they see nobody (MESITA-4854). */
+  blocked?: SocialBlocked;
+};
+export type SocialBlocked = "private" | "minor" | "no_birth_year";
+
+/** What a private member reads where activity would be. */
+export const SOCIAL_BLOCKED: Record<SocialBlocked, { title: string; description: string; fix: string | null }> = {
+  private: {
+    title: "Your profile is private",
+    description: "Make it public to see what other guests view and like.",
+    fix: "Change privacy",
+  },
+  minor: { title: "Social is for guests over 18", description: "Your profile is always private.", fix: null },
+  no_birth_year: {
+    title: "Add your year of birth",
+    description: "Then you can see what other guests view and like.",
+    fix: "Open Profile",
+  },
 };
 
 export async function apiListActivityFeed(
@@ -116,7 +137,7 @@ export async function apiListActivityFeed(
    *  latest-events number (MESITA-4572). */
   shown?: number,
 ): Promise<ActivityFeedPage> {
-  const { items, next } = await invokeEF<ActivityFeedPage>(
+  const { items, next, blocked } = await invokeEF<ActivityFeedPage>(
     client,
     "consumer-web-list-activity",
     {
@@ -126,7 +147,7 @@ export async function apiListActivityFeed(
       ...(typeof shown === "number" && shown > 0 ? { shown } : {}),
     },
   );
-  return { items, next };
+  return { items, next, ...(blocked ? { blocked } : {}) };
 }
 
 export async function apiPlaceActivity(

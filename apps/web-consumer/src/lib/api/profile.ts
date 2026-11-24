@@ -82,9 +82,9 @@ type ConsumerOnboardingInput = {
   // sent BLANK, which would leave a consumer no place can be told to expect.
   first_name?: string;
   last_name?: string;
-  // Male/Female only (MESITA-727). Optional so callers that don't edit sex
+  // Optional so callers that don't edit sex
   // (e.g. the Edit-profile sheet) omit it — the EF patches only present keys.
-  sex?: "male" | "female";
+  sex?: "male" | "female" | "other";
   // MESITA-4302: year of birth; the EF checks current year − year >= 14.
   birth_year?: number;
 };

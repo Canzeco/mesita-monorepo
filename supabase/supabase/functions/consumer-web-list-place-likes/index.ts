@@ -22,7 +22,7 @@ import { paymentsLivemode } from "../_shared/stripe.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { consumerOrAnonymousRequest } from "../_shared/request.ts";
 import { type ActivityRow, anonymousPerson, isMesitaPlaceId, socialLine, toPerson } from "../_shared/place-activity.ts";
-import { viewerSeesHandles } from "../_shared/place-activity-read.ts";
+import { readViewer } from "../_shared/place-activity-read.ts";
 
 const LINE_FACES = 5;
 
@@ -40,7 +40,7 @@ serveJson("consumer-web-list-place-likes", async (req) => {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   }
 
-  const [peopleRes, mineRes, canSee] = await Promise.all([
+  const [peopleRes, mineRes, seen] = await Promise.all([
     admin.rpc("place_activity_people", { p_place_id: placeId, p_limit: LINE_FACES }),
     user
       ? admin
@@ -49,12 +49,15 @@ serveJson("consumer-web-list-place-likes", async (req) => {
         .eq("consumer_id", user.id)
         .eq("place_id", placeId)
       : Promise.resolve({ data: [], error: null }),
-    user ? viewerSeesHandles(admin, user.id) : Promise.resolve(false),
+    user ? readViewer(admin, user.id) : Promise.resolve({ ok: true as const, blocked: null, canSee: false }),
   ]);
+  if (!seen.ok) return json({ ok: false, error: seen.error }, 500);
+  const canSee = seen.canSee;
   if (peopleRes.error) return json({ ok: false, error: `people: ${peopleRes.error.message}` }, 500);
   if (mineRes.error) return json({ ok: false, error: `mine: ${mineRes.error.message}` }, 500);
   // MESITA-4714: the yellow badge (members only; an anonymous visitor sees none).
-  const rawRows = (peopleRes.data ?? []) as ActivityRow[];
+  // A private member sees nobody (MESITA-4854); their own like stays.
+  const rawRows = seen.blocked ? [] : (peopleRes.data ?? []) as ActivityRow[];
   const rows = user ? await withInstagramBadges(admin, rawRows, paymentsLivemode()) : rawRows;
   const people = rows.map((r) => (user ? toPerson(r, user.id, canSee) : anonymousPerson(r)));
   const total = rows.length > 0 ? Number(rows[0].total ?? rows.length) : 0;

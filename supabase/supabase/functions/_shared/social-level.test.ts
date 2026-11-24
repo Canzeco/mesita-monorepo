@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { approxAge, levelPatch, shownSex, socialLabel, socialLevel, socialLock } from "./social-level.ts";
+import { levelPatch, shownAge, shownSex, socialBlocked, socialLabel, socialLevel, socialLock } from "./social-level.ts";
 
 const NOW = new Date("2026-11-24T12:00:00Z");
 const open = { social_private: false, instagram_verified_at: "2026-01-01", instagram_handle_shown: true };
@@ -20,11 +20,22 @@ Deno.test("an adult's level", () => {
   assertEquals(levelPatch("private"), { social_private: true, instagram_handle_shown: false });
 });
 
-Deno.test("a minor's age and sex are never worded", () => {
-  assertEquals(approxAge(2008, NOW), null);
+Deno.test("a minor's age and sex are never shown", () => {
+  assertEquals(shownAge(2008, NOW), null);
   assertEquals(shownSex(2008, "female", NOW), null);
   assertEquals(socialLabel(2010, "female", NOW), "Guest");
-  assertEquals(socialLabel(2001, "female", NOW), "Woman, mid 20s");
-  assertEquals(socialLabel(1998, "male", NOW), "Man, late 20s");
-  assertEquals(socialLabel(1995, null, NOW), "Guest, early 30s");
+  assertEquals(shownSex(2008, "other", NOW), null);
+  assertEquals([shownSex(1990, "other", NOW), shownSex(1990, "x", NOW)], ["other", null]);
+  assertEquals(socialLabel(2001, "female", NOW), "Woman, 25");
+  assertEquals(socialLabel(1998, "male", NOW), "Man, 28");
+  assertEquals(socialLabel(1995, null, NOW), "Guest, 31");
+});
+
+Deno.test("a private member, a minor or one with no year sees nobody (MESITA-4854)", () => {
+  assertEquals(socialBlocked({ ...open, birth_year: 1990, social_private: true }, NOW), "private");
+  assertEquals(socialBlocked({ ...open, birth_year: 2010 }, NOW), "minor");
+  assertEquals(socialBlocked({ ...open, birth_year: null }, NOW), "no_birth_year");
+  assertEquals(socialBlocked(null, NOW), "no_birth_year");
+  assertEquals(socialBlocked({ ...open, birth_year: 1990 }, NOW), null);
+  assertEquals(socialBlocked({ ...open, birth_year: 1990, instagram_verified_at: null }, NOW), null);
 });

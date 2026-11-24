@@ -7,6 +7,7 @@ import { PLACE_CARD_COLUMNS } from "./place-columns.ts";
 import { type PlaceCategoryRow, withFamilyKeysList } from "./place-family-keys.ts";
 import { seesHandles } from "./place-activity.ts";
 import { readSocialStanding } from "./consumer-doc.ts";
+import { socialBlocked } from "./social-level.ts";
 
 export type Card = Record<string, unknown> & { id: string; lat?: number | null; lng?: number | null };
 
@@ -25,16 +26,17 @@ export async function readCards(
   return { ok: true, cards: new Map(rows.map((r) => [r.id, r])) };
 }
 
-/** Whether this viewer sees other members' full handles (MESITA-2594). An
- *  unreadable row masks: the safe side is showing less. */
-export async function viewerSeesHandles(
+/** What this member may see of others: nothing while they are private
+ *  (socialBlocked, MESITA-4854), and full handles only while they share their
+ *  own (MESITA-2594). An unreadable row is an error, never a guess. */
+export async function readViewer(
   admin: SupabaseClient,
   viewerId: string,
-): Promise<boolean> {
+): Promise<{ ok: true; blocked: ReturnType<typeof socialBlocked>; canSee: boolean } | { ok: false; error: string }> {
   const res = await readSocialStanding(admin, viewerId);
   if (!res.ok) {
     console.error("viewer_standing_failed", res.error);
-    return false;
+    return { ok: false, error: "Couldn't load Social" };
   }
-  return seesHandles(res.row);
+  return { ok: true, blocked: socialBlocked(res.row), canSee: seesHandles(res.row) };
 }

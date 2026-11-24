@@ -21,7 +21,8 @@
 //
 // The event names the member because no member id reaches the client
 // (MESITA-2460). A deleted or private member returns person null and no
-// items; a Public one is their approximate age and sex (MESITA-4850). Handles leave masked unless the
+// items; a Public one is their first name, age and sex
+// (MESITA-4854); a private viewer gets null too. Handles leave masked unless the
 // viewer shows their own (MESITA-2594, seesHandles).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -37,7 +38,7 @@ import {
   isMesitaPlaceId,
   toPerson,
 } from "../_shared/place-activity.ts";
-import { readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
+import { readCards, readViewer } from "../_shared/place-activity-read.ts";
 
 const HISTORY_ROWS = 200;
 /** The most cards one read returns when it is paged. */
@@ -101,15 +102,19 @@ serveJson("consumer-web-get-person", async (req) => {
   }
 
   const anon = anonClient(env);
-  const [histRes, canSee] = await Promise.all([
+  const [histRes, seen] = await Promise.all([
     admin.rpc("place_activity_history_by", {
       p_place_id: placeId,
       p_kind: body.kind,
       p_at: body.at,
       p_limit: HISTORY_ROWS,
     }),
-    viewerSeesHandles(admin, viewerId),
+    readViewer(admin, viewerId),
   ]);
+  if (!seen.ok) return json({ ok: false, error: seen.error }, 500);
+  // A private member sees nobody (MESITA-4854).
+  if (seen.blocked) return json({ ok: true, person: null, items: [] });
+  const canSee = seen.canSee;
   if (histRes.error) return json({ ok: false, error: `history: ${histRes.error.message}` }, 500);
   // MESITA-4714: the yellow badge, decided here.
   const rows = await withInstagramBadges(admin, (histRes.data ?? []) as ActivityRow[], paymentsLivemode());

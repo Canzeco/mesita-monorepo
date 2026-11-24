@@ -52,7 +52,7 @@
 //
 // WHAT A ROW SAYS OF A PERSON IS THEIR PRIVACY LEVEL (MESITA-4850, over the
 // first name and photo on every row of MESITA-2612/2608/4690): a Public member
-// is the gray face and "Woman, mid 20s", with a written F or M mark; a member
+// is their sex's colour with their age in it and "Sofia, 25" (MESITA-4854); a member
 // sharing their Instagram is their photo, first name and @handle, masked for
 // a viewer who does not share theirs. Private members and minors never come.
 //
@@ -104,12 +104,15 @@ import { Suspense, useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Clock, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
+import { Lock, Clock, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
+import { SexFace } from "@/components/consumer/SexFace";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
   apiListActivityFeed,
+  SOCIAL_BLOCKED,
+  type SocialBlocked,
   apiMemberHistory,
   apiMemberHistoryCards,
   isMesitaPlaceId,
@@ -233,6 +236,8 @@ export function Face({ person }: { person: ActivityPerson }) {
           alt=""
           className="h-11 w-11 rounded-full object-cover"
         />
+      ) : person.age != null ? (
+        <SexFace sex={person.sex} age={person.age} className="h-11 w-11 text-base" />
       ) : (
         <span
           className="block h-11 w-11 overflow-hidden rounded-full"
@@ -255,21 +260,6 @@ export function Face({ person }: { person: ActivityPerson }) {
         </span>
       )}
       {person.instagram && <span className="sr-only">On Instagram</span>}
-      {!person.instagram && person.sex !== undefined && (
-        // A letter beside the colour, never colour alone (MESITA-4850); the
-        // sentence says it in words.
-        <span
-          aria-hidden
-          className={cn(
-            MARK_CLASS,
-            "-left-1 type-label font-bold text-white",
-            person.sex === "female" ? "bg-pink-600" : person.sex === "male" ? "bg-blue-600" : "bg-black",
-          )}
-          data-social-mark={person.sex ?? "undisclosed"}
-        >
-          {person.sex === "female" ? "F" : person.sex === "male" ? "M" : "–"}
-        </span>
-      )}
     </span>
   );
 }
@@ -691,6 +681,8 @@ function PersonCard({
             <PersonModules
               name={who}
               avatarUrl={person.avatarUrl}
+              sex={person.sex}
+              age={person.age}
               instagram={
                 !person.isYou && (!igConnected || person.handleLocked) ? (
                   <AddInstagramBox connected={igConnected} />
@@ -1160,6 +1152,7 @@ function SocialFeedBody() {
     | { status: "loading" }
     | { status: "error"; message: string }
     | { status: "ready"; items: ActivityFeedItem[]; next: string | null }
+    | { status: "blocked"; why: SocialBlocked }
   >(() =>
     // Back on Social: the last list repaints at once while it refetches.
     lastFeed
@@ -1243,6 +1236,16 @@ function SocialFeedBody() {
       )
         .then((page) => {
           if (cancelled) return;
+          // A private member sees nobody (MESITA-4854): nothing held stays.
+          if (page.blocked) {
+            lastFeed = null;
+            seenRef.current = null;
+            heldRef.current = null;
+            setPendingNew(0);
+            setRefreshing(false);
+            setState({ status: "blocked", why: page.blocked });
+            return;
+          }
           const seen = seenRef.current;
           const arrived = seen
             ? page.items.filter((it) => !seen.has(eventKey(it))).length
@@ -1404,6 +1407,17 @@ function SocialFeedBody() {
             setAttempt((n) => n + 1);
           },
         }}
+      />
+    );
+  }
+  if (state.status === "blocked") {
+    const { title, description, fix } = SOCIAL_BLOCKED[state.why];
+    return (
+      <EmptyState
+        icon={Lock}
+        title={title}
+        description={description}
+        action={fix ? { label: fix, href: CONSUMER_ROUTES.mePages.profile } : undefined}
       />
     );
   }

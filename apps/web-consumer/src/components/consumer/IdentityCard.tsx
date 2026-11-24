@@ -1,5 +1,6 @@
 "use client";
 
+import { SexFace } from "./SexFace";
 import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Crown, User } from "lucide-react";
@@ -287,10 +288,15 @@ export function IdentityModules({
 export function PersonModules({
   name,
   avatarUrl,
+  sex,
+  age,
   instagram,
 }: {
   name: string;
   avatarUrl: string | null;
+  /** A Public member's face (MESITA-4854). */
+  sex?: string | null;
+  age?: number | null;
   instagram: ReactNode;
 }) {
   const still = "hover:bg-card";
@@ -300,6 +306,8 @@ export function PersonModules({
         <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
           {avatarUrl ? (
             <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
+          ) : age != null ? (
+            <SexFace sex={sex} age={age} className="h-full w-full text-2xl" />
           ) : (
             <DefaultAvatar className="h-full w-full" />
           )}

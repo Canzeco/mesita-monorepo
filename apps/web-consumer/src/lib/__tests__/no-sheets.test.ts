@@ -92,6 +92,8 @@ const DIALOG_ALLOWLIST = [
   // modal, not its own page).
   "components/consumer/search/AskAiModal.tsx",
   "components/consumer/wallet/AddCreditsCardDialog.tsx",
+  // Privacy's three levels (MESITA-4854, decision: Pato asked for a modal).
+  "components/consumer/me/PrivacyLevels.tsx",
 ];
 
 export type OverlayImport = { name: string; line: number; reexport: boolean };

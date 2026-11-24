@@ -160,12 +160,12 @@ select ok(
 );
 
 -- MESITA-4850: private and minors never appear, past events included; a Public
--- member carries no name and no photo.
+-- member carries a first name and no photo.
 update public.consumers set instagram_handle_shown = false where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(
-  (select count(*) = 5 and bool_and(first_name is null and avatar_url is null and not instagram and birth_year = 1990)
+  (select count(*) = 5 and bool_and(first_name = 'Probe' and avatar_url is null and not instagram and birth_year = 1990)
      from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219')),
-  'public: no name, no photo, no Instagram mark'
+  'public: the first name, no photo, no Instagram mark (MESITA-4854)'
 );
 update public.consumers set social_private = true, instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(

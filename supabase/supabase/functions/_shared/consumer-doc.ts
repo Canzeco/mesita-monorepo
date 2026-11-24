@@ -22,7 +22,7 @@
 // THE INVARIANTS, and why each is real (not invented):
 //   - code, if set, is "0000-0000" — the exact DB CHECK
 //     (consumers_code_format_check, 20260602130000).
-//   - sex, if set, is 'male' | 'female' — the DB CHECK matches.
+//   - sex, if set, is 'male' | 'female' | 'other' — the DB CHECK matches.
 //   - instagram_handle, if set, matches ^[a-z0-9._]{1,30}$ — the exact DB
 //     CHECK (20260705090000).
 //   - instagram_followers_count, if set, is a non-negative integer — the
@@ -49,7 +49,7 @@ export type ConsumerDoc = {
   first_name: string | null;
   last_name: string | null;
   full_name: string | null;
-  sex: "male" | "female" | null;
+  sex: "male" | "female" | "other" | null;
   birthday: string | null;
   // MESITA-4302: the year the guest gave; the age floor reads it.
   birth_year: number | null;
@@ -144,7 +144,7 @@ export const REMOVED_FIELD_APPEAR_ANONYMOUS = {
   code: "field_removed",
 } as const;
 
-const SEX_VALUES = new Set(["male", "female"]);
+const SEX_VALUES = new Set(["male", "female", "other"]);
 // Consumer QR codes: sequential 8 digits, canonical form 0000-0000 … 9999-9999.
 const CODE_RE = /^[0-9]{4}-[0-9]{4}$/;
 
@@ -217,9 +217,9 @@ export function validateConsumerPatch(
   if ("sex" in raw) {
     const v = raw.sex;
     if (v !== null && (typeof v !== "string" || !SEX_VALUES.has(v))) {
-      return { ok: false, error: "sex must be 'male', 'female', or null" };
+      return { ok: false, error: "sex must be 'male', 'female', 'other', or null" };
     }
-    patch.sex = v as "male" | "female" | null;
+    patch.sex = v as "male" | "female" | "other" | null;
   }
   if ("birthday" in raw) {
     const v = raw.birthday;
