@@ -1,7 +1,7 @@
 // Supabase Edge Function — visit-web-get-tab
 //
 // MESITA-3562 (Pay at the table, _shared/tab.ts): the waiter's poll of a
-// tab at visit.mesita.ai/tab/<token>. No sign-in: the QR token is the key,
+// tab at service.mesita.ai/tab/<token>. No sign-in: the QR token is the key,
 // and it reads only the bill's state (never who the guest is): waiting for
 // the bill, billed, paying (with the cash to collect), paid.
 //

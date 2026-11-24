@@ -1,5 +1,5 @@
 // The waiter's charge (MESITA-3306, W2c): staff open a charge at
-// visit.mesita.ai/charge/<place> with the place code and an amount; the guest
+// service.mesita.ai/charge/<place> with the place code and an amount; the guest
 // types its 4-digit code on the Pay tab and pays that amount; the staff
 // screen polls by the charge token until it reads Paid.
 //

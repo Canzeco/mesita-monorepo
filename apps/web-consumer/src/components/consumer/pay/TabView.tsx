@@ -36,7 +36,7 @@ import { NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 //
 // 1. "Show this to the waiter": a big QR of the waiter's link
 //    (consumer-web-open-tab), "Waiting for the bill". The waiter scans it on
-//    visit.mesita.ai and types the bill and a tip suggestion.
+//    service.mesita.ai and types the bill and a tip suggestion.
 // 2. Billed: one screen. The tip (the waiter's suggestion picked, 10/15/20%,
 //    Other; no tip is Other with 0 typed, MESITA-3748: the guest decides), how the bill is paid (the guest's
 //    credit here first, on by default, the rest in cash) and how the tip is

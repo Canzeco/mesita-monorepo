@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
-import { closeBill, getBill, openBill, sendBill, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
-import { readStaff } from "@/lib/staff-key";
+import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, sendBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
+import { BillFields, CodeField, readTip } from "@/components/BillFields";
 import { Bones } from "@/components/Bones";
 import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/app/tab/[token]/icons";
 
@@ -22,21 +22,13 @@ import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/
 // waiter never reads the guest's name or balance. Every peso is the server's.
 
 const DONE: BillState[] = ["paid", "cancelled", "expired"];
-const TIP_PCTS = [10, 15, 20] as const;
-
 /** Every 2 s while it moves, 5 s after 30 s still, 10 s after 3 min. */
 function nextDelay(stillMs: number): number {
   if (stillMs < 30_000) return 2000;
   return stillMs < 180_000 ? 5000 : 10_000;
 }
 
-/** A tip box: empty or 0 is no tip. */
-function readTip(text: string): number | null {
-  const t = text.trim();
-  return t === "" || /^0+([.,]0*)?$/.test(t) ? 0 : readAmount(t);
-}
-
-export function BillScreen({ billId, placeId }: { billId: string; placeId: string }) {
+export function BillScreen({ billId }: { billId: string }) {
   const router = useRouter();
   const [read, setRead] = useState<BillRead | null>(null);
   const [gone, setGone] = useState(false);
@@ -50,11 +42,14 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
   const changedAt = useRef(0);
   const stamp = useRef("");
 
-  const signIn = useCallback(() => router.replace(`/waiter/${encodeURIComponent(placeId)}`), [router, placeId]);
-  const staff = useCallback((): Staff | null => {
-    const token = readStaff(placeId);
-    return token ? { place_id: placeId, staff_token: token } : null;
-  }, [placeId]);
+  // Another phone, a closed tab or a new code: the code is typed again.
+  const [locked, setLocked] = useState(false);
+  const [code, setCode] = useState("");
+  const signIn = useCallback(() => {
+    keepBillStaff(billId, null);
+    setLocked(true);
+  }, [billId]);
+  const staff = useCallback((): Staff | null => readBillStaff(billId), [billId]);
 
   const refresh = useCallback(async () => {
     const s = staff();
@@ -75,7 +70,7 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
   }, [billId, signIn, staff]);
 
   const state = read?.bill.state ?? null;
-  const stopped = gone || (state !== null && DONE.includes(state));
+  const stopped = gone || locked || (state !== null && DONE.includes(state));
   useEffect(() => {
     if (stopped) return;
     let alive = true;
@@ -129,6 +124,43 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
     }
   }
 
+  async function unlock() {
+    if (busy || code.length !== 6) return;
+    setBusy("code");
+    setError(null);
+    const r = await checkCode(code);
+    setBusy(null);
+    if (r === "failed") return setError("Couldn't reach Mesita. Tap again.");
+    if ("refused" in r) return setError(r.error);
+    keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token });
+    setCode("");
+    setLocked(false);
+  }
+
+  if (locked) {
+    return (
+      <main className="proof" data-bill="code">
+        <h1>Open this bill</h1>
+        <form
+          style={{ alignSelf: "stretch" }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void unlock();
+          }}
+        >
+          <CodeField code={code} onCode={setCode} />
+          {error ? (
+            <p className="proof-status warn" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button type="submit" style={{ minHeight: 56 }} disabled={busy !== null || code.length !== 6}>
+            {busy ? "Checking…" : "Open"}
+          </button>
+        </form>
+      </main>
+    );
+  }
   if (gone) {
     return (
       <main className="proof pay-end" data-bill="gone">
@@ -174,11 +206,13 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
       {amount !== null ? <p className="verify-amount">{m(amount)}</p> : null}
     </div>
   );
-  const nextGuest = () => router.replace(`/waiter/${encodeURIComponent(placeId)}`);
   const sendAgain = () =>
     run("again", async (s) => {
       const r = await openBill(s, { again_bill_id: billId });
-      if (r !== "failed" && !("refused" in r)) router.replace(`/bill/${r.bill_id}?place=${encodeURIComponent(placeId)}`);
+      if (r !== "failed" && !("refused" in r)) {
+        keepBillStaff(r.bill_id, s);
+        router.replace(`/bill/${r.bill_id}`);
+      }
       return r;
     });
 
@@ -199,9 +233,7 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
         <p className="tab-paid-line">{collected > 0 ? `${m(collected)} cash or card` : "Nothing to collect"}</p>
         <p className="tab-paid-line">{placeName}</p>
         {/* Friends who split: each shows their own QR. */}
-        <button type="button" className="quiet" style={{ marginTop: 24, color: "#ffffff" }} onClick={nextGuest}>
-          Next guest at this table
-        </button>
+        <p className="tab-paid-line">Another guest? Scan their QR.</p>
       </main>
     );
   }
@@ -219,9 +251,6 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
         {alert}
         <button type="button" style={{ marginTop: 16, alignSelf: "stretch" }} disabled={busy !== null} onClick={() => void sendAgain()}>
           {busy === "again" ? "Opening…" : "Send again"}
-        </button>
-        <button type="button" className="quiet" style={{ alignSelf: "stretch" }} onClick={nextGuest}>
-          Next guest
         </button>
       </main>
     );
@@ -339,8 +368,6 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
   // TYPE THE BILL: open, declined, or an edit.
   const billCents = readAmount(billText);
   const tipCents = readTip(tipText);
-  const tipHigh = billCents !== null && tipCents !== null && tipCents * 2 > billCents;
-  const pct = (p: number) => Math.round(((billCents ?? 0) * p) / 100);
   return (
     <main className="proof" data-bill="type">
       {band}
@@ -361,36 +388,7 @@ export function BillScreen({ billId, placeId }: { billId: string; placeId: strin
         }}
       >
         <div className="verify-box">{guest(editing ? "Edit the bill" : "New bill", billCents !== null && tipCents !== null ? billCents + tipCents : null)}</div>
-        <label className="field">
-          Bill, before tip
-          <input inputMode="decimal" autoComplete="off" placeholder="0" value={billText} onChange={(e) => setBillText(e.target.value)} />
-        </label>
-        <label className="field">
-          Tip (ask the guest)
-          <input inputMode="decimal" autoComplete="off" placeholder="None" value={tipText} onChange={(e) => setTipText(e.target.value)} />
-        </label>
-        <div className="tip-chips" role="group" aria-label="Tip">
-          {TIP_PCTS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className="quiet"
-              disabled={billCents === null}
-              aria-pressed={billCents !== null && tipCents !== null && tipCents > 0 && tipCents === pct(p)}
-              onClick={() => setTipText(String(pct(p) / 100))}
-            >
-              {p}%
-            </button>
-          ))}
-          <button type="button" className="quiet" aria-pressed={tipCents === 0} onClick={() => setTipText("")}>
-            None
-          </button>
-        </div>
-        {tipHigh ? (
-          <p className="proof-status warn" role="status">
-            Tip is more than half the bill. Check it.
-          </p>
-        ) : null}
+        <BillFields bill={billText} tip={tipText} onBill={setBillText} onTip={setTipText} />
         {alert}
         <button type="submit" style={{ minHeight: 56 }} disabled={busy !== null || billCents === null || tipCents === null}>
           {busy === "send" ? "Sending…" : "Send bill"}

@@ -2,7 +2,7 @@
 // MESITA-3562 these doors).
 //
 // The guest opens a tab at a place and shows its QR; the waiter scans it on
-// visit.mesita.ai/tab/<token>, types the place code once (MESITA-3462's
+// service.mesita.ai/tab/<token>, types the place code once (MESITA-3462's
 // 12-hour staff token after that), the bill and a tip suggestion; the guest's
 // screen reads the bill by polling and chooses how to pay the bill (credits
 // first, the rest in cash) and the tip (cash; never credits); the waiter

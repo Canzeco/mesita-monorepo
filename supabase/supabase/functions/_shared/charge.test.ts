@@ -119,13 +119,13 @@ function memoryChargeStore(seed: { codes?: Record<string, string>; payments?: Te
   return { store, charges, tries, payments, clock, billOf };
 }
 
-async function withCode(code = "1234") {
+async function withCode(code = "123456") {
   return memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, code) } });
 }
 
 const input = (o: Partial<OpenChargeInput> = {}): OpenChargeInput => ({
   placeId: PLACE,
-  placeCode: "1234",
+  placeCode: "123456",
   amountCents: 25000,
   tipCents: 0,
   ticket: "T-12",
@@ -148,14 +148,14 @@ const payment = (o: Partial<TestPayment> & { id: string }): TestPayment => ({
 });
 
 Deno.test("readOpenChargeBody: a 33-character ticket answers ticket_too_long", () => {
-  const ok = readOpenChargeBody({ place_id: PLACE, place_code: "12 34", amount_cents: 25000, ticket: " " + "x".repeat(32) + " " });
+  const ok = readOpenChargeBody({ place_id: PLACE, place_code: "123 456", amount_cents: 25000, ticket: " " + "x".repeat(32) + " " });
   assert(ok.ok);
-  assertEquals(ok.input.placeCode, "1234");
+  assertEquals(ok.input.placeCode, "123456");
   assertEquals(ok.input.ticket, "x".repeat(32));
-  const long = readOpenChargeBody({ place_id: PLACE, place_code: "1234", amount_cents: 25000, ticket: "x".repeat(33) });
+  const long = readOpenChargeBody({ place_id: PLACE, place_code: "123456", amount_cents: 25000, ticket: "x".repeat(33) });
   assert(!long.ok);
   assertEquals([long.status, long.code], [400, "ticket_too_long"]);
-  const noAmount = readOpenChargeBody({ place_id: PLACE, place_code: "1234" });
+  const noAmount = readOpenChargeBody({ place_id: PLACE, place_code: "123456" });
   assert(!noAmount.ok && noAmount.code === "amount_required");
   assert(!readOpenChargeBody({ place_id: PLACE, place_code: "12345", amount_cents: 100 }).ok);
 });
@@ -192,11 +192,11 @@ Deno.test("open-charge: a sixth wrong code from one address locks it while anoth
   const two = await staffTryKey("service", "198.51.100.9");
   for (let i = 0; i < 5; i++) {
     m.clock.ms = T0 + i * 1000;
-    const r = await openCharge(m.store, { input: input({ placeCode: "0000" }), currency: "mxn", staffKey: one, nowMs: m.clock.ms });
+    const r = await openCharge(m.store, { input: input({ placeCode: "000000" }), currency: "mxn", staffKey: one, nowMs: m.clock.ms });
     assert(!r.ok);
     assertEquals([r.status, r.code], [403, "forbidden"]);
   }
-  const sixth = await openCharge(m.store, { input: input({ placeCode: "0000" }), currency: "mxn", staffKey: one, nowMs: T0 + 6000 });
+  const sixth = await openCharge(m.store, { input: input({ placeCode: "000000" }), currency: "mxn", staffKey: one, nowMs: T0 + 6000 });
   assert(!sixth.ok);
   assertEquals(sixth.code, "locked");
   assertEquals(sixth.detail?.retry_after_s, 594);
@@ -244,7 +244,7 @@ Deno.test("get-charge: a stale token answers gone and writes no try", async () =
 
 Deno.test("get-charge: a started payment carries the charge past ten minutes; paid reads paid", async () => {
   const pay = payment({ id: "p1" });
-  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "1234") }, payments: [pay] });
+  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "123456") }, payments: [pay] });
   const opened = await openCharge(m.store, { input: input(), currency: "mxn", staffKey: "k", nowMs: T0 });
   assert(opened.ok);
   await m.store.bind(m.charges[0].id, "p1", null, 25000);
@@ -311,7 +311,7 @@ Deno.test("guest: an over-balance charge stays open with no payment for the staf
 
 Deno.test("guest: a paid charge answers taken, with the payment only for its payer", async () => {
   const pay = payment({ id: "p9" });
-  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "1234") }, payments: [pay] });
+  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "123456") }, payments: [pay] });
   const opened = await openCharge(m.store, { input: input(), currency: "mxn", staffKey: "k", nowMs: T0 });
   assert(opened.ok);
   const row = m.charges[0];
@@ -345,7 +345,7 @@ Deno.test("tip: open-charge carries it to the charge, the look and the poll; out
     const r = readTip(bad);
     assert(!r.ok && r.code === "tip_invalid" && r.status === 400, String(bad));
   }
-  const body = readOpenChargeBody({ place_id: PLACE, place_code: "1234", amount_cents: 45000, tip_cents: 4500 });
+  const body = readOpenChargeBody({ place_id: PLACE, place_code: "123456", amount_cents: 45000, tip_cents: 4500 });
   assert(body.ok && body.input.tipCents === 4500);
   const m = await withCode();
   const opened = await openCharge(m.store, { input: input({ amountCents: 45000, tipCents: 4500 }), currency: "mxn", staffKey: "k", nowMs: T0 });
@@ -357,7 +357,7 @@ Deno.test("tip: open-charge carries it to the charge, the look and the poll; out
 
 Deno.test("bind copies the waiter's bill onto the payment; once bound, the payment's tip is the tip", async () => {
   const pay = payment({ id: "p2", amount_cents: 45000, tip_cents: 3000 });
-  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "1234") }, payments: [pay] });
+  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "123456") }, payments: [pay] });
   const opened = await openCharge(m.store, { input: input({ amountCents: 45000, tipCents: 4500 }), currency: "mxn", staffKey: "k", nowMs: T0 });
   assert(opened.ok);
   await m.store.bind(m.charges[0].id, "p2", null, 45000);
@@ -378,7 +378,7 @@ Deno.test("outside: the split takes credit first; credit covering the bill leave
 
 Deno.test("outside: the poll shows the bill waiting for Received with its own expiry; Received pays it once", async () => {
   const out = payment({ id: "p3", amount_cents: 45000, outside_cents: 30000, tip_cents: 4500, expires_at: new Date(T0 + 1_800_000).toISOString() });
-  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "1234") }, payments: [out] });
+  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "123456") }, payments: [out] });
   const opened = await openCharge(m.store, { input: input({ amountCents: 45000 }), currency: "mxn", staffKey: "k", nowMs: T0 });
   assert(opened.ok);
   const token = opened.charge.charge_token;
@@ -408,7 +408,7 @@ Deno.test("outside: Received after the guest cancelled reads closed; after 30 mi
   const cancelled = payment({ id: "p4", amount_cents: 45000, outside_cents: 45000, status: "expired", cancelled: true, expires_at: new Date(T0 + 1_800_000).toISOString() });
   const late = payment({ id: "p5", amount_cents: 45000, outside_cents: 45000, expires_at: new Date(T0 + 1_800_000).toISOString() });
   const elsewhere = payment({ id: "p6", place_id: "00000000-0000-4000-8000-00000000ffff", amount_cents: 45000, outside_cents: 45000 });
-  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "1234") }, payments: [cancelled, late, elsewhere] });
+  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "123456") }, payments: [cancelled, late, elsewhere] });
   const tokens: string[] = [];
   for (const id of ["p4", "p5", "p6"]) {
     const o = await openCharge(m.store, { input: input({ amountCents: 45000 }), currency: "mxn", staffKey: "k", nowMs: T0 });
@@ -430,7 +430,7 @@ Deno.test("outside: Received after the guest cancelled reads closed; after 30 mi
 
 Deno.test("outside: a guest's cancel unbinds and unclaims the charge so it can be paid again", async () => {
   const out = payment({ id: "p7", amount_cents: 45000, outside_cents: 45000 });
-  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "1234") }, payments: [out] });
+  const m = memoryChargeStore({ codes: { [PLACE]: await hashPlaceCode(PLACE, "123456") }, payments: [out] });
   const opened = await openCharge(m.store, { input: input({ amountCents: 45000 }), currency: "mxn", staffKey: "k", nowMs: T0 });
   assert(opened.ok);
   const row = m.charges[0];

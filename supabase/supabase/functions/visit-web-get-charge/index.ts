@@ -1,6 +1,6 @@
 // Supabase Edge Function — visit-web-get-charge
 //
-// MESITA-3306 (W2c): the staff screen on visit.mesita.ai polls its charge
+// MESITA-3306 (W2c): the staff screen on service.mesita.ai polls its charge
 // every 3 s with the charge_token only, never the place code. It reads Paid
 // when the payment row is paid; a stale or expired token answers 404 gone
 // and writes no try. Never who paid.

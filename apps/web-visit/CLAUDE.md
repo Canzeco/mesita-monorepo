@@ -1,4 +1,4 @@
-# apps/web-visit — the staff page (visit.mesita.ai)
+# apps/web-visit — the staff page (service.mesita.ai)
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 

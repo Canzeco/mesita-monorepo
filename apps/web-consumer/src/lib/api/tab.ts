@@ -1,6 +1,6 @@
 // Pay at the table, the guest's side (MESITA-3564). The guest opens a tab at
 // a place and shows its QR; the waiter types the bill and a tip suggestion on
-// visit.mesita.ai; the guest pays the bill with credits first and the rest in
+// service.mesita.ai; the guest pays the bill with credits first and the rest in
 // cash (or on the place's own terminal), and the tip in cash (credits never
 // pay a tip); a cash part waits for the waiter's Received. MESITA-4708: no
 // card part for a bill (cards, MESITA-3572, and Apple Pay / Google Pay,

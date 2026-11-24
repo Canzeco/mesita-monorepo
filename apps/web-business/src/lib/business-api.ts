@@ -656,12 +656,13 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** The waiter code (MESITA-3226, on Payments since MESITA-3600): four digits (MESITA-4521),
- *  stored only as a hash, typed by staff at visit.mesita.ai. */
-export async function setPlaceCode(placeId: string, code: string): Promise<Result<true>> {
-  const r = await efInvoke<{ code_set: boolean }>("business-web-set-place-code", { place_id: placeId, code });
+/** The waiter code (MESITA-4827): six digits Mesita makes, shown once, typed
+ *  by waiters at service.mesita.ai on each bill. */
+export async function setPlaceCode(placeId: string): Promise<Result<string>> {
+  const r = await efInvoke<{ code_set: boolean; code?: string }>("business-web-set-place-code", { place_id: placeId });
   if (!r.ok) return fail(r);
-  return { ok: true, data: true };
+  if (!r.data.code) return { ok: false, error: "Couldn't make a code. Try again." };
+  return { ok: true, data: r.data.code };
 }
 
 // ── Views (MESITA-3206) ──────────────────────────

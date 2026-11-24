@@ -2,13 +2,12 @@
 
 // The waiter code (MESITA-3226, Pato: "there they only set the fucking number";
 // on Payments since MESITA-3600, Pato: "move waiter code configuration to
-// Payments, not there"; its own section, last, since MESITA-3824). Four digits (MESITA-4521)
+// Payments, not there"; its own section, last, since MESITA-3824). Six digits (MESITA-4827)
 // waiters type once per phone per 12 hours to send bills (MESITA-4823). Only a hash is kept, so it is never
 // shown again and a forgotten one is replaced. The server refuses editors.
 
 import { useState } from "react";
 import { HashIcon } from "@phosphor-icons/react/dist/ssr";
-import { INPUT_BASE } from "@/components/ui/manage";
 import { setPlaceCode } from "@/lib/business-api";
 import { cn } from "@/lib/utils";
 
@@ -29,19 +28,17 @@ export function WaiterCodeRow({
   onSet: () => void;
   onError: (error: string | null) => void;
 }) {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
 
-  async function save() {
+  async function make() {
+    if (isSet && !window.confirm("Make a new code? The old one stops working.")) return;
     setBusy(true);
-    setSaved(false);
     onError(null);
-    const r = await setPlaceCode(placeId, code);
+    const r = await setPlaceCode(placeId);
     setBusy(false);
     if (!r.ok) return onError(r.error);
-    setSaved(true);
-    setCode("");
+    setCode(r.data);
     onSet();
   }
 
@@ -54,35 +51,20 @@ export function WaiterCodeRow({
       <div className="min-w-48 flex-1">
         <p className="font-medium">Waiter code</p>
         <p className="text-muted-foreground">
-          {saved
-            ? "Saved. It won't be shown again."
+          {code
+            ? "Write it down and give it to your waiters. It won't be shown again."
             : isSet
-              ? "Four digits your waiters type once per shift on their phone. A new code signs every phone out."
-              : "Four digits your waiters type once per shift on their phone. Without it, waiters can't send bills."}
+              ? "Waiters scan the guest's QR and type this code on each bill. Forgot it? Make a new one."
+              : "Waiters scan the guest's QR and type this code on each bill. Without it they can't send bills."}
         </p>
       </div>
-      <p className={cn("font-semibold whitespace-nowrap", !isSet && "text-muted-foreground")}>{isSet ? "Set" : "Not set"}</p>
+      <p className={cn("font-semibold whitespace-nowrap tabular-nums", code && "text-2xl tracking-widest", !isSet && "text-muted-foreground")}>
+        {code ?? (isSet ? "Set" : "Not set")}
+      </p>
       {canEdit ? (
-        <div className="flex shrink-0 items-center gap-3">
-          <input
-            value={code}
-            onChange={(e) => {
-              setSaved(false);
-              setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && code.length === 4 && !busy) void save();
-            }}
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="4 digits"
-            aria-label="Waiter code"
-            className={cn(INPUT_BASE, "h-10 w-24 px-3 tabular-nums")}
-          />
-          <button type="button" className={QUIET} disabled={code.length !== 4 || busy} onClick={() => void save()}>
-            {busy ? "Saving…" : "Save"}
-          </button>
-        </div>
+        <button type="button" className={QUIET} disabled={busy} onClick={() => void make()}>
+          {busy ? "Making…" : isSet ? "New code" : "Make code"}
+        </button>
       ) : null}
     </li>
   );

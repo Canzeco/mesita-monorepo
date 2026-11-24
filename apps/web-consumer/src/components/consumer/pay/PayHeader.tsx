@@ -1,3 +1,4 @@
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { BAR } from "@/components/consumer/search/header-classes";
 import type { ReactNode } from "react";
 
@@ -27,7 +28,7 @@ export function PayHeader({
   bar,
   embedded = false,
 }: {
-  title: "Pay" | "Wallet" | "Mesita Wallet";
+  title: "Pay" | "Wallet" | "Mesita";
   action?: ReactNode;
   bar?: ReactNode;
   /** Inside Wallet's dark slab (MESITA-4505). No sticky white band of its own. */
@@ -51,7 +52,9 @@ export function PayHeader({
   // Wallet to the left, tickets to the right"): the mark and title at the
   // left edge, the action (Tickets' icon button) at the right. Centred
   // before (MESITA-4525). NO MARK (Pato, 2026-11-21, MESITA-4573: "remove
-  // Mesita logo and only mention Mesita Wallet"): the words alone.
+  // Mesita logo and only mention Mesita Wallet"): the words alone, until
+  // MESITA and its mark (Pato, 2026-11-24, MESITA-4827: "instead of saying
+  // mesita wallet, say mesita with the mesita logo here too").
   return (
     <div
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
@@ -63,6 +66,7 @@ export function PayHeader({
           edges and 8px gap as Prepay | Pay Bill below. */}
       <div className={action ? "grid min-h-11 grid-cols-2 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
         <h1 className="flex min-h-11 min-w-0 items-center pl-1 text-xl font-semibold tracking-tight">
+          {title === "Mesita" ? <MesitaMark className="mr-2 h-7 w-7 shrink-0" /> : null}
           <span className="min-w-0 truncate">{title}</span>
         </h1>
         {action ? <div className="min-w-0">{action}</div> : null}

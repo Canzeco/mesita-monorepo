@@ -395,7 +395,7 @@ verify_jwt = true
 
 # MESITA-3304 (W2a): pay from credit and read a payment back (signed in);
 # the staff page reads and stamps a payment proof by its token (no sign-in
-# on visit.mesita.ai: the 128-bit token is the key).
+# on service.mesita.ai: the 128-bit token is the key).
 [functions.consumer-web-start-payment]
 verify_jwt = true
 
@@ -426,7 +426,7 @@ verify_jwt = false
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
 
-# MESITA-3306 (W2c): the waiter's charge. No sign-in on visit.mesita.ai: the
+# MESITA-3306 (W2c): the waiter's charge. No sign-in on service.mesita.ai: the
 # place code opens a charge, the 128-bit charge token reads it.
 [functions.visit-web-open-charge]
 verify_jwt = false
@@ -435,7 +435,7 @@ verify_jwt = false
 verify_jwt = false
 
 # MESITA-3545: the waiter's Received on a bill the guest pays outside Mesita.
-# No sign-in on visit.mesita.ai: the charge token is the key, as for the poll.
+# No sign-in on service.mesita.ai: the charge token is the key, as for the poll.
 [functions.visit-web-confirm-charge]
 verify_jwt = false
 
@@ -467,7 +467,7 @@ verify_jwt = true
 [functions.consumer-web-join-tab]
 verify_jwt = true
 
-# MESITA-3562: the waiter's side of a tab. No sign-in on visit.mesita.ai: the
+# MESITA-3562: the waiter's side of a tab. No sign-in on service.mesita.ai: the
 # QR token reads the bill state; billing and Received also need staff (the
 # place code once, then MESITA-3462's 12-hour staff token).
 [functions.visit-web-get-tab]
@@ -511,7 +511,7 @@ verify_jwt = false
 verify_jwt = false
 
 # MESITA-3462: the staff list of a place's Mesita Payments. No sign-in on
-# visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
+# service.mesita.ai: the place code answers a 12-hour staff token (HMAC over
 # the place's current code hash), and the 15 s reads carry the token.
 [functions.visit-web-list-payments]
 verify_jwt = false

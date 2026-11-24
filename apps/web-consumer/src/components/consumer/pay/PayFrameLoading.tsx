@@ -16,7 +16,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
     // (MESITA-4731), then the Loyalty Cards card on white.
     return (
       <div className="scrollbar-thin-dark bg-card flex h-full min-h-0 flex-col overflow-y-auto px-2 *:shrink-0" aria-busy>
-        <PayHeader title="Mesita Wallet" action={<WalletHeaderActions />} />
+        <PayHeader title="Mesita" action={<WalletHeaderActions />} />
         {/* GREY BONES ONLY (Pato, 2026-11-21, MESITA-4596): no colour and no
             words while the page reads. The shape is MESITA-4731's: Pay Bill
             across, Prepay | Send Gift (all 112px since MESITA-4735), the quiet Explore

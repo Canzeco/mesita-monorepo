@@ -7,10 +7,10 @@
 
 export type CashAnswer = "yes" | "no" | null;
 
-/** The waiter code as typed, spaces dropped; null unless it is 4 digits. */
+/** The waiter code as typed, spaces dropped; null unless it is 6 digits. */
 export function waiterCode(typed: string): string | null {
   const code = typed.replace(/\s/g, "");
-  return /^\d{4}$/.test(code) ? code : null;
+  return /^\d{6}$/.test(code) ? code : null;
 }
 
 /** What Confirm sends, or null while Confirm stays disabled. */

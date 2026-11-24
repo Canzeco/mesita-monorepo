@@ -2,7 +2,7 @@
 //
 // MESITA-3545 (Payments Flow v2): the waiter's Received. The guest chose to
 // pay the waiter's charge outside Mesita (cash or the place's terminal); the
-// staff screen on visit.mesita.ai shows "Guest is paying $NMX outside" and
+// staff screen on service.mesita.ai shows "Guest is paying $NMX outside" and
 // one Received button, which calls this with the charge token only (the
 // same key the screen polls with, never the place code). Received is the
 // confirmer: wallet_confirm_outside marks the bill paid and spends the held
