@@ -1,6 +1,6 @@
 "use client";
 
-import { Gift } from "lucide-react";
+import { ChevronRight, Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -8,7 +8,8 @@ import { PlacePhoto } from "./pay-common";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
 // THE CARD AT THE LEFT, ITS GIFT BOX AT THE RIGHT (Pato, 2026-11-24,
-// MESITA-4851: "left pp, name, credits two lines, right gift box"): two boxes,
+// MESITA-4851: "left pp, name, credits two lines, right gift box"; "don't mention gift, just a gift box and an
+// arrow"): two boxes,
 // 56px, Add Loyalty Card's height. The card opens the Loyalty Card. The photo
 // repeated behind the words before (MESITA-4839..4843).
 
@@ -72,11 +73,11 @@ export function PlaceActionRow({
         <PushLink
           href={giftHref}
           aria-label={`Send a gift from ${name}`}
-          className="bg-foreground text-background hover:bg-foreground/85 flex min-h-14 w-24 max-[374px]:w-14 shrink-0 items-center justify-center gap-2 rounded-xl text-base font-semibold transition"
+          className="bg-foreground text-background hover:bg-foreground/85 flex min-h-14 w-[4.5rem] shrink-0 items-center justify-center gap-1 rounded-xl transition"
           data-card-gift
         >
           <Gift className="h-5 w-5" strokeWidth={2} aria-hidden />
-          <span className="max-[374px]:hidden">Gift</span>
+          <ChevronRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </PushLink>
       ) : null}
     </div>
