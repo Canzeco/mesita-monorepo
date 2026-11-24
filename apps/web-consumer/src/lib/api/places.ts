@@ -417,7 +417,7 @@ function cleanPlace(place: Place): Place {
  * and answers `order`, every ranked id, with the first page's cards
  * (MESITA-3057); `apiFillAreaPool` reads the rest by id as the guest scrolls.
  * `familyKeys` is a family row's question (MESITA-2438). None = every
- * family. `nearest` sorts by distance alone (the Reward tab, MESITA-3214).
+ * family.
  *
  * DISCOVERY RANKING v2 (MESITA-4454): `rankMode` names the question
  * (nearby · popular · family), `shuffleSeed` this page load's seed for it
@@ -430,7 +430,6 @@ export async function apiListAreaPool(
   origin: AreaOrigin | null,
   familyKeys: readonly string[] = [],
   opts: {
-    nearest?: boolean;
     rankMode?: RankMode;
     shuffleSeed?: number;
     seedPoint?: AreaOrigin | null;
@@ -454,7 +453,6 @@ export async function apiListAreaPool(
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ids: true,
-    ...(opts.nearest ? { nearest: true } : {}),
     ...(opts.rankMode ? { rankMode: opts.rankMode } : {}),
     ...(typeof opts.shuffleSeed === "number" ? { shuffleSeed: opts.shuffleSeed } : {}),
     ...(opts.seen && opts.seen.length > 0 ? { seen: [...opts.seen] } : {}),

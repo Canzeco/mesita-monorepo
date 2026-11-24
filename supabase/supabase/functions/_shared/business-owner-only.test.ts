@@ -12,8 +12,6 @@ const DOORS = [
   "business-web-transfer-owner",
   "business-web-start-premier",
   "business-web-cancel-premier",
-  // The owner's money (MESITA-3307): editors get 403 forbidden.
-  "business-web-get-place-money",
   // Owners refund their own place's rows (MESITA-3381).
   "business-web-refund-payment",
   // Monitor lists and payouts (MESITA-4538): owner and staff only.

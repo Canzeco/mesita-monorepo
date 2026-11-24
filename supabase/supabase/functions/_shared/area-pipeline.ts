@@ -482,7 +482,7 @@ export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
 // the cap the cut is by id again (`scanCapped`).
 //
 // The Catalog has no ring, so it does not walk (MESITA-3059): the SQL
-// function `catalog_rank` ranks every gated place in one statement and
+// function `catalog_rank_lanes` ranks every gated place in one statement and
 // answers the ordered ids as one jsonb value (no `max_rows`, no row cap);
 // only the first page's cards are read (pass 2) and scored here for their
 // `area` breakdown.
@@ -657,8 +657,7 @@ async function selectRankedPool<T extends PoolRow>(
   };
 }
 
-/** A SQL rank through supabase-js's `rpc`: `catalog_rank` (`nearest`,
- *  MESITA-3059) or `catalog_rank_lanes` (MESITA-4454). */
+/** A SQL rank through supabase-js's `rpc`: `catalog_rank_lanes` (MESITA-4454). */
 export type CatalogRankRpc = (
   args: Record<string, unknown>,
 ) => PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
@@ -725,26 +724,6 @@ export function catalogRankLanesArgs(
   };
 }
 
-/** `catalog_rank`'s arguments for `nearest` (the Reward tab, MESITA-3214):
- *  distance alone, no lanes, no variety, so only the gates matter; the
- *  score numbers are the Nearby Organic row's. */
-export function catalogNearestArgs(
-  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
-  location: AreaLocation,
-  families: readonly string[],
-): Record<string, unknown> {
-  const r = recipeFor("nearby", "organic", cfg);
-  return {
-    ...gateArgs(cfg, location, families),
-    p_half_km: r.halfKm,
-    p_exponent: r.distanceExp,
-    p_root: r.googleExp,
-    p_stars_power: 0,
-    p_repeat: 1,
-    p_nearest: true,
-  };
-}
-
 export type CatalogRankSummary = AreaPoolSummary & {
   /** Rows that passed the gates and were ranked (`ranked`). `read` is the
    *  rows the SQL rank read before the Family gate, `returned` the places
@@ -758,8 +737,7 @@ export type CatalogRankSummary = AreaPoolSummary & {
   capped: boolean;
 };
 
-/** What the two lanes held (MESITA-4454): the log line's numbers. All 0 on
- *  `nearest`. */
+/** What the two lanes held (MESITA-4454): the log line's numbers. */
 export type CatalogLaneStats = {
   /** Places in the Organic lane. */
   organic: number;
@@ -783,13 +761,13 @@ export type CatalogPool = {
    *  then the exact merged tail, at most CATALOG_ORDER_CAP (MESITA-4462).
    *  Home fills cards by id. */
   order: string[];
-  /** The ids in ad slots, across the whole `order` (M-6); [] on `nearest`. */
+  /** The ids in ad slots, across the whole `order` (M-6). */
   adIds: string[];
   /** id → its 1-based rank in the merged order before the shuffle, for the
-   *  first page's ids (M-c); {} on `nearest`. */
+   *  first page's ids (M-c). */
   preShuffle: Record<string, number>;
   lanes: CatalogLaneStats;
-  /** id → the lane it was woven from (MESITA-4517); {} on `nearest`. */
+  /** id → the lane it was woven from (MESITA-4517). */
   laneOf: Record<string, RecipeRow>;
   /** Each weave's length (MESITA-4517): the first is the first screen. */
   weaves: number[];
@@ -887,33 +865,25 @@ export async function weaveCatalog(
  * lane orders; `mergeLanes` puts one ad after every `params.mix.adEvery`
  * organic places; `cutAndShuffle` redraws the first page by the mode's
  * Temperature with the guest's `seed` (the tail keeps its exact order). Only
- * the first `pageSize` cards are read, scored here from the same point with
+ * the first weave's cards are read, scored here from the same point with
  * the mode's rows (ad slots with the Inorganic row). Home fills the rest
- * with `selectCatalogFill`. `nearest` (the Reward tab, MESITA-3214) is
- * `catalog_rank` by distance alone: no lanes, no ads, no shuffle. A failed
+ * with `selectCatalogFill`. A failed
  * rank is pass 1, page 0.
  */
 export async function selectCatalogPool<T extends PoolRow>(
   deps: Omit<RankedPoolDeps<T>, "pagesMax"> & {
-    /** `catalog_rank` (the `nearest` path). */
-    rank: CatalogRankRpc;
     /** `catalog_rank_lanes` (every mode). */
     rankLanes: CatalogRankRpc;
     /** `discovery_growth_bases`. Absent: card scores use the established base.
      *  The SQL rank still applies growth once the migration is deployed. */
     growthBases?: CatalogRankRpc;
     location: AreaLocation;
-    /** The first page's length: only these cards are read, and the shuffle
-     *  pool. */
-    pageSize: number;
-    nearest?: boolean;
     /** The guest's mode (absent = popular). */
     mode?: RankMode;
     /** The first-page shuffle's seed, uint32. */
     seed: number;
   },
 ): Promise<CatalogPool> {
-  const nearest = deps.nearest === true;
   const mode: RankMode = deps.mode ?? "popular";
   const growth = deps.growthBases
     ? await fetchGrowthTerms(
@@ -922,52 +892,35 @@ export async function selectCatalogPool<T extends PoolRow>(
       KNOWN_FAMILY_SLUGS,
     )
     : undefined;
-  let order: string[];
-  let adIds: string[] = [];
-  let preShuffle: Record<string, number> = {};
-  let read: number;
-  let lanes: CatalogLaneStats = { organic: 0, premier: 0, belowFloor: 0, inorganicTotal: 0, adsFirstPage: 0 };
-  let laneOf: Record<string, RecipeRow> = {};
-  let weaves: number[] = [];
-  // `nearest` keeps the caller's page; every mode's page is its first weave
-  // (MESITA-4517).
-  let page = Math.max(0, deps.pageSize);
-  if (nearest) {
-    const { data, error } = await deps.rank(catalogNearestArgs(deps.cfg, deps.location, deps.families));
-    if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
-    const answer = (data ?? {}) as { read?: unknown; ids?: unknown };
-    order = ids(answer.ids);
-    read = typeof answer.read === "number" ? answer.read : order.length;
-  } else {
-    const mix = mixFor(deps.cfg);
-    const { answer, organicLanes, premier, woven } = await weaveCatalog(
-      deps.rankLanes,
-      deps.cfg,
-      deps.location,
-      deps.families,
-      mode,
-    );
-    weaves = woven.weaves;
-    laneOf = woven.laneOf as Record<string, RecipeRow>;
-    page = weaves[0] ?? 0;
-    order = cutAndShuffle(woven.order, page, mix.temperature[mode], deps.seed);
-    adIds = woven.adIds;
-    const rankOf = new Map(woven.order.map((id, i) => [id, i + 1] as const));
-    preShuffle = Object.fromEntries(order.slice(0, page).map((id) => [id, rankOf.get(id) ?? 0]));
-    const organicCount = organicLanes.reduce((n, l) => Math.max(n, l.ids.length), 0);
-    read = typeof answer.read === "number" ? answer.read : organicCount;
-    const ads = new Set(adIds);
-    const byLane: Record<string, number> = {};
-    for (const k of Object.values(laneOf)) byLane[k] = (byLane[k] ?? 0) + 1;
-    lanes = {
-      organic: organicCount,
-      premier: premier.length,
-      belowFloor: count(answer.below_floor),
-      inorganicTotal: count(answer.inorganic_total),
-      adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
-      byLane,
-    };
-  }
+  const mix = mixFor(deps.cfg);
+  const { answer, organicLanes, premier, woven } = await weaveCatalog(
+    deps.rankLanes,
+    deps.cfg,
+    deps.location,
+    deps.families,
+    mode,
+  );
+  const weaves = woven.weaves;
+  let laneOf = woven.laneOf as Record<string, RecipeRow>;
+  // The page is the first weave (MESITA-4517).
+  const page = weaves[0] ?? 0;
+  let order = cutAndShuffle(woven.order, page, mix.temperature[mode], deps.seed);
+  let adIds = woven.adIds;
+  const rankOf = new Map(woven.order.map((id, i) => [id, i + 1] as const));
+  const preShuffle = Object.fromEntries(order.slice(0, page).map((id) => [id, rankOf.get(id) ?? 0]));
+  const organicCount = organicLanes.reduce((n, l) => Math.max(n, l.ids.length), 0);
+  const read = typeof answer.read === "number" ? answer.read : organicCount;
+  const ads = new Set(adIds);
+  const byLane: Record<string, number> = {};
+  for (const k of Object.values(laneOf)) byLane[k] = (byLane[k] ?? 0) + 1;
+  const lanes: CatalogLaneStats = {
+    organic: organicCount,
+    premier: premier.length,
+    belowFloor: count(answer.below_floor),
+    inorganicTotal: count(answer.inorganic_total),
+    adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
+    byLane,
+  };
   const ranked = order.length;
   const capped = ranked > CATALOG_ORDER_CAP;
   if (capped) {
