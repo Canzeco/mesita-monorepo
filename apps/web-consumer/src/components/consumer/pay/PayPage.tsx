@@ -19,7 +19,7 @@ import type { GuestBill } from "@/lib/api/pay-bill";
 import { PayHeader } from "./PayHeader";
 import { PayFrameLoading } from "./PayFrameLoading";
 import { firstOfferTab, NearbyOffers } from "./PayPick";
-import { GiftShortcut, TicketsShortcut } from "./TicketsShortcut";
+import { WalletHeaderActions } from "./TicketsShortcut";
 import { PAY_TAB_PARAM, type PayTab, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 
@@ -151,7 +151,7 @@ export function PayPage({
           then below each place ticket"): Tickets rides the header as an
           icon; the Payment method | Tickets row is gone, so Pay Bill is the
           page's first button. */}
-      <PayHeader title="Mesita" beside={<GiftShortcut />} action={<TicketsShortcut icon />} />
+      <PayHeader title="Mesita" action={<WalletHeaderActions />} />
 
       {/* THREE BUTTONS IN ONE ROW (Pato, 2026-11-21, MESITA-4579: "try to
           put the buttons in a horizontal instead of vertical, the three
