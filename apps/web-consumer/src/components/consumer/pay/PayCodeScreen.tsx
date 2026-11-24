@@ -2,17 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { cashbackRows, TierMatrix } from "@mesita/place-profile";
 import { QRCodeSVG } from "qrcode.react";
-import { BadgePercent, Banknote, ChevronRight, HandCoins, Loader2, ReceiptText, Wallet, XCircle } from "lucide-react";
+import { BadgePercent, Banknote, HandCoins, Loader2, ReceiptText, Wallet, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAnswerBill, apiGetPayCode, billNeedsGuest, type GuestBill, type PayCode } from "@/lib/api/pay-bill";
-import { money, type PayPlace, payPlaceCashbackBps, payPlaceDiscountBps } from "@/lib/api/wallet";
-import { payBillPath, placeOffersPath } from "@/lib/consumer-route-contract";
+import { money, payPlaceCashbackBps, payPlaceDiscountBps } from "@/lib/api/wallet";
+import { payBillPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useWakeLock } from "@/lib/use-wake-lock";
@@ -26,8 +25,9 @@ import { usePayPlaces } from "./use-pay-places";
 // this same screen becomes the bill:
 //
 // THREE VIEWS (MESITA-4878, Pato: "1. QR 2. Pay Bill & Confirm payment 3. Receipt"):
-//   1 QR        "Show this to your waiter"; opened from a place, its four tiers
-//               with the guest's own, and what Prepay gives there
+//   1 QR        "Show this to your waiter"; opened from a place, the guest's
+//               credits and rate there and nothing more (MESITA-4881, Pato: "don't
+//               overexplain here"; the tiers and a Prepay line under MESITA-4878)
 //   2 Pay Bill  what it comes to, Accept or Decline; then Pay $X at the place,
 //               which only the waiter confirms
 //   3 Receipt   /pay/bill/<id>
@@ -45,24 +45,6 @@ const RENEW_MS = 60_000;
 /** A bill that just changed can't be accepted by a tap already on its way. */
 const REARM_MS = 1000;
 const CODE_KEY = "mesita.pay.code";
-
-/** The place's tiers as the matrix reads them; none from an older server. */
-function tiersOf(p: PayPlace) {
-  const o = p.offers;
-  const bps = (v: number | null | undefined) => Math.round((v ?? 0) * 100);
-  return o
-    ? cashbackRows({
-        welcome_bps: bps(o.welcome_pct),
-        returning_bps: bps(o.returning_pct),
-        returning_vip_bps: bps(o.returning_vip_pct),
-        welcome_vip_bps: bps(o.welcome_vip_pct !== undefined ? o.welcome_vip_pct : o.welcome_pct),
-        visit_mechanism: o.visit_mechanism,
-        line: p.visit_line ?? null,
-      })
-    : [];
-}
-/** The best bonus on sale there, in whole percent; 0 = none. */
-const bestBonus = (p: PayPlace) => Math.max(0, ...(p.offers?.sell ?? []).map((k) => p.offers?.voucher_pct?.[k] ?? 0));
 
 function keptCode(): PayCode | null {
   try {
@@ -274,8 +256,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     const typing = bill?.state === "open";
     const discount = here ? payPlaceDiscountBps(here) : 0;
     const back = here && discount === 0 ? payPlaceCashbackBps(here) : 0;
-    const tiers = here ? tiersOf(here) : [];
-    const bonus = here ? bestBonus(here) : 0;
     return frame(
       "Your QR",
       <>
@@ -294,25 +274,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
               </span>
             ) : null}
           </PaySection>
-        ) : null}
-        {/* THE FOUR TIERS, YOURS LIT (Pato: "we have four tiers of offers and
-            this one corresponds to you"). Hidden on a short phone: the QR must
-            stay easy to scan, and the place row keeps the guest's own rate. */}
-        {here && tiers.length > 0 ? (
-          <PaySection className="px-3 py-2 [@media(max-height:740px)]:hidden" data-pay-code-tiers>
-            <TierMatrix rows={tiers} guest={here.visit_line ?? null} line={here.visit_line ?? null} small />
-          </PaySection>
-        ) : null}
-        {here && bonus > 0 ? (
-          <button
-            type="button"
-            onClick={() => navigateTo(router, placeOffersPath(here.place_id, "prepayment"), { motion: "drill" })}
-            className="flex min-h-11 w-full shrink-0 items-center gap-2 rounded-2xl bg-indigo-50 px-4 py-2 text-left text-sm font-semibold text-indigo-700"
-            data-pay-code-prepay
-          >
-            <span className="min-w-0 flex-1">Next time, Prepay: up to +{bonus}% bonus</span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          </button>
         ) : null}
         <PaySection className="flex min-h-0 flex-1 flex-col items-center gap-3 p-4 text-center">
           <h2 className="text-base font-semibold" role="status">

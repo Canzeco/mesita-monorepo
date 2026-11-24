@@ -2,7 +2,7 @@
 
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Percent, Receipt as ReceiptIcon, ChevronDown, CircleCheck, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, X, type LucideIcon } from "lucide-react";
+import { Wallet, Clock, ArrowRight, Banknote, Percent, Receipt as ReceiptIcon, ChevronDown, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, QrCode, Ticket, X, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
@@ -427,65 +427,6 @@ export function readyClock(iso: string, now = new Date()): string {
   return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString("en-US", { weekday: "short" })} ${time}`;
 }
 
-const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
-
-/** A WHITE BOX ON THE GREY GROUND (Pato, 2026-11-17, MESITA-4303: "MORE
- *  MODULAR ... IN BOXES ... ONE BOX FOR THE STEPS AND ONE BOX FOR THE
- *  EXPLANATION ... KEEP THIS ORDERED"; D2): the Reserve page's panel, its
- *  small label inside, one job per box. */
-function Box({
-  title,
-  className,
-  children,
-  ...data
-}: { title?: string; className?: string; children: ReactNode } & { [k: `data-${string}`]: string | undefined }) {
-  return (
-    <section className={cn(CARD, "shrink-0 px-4 py-3", className)} {...data}>
-      {title ? <h4 className={cn(SECTION_LABEL, "mb-2.5")}>{title}</h4> : null}
-      {children}
-    </section>
-  );
-}
-
-/** One line of a Good to know box. */
-type Fact = { Icon: LucideIcon; text: string };
-
-function GoodToKnow({ facts }: { facts: Fact[] }) {
-  return (
-    <Box title="Good to know" data-offer-good-to-know="">
-      <ul className="flex flex-col gap-2">
-        {facts.map((f) => (
-          <li key={f.text} className="text-foreground flex items-start gap-2.5 text-base leading-snug">
-            <f.Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-            {f.text}
-          </li>
-        ))}
-      </ul>
-    </Box>
-  );
-}
-
-/** Every offer of a tab inside How it works (MESITA-4804): its name, what it
- *  asks, its own rule, and its rate at the right. */
-function OfferFacts({ rows }: { rows: { key: string; title: string; line: string; rule?: string | null; rate: string }[] }) {
-  return (
-    <Box title="Offers" data-how-offers="">
-      <ul className="divide-border divide-y">
-        {rows.map((o) => (
-          <li key={o.key} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0" data-how-offer={o.key}>
-            <span className="min-w-0">
-              <span className="text-foreground block text-base leading-snug font-semibold">{o.title}</span>
-              <span className="text-muted-foreground block text-sm tabular-nums">{o.line}</span>
-              {o.rule ? <span className="block text-sm font-semibold text-amber-900">{o.rule}</span> : null}
-            </span>
-            <span className="text-foreground shrink-0 text-base leading-snug font-semibold tabular-nums">{o.rate}</span>
-          </li>
-        ))}
-      </ul>
-    </Box>
-  );
-}
-
 /** THE MOST OF ONE VOUCHER IN A BASKET (MESITA-4647): the server's own caps
  *  (`_shared/vouchers.ts` BASKET_MAX_QTY 5; BASKET_ONE_ONLY Welcome and VIP
  *  1). The server refuses past them whatever this says. */
@@ -698,7 +639,7 @@ function CashbackPanel({ cashback }: { cashback: PlaceCashback }) {
   if (rows.length === 0) return null;
   return (
     <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Visit offers" data-promos="cashback">
-      <TierMatrix rows={rows} guest={you} line={cashback.line} big />
+      <TierMatrix rows={rows} guest={you} line={cashback.line} />
       {/* NO FOOTNOTE (Pato, MESITA-4702: "remove the explanations there,
           that's why we have the i"): the rules live in How it works. */}
     </section>
@@ -774,20 +715,15 @@ function HowItWorks({ title, lead, tab, menu, children }: { title: string; lead:
  *  MESITA-4875, Pato: "maybe matrix is clearer"): which visit across, which
  *  Class down. The guest's own cell is the offer's colour with "You"; one they
  *  cannot get wears a lock and why; a tier that gives nothing is a dash. */
-export function TierMatrix({
+function TierMatrix({
   rows,
   guest,
   line,
-  big,
-  small,
 }: {
   rows: CashbackLineRow[];
   guest: CashbackLineRow["line"] | null;
   /** The server's line for this guest's next bill; null signed out. */
   line: PlaceCashback["line"];
-  big?: boolean;
-  /** The guest's QR screen (MESITA-4878): the QR keeps the room. */
-  small?: boolean;
 }) {
   const cell = (key: CashbackLineRow["line"]) => {
     const row = rows.find((o) => o.line === key);
@@ -797,8 +733,7 @@ export function TierMatrix({
       <td className="py-1 pl-2">
         <span
           className={cn(
-            "flex flex-col items-center justify-center gap-0.5 rounded-xl leading-tight font-semibold tabular-nums",
-            big ? "min-h-20 text-2xl" : small ? "min-h-10 text-sm" : "min-h-12 text-base",
+            "flex min-h-20 flex-col items-center justify-center gap-0.5 rounded-xl text-2xl leading-tight font-semibold tabular-nums",
             mine ? visitTone(row.mech) : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
           )}
           data-how-tier={key}
@@ -822,7 +757,7 @@ export function TierMatrix({
     { title: "Returning Visit", who: "Every bill after" },
   ];
   return (
-    <div className={big ? "p-3" : undefined} data-cashback-lines>
+    <div className="p-3" data-cashback-lines>
       <table className="w-full table-fixed">
         <colgroup>
           <col className="w-[26%]" />
@@ -835,7 +770,7 @@ export function TierMatrix({
             {visits.map((v) => (
               <th key={v.title} scope="col" className="pb-1 pl-2 font-semibold">
                 {v.title}
-                {small ? null : <span className="text-muted-foreground block text-xs font-normal">{v.who}</span>}
+                <span className="text-muted-foreground block text-xs font-normal">{v.who}</span>
               </th>
             ))}
           </tr>
@@ -857,35 +792,104 @@ export function TierMatrix({
   );
 }
 
-/** The steps in full sentences (Pato, 2026-11-24, MESITA-4828: "write the how
- *  it works clearer, even if more text"): a number, a bold line, what happens. */
-function NumberedSteps({ steps }: { steps: { title: string; text: string }[] }) {
-  return (
-    <Box title="Step by step">
-      <ol className="flex flex-col gap-3" data-how-steps>
-        {steps.map((x, i) => (
-          <li key={x.title} className="flex items-start gap-3">
-            <span className="bg-foreground text-background flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums" aria-hidden>
-              {i + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground block text-base leading-7 font-semibold">{x.title}</span>
-              <span className="text-muted-foreground block text-sm leading-snug">{x.text}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-    </Box>
-  );
-}
+// ── THE EXPLANATIONS (Pato, 2026-11-24, MESITA-4881: "clearer … with
+// illustrations too, beautiful clean design for all the explanations") ──
+// One design for Prepay, Discounts and Cashback: one sentence, three scenes
+// (a drawing with real numbers, a bold line, what happens), one closing line.
+// No boxes inside boxes. The drawings are the app's own things: the QR, the
+// bill, the credit card.
 
 /** The bill the worked example uses, in whole pesos. */
 const EXAMPLE_BILL = 500;
 
-/** Pay's How it works, TWO SECTIONS OF PLAIN TEXT (Pato, 2026-11-24,
- *  MESITA-4880: "far simpler. less sections more text"): no boxes, steps or
- *  table (the tiers are the Pay tab's own matrix); it opens on this place's
- *  mechanism, the other one is an example (MESITA-4874). */
+const SCENE_TINT = { prepay: "bg-indigo-50", discount: "bg-green-50", cashback: "bg-green-50" } as const;
+
+function Scene({ n, tint, art, title, text }: { n: number; tint: keyof typeof SCENE_TINT; art: ReactNode; title: string; text: string }) {
+  return (
+    <li className="flex flex-col" data-how-scene={n}>
+      <div className={cn("flex h-36 items-center justify-center gap-3 overflow-hidden rounded-2xl px-3", SCENE_TINT[tint])} aria-hidden>
+        {art}
+      </div>
+      <h4 className="text-foreground mt-3 flex items-center gap-2 text-lg leading-tight font-semibold">
+        <span className="bg-foreground text-background flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums">{n}</span>
+        {title}
+      </h4>
+      <p className="text-muted-foreground mt-1 text-base leading-snug">{text}</p>
+    </li>
+  );
+}
+
+function Scenes({ children, note }: { children: ReactNode; note: string }) {
+  return (
+    <>
+      <ol className="mt-1 flex flex-col gap-6" data-how-steps>
+        {children}
+      </ol>
+      <p className="text-muted-foreground border-border mt-3 border-t pt-4 text-sm leading-relaxed">{note}</p>
+    </>
+  );
+}
+
+/** A phone with the guest's QR. */
+function ArtPhone() {
+  return (
+    <span className="border-foreground bg-card relative flex h-28 w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] shadow-sm">
+      <span className="bg-foreground absolute top-1.5 h-1 w-5 rounded-full" />
+      <QrCode className="text-foreground h-11 w-11" strokeWidth={1.75} />
+    </span>
+  );
+}
+
+/** A printed bill: its lines, the last one bold. */
+function ArtBill({ lines }: { lines: { label: string; value: string; green?: boolean }[] }) {
+  return (
+    <span className="bg-card flex w-40 min-w-0 flex-col gap-1.5 rounded-xl px-3 py-3 text-sm tabular-nums shadow-sm">
+      {lines.map((l, i) => (
+        <span
+          key={l.label}
+          className={cn(
+            "flex items-center justify-between gap-3",
+            i === lines.length - 1 ? "border-border text-foreground border-t pt-1.5 font-bold" : l.green ? "font-semibold text-[#00A85A]" : "text-muted-foreground",
+          )}
+        >
+          <span>{l.label}</span>
+          <span>{l.value}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** The guest's credit at the place: the Wallet's black card. */
+function ArtCredit({ label, amount }: { label: string; amount: string }) {
+  return (
+    <span className="bg-foreground text-background flex h-[5.5rem] w-40 min-w-0 flex-col justify-between rounded-2xl px-4 py-3 shadow-sm">
+      <span className="flex items-center justify-between text-sm">
+        {label}
+        <Wallet className="h-4 w-4" strokeWidth={2.25} />
+      </span>
+      <span className="text-2xl leading-none font-bold tabular-nums">{amount}</span>
+    </span>
+  );
+}
+
+function ArtArrow() {
+  return <ArrowRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.5} />;
+}
+
+function ArtClock({ text }: { text: string }) {
+  return (
+    <span className="flex flex-col items-center gap-1">
+      <span className="bg-card text-foreground flex h-14 w-14 items-center justify-center rounded-full shadow-sm">
+        <Clock className="h-7 w-7" strokeWidth={2} />
+      </span>
+      <span className="text-foreground text-sm font-semibold">{text}</span>
+    </span>
+  );
+}
+
+/** Pay's How it works: Discounts and Cashback (MESITA-4874), opening on this
+ *  place's mechanism; the other one is an example. */
 function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
   const shown = rows.find((o) => o.line === guest) ?? rows[0];
   const [section, setSection] = useState<VisitMechanism>(shown.mech);
@@ -893,17 +897,6 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
   const discount = section === "discount";
   const rate = `${shown.bps / 100}%`;
   const gives = (EXAMPLE_BILL * shown.bps) / 10000;
-  const text = discount
-    ? [
-        "When you ask for the bill, show your QR to your waiter. They send the bill to your phone with the discount already taken off, and you tap Accept. Then you pay the waiter in cash or by card, like always.",
-        `For example, with ${rate} off, a $${EXAMPLE_BILL} bill costs you $${EXAMPLE_BILL - gives}, plus your tip. The discount is on the bill, never on the tip.`,
-        `If you have credits ${here ? "here" : "there"}, they are used first; credits never pay the tip. Your first visit, your later visits and VIP Class each have their own discount.`,
-      ]
-    : [
-        "When you ask for the bill, show your QR to your waiter. They send the bill to your phone and you tap Accept. Then you pay the waiter in cash or by card, like always. One hour later, part of what you paid is in your Wallet as credit.",
-        `For example, with ${rate} back, a $${EXAMPLE_BILL} bill gives you $${gives} of credit. Use it to pay any bill at ${here ? "this place" : "the place that gave it"}. It never expires.`,
-        "The tip and the part you pay with credit earn no cashback, and one bill earns $1,000 at most. Your first visit, your later visits and VIP Class each have their own cashback.",
-      ];
   const what = (m: VisitMechanism) =>
     m === "discount" ? "discounts: part of your bill comes off before you pay" : "cashback: part of what you pay comes back as credit for your next visit";
   return (
@@ -931,50 +924,134 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
       }
       lead={here ? `This place gives ${what(section)}.` : `This place gives ${discount ? "cashback" : "discounts"}. Other places give ${what(section)}.`}
     >
-      {text.map((t) => (
-        <p key={t} className="text-foreground text-base leading-relaxed">
-          {t}
-        </p>
-      ))}
+      {discount ? (
+        <Scenes
+          note={`The discount is on the bill, never on the tip. If you have credits ${here ? "here" : "there"}, they are used first; credits never pay the tip.`}
+        >
+          <Scene n={1} tint="discount" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter." />
+          <Scene
+            n={2}
+            tint="discount"
+            art={
+              <ArtBill
+                lines={[
+                  { label: "Bill", value: `$${EXAMPLE_BILL}` },
+                  { label: `${rate} off`, value: `−$${gives}`, green: true },
+                  { label: "You pay", value: `$${EXAMPLE_BILL - gives}` },
+                ]}
+              />
+            }
+            title="Check your bill"
+            text="It arrives on your phone with the discount already taken off. Tap Accept."
+          />
+          <Scene
+            n={3}
+            tint="discount"
+            art={
+              <>
+                <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
+                <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
+              </>
+            }
+            title="Pay your waiter"
+            text="Cash or card, like always. Your waiter confirms it and you get your receipt."
+          />
+        </Scenes>
+      ) : (
+        <Scenes note="The tip and the part you pay with credit earn no cashback, and one bill earns $1,000 at most. Your credit never expires.">
+          <Scene n={1} tint="cashback" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter. Check the bill on your phone and tap Accept." />
+          <Scene
+            n={2}
+            tint="cashback"
+            art={
+              <>
+                <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
+                <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
+              </>
+            }
+            title={`Pay your waiter $${EXAMPLE_BILL}`}
+            text="Cash or card, like always. Your waiter confirms it."
+          />
+          <Scene
+            n={3}
+            tint="cashback"
+            art={
+              <>
+                <ArtClock text="1 hour" />
+                <ArtArrow />
+                <ArtCredit label={`${rate} back`} amount={`+$${gives}`} />
+              </>
+            }
+            title={`Get $${gives} back`}
+            text={`One hour later it is in your Wallet. Use it on any bill at ${here ? "this place" : "the place that gave it"}.`}
+          />
+        </Scenes>
+      )}
     </HowItWorks>
   );
 }
 
-/** Prepay's How it works: the steps, every voucher's deal and rule, the rules. */
+/** Prepay's How it works, on one of this place's own offers: the middle one. */
 function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout }) {
-  const { loading, catalog, currency } = co;
-  const rule = (k: MoneyVoucherKey) =>
-    k === "voucher_welcome" ? "Once per guest at this place." : k === "voucher_vip" ? "One per visit." : null;
-  const facts: Fact[] = [
-    { Icon: Utensils, text: "Your credit pays any bill at this place. It can't be used at other places, and it never pays the tip." },
-    { Icon: Gift, text: "You can send your credit to a friend as a gift." },
-    { Icon: InfinityIcon, text: "Your credit never expires." },
-    ...(products.some((p) => rule(p.key) === null) ? [{ Icon: Repeat, text: "You can buy as many as you like." }] : []),
-  ];
+  const { catalog, currency } = co;
+  const p = products[Math.floor((products.length - 1) / 2)];
+  if (!p) return null;
+  const line = catalog[p.key];
+  const pay = whole(priceValue(p, line, currency));
+  const get = whole(creditValue(p, line, currency));
   return (
-    <HowItWorks tab="prepay" title="How prepaying works" lead="You buy a voucher today and get more credit than you paid, to spend at this place on your next visits.">
-      <NumberedSteps
-        steps={[
-          { title: "Pick a voucher and pay", text: "Choose one or more with the + button and pay with your card." },
-          { title: "Wait 3 hours", text: "What you paid and your bonus arrive together, as credit in your Wallet. You don't have to do anything." },
-          { title: "Spend it here", text: "When you want the bill, open Pay Bill and show your QR to your waiter. Your credit is used first and you pay only what is left." },
-        ]}
-      />
-      {loading ? null : (
-        <OfferFacts
-          rows={products.map((p) => {
-            const line = catalog[p.key];
-            return {
-              key: p.key,
-              title: p.short,
-              line: `You pay ${whole(priceValue(p, line, currency))}, you get ${whole(creditValue(p, line, currency))}`,
-              rule: rule(p.key),
-              rate: `${bonusValue(p, line)} Bonus`,
-            };
-          })}
+    <HowItWorks tab="prepay" title="How Prepay works" lead="Pay now and get more to spend here on your next visits.">
+      <Scenes note="Your credit pays any bill at this place, never the tip, and never expires. You can also send it to a friend as a gift.">
+        <Scene
+          n={1}
+          tint="prepay"
+          art={
+            <>
+              <span className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center rounded-2xl bg-[#635BFF] text-2xl font-bold text-white tabular-nums shadow-sm">
+                {bonusValue(p, line)}
+              </span>
+              <span className="text-foreground flex flex-col text-left">
+                <span className="text-base font-semibold">{p.short}</span>
+                <span className="text-2xl leading-tight font-bold tabular-nums">Pay {pay}</span>
+              </span>
+            </>
+          }
+          title={`Pay ${pay}`}
+          text="Pick a bonus with the + button and pay with your card. The bigger it is, the more you get."
         />
-      )}
-      <GoodToKnow facts={facts} />
+        <Scene
+          n={2}
+          tint="prepay"
+          art={
+            <>
+              <ArtClock text="3 hours" />
+              <ArtArrow />
+              <ArtCredit label="Credits" amount={get} />
+            </>
+          }
+          title={`Get ${get}`}
+          text="What you paid and your bonus arrive together in your Wallet, 3 hours later. You don't have to do anything."
+        />
+        <Scene
+          n={3}
+          tint="prepay"
+          art={
+            <>
+              <ArtPhone />
+              <ArtArrow />
+              <ArtBill
+                lines={[
+                  { label: "Bill", value: "$200" },
+                  { label: "Credits", value: "−$200", green: true },
+                  { label: "You pay", value: "$0" },
+                ]}
+              />
+            </>
+          }
+          title="Spend it here"
+          text="When you want the bill, open Pay and show your QR to your waiter. Your credits are used first and you pay only what is left, plus the tip."
+        />
+      </Scenes>
     </HowItWorks>
   );
 }

@@ -18,7 +18,6 @@ import {
   payCodePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
-import { cn } from "@/lib/utils";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -176,10 +175,11 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-offers-route>
       {/* ONE LINE (Pato, 2026-11-17, MESITA-4224: "the header must only have
           one line ... the place name and profile picture"), then the black
-          Balance card in the same white block (MESITA-4727). Signed out, the
-          name row alone with its hairline (MESITA-3474). */}
-      <header className={cn("bg-card z-20 flex shrink-0 flex-col", !credit && "border-border border-b")}>
-        <div className="flex h-14 shrink-0 items-center gap-1 px-1.5">
+          Balance card in the same white block (MESITA-4727). TALLER, A LINE
+          UNDER IT (Pato, 2026-11-24, MESITA-4881): the name row and its hairline
+          part the header from the page, signed in or out. */}
+      <header className="bg-card z-20 flex shrink-0 flex-col">
+        <div className="border-border flex h-[4.5rem] shrink-0 items-center gap-1 border-b px-1.5">
           <button
             type="button"
             aria-label="Back"
@@ -191,9 +191,9 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-3">
             {place.profilePhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={place.profilePhoto} alt="" className="bg-muted h-8 w-8 shrink-0 rounded-full object-cover" />
+              <img src={place.profilePhoto} alt="" className="bg-muted h-11 w-11 shrink-0 rounded-full object-cover" />
             ) : null}
-            <h1 className="text-foreground truncate text-base leading-tight font-semibold">{place.name}</h1>
+            <h1 className="text-foreground truncate text-lg leading-tight font-semibold">{place.name}</h1>
           </div>
         </div>
         {/* READY NOW, PENDING AND WHEN (Pato, 2026-11-17, MESITA-4224, D3).
@@ -208,10 +208,10 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             waits.
             ONE HEADER (Pato, 2026-11-23, MESITA-4727: "name and black box
             must be in the same part"): the card sits in the fixed white
-            header under the name row, no line between them. */}
+            header under the name row and its line (MESITA-4881). */}
         {credit ? (
           <div
-            className="bg-foreground text-paper mx-4 mb-3 flex shrink-0 flex-col gap-1 rounded-2xl p-4"
+            className="bg-foreground text-paper mx-4 mt-4 flex shrink-0 flex-col gap-1 rounded-2xl p-4"
             role="group"
             aria-label={credit.label}
             data-offers-balance
