@@ -37,6 +37,7 @@
 // and consumer-web-update-profile/update-profile-fields.ts already owns
 // them. This validator checks the STORED SHAPE only.
 
+import type { SocialFacts } from "./social-level.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isNullableString } from "./doc-schema.ts";
 
@@ -71,6 +72,8 @@ export type ConsumerDoc = {
   // hidden; only true shows it (place_shown_handle). A new handle, Disconnect
   // and account deletion put it back to null.
   instagram_handle_shown: boolean | null;
+  // MESITA-4850: the guest chose Private (social-level.ts reads it).
+  social_private: boolean;
   // MESITA-4662: the follower emulator (test mode only). null = the real count
   // counts; a number stands in for it in guest_class. 0..100,000,000.
   instagram_followers_emulated: number | null;
@@ -101,6 +104,7 @@ export const CONSUMER_PATCH_KEYS = [
   "instagram_verified_at",
   "use_instagram_photo",
   "instagram_handle_shown",
+  "social_private",
   "instagram_followers_emulated",
   "deleted_at",
 ] as const satisfies readonly (keyof Omit<ConsumerDoc, "id" | "created_at">)[];
@@ -283,6 +287,13 @@ export function validateConsumerPatch(
     }
     patch.instagram_handle_shown = v;
   }
+  if ("social_private" in raw) {
+    const v = raw.social_private;
+    if (typeof v !== "boolean") {
+      return { ok: false, error: "social_private must be a boolean" };
+    }
+    patch.social_private = v;
+  }
   if ("instagram_followers_emulated" in raw) {
     const v = raw.instagram_followers_emulated;
     if (v !== null && !isEmulatedFollowers(v)) {
@@ -458,25 +469,21 @@ export async function disconnectInstagram(
 
 // ── readSocialStanding — what Social masks by (MESITA-2594) ───────────────
 
-/** Whether the viewer shows themself in Social: a verified Instagram and
- *  (MESITA-4659) "Show my handle on Mesita". You see others' handles only if
- *  you show yours. Every profile is public (MESITA-4690). */
+/** What decides the viewer's own privacy level (MESITA-4850): you see others'
+ *  handles only at the instagram level, showing yours. */
 export async function readSocialStanding(
   admin: SupabaseClient,
   consumerId: string,
 ): Promise<
   | {
     ok: true;
-    row: {
-      instagram_verified_at: string | null;
-      instagram_handle_shown: boolean | null;
-    } | null;
+    row: SocialFacts | null;
   }
   | { ok: false; error: string }
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("instagram_verified_at, instagram_handle_shown")
+    .select("birth_year, social_private, instagram_verified_at, instagram_handle_shown")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -485,6 +492,8 @@ export async function readSocialStanding(
     ok: true,
     row: data
       ? {
+        birth_year: (data.birth_year as number | null) ?? null,
+        social_private: (data.social_private as boolean | null) ?? null,
         instagram_verified_at: (data.instagram_verified_at as string | null) ??
           null,
         instagram_handle_shown: (data.instagram_handle_shown as boolean | null) ?? null,

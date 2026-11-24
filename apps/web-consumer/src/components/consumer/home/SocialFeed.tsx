@@ -50,6 +50,12 @@
 // (Pato, MESITA-2591: "remove mock data"; it reverses MESITA-2520's sample
 // rows): only the server's rows, and with none, the empty state.
 //
+// WHAT A ROW SAYS OF A PERSON IS THEIR PRIVACY LEVEL (MESITA-4850, over the
+// first name and photo on every row of MESITA-2612/2608/4690): a Public member
+// is the gray face and "Woman, mid 20s", with a written F or M mark; a member
+// sharing their Instagram is their photo, first name and @handle, masked for
+// a viewer who does not share theirs. Private members and minors never come.
+//
 // A NOTIFICATION STREAM (Pato, MESITA-2535: "feel like a notificartions
 // stream but it might also be readable"): the list stays on screen while it
 // reads again. After the first load, an event the pane has not shown before
@@ -249,6 +255,21 @@ export function Face({ person }: { person: ActivityPerson }) {
         </span>
       )}
       {person.instagram && <span className="sr-only">On Instagram</span>}
+      {!person.instagram && person.sex !== undefined && (
+        // A letter beside the colour, never colour alone (MESITA-4850); the
+        // sentence says it in words.
+        <span
+          aria-hidden
+          className={cn(
+            MARK_CLASS,
+            "-left-1 type-label font-bold text-white",
+            person.sex === "female" ? "bg-pink-600" : person.sex === "male" ? "bg-blue-600" : "bg-black",
+          )}
+          data-social-mark={person.sex ?? "undisclosed"}
+        >
+          {person.sex === "female" ? "F" : person.sex === "male" ? "M" : "–"}
+        </span>
+      )}
     </span>
   );
 }
@@ -354,6 +375,14 @@ function FeedRow({
           className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
           data-social-quiet
         >
+          {item.person.handle && (
+            <>
+              <span className="min-w-0 truncate" data-social-handle>
+                @{item.person.handle}
+              </span>
+              <span aria-hidden>·</span>
+            </>
+          )}
           <span className="flex shrink-0 items-center gap-0.5" data-social-ago>
             <Clock className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             {ago}
@@ -525,21 +554,23 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
  *  of other people, mention in a yellow pink box: add your instagram to see
  *  other people's instagram, a shortcut button"): the Instagram gradient,
  *  white words, one button to Me › Instagram. */
-function AddInstagramBox() {
+function AddInstagramBox({ connected }: { connected: boolean }) {
   return (
     <div
       className="flex w-full flex-col items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#F9CE34] via-[#EE2A7B] to-[#6228D7] px-4 py-3.5 text-center text-white"
       data-social-add-instagram
     >
       <p className="text-sm font-semibold">
-        Add your Instagram to see other people&apos;s Instagram
+        {connected
+          ? "Share your Instagram to see other people's Instagram"
+          : "Add your Instagram to see other people's Instagram"}
       </p>
       <PushLink
         href={CONSUMER_ROUTES.mePages.instagram}
         className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-neutral-950"
       >
         <InstagramGlyph className="h-4 w-4" />
-        Add Instagram
+        {connected ? "Share yours to see" : "Add Instagram"}
       </PushLink>
     </div>
   );
@@ -661,8 +692,8 @@ function PersonCard({
               name={who}
               avatarUrl={person.avatarUrl}
               instagram={
-                !person.isYou && !igConnected ? (
-                  <AddInstagramBox />
+                !person.isYou && (!igConnected || person.handleLocked) ? (
+                  <AddInstagramBox connected={igConnected} />
                 ) : person.handle && (person.isYou || !person.handleLocked) ? (
                   <PersonInstagramPill
                     label={`@${person.handle}`}

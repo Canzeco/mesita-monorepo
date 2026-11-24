@@ -1,4 +1,5 @@
 import { json } from "../_shared/http.ts";
+import { isSocialLevel, levelPatch, type SocialFacts, socialLevel, socialLock } from "../_shared/social-level.ts";
 import {
   EMULATED_FOLLOWERS_MAX,
   isEmulatedFollowers,
@@ -65,6 +66,8 @@ export type UpdateProfileBody = {
   // MESITA-4659: "Show my handle on Mesita" on Me › Instagram. true shows the
   // handle to others, false hides it; null (no choice) is not writable here.
   instagram_handle_shown?: boolean;
+  // MESITA-4850: the privacy level, private | public | instagram.
+  social_level?: unknown;
   // MESITA-4662: the follower emulator on Me › Instagram. A number (test mode
   // only) stands in for the real count in the Class; null is Reset to real.
   instagram_followers_emulated?: number | null;
@@ -301,6 +304,49 @@ export function parseFollowersEmulated(raw: unknown, testMode: boolean): ParseFo
   return { ok: true, followersEmulated: raw };
 }
 
+export type SocialStanding = SocialFacts & { instagram_handle: string | null };
+
+/** MESITA-4850: a minor (by the stored year) cannot leave Private, nor change
+ *  the year that keeps them there; `birthYear` undefined = not in this write. */
+export function privacyRefusal(
+  body: UpdateProfileBody,
+  stored: SocialStanding | null,
+  birthYear: number | null | undefined,
+  now: Date = new Date(),
+): Response | null {
+  const minor = stored != null && socialLock(stored.birth_year, now) === "minor";
+  if (minor && birthYear !== undefined && birthYear !== stored.birth_year) {
+    return json({
+      ok: false,
+      code: "birth_year_locked",
+      error: "Your year of birth can't be changed here. Contact us if it's wrong.",
+    }, 403);
+  }
+  const level = body.social_level;
+  if (level !== undefined && !isSocialLevel(level)) {
+    return json({ ok: false, error: "social_level must be private, public or instagram" }, 400);
+  }
+  const opens = (level !== undefined && level !== "private") || body.instagram_handle_shown === true;
+  if (!opens) return null;
+  // The year this write leaves behind decides, so a first year can open the profile.
+  const lock = minor ? "minor" : socialLock(birthYear !== undefined ? birthYear : stored?.birth_year, now);
+  if (lock === "minor") {
+    return json({ ok: false, code: "minor_private", error: "Profiles of guests under 18 are always private." }, 403);
+  }
+  if (lock === "no_birth_year") {
+    return json({ ok: false, code: "birth_year_needed", error: "Add your year of birth first." }, 409);
+  }
+  if (level === "instagram" && (!stored?.instagram_handle || !stored.instagram_verified_at)) {
+    return json({ ok: false, code: "instagram_needed", error: "Connect your Instagram first." }, 409);
+  }
+  return null;
+}
+
+/** What the app shows of the guest's own privacy (MESITA-4850). */
+export function socialFields(row: SocialFacts): { social_level: string; social_lock: string | null } {
+  return { social_level: socialLevel(row), social_lock: socialLock(row.birth_year) };
+}
+
 export type ProfileFieldValues = {
   firstName: string | null;
   lastName: string | null;
@@ -355,6 +401,10 @@ export function buildProfilePatch(
       };
     }
     patch.instagram_handle_shown = body.instagram_handle_shown;
+  }
+  // Checked by privacyRefusal; the level's two flags move together.
+  if (isSocialLevel(body.social_level)) {
+    Object.assign(patch, levelPatch(body.social_level));
   }
   if (fields.followersEmulated !== undefined) {
     patch.instagram_followers_emulated = fields.followersEmulated;

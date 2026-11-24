@@ -7,13 +7,17 @@
 // it, so it can come back without a migration. Who may appear (a verified
 // Instagram + not deleted, and never for a view, MESITA-2594; every profile is
 // public since MESITA-4690)
-// is decided in SQL (place_activity_visible and the readers); this module only
+// is decided in SQL (the readers).
+// Since MESITA-4850 the readers apply consumer_social_level: private members
+// never come back, and a name, photo or handle only at the instagram level.
+// This module only
 // shapes what those readers return, and masks handles for a viewer who does
 // not show their own (seesHandles):
 // the feed's events (one row each, newest first, near the guest) and the
 // place profile's line.
 
 import { isUuid } from "./place-id.ts";
+import { shownSex, type SocialFacts, socialLabel, socialLevel } from "./social-level.ts";
 
 export const ACTIVITY_KINDS = ["saved", "viewed"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
@@ -32,6 +36,8 @@ export function isMesitaPlaceId(v: unknown): v is string {
 /** One person as the feed and the line show them. */
 export type ActivityPerson = {
   name: string;
+  /** "female" | "male", adults only (MESITA-4850); null is undisclosed. */
+  sex: "female" | "male" | null;
   avatarUrl: string | null;
   /** The verified Instagram username, without "@" (MESITA-2590 shows it in
    *  full), or masked to "per***" when handleLocked. Null without a named
@@ -103,15 +109,12 @@ export function maskHandle(handle: string): string {
 
 /** Whether a viewer sees other members' full handles (MESITA-2594): only
  *  with their own Instagram verified and (MESITA-4659) their own handle shown
- *  on Mesita. Give to get. No Public profile term since MESITA-4690. */
+ *  on Mesita. Give to get: the viewer is at the instagram level (MESITA-4850). */
 export function seesHandles(
-  viewer: {
-    instagram_verified_at: string | null;
-    instagram_handle_shown: boolean | null;
-  } | null,
+  viewer: SocialFacts | null,
+  now: Date = new Date(),
 ): boolean {
-  return viewer != null && viewer.instagram_verified_at != null &&
-    viewer.instagram_handle_shown === true;
+  return viewer != null && socialLevel(viewer, now) === "instagram";
 }
 
 /** "@Perdon " → "perdon", or null. */
@@ -141,6 +144,10 @@ export type ActivityRow = {
   instagram?: boolean | null;
   /** MESITA-4714: set by withInstagramBadges before the rows are shaped. */
   instagram_badge?: boolean;
+  /** The feed and the person card (MESITA-4850), for socialLabel only: the
+   *  year never leaves the server. Absent elsewhere. */
+  birth_year?: number | null;
+  sex?: string | null;
   /** place_activity_feed only (MESITA-2853): where the event happened. */
   lat?: number | null;
   lng?: number | null;
@@ -153,14 +160,17 @@ export function toPerson(
   canSeeHandles = true,
 ): ActivityPerson {
   const isYou = row.consumer_id === viewerId;
-  // Always a name (MESITA-2612): the first name, or the Me header's own
-  // fallback when the member never gave one.
-  const first = row.first_name?.trim() || MEMBER_FALLBACK_NAME;
+  // The first name where SQL sent one (the instagram level, MESITA-4850); a
+  // Public member is their approximate age and sex ("Woman, mid 20s").
+  const first = row.first_name?.trim() ||
+    (row.birth_year != null ? socialLabel(row.birth_year, row.sex) : MEMBER_FALLBACK_NAME);
+  const sex = shownSex(row.birth_year, row.sex);
   if (row.anonymous === true) {
     // No handle, no followers; the face and the name show (MESITA-2608,
     // MESITA-2612); every profile is public (MESITA-4690).
     return {
       name: first,
+      sex,
       avatarUrl: row.avatar_url ?? null,
       handle: null,
       handleLocked: false,
@@ -179,6 +189,7 @@ export function toPerson(
   return {
     // The name is the first name; the feed leads with it, never the handle (MESITA-3070).
     name: first,
+    sex,
     avatarUrl: row.avatar_url ?? null,
     handle: handle && locked ? maskHandle(handle) : handle,
     handleLocked: locked,
@@ -272,12 +283,13 @@ export function socialLine(
   return `${who} and ${rest} ${rest === 1 ? "other" : "others"} liked this`;
 }
 
-/** Someone as an ANONYMOUS visitor sees them (MESITA-4246): the first name
- *  and Class, nothing else. No photo, no handle, no Instagram mark, no
+/** Someone as an ANONYMOUS visitor sees them (MESITA-4246): age and sex in
+ *  words and Class, never a name (MESITA-4850). No photo, no handle, no Instagram mark, no
  *  followers, no plan; never "you". */
 export function anonymousPerson(row: ActivityRow): ActivityPerson {
   return {
-    name: row.first_name?.trim() || MEMBER_FALLBACK_NAME,
+    name: socialLabel(row.birth_year, row.sex),
+    sex: shownSex(row.birth_year, row.sex),
     avatarUrl: null,
     handle: null,
     handleLocked: false,

@@ -6,10 +6,10 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(20);
+select plan(23);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3219');
-insert into public.consumers (id, first_name) values ('00000000-0000-4000-8000-0000000a3219', 'Probe');
+insert into public.consumers (id, first_name, birth_year) values ('00000000-0000-4000-8000-0000000a3219', 'Probe', 1990);
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000003219', 'Events Probe');
 insert into public.places (id, slug, state, content_state, currency)
@@ -143,9 +143,9 @@ select ok(
      from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
     and (select bool_and(instagram_handle is null) and count(*) = 5
            from public.place_activity_history_by('00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours'))
-    and (select count(*) = 1 and bool_and(instagram_handle is null)
+    and (select count(*) = 0
            from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
-  'no choice recorded: feed, person card and people line hide the handle'
+  'no choice recorded: feed and person card hide the handle'
 );
 
 update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
@@ -157,6 +157,31 @@ select ok(
     and (select bool_and(instagram_handle = 'probe.3219')
            from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
   'opted in: feed, person card and people line show the handle'
+);
+
+-- MESITA-4850: private and minors never appear, past events included; a Public
+-- member carries no name and no photo.
+update public.consumers set instagram_handle_shown = false where id = '00000000-0000-4000-8000-0000000a3219';
+select ok(
+  (select count(*) = 5 and bool_and(first_name is null and avatar_url is null and not instagram and birth_year = 1990)
+     from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219')),
+  'public: no name, no photo, no Instagram mark'
+);
+update public.consumers set social_private = true, instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
+select ok(
+  (select count(*) = 0 from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
+    and (select count(*) = 0 from public.place_activity_history_by('00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours'))
+    and (select count(*) = 0 from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
+  'private: nothing in the feed, the person card or the people line'
+);
+update public.consumers
+   set social_private = false, birth_year = extract(year from now() at time zone 'utc')::int - 18
+ where id = '00000000-0000-4000-8000-0000000a3219';
+select ok(
+  (select count(*) = 0 from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
+    and (select public.consumer_social_level(c) = 'private' and public.place_shown_handle(c) is null
+           from public.consumers c where id = '00000000-0000-4000-8000-0000000a3219'),
+  'a possible minor is private whatever the row says'
 );
 
 select * from finish();

@@ -6,14 +6,14 @@
 // consumer-web-list-activity's "place" scope).
 //
 // ANONYMOUS (MESITA-4246): no session reads the same line with every
-// person reduced to a first name and Class (anonymousPerson); `me.saved` is
+// person reduced to Class (anonymousPerson); `me.saved` is
 // false. A broken session is a 401.
 //
 // Body: { place_id }
 //   → { viewer, line, people, total, me: { saved } }
 //
-// Who appears is the SQL's call (place_activity_people over
-// place_activity_visible). Handles leave masked unless the viewer shows their
+// Who appears is the SQL's call (place_activity_people: the instagram level
+// alone, MESITA-4850). Handles leave masked unless the viewer shows their
 // own (MESITA-2594, seesHandles).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

@@ -20,8 +20,8 @@
 // places are dropped here, so a browser open across a deploy keeps working.
 //
 // The event names the member because no member id reaches the client
-// (MESITA-2460). A deleted member returns person null and no items; everyone
-// else is named by first name (MESITA-2612). Handles leave masked unless the
+// (MESITA-2460). A deleted or private member returns person null and no
+// items; a Public one is their approximate age and sex (MESITA-4850). Handles leave masked unless the
 // viewer shows their own (MESITA-2594, seesHandles).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
