@@ -652,8 +652,10 @@ export function CatalogRails() {
             // Every pill is a circle, strip and modal (MESITA-4570); only
             // the Menu tile keeps CAT_SQUARE.
             on ? CAT_EMOJI_ON : isSpecial(c.key) ? CAT_TINT_SPECIAL : CAT_TINT_FAMILY,
-            // Specials are squares, families circles (MESITA-4761).
-            isSpecial(c.key) && CAT_SQUARE,
+            // SOCIAL AND MENU ARE THE SQUARES, EVERYTHING ELSE A CIRCLE
+            // (Pato, 2026-11-23, MESITA-4798: "Social square Menu square,
+            // then all circles").
+            c.key === SOCIAL_CHIP && CAT_SQUARE,
           )}
         >
           {/* FLUENT FLAT, NOT THE PHONE'S EMOJI (Pato, 2026-11-23,
@@ -696,7 +698,10 @@ export function CatalogRails() {
       {/* THE MENU STAYS PUT (Pato, MESITA-4423: "menu must be fixed"): its
           tile sits outside the scroller, pinned at the left, so it is always one tap away while the categories slide
           under nothing. It was the row's first tile (MESITA-4410). */}
-      <div className="flex shrink-0 pl-2 pr-0.5">
+      <div className="flex shrink-0 gap-0.5 pl-2 pr-0.5">
+        {/* SOCIAL FIRST (Pato, MESITA-4798: "put social before menu"): the two
+            squares stay put, the circles scroll after them. */}
+        {chips.filter((c) => c.key === SOCIAL_CHIP).map((c) => pill(c, false))}
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
@@ -736,7 +741,7 @@ export function CatalogRails() {
         aria-label="Families"
         className="scrollbar-hide relative flex min-w-0 flex-1 gap-0.5 overflow-x-auto overscroll-x-contain px-1"
       >
-        {chips.map((c) => pill(c, false))}
+        {chips.filter((c) => c.key !== SOCIAL_CHIP).map((c) => pill(c, false))}
       </nav>
     </div>
   );
