@@ -805,7 +805,7 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
 // make items smaller"): 64px, not 76px, so the name and its line keep room.
 const BADGE = "flex min-h-11 w-16 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums";
 
-export type CashbackLineRow = { line: "welcome" | "returning" | "returning_vip"; title: string; who: string; bps: number; mech: VisitMechanism };
+export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; who: string; bps: number; mech: VisitMechanism };
 
 /** The place's lines that earn (rate above Off): Welcome, Returning, then
  *  Returning VIP (MESITA-4766, Pato: "NOW THE PAY OFFERS ARE Welcome
@@ -817,8 +817,10 @@ export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   const mech = visitMechanismOf({ cashback });
   return (
     [
-      { line: "welcome", title: "Welcome", who: "Your first bill here", bps: cashback.welcome_bps, mech },
-      { line: "returning", title: "Returning", who: "Every later bill", bps: cashback.returning_bps, mech },
+      // FOUR TIERS IN PATO'S WORDS AND ORDER (2026-11-23, MESITA-4789).
+      { line: "welcome", title: "Welcome Regular", who: "Your first bill here", bps: cashback.welcome_bps, mech },
+      { line: "returning", title: "Returning Regular", who: "Every later bill", bps: cashback.returning_bps, mech },
+      { line: "welcome_vip", title: "Welcome VIP", who: "First bill, for VIP guests", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
       { line: "returning_vip", title: "Returning VIP", who: "Every later bill, for VIP guests", bps: cashback.returning_vip_bps ?? 0, mech },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);

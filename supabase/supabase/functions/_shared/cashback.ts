@@ -24,10 +24,13 @@ export const WELCOME_STEPS_BPS = [0, 1000, 2000] as const;
 export const RETURNING_STEPS_BPS = [0, 500, 1000] as const;
 /** MESITA-4766: Returning VIP, Off · 10 · 20 %. */
 export const RETURNING_VIP_STEPS_BPS = [0, 1000, 2000] as const;
+/** MESITA-4789: Welcome VIP, a VIP's first paid bill here, Off · 10 · 20 %. */
+export const WELCOME_VIP_STEPS_BPS = [0, 1000, 2000] as const;
 
 export const CASHBACK_WAIT_SEC = 60 * 60;
 
-export type CashbackLine = "welcome" | "returning" | "returning_vip";
+/** MESITA-4789: four lines. "welcome" is the stored key for Welcome Regular. */
+export type CashbackLine = "welcome" | "welcome_vip" | "returning" | "returning_vip";
 
 /** MESITA-4770 (Pato, 2026-11-23: "SAME TIERS ... YOU JUST SET THE TIER. AND
  *  THEN THE MECHANISM FOR ALL YOUR VISIT TIERS"): how the Welcome / Returning
@@ -51,6 +54,8 @@ export type CashbackRates = {
   returning_bps: number;
   /** MESITA-4766: a later bill by a VIP guest. */
   returning_vip_bps: number;
+  /** MESITA-4789: a VIP guest's first paid bill here. */
+  welcome_vip_bps: number;
   /** MESITA-4770: Discount or Cashback, for all three lines. */
   visit_mechanism: VisitMechanism;
   /** MESITA-4762: the bonus each prepaid voucher gives here, in basis points:
@@ -79,7 +84,7 @@ export function voucherBonusFrom(r: Partial<Pick<CashbackRates, VoucherBonusFiel
 }
 
 /** The columns every rates read selects. */
-export const CASHBACK_RATE_COLUMNS = "welcome_bps, returning_bps, returning_vip_bps, visit_mechanism, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
+export const CASHBACK_RATE_COLUMNS = "welcome_bps, welcome_vip_bps, returning_bps, returning_vip_bps, visit_mechanism, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
 
 /** The last fallback, 10 / 5 / 10 %: cashback_defaults' seed and
  *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
@@ -87,6 +92,7 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
   returning_vip_bps: 1000,
+  welcome_vip_bps: 1000,
   visit_mechanism: "cashback",
   small_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_200[0],
   medium_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_1000[0],
@@ -103,22 +109,23 @@ const isIn = (steps: readonly number[], v: unknown): v is number => typeof v ===
 export function readCashbackInput(
   body: Record<string, unknown>,
 ): { ok: true; rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> } | { ok: false; error: string } {
-  const { welcome_bps, returning_bps, returning_vip_bps, visit_mechanism } = body;
-  if (!isIn(WELCOME_STEPS_BPS, welcome_bps)) return { ok: false, error: "Welcome Everyone must be Off, 10% or 20%" };
+  const { welcome_bps, returning_bps, returning_vip_bps, welcome_vip_bps, visit_mechanism } = body;
+  if (!isIn(WELCOME_STEPS_BPS, welcome_bps)) return { ok: false, error: "Welcome Regular must be Off, 10% or 20%" };
   if (!isIn(RETURNING_STEPS_BPS, returning_bps)) return { ok: false, error: "Returning Regular must be Off, 5% or 10%" };
   if (returning_vip_bps !== undefined && !isIn(RETURNING_VIP_STEPS_BPS, returning_vip_bps)) {
     return { ok: false, error: "Returning VIP must be Off, 10% or 20%" };
   }
-  if (visit_mechanism !== undefined && !isVisitMechanism(visit_mechanism)) {
-    return { ok: false, error: "The visit offer must be Discount or Cashback" };
+  if (welcome_vip_bps !== undefined && !isIn(WELCOME_VIP_STEPS_BPS, welcome_vip_bps)) {
+    return { ok: false, error: "Welcome VIP must be Off, 10% or 20%" };
   }
   if (visit_mechanism !== undefined && !isVisitMechanism(visit_mechanism)) {
-    return { ok: false, error: "The visit offer must be Discount or Cashback" };
+    return { ok: false, error: "The Visit Mechanic must be Discount or Cashback" };
   }
   const rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> = {
     welcome_bps,
     returning_bps,
     ...(returning_vip_bps !== undefined ? { returning_vip_bps } : {}),
+    ...(welcome_vip_bps !== undefined ? { welcome_vip_bps } : {}),
     ...(visit_mechanism !== undefined ? { visit_mechanism } : {}),
   };
   for (const [field, key] of Object.entries(VOUCHER_BONUS_FIELDS) as Array<[VoucherBonusField, keyof typeof VOUCHER_BONUS_STEPS_BPS]>) {
@@ -132,24 +139,25 @@ export function readCashbackInput(
   return { ok: true, rates };
 }
 
-/** Which line a bill falls in: Welcome Everyone when the guest has no
- *  earlier paid bill here (VIP or not), else Returning VIP for a VIP, else
- *  Returning Regular. Pure (mirrors pay_tab_grant_cashback); `vip` is
- *  consumer_is_vip_for_money's answer. */
+/** Which line a bill falls in (MESITA-4789, four lines): no earlier paid
+ *  bill here → Welcome VIP for a VIP, else Welcome Regular; otherwise
+ *  Returning VIP or Returning Regular. Pure (mirrors pay_guest_begin and
+ *  pay_tab_grant_cashback); `vip` is consumer_is_vip_for_money's answer. */
 export function cashbackLine(firstBill: boolean, vip = false): CashbackLine {
-  if (firstBill) return "welcome";
+  if (firstBill) return vip ? "welcome_vip" : "welcome";
   return vip ? "returning_vip" : "returning";
 }
 
 export function rateFor(rates: CashbackRates, line: CashbackLine): number {
   if (line === "welcome") return rates.welcome_bps;
+  if (line === "welcome_vip") return rates.welcome_vip_bps;
   if (line === "returning_vip") return rates.returning_vip_bps;
   return rates.returning_bps;
 }
 
-/** The highest of the three lines ("Up to N% Back"). */
-export function maxCashbackBps(rates: Pick<CashbackRates, "welcome_bps" | "returning_bps" | "returning_vip_bps">): number {
-  return Math.max(rates.welcome_bps, rates.returning_bps, rates.returning_vip_bps);
+/** The highest of the four lines. */
+export function maxCashbackBps(rates: Pick<CashbackRates, "welcome_bps" | "returning_bps" | "returning_vip_bps"> & Partial<Pick<CashbackRates, "welcome_vip_bps">>): number {
+  return Math.max(rates.welcome_bps, rates.welcome_vip_bps ?? 0, rates.returning_bps, rates.returning_vip_bps);
 }
 
 /** MESITA-4766: whether this guest is paid as VIP, from the one SQL rule. */

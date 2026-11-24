@@ -17,13 +17,13 @@
 //             pending_cents, outside_ok, test_mode,
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
 //             offers_ok, offers: { sell, cashback_pct, cashback_flat,
-//             welcome_pct, returning_pct, returning_vip_pct } }] }
+//             welcome_pct, welcome_vip_pct, returning_pct, returning_vip_pct } }] }
 //   MESITA-4748: welcome_pct | returning_pct, the two Back lines apart, for
 //   the Pay Bill sheet's two boxes.
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
 //   and vouchers where sold), or (MESITA-4770) a visit Discount there:
 //   Pay's Get Offers lists these. offers.visit_mechanism = discount | cashback;
-//   visit_line = welcome (no paid bill here yet) | returning | returning_vip.
+//   visit_line = welcome | welcome_vip (no paid bill here yet; MESITA-4789) | returning | returning_vip.
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
@@ -163,11 +163,11 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       const o = offers.get(p.place_id) ?? NO_LIST_ROW_OFFERS;
       // MESITA-4770: a place giving a visit Discount has an offer without the
       // Credits Agreement.
-      const discount = o.visit_mechanism === "discount" && (o.welcome_pct !== null || o.returning_pct !== null);
+      const discount = o.visit_mechanism === "discount" && [o.welcome_pct, o.welcome_vip_pct, o.returning_pct, o.returning_vip_pct].some((v) => v !== null);
       return {
         ...p,
         offers_ok: p.offers_ok || (discount && p.outside_ok),
-        visit_line: billed.has(p.place_id) ? (vip ? "returning_vip" : "returning") : "welcome",
+        visit_line: billed.has(p.place_id) ? (vip ? "returning_vip" : "returning") : vip ? "welcome_vip" : "welcome",
         offers: o,
       };
     }),

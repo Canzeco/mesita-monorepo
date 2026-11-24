@@ -170,7 +170,7 @@ export type Entry = {
   /** The gift a gift_out, gift_in or gift_back belongs to (MESITA-4066): the
    *  entry page finds its gift by it, never by amount. */
   gift_id?: string | null;
-  /** A cashback entry's line (MESITA-4766): welcome · returning · returning_vip. */
+  /** A cashback entry's line (MESITA-4766, MESITA-4789): welcome · welcome_vip · returning · returning_vip. */
   reason?: string | null;
 };
 

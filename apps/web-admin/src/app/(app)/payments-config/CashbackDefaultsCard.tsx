@@ -19,13 +19,16 @@ const STEPS = {
   welcome_bps: [0, 1000, 2000],
   returning_bps: [0, 500, 1000],
   returning_vip_bps: [0, 1000, 2000],
+  welcome_vip_bps: [0, 1000, 2000],
 } as const;
 const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
 
+// FOUR TIERS (Pato, 2026-11-23, MESITA-4789), in his order and Business's words.
 const LINES: { key: keyof typeof STEPS; name: string; who: string }[] = [
-  { key: "welcome_bps", name: "New Customers", who: "Welcome: a guest's first bill at the place" },
-  { key: "returning_bps", name: "Returning Customers", who: "Returning: every later bill at the place" },
-  { key: "returning_vip_bps", name: "Returning VIP", who: "Returning VIP: every later bill of a VIP guest at the place" },
+  { key: "welcome_bps", name: "Welcome Regular", who: "A guest's first bill at the place" },
+  { key: "returning_bps", name: "Returning Regular", who: "Every later bill at the place" },
+  { key: "welcome_vip_bps", name: "Welcome VIP", who: "A VIP guest's first bill at the place" },
+  { key: "returning_vip_bps", name: "Returning VIP", who: "Every later bill of a VIP guest at the place" },
 ];
 const MECHANISMS = [
   { value: "cashback", label: "Cashback" },
@@ -56,7 +59,7 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
     <SectionCard
       icon={<ArrowsClockwiseIcon aria-hidden />}
       title="Visit Offers"
-      subtitle="The defaults for every place that hasn't set its own on Business › Offers: one Visit Offer (Discount or Cashback) for the three rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, with no cap, 1 hour later. Mesita takes no fee."
+      subtitle="The defaults for every place that hasn't set its own on Business › Offers: one Visit Mechanic (Discount or Cashback) for the four rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, with no cap, 1 hour later. Mesita takes no fee."
     >
       {!draft ? (
         <Notice className="mt-4">Couldn&apos;t load the cashback defaults. Reload to edit them.</Notice>
@@ -64,7 +67,7 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
         <div className="mt-4 flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3" data-admin-visit-mechanism>
             <div className="min-w-0">
-              <p className="font-semibold">Visit Offer</p>
+              <p className="font-semibold">Visit Mechanic</p>
               <p className="text-muted-foreground text-sm">
                 {draft.visit_mechanism === "discount"
                   ? "Discount: the rates come off the printed bill at the table, never the tip. No Credits Agreement needed."
@@ -72,7 +75,7 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
               </p>
             </div>
             <SelectField
-              aria-label="Visit Offer default"
+              aria-label="Visit Mechanic default"
               className="w-36"
               value={draft.visit_mechanism}
               disabled={pending}

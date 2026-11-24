@@ -24,6 +24,8 @@ export type CashbackDefaults = {
   welcome_bps: number;
   returning_bps: number;
   returning_vip_bps: number;
+  /** MESITA-4789: Welcome VIP, a VIP guest's first bill (0 Off · 1000 · 2000). */
+  welcome_vip_bps: number;
   /** MESITA-4775 (MESITA-4770): how the three lines pay out by default:
    *  discount (off the bill, no Credits Agreement) or cashback (credit back). */
   visit_mechanism: "discount" | "cashback";
@@ -36,6 +38,8 @@ function readDefaults(d: Partial<CashbackDefaults> | null | undefined): Cashback
     welcome_bps: Number(d.welcome_bps ?? 0),
     returning_bps: Number(d.returning_bps ?? 0),
     returning_vip_bps: typeof d.returning_vip_bps === "number" ? d.returning_vip_bps : 0,
+    // An older server without Welcome VIP: the Welcome rate, what VIPs got then.
+    welcome_vip_bps: typeof d.welcome_vip_bps === "number" ? d.welcome_vip_bps : Number(d.welcome_bps ?? 0),
     visit_mechanism: d.visit_mechanism === "discount" ? "discount" : "cashback",
   };
 }

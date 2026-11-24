@@ -66,7 +66,9 @@ export type PlaceCashback = {
   returning_bps: number;
   /** MESITA-4766: 0 · 1000 · 2000; absent on older reads reads 0. */
   returning_vip_bps: number;
-  line: "welcome" | "returning" | "returning_vip" | null;
+  /** MESITA-4789: a VIP guest's first bill; an older read reads welcome_bps. */
+  welcome_vip_bps: number;
+  line: "welcome" | "welcome_vip" | "returning" | "returning_vip" | null;
   /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for all
    *  three lines. Absent on older reads = cashback. */
   visit_mechanism?: "discount" | "cashback";
