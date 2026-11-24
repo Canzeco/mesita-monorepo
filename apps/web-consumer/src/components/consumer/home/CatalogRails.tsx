@@ -708,18 +708,16 @@ export function CatalogRails() {
             className={cn(
               CAT_EMOJI,
               CAT_SQUARE,
-              "relative",
-              menuOpen ? cn(CAT_EMOJI_ON, "text-card") : cn(CAT_EMOJI_OFF, "text-foreground"),
+              // Red while a family is chosen (not Saved, Nearby or Popular),
+              // as Search's Menu (Pato, 2026-11-24, MESITA-4847; a red dot,
+              // MESITA-4685).
+              menuOpen
+                ? cn(CAT_EMOJI_ON, "text-card")
+                : isSpecial(chip)
+                  ? cn(CAT_EMOJI_OFF, "text-foreground")
+                  : "border border-destructive bg-destructive text-destructive-foreground",
             )}
           >
-            {/* A family is chosen (not Saved, Nearby or Popular): a red dot
-                says the list is filtered (Pato, 2026-11-22, MESITA-4685). */}
-            {!isSpecial(chip) && !menuOpen ? (
-              <span
-                className="bg-destructive ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
-                data-menu-filter-dot
-              />
-            ) : null}
             {menuOpen ? (
               <X className="h-4 w-4" strokeWidth={2.5} />
             ) : (

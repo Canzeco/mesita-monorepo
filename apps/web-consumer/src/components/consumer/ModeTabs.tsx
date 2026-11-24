@@ -40,7 +40,9 @@ export const BRAND_HEADER_CLASS =
 export function BrandHeader({ children }: { children?: ReactNode }) {
   return (
     <div className={BRAND_HEADER_CLASS}>
-      <div className="flex h-14 items-center gap-3 px-4" data-home-header>
+      {/* The location box's right margin is its 8px top and bottom (Pato,
+          2026-11-24, MESITA-4847); 16px before. */}
+      <div className="flex h-14 items-center gap-3 pr-2 pl-4" data-home-header>
         <span
           className={HOME_WORDMARK_CLASS}
           data-home-wordmark

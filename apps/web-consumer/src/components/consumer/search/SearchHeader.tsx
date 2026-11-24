@@ -56,6 +56,7 @@ import { cn } from "@/lib/utils";
 import {
   BAR_ACTION,
   CHIP,
+  CHIP_FILTERED,
   CHIP_OFF,
   CHIP_ON,
   HEADER_ICON,
@@ -135,7 +136,7 @@ export function SearchHeader({
             onClick={() => setSheetOpen(true)}
             aria-label={filtered ? "Menu, a family is chosen" : "Menu"}
             aria-haspopup="dialog"
-            className={cn(CHIP, CHIP_OFF, "relative")}
+            className={cn(CHIP, filtered ? CHIP_FILTERED : CHIP_OFF)}
             data-search-filters
           >
             <LayoutGrid
@@ -144,15 +145,6 @@ export function SearchHeader({
               aria-hidden
             />
             <span>Menu</span>
-            {/* A family is chosen: a red dot says the list is filtered
-                (Pato, 2026-11-22, MESITA-4685). */}
-            {filtered ? (
-              <span
-                aria-hidden
-                className="bg-destructive ring-card absolute top-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
-                data-menu-filter-dot
-              />
-            ) : null}
           </button>
           <nav
             aria-label="Families"
