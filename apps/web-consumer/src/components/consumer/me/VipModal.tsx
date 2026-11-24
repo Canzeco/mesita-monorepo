@@ -34,7 +34,7 @@ import { groupVipCode, isVip, VIP_CODE_LENGTH, vipCodeDigits, vipRedeemUi, vipTi
 const HERE = CONSUMER_ROUTES.mePages.vip;
 
 export function VipFrame({ children }: { children: ReactNode }) {
-  return <MeScreen title="Become VIP">{children}</MeScreen>;
+  return <MeScreen title="Class">{children}</MeScreen>;
 }
 
 export function VipModal() {
@@ -101,7 +101,7 @@ export function VipModal() {
     <VipFrame>
       <div className="flex flex-col gap-5">
         <p className="text-muted-foreground px-0.5 text-sm">
-          VIP guests get a higher Back from their second bill at places that offer it. Two ways in:
+          VIP guests get a higher Cashback or Discount from their second bill at places that offer it. Two ways in:
         </p>
         <PushLink
           href={CONSUMER_ROUTES.mePages.instagram}
