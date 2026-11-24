@@ -16,6 +16,8 @@ type SearchBarProps = {
   onClear: () => void;
   /** Defaults to the discovery wording. */
   placeholder?: string;
+  /** What a screen reader says. */
+  label?: string;
   onFocus?: () => void;
   /** Paired with onFocus by hosts that put chrome aside while the bar is live. */
   onBlur?: () => void;
@@ -30,6 +32,7 @@ export function SearchBar({
   onBlur,
   onClear,
   placeholder = "Search places…",
+  label = "Search places",
   inputRef,
 }: SearchBarProps) {
   // Fills what Ask AI leaves in the bar (MESITA-4799).
@@ -56,9 +59,9 @@ export function SearchBar({
           }
         }}
         placeholder={placeholder}
-        // A fixed name, not the placeholder: a screen reader should not read
+        // Its own name, not the placeholder: a screen reader should not read
         // "Search places dot dot dot" (MESITA-2433).
-        aria-label="Search places"
+        aria-label={label}
         // THE MOBILE KEYBOARD, told what this field is. Place names are not
         // prose: iOS otherwise capitalises the first letter, autocorrects
         // "Tec" to "Tech" mid-query, and floats the QuickType strip ("I ·
