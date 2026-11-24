@@ -15,6 +15,29 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 
+/** A visit's moment (MESITA-4893): "Today · 10:18 AM", "Yesterday · 9:02 PM",
+ *  "Wed, Nov 18 · 9:02 PM", with the year when not this one. */
+export function visitMoment(iso: string, nowMs: number = Date.now()): string {
+  const at = Date.parse(iso);
+  if (!Number.isFinite(at)) return "";
+  const d = new Date(at);
+  const now = new Date(nowMs);
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((day(now) - day(d)) / DAY);
+  const date =
+    days === 0
+      ? "Today"
+      : days === 1
+        ? "Yesterday"
+        : d.toLocaleDateString("en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: d.getFullYear() === now.getFullYear() ? undefined : "numeric",
+          });
+  return `${date} · ${d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+}
+
 /** `iso` as "now", "5m", "2h", "3d" or "Nov 10", measured from `nowMs`. A
  *  time a little in the future (a clock skew) reads "now". */
 export function timeAgo(iso: string, nowMs: number = Date.now()): string {

@@ -13,6 +13,7 @@ import {
   visitPath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
+import { visitMoment } from "@/lib/time-ago";
 import type { TicketKind } from "@/lib/ticket-kinds";
 import type {
   ActivityItem,
@@ -125,9 +126,8 @@ function foldedNotes(f: PayFacts | null): Array<string | null> {
   ];
 }
 
-/** A visit's row: the bill with no sign (card or cash money, not credit),
- *  its state, and
- *  the waiter on its grey line (MESITA-4001). `facts`: each payment's money
+/** A visit's row: what it came to, when, and what it gave (MESITA-4893); the
+ *  waiter is on its ticket. `facts`: each payment's money
  *  by its id, from the wallet (a payment lives on its Visit, MESITA-3697). */
 export function visitRows(
   visits: GuestVisit[],
@@ -140,9 +140,12 @@ export function visitRows(
     ];
     const open = isOpenVisit(v);
     const at = v.paid_at ?? v.created_at;
+    const off = v.discount_cents ?? 0;
+    const back = v.cashback_cents ?? 0;
+    // What the visit came to, as its receipt says it: the discount is off.
     const total =
       v.bill_cents != null
-        ? money(v.bill_cents + v.tip_cents, v.currency)
+        ? money(v.bill_cents - off + v.tip_cents, v.currency)
         : null;
     // An open bill is the live pay screen; a finished one is its one-page
     // summary (MESITA-3770: "the live workflow and the output must be
@@ -160,13 +163,24 @@ export function visitRows(
       pending: open,
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
-      status: { label, tone },
+      // WHAT IT GAVE, NOT "PAID" (Pato, MESITA-4893): a paid row says what the
+      // guest saved or earned, or nothing; any other state says itself.
+      status:
+        v.status !== "paid"
+          ? { label, tone }
+          : f && f.takenBack > 0
+            ? { label: "Refunded", tone: "grey" }
+            : off > 0
+              ? { label: `Saved ${money(off, v.currency)}`, tone: "green" }
+              : back > 0
+                ? { label: `+${money(back, v.currency)} cashback`, tone: "green" }
+                : { label: "", tone: "grey" },
+      plain: true,
       big: total ?? "Waiting for the bill",
       money: total != null,
       line: join(
         open && "Started",
-        v.waiter_name,
-        v.ticket && `Ticket ${v.ticket}`,
+        at && visitMoment(at),
         ...foldedNotes(f),
       ),
       href,

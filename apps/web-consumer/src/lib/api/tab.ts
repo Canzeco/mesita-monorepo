@@ -360,6 +360,9 @@ export type GuestVisit = {
   expires_at: string;
   /** Every payment of this tab, any status: Payments leaves these to Visits. */
   part_payment_ids: string[];
+  /** What it gave the guest (MESITA-4893); absent on an older answer. */
+  discount_cents?: number;
+  cashback_cents?: number;
   /** MESITA-3772: who opened it (`guest` = the guest paid it themselves) and
    *  when the waiter signed it. Older reads have neither. */
   origin?: "guest" | "waiter";

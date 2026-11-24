@@ -70,6 +70,9 @@ export type ActivityItem = {
   pending?: boolean;
   /** A voucher's credit or bonus still landing (MESITA-4625): blue. */
   landing?: boolean;
+  /** A visit (MESITA-4893): no badge and no arrow, the same on every row of
+   *  its list, and its line already says when. */
+  plain?: boolean;
   /** Its kind: the badge on the photo and the name's first word. */
   kind?: TicketRowKind;
   /** What happened to the guest's credit (MESITA-4001): "+" came in (green),
@@ -141,7 +144,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         ) : (
           <span className="bg-muted block h-12 w-12 rounded-full" aria-hidden />
         )}
-        {t.kind ? <KindBadge kind={t.kind} /> : null}
+        {t.kind && !t.plain ? <KindBadge kind={t.kind} /> : null}
       </span>
       <span className="min-w-0 flex-1">
         {t.label ? (
@@ -162,9 +165,9 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             {t.big}
           </span>
         ) : null}
-        {t.line || t.when ? (
+        {t.line || (t.when && !t.plain) ? (
           <span className="text-muted-foreground mt-1 block text-sm break-words tabular-nums">
-            {[t.line, t.when ? timeAgo(t.when) : ""].filter(Boolean).join(" · ")}
+            {[t.line, t.when && !t.plain ? timeAgo(t.when) : ""].filter(Boolean).join(" · ")}
           </span>
         ) : null}
       </span>
@@ -189,7 +192,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
           </span>
         ) : null}
       </span>
-      {t.href ? (
+      {t.href && !t.plain ? (
         <ChevronRight
           className="text-muted-foreground/60 h-4 w-4 shrink-0 self-center"
           aria-hidden
