@@ -15,14 +15,18 @@ import { cn } from "@/lib/utils";
 // THE GUEST-LEAD PAY FLOW'S SHARED PIECES (MESITA-3861, Pato's "14. Payments
 // Flow Guest-Lead"): the place across the top (Open), the X in the corner,
 // the rows card, the three state colours, the Not paid reasons, the header
-// title and the steps strip. The screens are GuestPayScreen (Bill, Tip,
-// Method, Pay) and GuestTabView (Confirm, Confirming, Receipt, Not paid).
+// title and the steps strip. The screens are GuestPayScreen (Bill) and
+// GuestTabView (Show waiter, Confirming, Receipt, Not paid).
 
 /** State colours, used only for state, always with an icon and words. */
 export const GOOD = "text-green-700";
 export const GOOD_TINT = "bg-green-50";
 export const WAIT = "text-amber-700";
 export const BAD = "text-red-700";
+
+/** An offer's tint under black ink (MESITA-4777): Prepay green, Discount
+ *  red, Cashback blue; offers.ts holds the solid tones. */
+export const BOX_TINT = { prepay: "bg-[#00D66F]/15", discount: "bg-[#FF4D4D]/15", cashback: "bg-[#4DA3FF]/15" } as const;
 
 /** "350 m" / "2.4 km". */
 export function distanceText(m: number): string {
@@ -201,7 +205,7 @@ export function TicketHeader({ title, onBack, onClose, closeLabel = "Close" }: {
 }
 
 /** THE STEPS, AT THE BOTTOM (MESITA-4600; five since MESITA-4613):
- *  "1 Bill · 2 Method · 3 Pay · 4 Receipt" (Pick is step 0, MESITA-4635)
+ *  "1 Bill · 2 Show waiter · 3 Receipt" (MESITA-4813; Pick is step 0, MESITA-4635)
  *  in one row, a thin bar under each, done and current in ink, the current
  *  one semibold, the rest grey. A picture, not buttons: ← steps back.
  *  `at` "done" (the Receipt) lights all of them, a check on the last.
@@ -284,7 +288,7 @@ export function StepFooter({
 }) {
   return (
     <div className="border-border -mx-4 mt-3 flex shrink-0 flex-col gap-3 border-t px-4 pt-3">
-      {strip ? <StepStrip at={strip} steps={steps} /> : null}
+      {strip ? <StepStrip at={strip} steps={steps} className="[@media(max-height:620px)]:hidden" /> : null}
       {primary ? (
         <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={primary.disabled} onClick={primary.onClick}>
           {primary.busy ? <Spinner size="sm" label="Working" /> : primary.label}

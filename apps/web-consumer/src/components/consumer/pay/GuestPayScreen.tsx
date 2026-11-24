@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Banknote, Check, ReceiptText, XCircle } from "lucide-react";
+import { ReceiptText, XCircle } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiListVisits, apiPayGuest, type PayWith, TAB_REFUSAL } from "@/lib/api/tab";
+import { apiListVisits, apiPayGuest, TAB_REFUSAL } from "@/lib/api/tab";
 import { pickOpenGuestPayment } from "@/lib/pay-open";
-import { discountOf, money, type PayPlace, payPlaceDiscountBps } from "@/lib/api/wallet";
-import { closeAction, guardStage, initialStage, payBackStage } from "@/lib/guest-pay-stages";
+import { discountOf, money, type PayPlace, payPlaceCashbackBps, payPlaceDiscountBps } from "@/lib/api/wallet";
+import { closeAction } from "@/lib/guest-pay-stages";
 import {
   clearGuestDraft,
   outcomeUnknownAfter,
@@ -20,7 +20,6 @@ import {
   requestIdAfterEdit,
   type Tip,
   TIP_CHIPS,
-  type Stage,
   writeDraft,
   writeLastTip,
 } from "@/lib/guest-pay-draft";
@@ -28,45 +27,25 @@ import { trackEvent } from "@/lib/analytics/track";
 import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { CashChip, CreditsCardChip, CreditsPill } from "@/components/consumer/wallet/WalletLists";
-import { BAD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, PlaceHero, StepBody, StepFooter } from "./pay-flow";
+import { BAD, BOX_TINT, NOT_PAID_REASON, PaySection, PayTitle, PlaceHero, StepBody, StepFooter } from "./pay-flow";
 import { NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
-// THE GUEST PAYS (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/place/<placeId>, one screen a step. Every step wears one frame
-// (MESITA-4061, Pato: "X Pay / Profile Name of place / steps with arrows to
-// nav across them < > / the actual body free of nav buttons / cancel button
-// and next step button"): the header's X · Pay, the place row (tapping the
-// name chooses another place), the step nav ‹ "Tip · 2 of 5" ›, one body
-// group centred both ways, then Cancel bill and the step's button.
+// THE GUEST PAYS (MESITA-3861), at /pay/place/<placeId>. THREE STEPS (Pato,
+// 2026-11-23, MESITA-4813: "Yes, cut to three"): Bill · Show waiter · Receipt.
+// This screen is Bill, whole: the amount and the tip on the keypad, then what
+// it comes to (the Discount or the Cashback, the Credits switch, You pay), and
+// "Show the waiter" opens the bill at once. Method and "Hand over cash" left:
+// the one way for the rest is outside the app (cash or the place's own card
+// terminal), so there was nothing to choose.
 //
-//   1 Bill    the amount and a large keypad under ReceiptText (Off: the
-//             place large across the top, saying why).
-//   2 Tip     the tip chips (10%,
-//             15%, Other) with HandCoins and the summary card: Bill, Tip,
-//             Total, and the Coins line.
-//   3 Method  the Wallet switch "Use my credits" (MESITA-4068: asked here,
-//             not on Tip; on by default; credits never pay the tip), what is
-//             left, then Pay outside the app (cash or the place's own
-//             terminal) for all of it. Credits cover everything and no tip:
-//             "Show the waiter" opens the bill.
-//   4 Cash    "Give MX$X to the waiter", then "I gave the cash".
+// Credits are on by default, every time the bill opens (MESITA-4100), and
+// never pay the tip. A place that takes nothing outside the app takes credits
+// alone: no tip, and the screen says so before anything is typed.
 //
-// MESITA-4708: NO CARD FOR A BILL. The Card way (a saved card held at Show
-// the waiter, MESITA-4524) and Apple Pay / Google Pay (MESITA-4386) are gone:
-// cards buy vouchers only.
-//
-// Paying opens the bill (/pay/bill/<id>, GuestTabView: Confirm, Confirming,
-// Receipt, Not paid). The header's back arrow steps back.
-//
-// ONE TICKET AT A TIME (MESITA-3879, Pato: "imagine someone closes the app
-// while in one step in between ... you first need to enter the ticket and
-// resolve it before anything"): the draft lives in localStorage with one
-// pending pointer once an amount is typed. While it's pending, /pay and
-// every other place's Pay open it where it was left; the X (or the place
-// name) leaves and keeps it, Cancel bill throws it away. A bill already open on the
-// server comes first. Drafts still expire 30 minutes after their last change. Every rule and peso is the
-// server's; this screen proposes.
+// Paying opens the bill (/pay/bill/<id>, GuestTabView: Show waiter,
+// Confirming, Receipt, Not paid). ONE TICKET AT A TIME (MESITA-3879): a bill
+// already open on the server comes first. What is typed lives in memory for 30
+// minutes. Every rule and peso is the server's; this screen proposes.
 
 /** What blocks a new ticket here (MESITA-3908). */
 type Blocked = { kind: "draft"; placeId: string; name: string | null } | { kind: "bill"; tabId: string; name: string | null };
@@ -136,10 +115,6 @@ export function GuestPayScreen({
     if (sentTabId) onPaid(sentTabId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sentTabId]);
-  // A draft at Pay with credits off starts at Method (MESITA-4117):
-  // credits come back on by default, so the guest sees the new split.
-  const [stage, setStage] = useState<Stage>(() => initialStage(draft));
-  const [typing, setTyping] = useState(draft?.typing ?? true);
   const [amount, setAmount] = useState(draft?.amount ?? "");
   // A draft from before MESITA-3876 may hold the retired 0 chip: no pick.
   const [tip, setTip] = useState<Tip>(draft && (draft.tip === "other" || TIP_CHIPS.includes(draft.tip as 10)) ? draft.tip : readLastTip(placeId));
@@ -148,16 +123,14 @@ export function GuestPayScreen({
   // Pato: "PAY WITH CREDITS MUST BE SELECTED AS DEFAULT"): a switch turned
   // off is not carried over from a saved draft.
   const [useCredit, setUseCredit] = useState(true);
-  const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notPaid, setNotPaid] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
   // A pay call timed out or lost the network: the bill may be open on the
-  // server. Until that same request id answers, Cancel bill and ‹ are locked
+  // server. Until that same request id answers, ‹ is locked
   // and nothing mints a new id (MESITA-4061).
   const [outcomeUnknown, setOutcomeUnknown] = useState(false);
-  const [cashDue, setCashDue] = useState<number | null>(null);
   // MESITA-4770: the discount rate the server answered (discount_changed).
   const [serverDiscountBps, setServerDiscountBps] = useState<number | null>(null);
 
@@ -202,10 +175,9 @@ export function GuestPayScreen({
   // once"): what was typed here is dropped and Pay shows, no question. A
   // ticket already on the server (an answer still coming) is
   // real: ✕ only leaves it. It kept the draft before (MESITA-3908).
-  // MESITA-4600: the rule lives in closeAction (pinned by a test). A cash
-  // bill already handed over (cashDue) is open on the server too.
+  // MESITA-4600: the rule lives in closeAction (pinned by a test).
   const closeFlow = () => {
-    const act = closeAction({ busy, billOpen: outcomeUnknown || cashDue !== null });
+    const act = closeAction({ busy, billOpen: outcomeUnknown });
     if (act === "ignore") return;
     if (act === "discard") clearGuestDraft(placeId);
     onLeavePay();
@@ -216,48 +188,39 @@ export function GuestPayScreen({
   // server works out the same and answers discount_changed with its own
   // numbers when they differ (serverDiscountBps then wins).
   const billCents = readAmount(amount) ?? 0;
-  const tipCents = tip === null ? 0 : tip === "other" ? readTip(other) ?? 0 : Math.round((billCents * tip) / 100);
+  const tipCents = !cashOk || tip === null ? 0 : tip === "other" ? readTip(other) ?? 0 : Math.round((billCents * tip) / 100);
   const discountBps = serverDiscountBps ?? payPlaceDiscountBps(place);
   const discountCents = discountOf(billCents, discountBps);
   const toPayCents = billCents - discountCents;
-  const discountLabel =
-    place?.visit_line === "returning_vip" ? "VIP Returning Visit discount"
-    : place?.visit_line === "welcome_vip" ? "VIP Welcome Visit discount"
-    : place?.visit_line === "returning" ? "Returning Visit discount"
-    : "Welcome Visit discount";
-  const creditOn = useCredit && spendable > 0;
+  const cashbackBps = discountBps > 0 ? 0 : payPlaceCashbackBps(place);
+  // Credits are the only way where nothing is taken outside the app.
+  const creditOn = (useCredit || !cashOk) && spendable > 0;
   const creditCents = creditOn ? Math.min(spendable, toPayCents) : 0;
   const leftCents = toPayCents - creditCents;
   const dueCents = leftCents + tipCents;
-  // Why the Cash row is grey (one line), null when it can pay what's left.
-  const cashWhy = place && !cashOk ? "This place doesn't take cash through Mesita." : null;
-  const cashOn = !cashWhy;
-  // The way the rest goes: outside the app, where the place takes it.
-  const way: PayWith | null = cashOn ? "cash" : null;
-  const creditsOnly = dueCents === 0;
-  // The step shown (MESITA-4117): a stored or live stage that stopped making
-  // sense goes back to Method. Pure, so nothing sets state while rendering.
-  const shown = guardStage({ stage, method, way, dueCents });
+  // Cashback is on what is paid outside the app: never on credits or the tip
+  // (pay_tab_grant_cashback).
+  const cashbackCents = discountOf(leftCents, cashbackBps);
+  // Nothing outside the app here and the credits fall short: no way to pay.
+  const short = !cashOk && leftCents > 0;
 
-  // Every change is saved, so the X comes back to it.
+  // Every change is saved, so ← from the QR comes back to it.
   useEffect(() => {
     if (sentTabId) return;
     requestId.current = requestIdAfterEdit(requestId.current, outcomeUnknown);
-    writeDraft(placeId, { stage: shown, typing, amount, tip, other, useCredit, method });
-  }, [sentTabId, placeId, shown, typing, amount, tip, other, useCredit, method, outcomeUnknown]);
+    writeDraft(placeId, { amount, tip, other, useCredit });
+  }, [sentTabId, placeId, amount, tip, other, useCredit, outcomeUnknown]);
 
   useEffect(() => {
     root.current?.focus({ preventScroll: true });
-  }, [shown, typing, notPaid]);
+  }, [notPaid]);
 
-  // Which step the guest reached (MESITA-4124). Bill and Tip share "bill";
-  // the keypad is Bill, the chips are Tip.
+  // Which step the guest reached (MESITA-4124).
   useEffect(() => {
-    const step = shown === "bill" ? (typing ? "bill" : "tip") : shown;
-    trackEvent(getSupabase(), "pay_step_view", { step });
+    trackEvent(getSupabase(), "pay_step_view", { step: "bill" });
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, typing]);
+  }, []);
 
   // The header's X leaves (MESITA-3880), with the latest state each render.
   useEffect(() => {
@@ -274,14 +237,8 @@ export function GuestPayScreen({
       setNotPaid(null);
       return true;
     }
-    if (shown === "pay" || shown === "method") setStage(payBackStage(shown));
-    else {
-      // ← on the first step reopens the places (MESITA-4598, step 1 of the
-      // flow); history-back before.
-      leave();
-      return true;
-    }
-    setError(null);
+    // ← reopens the places (MESITA-4598).
+    leave();
     return true;
   }
   useEffect(() => {
@@ -289,35 +246,30 @@ export function GuestPayScreen({
   });
   useEffect(() => () => registerBack?.(null), [registerBack]);
 
-  /** Opens the bill: credits only, or the cash given. */
-  async function openBill(w: PayWith | null) {
-    if (!place || busy || billCents <= 0) return;
+  /** Opens the bill: the credits, and the rest outside the app. */
+  async function openBill() {
+    if (!place || busy || billCents <= 0 || short) return;
     setBusy(true);
     setError(null);
     requestId.current ??= crypto.randomUUID();
-    const cash = w === "cash" ? leftCents : 0;
     try {
       const r = await withinLimit(apiPayGuest(getSupabase(), {
         place_id: placeId,
         bill_cents: billCents,
         request_id: requestId.current,
         credit_cents: creditCents,
-        cash_bill_cents: cash,
-        cash_tip_cents: w === "cash" ? tipCents : 0,
+        cash_bill_cents: leftCents,
+        cash_tip_cents: tipCents,
       }));
-      if (r.status === "due" || !r.tab_id) {
-        setCashDue(r.status === "due" ? dueCents : null);
-        setBusy(false);
-        if (r.status === "due") return;
-      }
       if (!r.tab_id) {
+        setBusy(false);
         setError("The payment is still going through.");
         return;
       }
       rememberGuestTab(r.tab_id, r.qr_url);
       writeLastTip(placeId, tip);
       // Start again comes back to the bill with everything typed.
-      writeDraft(placeId, { stage: "bill", typing: false, amount, tip, other, useCredit, method, sentTabId: r.tab_id ?? undefined });
+      writeDraft(placeId, { amount, tip, other, useCredit, sentTabId: r.tab_id });
       setOutcomeUnknown(false);
       onPaid(r.tab_id);
     } catch (e) {
@@ -405,16 +357,17 @@ export function GuestPayScreen({
     );
   }
 
+  // The keypad types the bill, or the tip while Other is picked.
+  const tipTyping = cashOk && tip === "other";
+  const type = (k: PadKey) => (tipTyping ? setOther((t) => pressKey(t, k)) : setAmount((t) => pressKey(t, k)));
+
   // Desktop keys reach the keypad.
   function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (e.metaKey || e.ctrlKey || e.altKey || shown !== "bill" || !typing) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || busy || notPaid) return;
     const key: PadKey | null = /^[0-9]$/.test(e.key) ? (e.key as PadKey) : e.key === "." ? "." : e.key === "Backspace" ? "back" : null;
     if (key) {
       e.preventDefault();
-      setAmount((t) => pressKey(t, key));
-    } else if (e.key === "Enter" && billCents > 0) {
-      e.preventDefault();
-      setTyping(false);
+      type(key);
     }
   }
 
@@ -454,29 +407,11 @@ export function GuestPayScreen({
             disabled: held,
             onClick: () => {
               setNotPaid(null);
-              setStage("bill");
-              setTyping(false);
             },
           }}
         />
       </>,
       "not-paid",
-    );
-  }
-
-  if (cashDue !== null) {
-    return frame(
-      <>
-        <PayTitle title="Hand over cash" />
-        <StepBody>
-          <PaySection className="p-6 text-center">
-            <p className="mt-1 text-4xl font-semibold tabular-nums">{m(cashDue)}</p>
-            <p className="text-muted-foreground mt-3 text-sm">The place marks this received. Nothing else is charged.</p>
-          </PaySection>
-        </StepBody>
-        <StepFooter strip={3} />
-      </>,
-      "cash-due",
     );
   }
 
@@ -502,32 +437,29 @@ export function GuestPayScreen({
 
   const tipChip = (on: boolean) =>
     cn(
-      "flex h-11 flex-1 items-center justify-center rounded-full border text-base font-semibold transition",
+      "flex h-11 flex-1 items-center justify-center rounded-full [@media(max-height:620px)]:h-9 border text-base font-semibold transition",
       on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
     );
 
-  // 2 BILL, ONE SCREEN FOR THE BILL AND THE TIP (named "Bill" since
-  // MESITA-4630) (Pato, 2026-11-21, MESITA-4619: "Bill & Tip
-  // MERGE THESE TWO into one.. KEEP IT CLEAN"): the typed bill big on top,
-  // the tip chips under it with the tip and the total on one line, the
-  // keypad below (it types the bill, or the tip while Other is picked),
-  // Next to Method. Two screens before (the keypad, then "Add a tip?").
-  if (shown === "bill") {
-    const tipOk = tip !== null;
-    const tipTyping = tip === "other";
-    const toMethod = () => {
-      if (billCents <= 0 || !tipOk) return;
-      setTyping(false);
-      setStage("method");
-    };
-    return frame(
-      <>
-        {top("Bill")}
-        <div className="flex min-h-0 flex-1 flex-col gap-3 py-4">
-          <PaySection className="flex min-h-0 shrink flex-col">
-            <div className="flex min-h-0 shrink flex-col px-4 pt-3 pb-2">
-              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="shrink-0" />
-              <div className="mt-3 flex shrink-0 gap-2" role="group" aria-label="Tip">
+  // BILL (MESITA-4619's one screen, MESITA-4813's whole step): the typed bill
+  // big on top, the tip chips, the summary, the keypad, "Show the waiter".
+  const tipOk = !cashOk || tip !== null;
+  const pct = (bps: number) => `${bps / 100}%`;
+  const offer =
+    discountBps > 0
+      ? { label: `${pct(discountBps)} Discount`, value: `−${m(discountCents)}`, tone: BOX_TINT.discount }
+      : cashbackBps > 0 && cashOk
+        ? { label: `${pct(cashbackBps)} Cashback`, value: `+${m(cashbackCents)}`, tone: BOX_TINT.cashback }
+        : null;
+  return frame(
+    <>
+      {top("How much was your bill?")}
+      <div className="scrollbar-thin-dark -mx-4 flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-3 [@media(max-height:620px)]:py-1.5">
+        <PaySection className="flex min-h-full shrink-0 flex-col">
+          <div className="flex flex-1 flex-col px-4 pt-2 pb-2">
+            <AmountDisplay text={amount} currency={place.currency} label="Bill" className="shrink-0 [@media(max-height:620px)]:h-10" />
+            {cashOk ? (
+              <div className="mt-2 flex shrink-0 gap-2" role="group" aria-label="Tip">
                 {TIP_CHIPS.map((p) => (
                   <button key={p} type="button" className={tipChip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
                     {`${p}%`}
@@ -537,212 +469,63 @@ export function GuestPayScreen({
                   Other
                 </button>
               </div>
-              <p className="text-muted-foreground mt-2 shrink-0 text-center text-sm tabular-nums" data-guest-bill-tip-sum>
-                {tipTyping ? (
-                  <>
-                    Tip <span className="text-foreground font-semibold">{m(tipCents)}</span> · keypad types the tip
-                  </>
-                ) : (
-                  <>
-                    {discountCents > 0 ? (
-                      <span data-guest-bill-discount>
-                        {discountLabel} −{m(discountCents)} ·{" "}
-                      </span>
-                    ) : null}
-                    Tip {tipOk ? m(tipCents) : "—"} · Total <span className="text-foreground font-semibold">{m(toPayCents + tipCents)}</span>
-                  </>
-                )}
+            ) : (
+              <p className="text-muted-foreground mt-1 shrink-0 text-center text-sm" data-guest-credits-only>
+                This place only takes your credits on Mesita. Pay the tip to the waiter.
               </p>
-              <div className="mt-2 flex h-60 min-h-40 shrink flex-col">
-                <AmountKeypad
-                  text={tipTyping ? other : amount}
-                  onKey={(k) => (tipTyping ? setOther((t) => pressKey(t, k)) : setAmount((t) => pressKey(t, k)))}
-                />
-              </div>
-            </div>
-          </PaySection>
-        </div>
-        {status}
-        <StepFooter strip={1} primary={{ label: "Next", busy, disabled: billCents <= 0 || !tipOk || held, onClick: toMethod }} />
-      </>,
-      "bill",
-    );
-  }
-
-  // 3 METHOD: credits, then the rest outside the app.
-  if (shown === "method") {
-    // Credits cover the bill and the tip: nothing is left for a way, so the
-    // button opens the bill (credits are spent). It is money, so › is not
-    // offered.
-    // Next: Pay (a draft reopened at Method with the way already set).
-    const toNext = () => {
-      if (way) {
-        setMethod(way);
-        setStage("pay");
-      }
-    };
-    return frame(
-      <>
-        {top("How do you pay?")}
-        {/* ONE PANEL (MESITA-4077): credits and the way outside the app, then
-            what is left to pay. */}
-        <StepBody>
-          <PaySection title="How you pay" className="text-base">
-            <div className="divide-border mt-1 divide-y">
-            {spendable > 0 ? (
-              <button
-                type="button"
-                role="switch"
-                aria-checked={creditOn}
-                onClick={() => setUseCredit((u) => !u)}
-                className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left"
-                aria-label={`Credits, ${m(spendable)}`}
-                data-guest-credits
-              >
-                {/* The place's Credits Card, as on the Wallet (MESITA-4085):
-                    its image, "Credits", the balance in the black pill. */}
-                <span className={LEAD_SLOT}>
-                  <CreditsCardChip photo={place.photo} name={place.name} eager />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-semibold">Credits</span>
-                </span>
-                <CreditsPill>{m(spendable)}</CreditsPill>
-                <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
-                  <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
-                </span>
-              </button>
-            ) : null}
-            {/* MESITA-4708: no Card, Apple Pay or Google Pay row for a bill
-                (the default way and cash before, MESITA-4617): the rest is
-                paid outside the app. */}
-            {creditsOnly ? null : (
-              <div className="divide-border flex flex-col divide-y" role="radiogroup" aria-label="How you pay">
-                {/* Cash in its dollar-bill green (MESITA-4244, Pato: "for
-                    cash use green"), the Wallet's Cash chip. */}
-                <MethodTile
-                  on={way === "cash"}
-                  off={cashWhy}
-                  lead={<CashChip />}
-                  id="cash"
-                  title="Pay outside the app"
-                  line="Cash or the place's card terminal"
-                  onPick={() => setMethod("cash")}
-                />
-              </div>
             )}
-            {creditOn ? <MoneyRow label="Credits" value={`−${m(creditCents)}`} /> : null}
-            <MoneyRow label={leftCents === 0 ? "Tip to pay" : "Left to pay"} value={m(dueCents)} strong />
-            <a href="/pay" className="block px-4 py-3 text-sm font-semibold underline">Change</a>
+            <div className="mt-2 flex shrink-0 flex-col gap-1" data-guest-summary>
+              {offer ? (
+                <div className={cn("flex min-h-8 [@media(max-height:620px)]:min-h-7 items-center justify-between gap-3 rounded-lg px-2.5 text-sm font-semibold tabular-nums", offer.tone)} data-guest-offer>
+                  <span className="truncate">{offer.label}</span>
+                  <span className="shrink-0">{offer.value}</span>
+                </div>
+              ) : null}
+              {spendable > 0 ? (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={creditOn}
+                  disabled={!cashOk || busy}
+                  onClick={() => setUseCredit((u) => !u)}
+                  className="flex min-h-11 w-full items-center gap-3 px-2.5 text-left text-sm [@media(max-height:620px)]:min-h-9 tabular-nums"
+                  aria-label={`Use credits, ${m(spendable)} available`}
+                  data-guest-credits
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    <span className="font-semibold">Credits</span> <span className="text-muted-foreground">{m(spendable)}</span>
+                  </span>
+                  <span className="shrink-0 font-semibold">−{m(creditCents)}</span>
+                  {cashOk ? (
+                    <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", creditOn ? "bg-foreground" : "bg-border")} aria-hidden>
+                      <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full shadow transition-all", creditOn ? "left-[18px]" : "left-0.5")} />
+                    </span>
+                  ) : null}
+                </button>
+              ) : null}
+              <div className="flex min-h-9 items-center justify-between gap-3 px-2.5 tabular-nums [@media(max-height:620px)]:min-h-8" data-guest-you-pay>
+                <span className="min-w-0 truncate text-sm">
+                  <span className="text-base font-semibold">You pay</span>
+                  {cashOk ? <span className={tipTyping ? "font-semibold" : "text-muted-foreground"}> {tip === null ? "· pick a tip" : `· tip ${m(tipCents)}`}</span> : null}
+                </span>
+                <span className="shrink-0 text-lg font-semibold">{m(dueCents)}</span>
+              </div>
             </div>
-          </PaySection>
-        </StepBody>
-        {status}
-        <StepFooter
-          strip={2}
-          primary={
-            creditsOnly
-              ? { label: "Show the waiter", busy, disabled: held, onClick: () => void openBill(null) }
-              : way === "cash"
-                ? { label: `Pay ${m(dueCents)} in cash`, busy, disabled: held, onClick: () => void openBill("cash") }
-                : { label: "Next", busy, disabled: !way || held, onClick: toNext }
-          }
-        />
-      </>,
-      "method",
-    );
-  }
-
-  // 4 CASH PAY: give the cash, then the QR. The bubble, the amount and the
-  // words sit together in the middle.
-  return frame(
-    <>
-      {top("Hand over cash")}
-      {/* BIG AND CENTRED (MESITA-4100, Pato: "BIGGER AND CENTERED AND MORE
-          BEAUTIFUL ... VERTICALLY CENTERED IN THE BODY ... MAKE THE CIRCLE AND
-          THE ICON AND THE INSTRUCTIONS BIGGER"): the panel fills the body and
-          holds the bubble, the amount and the two instructions in its middle.
-          The amount once (MESITA-4077). */}
-      <StepBody className="flex-1">
-        <PaySection className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-10 text-center" data-guest-cash-give>
-          <span className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-green-400 text-neutral-950 shadow-sm ring-8 ring-green-100" aria-hidden>
-            <Banknote className="h-14 w-14" strokeWidth={1.75} />
-          </span>
-          <span className="flex flex-col items-center gap-1">
-            <span className="text-muted-foreground text-lg font-semibold">Give the waiter</span>
-            <span className="text-4xl font-semibold tabular-nums">{m(dueCents)}</span>
-          </span>
-          <span className="text-muted-foreground max-w-xs text-lg leading-snug">Then show them your QR so they confirm it.</span>
+            <div className="mt-1 flex h-44 max-h-60 shrink-0 grow flex-col [@media(max-height:620px)]:h-40 [@media(max-height:620px)]:[&>*]:grid-rows-[repeat(4,minmax(2.5rem,1fr))]">
+              <AmountKeypad text={tipTyping ? other : amount} onKey={type} />
+            </div>
+          </div>
         </PaySection>
-      </StepBody>
-      {status}
-      <StepFooter strip={3} primary={{ label: "I gave the cash", busy, disabled: held, onClick: () => void openBill("cash") }} />
+      </div>
+      {status ??
+        (short && billCents > 0 ? (
+          <p className="text-destructive shrink-0 pt-2 text-center text-sm" role="alert" data-guest-short>
+            Your credits don&apos;t cover this bill.
+          </p>
+        ) : null)}
+      <StepFooter strip={1} primary={{ label: "Show the waiter", busy, disabled: billCents <= 0 || !tipOk || short || held, onClick: () => void openBill() }} />
     </>,
-    "cash",
-  );
-}
-
-
-/** Method's rows share one leading slot (MESITA-4085), as wide as the
- *  Credits Card image, each mark at its left edge: the marks start on one
- *  edge and the words on another. */
-const LEAD_SLOT = "flex w-[3.2rem] shrink-0 items-center";
-
-/** A row in the How you pay panel (MESITA-4072; a bordered tile with a
- *  thick border when chosen until then): the ring on the right fills when
- *  chosen; grey with one line why when the place can't take it. */
-function MethodTile({
-  id,
-  on,
-  off,
-  lead,
-  title,
-  line,
-  onPick,
-}: {
-  /** The test hook: "cash". */
-  id: string;
-  on: boolean;
-  off: string | null;
-  /** The way's chip, the Wallet's (MESITA-4244): Cash's green. Greyed when
-   *  the place can't take it. */
-  lead: React.ReactNode;
-  title: string;
-  line: string;
-  onPick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={on}
-      aria-disabled={!!off}
-      onClick={() => !off && onPick()}
-      className={cn(
-        "flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition",
-        off ? "text-muted-foreground" : "hover:bg-muted/60",
-      )}
-      data-guest-method={id}
-    >
-      <span className={cn(LEAD_SLOT, off && "opacity-40 grayscale")}>{lead}</span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-base font-semibold">{title}</span>
-        <span className="text-muted-foreground block truncate text-sm">{off ?? line}</span>
-      </span>
-      {/* The choice is the ring on the right (MESITA-4072: a row in the How
-          you pay panel, never a bordered tile inside it). */}
-      {!off ? (
-        <span
-          className={cn(
-            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
-            on ? "bg-foreground text-background" : "border-border border-2",
-          )}
-          aria-hidden
-        >
-          {on ? <Check className="h-4 w-4" /> : null}
-        </span>
-      ) : null}
-    </button>
+    "bill",
   );
 }
 
@@ -770,7 +553,7 @@ export function BillStepBones() {
           </div>
         </PaySection>
       </div>
-      <StepFooter strip={1} primary={{ label: "Next", busy: false, disabled: true, onClick: () => {} }} />
+      <StepFooter strip={1} primary={{ label: "Show the waiter", busy: false, disabled: true, onClick: () => {} }} />
     </div>
   );
 }

@@ -1,35 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Banknote, CircleCheck, HandCoins, Loader2, PenLine, Wallet, XCircle } from "lucide-react";
+import { BadgePercent, Banknote, CircleCheck, HandCoins, Loader2, PenLine, ReceiptText, Wallet, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { Button } from "@/components/ui/button";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiCancelTab, apiGetTab, type GuestTab, TAB_REFUSAL } from "@/lib/api/tab";
-import { money, type PayPlace } from "@/lib/api/wallet";
+import { apiCancelTab, apiGetTab, type GuestTab, TAB_REFUSAL, type TabRead } from "@/lib/api/tab";
+import { discountOf, money, type PayPlace, payPlaceCashbackBps } from "@/lib/api/wallet";
+import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { trackEvent } from "@/lib/analytics/track";
-import { BAD, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, StepBody, StepFooter, StepStrip, WAIT } from "./pay-flow";
+import { BAD, BOX_TINT, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, StepBody, StepFooter, StepStrip, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
 
-// THE GUEST'S BILL (MESITA-3861, Pato's "14. Payments Flow Guest-Lead"), at
-// /pay/bill/<id>, after "I gave the cash" or credits alone (MESITA-4708: no
-// card part, so no hold, bank check or card decline here):
+// THE GUEST'S BILL (MESITA-3861), at /pay/bill/<id>, after "Show the waiter".
+// MESITA-4813's steps 2 and 3:
 //
-//   6 Pay the waiter  three numbered steps (MESITA-4654): 1 Waiter scans
-//                 this (the QR, the total, the part not in cash), 2 Hand over
-//                 cash (the green box, only with cash), 3 Waiter confirms (the
-//                 time left). Nothing is editable; Cancel bill ends the
-//                 ticket. The screen stays on.
+//   2 Show waiter the QR and the total, then one green box "Pay the waiter"
+//                 (cash or card, outside the app; none when credits paid it
+//                 all), then the time left. Nothing is editable; ← goes back
+//                 to Bill, Cancel bill ends the ticket. The screen stays on.
 //   Confirming    a Loader and "Confirming…" while the waiter's Confirm
 //                 runs.
-//   7 Receipt     the step panel, a green Paid with the total, the lines
-//                 with their icons, "Confirmed by staff" ✓; Done.
+//   3 Receipt     a green Paid with the total, the lines with their icons,
+//                 the Discount taken or the Cashback earned and when it is
+//                 ready, "Confirmed by staff" ✓; Done.
 //   Not paid      a red XCircle, one line why, "Nothing was paid" (never on
 //                 cash), New ticket (MESITA-4524: the old ticket is done). Was Start
 //                 again (the bill with everything typed).
@@ -56,10 +56,12 @@ export function GuestTabView({
   onDone: () => void;
   /** The header's X (MESITA-3880): on Confirm it closes; the bill keeps waiting (MESITA-3908). */
   registerClose?: (close: (() => void) | null) => void;
-  /** The header's ← (MESITA-4618): while the bill waits, back to Method. */
+  /** The header's ← (MESITA-4618): while the bill waits, back to Bill. */
   registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
+  // MESITA-4813: the Cashback the paid bill earned; undefined = not read yet.
+  const [back, setBack] = useState<TabRead["back"]>(undefined);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +77,9 @@ export function GuestTabView({
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
   const tip = tab.cash_tip_cents;
   const total = tab.credit_cents + cash;
+  const discount = tab.discount_cents ?? 0;
+  // What this bill will earn, while it waits (MESITA-4813).
+  const willEarn = tab.visit_mechanism === "discount" || discount > 0 ? 0 : discountOf(tab.cash_bill_cents, payPlaceCashbackBps(place));
   const signed = tab.status === "paid" && !!tab.verified_at;
   const ended = tab.status === "cancelled" || tab.status === "expired";
   useEffect(() => {
@@ -121,6 +126,7 @@ export function GuestTabView({
           if (!alive) return;
           setFailedReads(0);
           setTab(r.tab);
+          if (r.back !== undefined) setBack(r.back);
         })
         .catch(() => {
           if (alive) setFailedReads((n) => n + 1);
@@ -132,6 +138,22 @@ export function GuestTabView({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, tab.tab_id]);
+
+  // A receipt opened already paid never polls: read its Cashback once.
+  const needsBack = signed && back === undefined;
+  useEffect(() => {
+    if (!needsBack) return;
+    let alive = true;
+    void apiGetTab(getSupabase(), tab.tab_id)
+      .then((r) => {
+        if (alive) setBack(r.back ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsBack, tab.tab_id]);
 
   // Confirm only: the header's X asks to cancel; the other states keep Back.
   const signing = !done && !confirming;
@@ -157,19 +179,19 @@ export function GuestTabView({
     if (signed) clearGuestDraft(tab.place.id);
   }, [done, signed, tab.tab_id, tab.place.id]);
 
-  // ← BACK TO METHOD, A NEW TICKET (Pato, 2026-11-21, MESITA-4618: "when
+  // ← BACK TO BILL, A NEW TICKET (Pato, 2026-11-21, MESITA-4618: "when
   // creating ticket to pay, enable to return and just create other id for
   // the ticket"): while the bill waits for the waiter, ← cancels it on the
-  // server (nothing paid, the credit released) and reopens "How do you
-  // pay?" with the bill and tip still typed; Pay again makes a new ticket.
-  async function backToMethod() {
+  // server (nothing paid, the credit released) and reopens Bill
+  // with the bill and tip still typed; Show the waiter makes a new ticket.
+  async function backToBill() {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
       await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
       forgetGuestTab(tab.tab_id);
-      reopenGuestDraft(tab.place.id, "method");
+      reopenGuestDraft(tab.place.id);
       onPayAgain(tab.place.id);
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
@@ -184,11 +206,11 @@ export function GuestTabView({
       return;
     }
     registerBack(() => {
-      void backToMethod();
+      void backToBill();
       return true;
     });
     return () => registerBack(null);
-    // backToMethod reads the latest tab each render.
+    // backToBill reads the latest tab each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registerBack, signing, tab.tab_id]);
 
@@ -238,10 +260,24 @@ export function GuestTabView({
               </span>
               <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
             </div>
+            {discount > 0 ? (
+              <>
+                <MoneyRow icon={<ReceiptText />} label="Bill" value={m(tab.bill_cents ?? 0)} />
+                <MoneyRow className={BOX_TINT.discount} icon={<BadgePercent />} label="Discount" value={`−${m(discount)}`} />
+              </>
+            ) : null}
             {tab.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Credits" value={m(tab.credit_cents)} /> : null}
-            {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Cash" value={m(tab.cash_bill_cents)} /> : null}
+            {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Paid to the waiter" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
             <MoneyRow label="Total" value={m(total)} strong />
+            {back && back.amount_cents > 0 ? (
+              <MoneyRow
+                className={BOX_TINT.cashback}
+                icon={<BadgePercent />}
+                label={`Cashback · ${readyWords(back, now)}`}
+                value={`+${money(back.amount_cents, back.currency)}`}
+              />
+            ) : null}
             <MoneyRow
               icon={<PenLine />}
               label="Confirmed by staff"
@@ -275,7 +311,7 @@ export function GuestTabView({
             <p className="text-muted-foreground mt-1 max-w-xs text-sm">
               {/* MESITA-4524: never "Nothing was charged" on cash the guest may have handed over. */}
               {cash > 0
-                ? "The waiter didn't confirm your cash. If you handed it over, show this screen to the staff."
+                ? "The waiter didn't confirm your payment. If you already paid, show this screen to the staff."
                 : "Nothing was paid"}
             </p>
           </PaySection>
@@ -326,12 +362,12 @@ export function GuestTabView({
             </div>
           </PaySection>
         </StepBody>
-        <StepFooter strip={3} />
+        <StepFooter strip={2} />
       </div>
     );
   }
 
-  // 5 PAY THE WAITER (MESITA-4654, Pato: "make this clearer … one box for qr.
+  // 2 SHOW WAITER (MESITA-4654, Pato: "make this clearer … one box for qr.
   // one green box for cash … waiter confirms receive … money on bottom and
   // qr on top"): three numbered steps in the order they happen.
   //   1 Waiter scans this   the QR, the bill's total, the part not in cash.
@@ -348,7 +384,7 @@ export function GuestTabView({
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-guest-tab="sign">
       {/* MESITA-4061: the same frame as every guest step. */}
-      <PayTitle title="Pay the waiter" back={!busy} />
+      <PayTitle title="Show the waiter" back={!busy} />
       {/* FITS THE SCREEN, NEVER SCROLLS (MESITA-4102): the QR's slot takes
           the height left (up to 340px, never under 80px: a cash bill on a
           375×553 phone, Safari's bars on, needs the room, MESITA-4658). */}
@@ -364,9 +400,16 @@ export function GuestTabView({
               {m(total)}
             </p>
             {/* The part not in cash, under the total: the cash has its own step. */}
-            {tab.credit_cents > 0 ? (
+            {tab.credit_cents > 0 || discount > 0 ? (
               <p className="text-muted-foreground shrink-0 text-sm tabular-nums" data-guest-sign-parts>
-                {m(tab.credit_cents)} from your credits
+                {[discount > 0 ? `${m(discount)} discount taken` : null, tab.credit_cents > 0 ? `${m(tab.credit_cents)} from your credits` : null]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ) : null}
+            {willEarn > 0 ? (
+              <p className={cn("shrink-0 rounded-lg px-2.5 py-0.5 text-sm font-semibold tabular-nums", BOX_TINT.cashback)} data-guest-sign-cashback>
+                You get {m(willEarn)} Cashback
               </p>
             ) : null}
             <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
@@ -406,20 +449,21 @@ export function GuestTabView({
             ) : null}
           </div>
         </PaySection>
-        {/* 2 HAND OVER CASH (MESITA-4618's Link green): one row, the step
+        {/* PAY THE WAITER (MESITA-4618's Link green): one row, the step
             on the left, the amount large on the right. Never half the screen:
             as a half it left the QR its 120px floor and cut the total off a
             667px phone (MESITA-4658); the QR is step 1 and takes the room. */}
         {cash > 0 ? (
           <section
             className="flex shrink-0 items-center gap-3 rounded-2xl bg-[#00D66F] px-4 py-3 text-neutral-950"
-            aria-label={`Give the waiter ${m(cash)} in cash`}
+            aria-label={`Pay the waiter ${m(cash)}, cash or card`}
             data-guest-sign-cash
           >
-            <span className="min-w-0 flex-1 whitespace-nowrap">
-              <span className="text-base font-semibold">Give the waiter cash</span>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block text-base leading-tight font-semibold">Pay the waiter</span>
+              <span className="block text-sm leading-tight">Cash or card</span>
             </span>
-            <span className="shrink-0 text-3xl font-semibold tabular-nums">{m(cash)}</span>
+            <span className="shrink-0 text-2xl font-semibold tabular-nums">{m(cash)}</span>
           </section>
         ) : null}
         {/* LAST: THE WAITER CONFIRMS (MESITA-4521: Confirm, never Sign). The
@@ -438,7 +482,7 @@ export function GuestTabView({
           </span>
         </p>
       </StepBody>
-      <StepFooter strip={3} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
+      <StepFooter strip={2} onCancel={() => setConfirmCancel(true)} cancelDisabled={busy} />
 
       <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
         <div className="p-5">
@@ -454,7 +498,7 @@ export function GuestTabView({
             ) : null}
             {cash > 0 ? (
               <li className="text-destructive font-semibold">
-                Cash you already gave the waiter ({m(cash)}) is not returned by Mesita. Ask the place for it.
+                Money you already gave the waiter is not returned by Mesita. Ask the place for it.
               </li>
             ) : null}
             {tab.credit_cents === 0 && cash === 0 ? <li className="text-muted-foreground">Nothing is paid.</li> : null}
@@ -466,3 +510,10 @@ export function GuestTabView({
   );
 }
 
+
+/** When the Cashback can be spent: "ready in 58 min", "ready" once due. */
+function readyWords(back: NonNullable<TabRead["back"]>, now: number): string {
+  const t = back.available_at ? Date.parse(back.available_at) : Number.NaN;
+  if (!back.pending || !Number.isFinite(t)) return "ready";
+  return t > now ? `ready in ${untilLabel(t - now)}` : "ready soon";
+}

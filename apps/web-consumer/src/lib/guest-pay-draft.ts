@@ -1,5 +1,3 @@
-import type { PayWith } from "@/lib/api/tab";
-
 // THE GUEST'S TICKET IN PROGRESS (MESITA-3879, moved here by MESITA-4061 so
 // it is tested on its own). What the guest typed at /pay/place/<placeId>
 // lives in localStorage, with one pending pointer once an amount is typed:
@@ -16,25 +14,15 @@ export function payDraftExpired(savedAt: number, now: number): boolean {
   return now - savedAt > PAY_DRAFT_MAX_AGE_MS;
 }
 
-export type Stage = "bill" | "method" | "pay";
-/** Every stage a stored draft may hold (MESITA-4226: the Card step is
- *  gone; a draft saved there reads as Pay, which shows the one card). */
-export const STAGES: readonly Stage[] = ["bill", "method", "pay"];
-const MERGED_INTO_PAY: readonly string[] = ["card"];
 /** 10% · 15% · 20% · Other (MESITA-3876); no tip is Other with 0 typed. */
 export type Tip = 10 | 15 | 20 | "other" | null;
 export const TIP_CHIPS = [10, 15, 20] as const;
 
 export type Draft = {
-  stage: Stage;
-  typing: boolean;
   amount: string;
   tip: Tip;
   other: string;
   useCredit: boolean;
-  /** MESITA-4708: cash (outside the app) or none; the card, Apple Pay and
-   *  Google Pay ways (and the draft's card ids) left with the bill's card. */
-  method: PayWith | null;
   /** The bill this draft became (MESITA-3997): while it is set, every way
    *  back in (the place's Pay, a reload, the X and back) opens that bill's
    *  QR, never the Bill step again. Cancel bill and Start again clear it. */
@@ -140,11 +128,7 @@ export function readDraft(placeId: string): Draft | null {
     const d = JSON.parse(draftStore()?.getItem(DRAFT_KEY(placeId)) ?? "null") as Draft | null;
     if (!d || typeof d.amount !== "string" || typeof d.savedAt !== "number") return null;
     if (payDraftExpired(d.savedAt, Date.now())) return null;
-    // A stored stage is never trusted (MESITA-4117): an unknown one reads as
-    // Bill, and a junk method as none (a card method, MESITA-4708, too).
-    const stage: Stage = STAGES.includes(d.stage) ? d.stage : MERGED_INTO_PAY.includes(d.stage) ? "pay" : "bill";
-    const method = d.method === "cash" ? d.method : null;
-    return { stage, typing: d.typing, amount: d.amount, tip: d.tip, other: d.other, useCredit: d.useCredit, method, sentTabId: d.sentTabId ?? null, savedAt: d.savedAt };
+    return { amount: d.amount, tip: d.tip, other: d.other, useCredit: d.useCredit, sentTabId: d.sentTabId ?? null, savedAt: d.savedAt };
   } catch {
     return null;
   }
@@ -203,14 +187,12 @@ export function clearGuestDraft(placeId: string) {
   writeDraft(placeId, null);
 }
 
-/** "Start again" reopens what was typed, keypad down, at the given stage
- *  (MESITA-4121: Method when the bill was cancelled back to it, Bill
- *  otherwise). A draft older than 30 minutes is gone, so the bill opens
+/** ← from the QR reopens what was typed (MESITA-4121), as a new ticket. A draft older than 30 minutes is gone, so the bill opens
  *  empty. */
-export function reopenGuestDraft(placeId: string, stage: Stage = "bill") {
+export function reopenGuestDraft(placeId: string) {
   const d = readDraft(placeId);
   if (!d) return;
-  writeDraft(placeId, { ...d, stage, typing: false, sentTabId: null });
+  writeDraft(placeId, { ...d, sentTabId: null });
 }
 
 // ONE PAYMENT PER TAP (MESITA-4061). A pay call that times out or loses the
