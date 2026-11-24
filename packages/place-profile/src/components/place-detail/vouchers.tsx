@@ -826,7 +826,7 @@ function CashbackPanel({
  *  THE ONLY (i) (Pato, 2026-11-23, MESITA-4804: "only one i in how it works.
  *  there display all the info, don't lose info"): the rows' own (i) went;
  *  their deals and rules are in here. */
-function HowItWorks({ title, tab, children }: { title: string; tab: string; children: ReactNode }) {
+function HowItWorks({ title, lead, tab, children }: { title: string; lead: string; tab: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -869,6 +869,9 @@ function HowItWorks({ title, tab, children }: { title: string; tab: string; chil
                   </button>
                 </div>
                 <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+                  <p className="text-foreground text-base leading-snug" data-how-lead>
+                    {lead}
+                  </p>
                   {children}
                 </div>
               </div>
@@ -880,36 +883,106 @@ function HowItWorks({ title, tab, children }: { title: string; tab: string; chil
   );
 }
 
-/** Pay's How it works: the steps, every line's own facts and the rules. */
-function PayHowItWorks({ rows }: { rows: CashbackLineRow[] }) {
+/** The four tiers as one table (MESITA-4807): which visit across, which
+ *  guest down; the guest's own cell in ink, a tier that gives nothing a dash. */
+function TierTable({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
+  const cell = (line: CashbackLineRow["line"]) => {
+    const row = rows.find((o) => o.line === line);
+    const mine = guest === line && row != null;
+    return (
+      <td className="py-1 pl-2">
+        <span
+          className={cn(
+            "flex min-h-11 flex-col items-center justify-center rounded-xl text-base leading-tight font-semibold tabular-nums",
+            mine ? "bg-foreground text-background" : row ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
+          )}
+          data-how-tier={line}
+        >
+          {row ? `${row.bps / 100}%` : "—"}
+          {mine ? <span className="text-xs">You</span> : null}
+        </span>
+      </td>
+    );
+  };
+  return (
+    <Box title={`${visitWord(rows[0].mech)} you get`} data-how-offers="">
+      <table className="w-full table-fixed">
+        <thead>
+          <tr className="text-foreground text-sm font-semibold">
+            <td />
+            <th scope="col" className="pb-1 pl-2 font-semibold">
+              Welcome Visit
+              <span className="text-muted-foreground block text-xs font-normal">Your first bill here</span>
+            </th>
+            <th scope="col" className="pb-1 pl-2 font-semibold">
+              Returning Visit
+              <span className="text-muted-foreground block text-xs font-normal">Every later bill</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row" className="text-foreground text-left text-sm font-semibold">Regular guests</th>
+            {cell("welcome")}
+            {cell("returning")}
+          </tr>
+          <tr>
+            <th scope="row" className="text-foreground text-left text-sm font-semibold">VIP guests</th>
+            {cell("welcome_vip")}
+            {cell("returning_vip")}
+          </tr>
+        </tbody>
+      </table>
+    </Box>
+  );
+}
+
+/** The bill the worked example uses, in whole pesos. */
+const EXAMPLE_BILL = 500;
+
+/** Pay's How it works (Pato, 2026-11-23, MESITA-4807: "this explanation
+ *  clearer"): one sentence, the steps as a worked example at the guest's own
+ *  rate (else the first tier's), one table of rates, the rules in full. */
+function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
   // MESITA-4770: a Discount comes off the printed bill before paying; the
   // waiter sees it on the bill. Cashback lands as credit an hour later.
-  const discount = rows[0]?.mech === "discount";
+  const shown = rows.find((o) => o.line === guest) ?? rows[0];
+  const discount = shown.mech === "discount";
+  const rate = `${shown.bps / 100}%`;
+  const gives = (EXAMPLE_BILL * shown.bps) / 10000;
   const steps: Step[] = discount
     ? [
-        { Icon: QrCode, title: "Type your bill", short: "Bill", line: "In Pay Bill, here" },
-        { Icon: Wallet, title: "Get", short: "Discount", line: "Taken off before you pay", green: true },
-        { Icon: Utensils, title: "Pay the rest", short: "Pay", line: "Cash or credit; the waiter confirms" },
+        { Icon: QrCode, title: "Your bill", amount: `$${EXAMPLE_BILL}`, line: "Type it in Pay Bill" },
+        { Icon: Wallet, title: "Discount", amount: `−$${gives}`, line: `${rate} off`, green: true },
+        { Icon: Utensils, title: "You pay", amount: `$${EXAMPLE_BILL - gives}`, line: "The waiter confirms it" },
       ]
     : [
-        { Icon: QrCode, title: "Pay", short: "Pay", line: "Here, or cash to the waiter" },
-        { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
-        { Icon: Wallet, title: "Receive", short: "Receive", line: "As credit at this place", green: true },
+        { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: "With Pay Bill, here" },
+        { Icon: Clock, title: "Wait", amount: "1 hour", line: "Nothing to do" },
+        { Icon: Wallet, title: "You get", amount: `$${gives}`, line: `${rate} back as credit`, green: true },
       ];
   // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day).
   const facts: Fact[] = discount
-    ? [{ Icon: Utensils, text: "On the bill, never on the tip." }]
+    ? [{ Icon: Utensils, text: "The discount is on the bill, never on the tip." }]
     : [
-        { Icon: Wallet, text: "Never on what you pay with credit." },
-        { Icon: Utensils, text: "Spend it on any bill here." },
+        { Icon: Utensils, text: "Use your cashback to pay any bill at this place." },
         { Icon: InfinityIcon, text: "It never expires." },
+        { Icon: Wallet, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip." },
       ];
   return (
-    <HowItWorks tab="pay" title="Pay">
-      <Box>
+    <HowItWorks
+      tab="pay"
+      title={discount ? "How your discount works" : "How cashback works"}
+      lead={
+        discount
+          ? "Pay your bill with Mesita and it costs less right away."
+          : "Pay your bill with Mesita and part of it comes back to you as credit for your next visit here."
+      }
+    >
+      <Box title={`Example: a $${EXAMPLE_BILL} bill`}>
         <StepList steps={steps} />
       </Box>
-      <OfferFacts rows={rows.map((r) => ({ key: r.line, title: r.title, line: `${r.who}.`, rate: `${r.bps / 100}% ${visitWord(r.mech)}` }))} />
+      <TierTable rows={rows} guest={guest} />
       <GoodToKnow facts={facts} />
     </HowItWorks>
   );
@@ -927,7 +1000,7 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
     ...(products.some((p) => rule(p.key) === null) ? [{ Icon: Repeat, text: "Buy as many as you like." }] : []),
   ];
   return (
-    <HowItWorks tab="prepay" title="Prepay">
+    <HowItWorks tab="prepay" title="How prepaying works" lead="Pay now for a future visit here and get more credit than you pay.">
       <Box>
         <StepList
           steps={[
@@ -1311,7 +1384,7 @@ function CheckoutSection({
           This place gives no Back yet. You can still pay your bill here.
         </p>
       )}
-      {rows.length > 0 ? <PayHowItWorks rows={rows} /> : null}
+      {rows.length > 0 ? <PayHowItWorks rows={rows} guest={cashback?.line ?? null} /> : null}
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
           just have shortcut to Go to Pay bill at the bottom, purple color"),
           sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
