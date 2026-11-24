@@ -110,7 +110,7 @@ export function PlaceList({
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
       ) : (
-        <div className="flex flex-col gap-2" data-pay-places>
+        <div className="flex flex-col" data-pay-places>
           {shown.map((p) => (
             <PlaceRow key={p.place_id} p={p} onPick={onPick} kind={kind} />
           ))}
@@ -199,12 +199,13 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       type="button"
       onClick={() => onPick(p.place_id)}
       aria-label={spoken}
-      className="group flex w-full flex-col text-left"
+      className={cn("group flex w-full flex-col border-b-2 text-left", kind === "prepay" ? "border-[#635BFF]" : "border-[#00D66F]")}
       data-pay-pick-place
     >
       {/* THE GRID (Pato, 2026-11-24, MESITA-4839: "data in gray box, offers in
           green boxes"): the place's box, then its offers, edge to edge with a
-          2px line between (MESITA-4842). */}
+          2px line between (MESITA-4842), and a line in the tile's colour under
+          each place (Pato: "lines separating the boxes of each place"). */}
       <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-2.5 px-3.5 py-1.5 transition-colors">
         <PlacePhoto place={p} className={kind === "prepay" ? "h-7 w-7" : "h-9 w-9"} />
         <span className="min-w-0 flex-1">
