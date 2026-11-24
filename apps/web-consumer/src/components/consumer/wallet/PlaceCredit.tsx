@@ -45,7 +45,7 @@ const ROUND_GLYPH = "h-5 w-5";
 //   [mini Loyalty Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "Loyalty Card"
-//   (Prepay)(Pay Bill)(Send Gift)(View Place)  four round buttons, label
+//   (View Place)(Prepay)(Pay Bill)(Send Gift)  four round buttons, label
 //                         under (MESITA-4281); only Pay Bill purple; Add Funds
 //                         wears a +N% chip and hides when nothing is for sale;
 //                         Send Gift follows giftAction (hidden, dimmed, open)
@@ -319,10 +319,16 @@ export function PlaceCredit({
            card (MESITA-4116). Since MESITA-4281 the four are one bank row
            of round buttons. */
         <div className="mt-5 flex justify-around gap-1" data-loyalty-card-actions>
-          {/* PREPAY FIRST, GREEN (Pato, 2026-11-23, MESITA-4816: "(Prepay)
-              (Pay Bill) (Send Gift) (View Place). and make prepay green";
-              View Offers before): get credit, spend it, share it, then the
-              place. Shown where a voucher is sold; every offer is the Offers
+          {/* VIEW PLACE FIRST, SEND GIFT LAST (MESITA-4894, Pato: "change the
+              order of this icons"); Prepay led before. */}
+          <PushLink href={href} className={ROUND} data-loyalty-card-place>
+            <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
+              <Store className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+            </span>
+            View Place
+          </PushLink>
+          {/* PREPAY (MESITA-4816; View Offers before): get credit, spend
+              it, share it. Shown where a voucher is sold; every offer is the Offers
               tile under the card. The discount badge is Prepay's one mark (MESITA-4843). */}
           {prepay ? (
             <PushLink
@@ -369,12 +375,6 @@ export function PlaceCredit({
               Send Gift
             </button>
           ) : null}
-          <PushLink href={href} className={ROUND} data-loyalty-card-place>
-            <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
-              <Store className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
-            </span>
-            View Place
-          </PushLink>
         </div>
       )}
       {held ? (
