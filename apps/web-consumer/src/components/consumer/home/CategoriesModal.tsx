@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { cn } from "@/lib/utils";
 
 // THE CATEGORIES MODAL (Pato, 2026-11-18, MESITA-4417: "for menu actually
 // open a modal covering full page"): Home's Menu tile opens every family
@@ -20,11 +21,14 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 export function CategoriesModal({
   open,
   onClose,
+  lead,
   specials,
   children,
 }: {
   open: boolean;
   onClose: () => void;
+  /** Social, its own group at the left (Home only). */
+  lead?: ReactNode;
   /** Saved, Nearby and Popular as circles, the same as the families
    *  (no Saved for an anonymous visitor). */
   specials: ReactNode;
@@ -57,10 +61,23 @@ export function CategoriesModal({
             a simple line, and center them"): each special is one family
             column wide (a fifth of the row, less its share of the four
             0.125rem gaps), the row centred, then one 1px rule. */}
+        {/* SOCIAL ON ITS OWN (Pato, 2026-11-23, MESITA-4817: "social at the
+            left, then the other three, then below all"): Home's `lead` in the
+            first family column, a 1px upright line, then the specials in the
+            last columns. Search has no lead: its specials stay centred. */}
         <div
-          className="flex shrink-0 justify-center gap-x-0.5 px-1.5 pt-3 [&>*]:w-[calc((100%-0.5rem)/5)] [&>*]:shrink-0"
+          className={cn(
+            "flex shrink-0 gap-x-0.5 px-1.5 pt-3 [&>button]:w-[calc((100%-0.5rem)/5)] [&>button]:shrink-0",
+            !lead && "justify-center",
+          )}
           data-places-menu-specials
         >
+          {lead}
+          {lead ? (
+            <span aria-hidden className="flex flex-1 justify-center py-1">
+              <span className="bg-border w-px" />
+            </span>
+          ) : null}
           {specials}
         </div>
         <hr className="border-border mx-5 mt-3 shrink-0" data-places-menu-divider />
