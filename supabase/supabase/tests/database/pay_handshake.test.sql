@@ -3,7 +3,7 @@
 -- tip; alone neither does; a changed bill clears the waiter's tap.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(65);
+select plan(73);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000f4889');
 insert into public.place_profiles (id, google_name) values
@@ -136,6 +136,24 @@ select ok(not has_function_privilege('authenticated', 'public.pay_bill_receive(u
   and not has_function_privilege('anon', 'public.pay_bill_unreceive(uuid, uuid, timestamptz)', 'execute'), 'clients never call them');
 insert into s select 'late', pg_temp.sent(106, '00000000-0000-4000-8000-000000024889', false, 50000, 0);
 select is((select public.pay_bill_receive((b).id, (b).place_id, 1, repeat('e', 64), null, now() + interval '16 minutes')->>'code' from s where k = 'late'), 'expired', 'an expired bill is not received');
+
+-- ── Without a code (MESITA-4890): Discount only ──
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000900d4889');
+insert into public.consumers (id) values ('00000000-0000-4000-8000-0000900d4889') on conflict do nothing;
+insert into public.place_waiters (place_id, name, no_code, lookup_hash) values ('00000000-0000-4000-8000-000000014889', '(no code)', true, repeat('7a', 32));
+do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5a', 32)); end $$;
+select is(public.waiter_no_code(repeat('5a', 32), null), null, 'a QR opened nowhere needs a code');
+do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5b', 32), p_place_id => '00000000-0000-4000-8000-000000024889'); end $$;
+select is(public.waiter_no_code(repeat('5b', 32), null), null, 'nor does a place that asks for one');
+do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5c', 32), p_place_id => '00000000-0000-4000-8000-000000014889'); end $$;
+select isnt(public.waiter_no_code(repeat('5c', 32), null), null, 'a Discount place with codes off does not');
+select is(public.waiter_no_code(repeat('5c', 32), null, now() + interval '16 minutes'), null, 'only while the QR lives');
+select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014889', false) where name = '(no code)'), 0, 'the mode is nobody''s name');
+update public.place_cashback_settings set visit_mechanism = 'cashback' where place_id = '00000000-0000-4000-8000-000000014889';
+select is(public.waiter_no_code(repeat('5c', 32), null), null, 'Cashback needs a code');
+update public.place_cashback_settings set visit_mechanism = 'discount' where place_id = '00000000-0000-4000-8000-000000014889';
+select is(public.waiter_no_code(repeat('5c', 32), null), null, 'and going back to Discount does not turn codes off again');
+select ok(not has_function_privilege('anon', 'public.waiter_no_code(text, uuid, timestamptz)', 'execute'), 'clients never call it');
 
 select * from finish();
 rollback;

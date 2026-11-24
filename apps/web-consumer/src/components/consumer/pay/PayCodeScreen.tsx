@@ -31,7 +31,7 @@ import { usePayPlaces } from "./use-pay-places";
 //                 credits and rate there and nothing more (MESITA-4881, Pato:
 //                 "don't overexplain here")
 //   2 Bill      the bill and the tip as the waiter types them, read every
-//                 300 ms; shown, never paid
+//                 250 ms; shown, never paid
 //   3 Pay         what it comes to and the handshake: the guest's Pay and the
 //                 waiter's Receive, in any order, then the receipt by itself
 //   4 Receipt   /pay/bill/<id>
@@ -42,9 +42,9 @@ import { usePayPlaces } from "./use-pay-places";
 // and never pay the tip; the server works every number out, and Pay names
 // the version on screen.
 
-/** While the waiter types (Pato, MESITA-4887: "maybe every 300ms"; the read's
+/** While the waiter types (Pato, MESITA-4890: "every 250 ms is okey"; the read's
  *  own time counts in it), while the QR waits, then with a bill. */
-const TYPING_MS = 300;
+const TYPING_MS = 250;
 const LIVE_MS = 1000;
 const FAST_MS = 3000;
 const SLOW_MS = 5000;
@@ -175,7 +175,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
 
   const mint = useCallback(async () => {
     try {
-      const r = await apiGetPayCode(getSupabase(), { mint: true, ...(following.current ? { bill_id: following.current } : {}) });
+      const r = await apiGetPayCode(getSupabase(), { mint: true, ...(from ? { place_id: from } : {}), ...(following.current ? { bill_id: following.current } : {}) });
       if (!alive.current) return;
       setCodeFailed(false);
       if (r.code) {
@@ -194,7 +194,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       if (kept) setCode(kept);
       else setCodeFailed(true);
     }
-  }, [getSupabase, take]);
+  }, [getSupabase, take, from]);
 
   const busyBill = billNeedsGuest(bill);
   const rescan = showAgain && bill?.state === "accepted";

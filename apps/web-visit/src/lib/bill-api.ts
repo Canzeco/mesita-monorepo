@@ -26,7 +26,7 @@ export type Bill = {
   /** What that tap said was taken, even if the bill changed since. */
   took_cents?: number | null;
 };
-export type BillRead = { bill: Bill; place: { id: string; name: string | null }; guest_photo: string | null; guest_name?: string | null };
+export type BillRead = { bill: Bill; place: { id: string; name: string | null }; guest_photo: string | null; guest_name?: string | null; guest_age?: number | null; guest_sex?: "female" | "male" | null };
 
 export type Refused = { refused: true; code: string; error: string };
 const refused = (data: Record<string, unknown>, fallback: string): Refused => ({
@@ -47,9 +47,10 @@ export type Staff = { place_id: string; staff_token: string; waiter?: string | n
 const keyed = (s: Staff) => ({ place_id: s.place_id, staff_token: s.staff_token });
 
 /** The waiter's 8-digit code; it names the place and the waiter, and is tried
- *  only with the guest's QR or a bill (MESITA-4833). */
-export const signIn = (code: string, by: { token: string } | { bill_id: string }) =>
-  call<{ place: { id: string; name: string | null }; waiter?: { name: string }; staff_token: string }>("visit-web-sign-in", { code, ...by }, "Couldn't check the code. Try again.");
+ *  only with the guest's QR or a bill (MESITA-4833). Null: a Discount place that
+ *  turned codes off (MESITA-4890); refused `code_needed` anywhere else. */
+export const signIn = (code: string | null, by: { token: string } | { bill_id: string }) =>
+  call<{ place: { id: string; name: string | null }; waiter?: { name: string } | null; staff_token: string }>("visit-web-sign-in", { ...(code === null ? {} : { code }), ...by }, "Couldn't check the code. Try again.");
 
 // The staff key of one bill, in this tab only: the code is typed once per
 // bill, and nothing about the phone is remembered (MESITA-4827).

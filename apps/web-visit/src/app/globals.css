@@ -1367,3 +1367,68 @@ button.wp-yes {
 button.hs-go {
   margin: 10px 0 8px;
 }
+
+/* Short enough for a phone without scrolling (Pato, MESITA-4890). */
+[data-bill="handshake"] .tk {
+  margin-top: 8px;
+  border-radius: 20px;
+}
+
+[data-bill="handshake"] .tk-top {
+  padding: 12px 16px;
+}
+
+[data-bill="handshake"] .tk-photo {
+  width: 32px;
+  height: 32px;
+}
+
+[data-bill="handshake"] .tk-words {
+  margin-top: 8px;
+}
+
+[data-bill="handshake"] .tk-amount {
+  margin: 0;
+  font-size: min(36px, 10vw);
+}
+
+[data-bill="handshake"] .tk-lines {
+  padding: 2px 16px;
+}
+
+[data-bill="handshake"] .tk-lines li {
+  min-height: 36px;
+  padding: 0;
+}
+
+[data-bill="handshake"] .hs {
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+}
+
+[data-bill="handshake"] .hs-side {
+  display: grid;
+  grid-template-columns: 32px auto;
+  justify-items: start;
+  width: auto;
+  max-width: 45%;
+  column-gap: 8px;
+  row-gap: 0;
+}
+
+[data-bill="handshake"] .hs-side i {
+  grid-row: span 2;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+[data-bill="handshake"] .wp-actions button,
+[data-bill="handshake"] button.hs-go {
+  height: 52px;
+}
+
+[data-bill="handshake"] button.hs-go {
+  margin: 8px 0;
+}

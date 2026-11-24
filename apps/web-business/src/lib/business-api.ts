@@ -467,6 +467,8 @@ export type PlacePayments = {
   /** Whether a waiter has a code (MESITA-4871). */
   code_set: boolean;
   waiters: PlaceWaiter[];
+  /** MESITA-4890: bills need no waiter code (Discount only). */
+  no_code?: boolean;
   /** MESITA-3946: credit guests hold here now; null when the read failed. */
   credits_balance: { available_cents: number; pending_cents: number } | null;
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
@@ -530,6 +532,7 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
       contract: r.data.contract,
       code_set: r.data.code_set === true,
+      no_code: r.data.no_code === true,
       waiters: Array.isArray(r.data.waiters) ? r.data.waiters : [],
       credits_balance: r.data.credits_balance
         ? {
@@ -674,7 +677,7 @@ export type PlaceWaiter = {
 /** Add a waiter, replace their 8-digit code or remove them. */
 export async function setWaiter(
   placeId: string,
-  body: { action: "add"; name: string } | { action: "new_code" | "remove"; waiter_id: string },
+  body: { action: "add"; name: string } | { action: "new_code" | "remove"; waiter_id: string } | { action: "codes_on" | "codes_off" },
 ): Promise<Result<{ waiter_id: string; name: string; code?: string }>> {
   const r = await efInvoke<{ waiter_id: string; name: string; code?: string }>("business-web-set-waiter", { place_id: placeId, ...body });
   if (!r.ok) return fail(r);

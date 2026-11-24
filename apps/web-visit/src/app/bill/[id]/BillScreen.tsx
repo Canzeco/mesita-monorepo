@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, receiveBill, sendBill, unreceiveBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
 import { BillEntry, CodeEntry, WaiterSteps } from "@/components/BillEntry";
@@ -11,10 +11,10 @@ import { UserIcon } from "@/app/tab/[token]/icons";
 
 // THE WAITER'S BILL (MESITA-4823), by its state:
 //
-// The waiter's Receive and Receipt, and Bill and Tip again on an edit (MESITA-4879):
+// The waiter's Confirm and Receipt, and Bill and Tip again on an edit (MESITA-4879):
 //
 //   open       Bill and Tip, Send bill
-//   sent       I received $X, Edit, Cancel; once tapped, waiting for the guest, Undo
+//   sent       Guest paid me $X, Edit, Cancel; once tapped, waiting for the guest, Undo
 //   declined   the same boxes, "The guest declined"
 //   accepted   the guest already paid on their phone: Receive $X closes it
 //   paid       the green screen, Next guest
@@ -40,6 +40,7 @@ export function BillScreen({ billId }: { billId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const reads = useRef(0);
+  const [finished, setFinished] = useState(false);
   // A bill that just changed is not received by a tap already on its way.
   const [armedAt, setArmedAt] = useState(0);
   const [now, setNow] = useState(0);
@@ -132,13 +133,15 @@ export function BillScreen({ billId }: { billId: string }) {
     }
   }
 
-  async function unlock(code: string): Promise<boolean> {
+  async function unlock(code: string | null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
     const r = await checkCode(code, { bill_id: billId });
     setBusy(null);
     if (r === "failed" || "refused" in r) {
+      // No code here to try: it is typed (MESITA-4890).
+      if (code === null) return false;
       setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
       return r === "failed";
     }
@@ -146,6 +149,15 @@ export function BillScreen({ billId }: { billId: string }) {
     setLocked(false);
     return true;
   }
+
+  // A place with codes off opens by itself (MESITA-4890).
+  const tried = useRef(false);
+  useEffect(() => {
+    if (!locked || tried.current) return;
+    tried.current = true;
+    void unlock(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked]);
 
   if (locked) return <CodeEntry label="Open bill" busy={busy === "code"} error={error} onCode={unlock} />;
   if (gone) {
@@ -235,6 +247,17 @@ export function BillScreen({ billId }: { billId: string }) {
       return r;
     });
 
+  // DONE (Pato, MESITA-4890: "after all done, enable to close"). A browser closes
+  // only a page it opened from another: where it won't, this says so.
+  if (bill.state === "paid" && finished) {
+    return (
+      <main className="proof pay-end" data-bill="done">
+        <h1>All done</h1>
+        <p className="proof-line">You can close this page. For another guest, scan their QR.</p>
+      </main>
+    );
+  }
+
   // PAID.
   if (bill.state === "paid") {
     const collected = bill.outside_cents ?? 0;
@@ -251,6 +274,18 @@ export function BillScreen({ billId }: { billId: string }) {
         ])}
         {/* Friends who split: each shows their own QR. */}
         <p className="wp-line wp-center">Another guest? Scan their QR.</p>
+        <div className="wp-space" />
+        <button
+          type="button"
+          className="wp-go"
+          onClick={() => {
+            keepBillStaff(billId, null);
+            setFinished(true);
+            window.close();
+          }}
+        >
+          Done
+        </button>
       </main>
     );
   }
@@ -330,9 +365,7 @@ export function BillScreen({ billId }: { billId: string }) {
         ) : null}
         {alert}
         <div className="wp-space" />
-        <p className={`wp-line wp-center${waiting ? " hs-warn" : ""}`}>
-          {waiting ? `Not done yet. Don't let ${guest} leave until they tap I paid.` : `Open until ${clockTime(bill.expires_at)}`}
-        </p>
+        {waiting ? <p className="wp-line wp-center hs-warn">Not done yet. Don&apos;t let {guest} leave until they tap I paid.</p> : null}
         {cancelRow ??
           (waiting ? (
             <div className="wp-actions wp-half">
@@ -351,7 +384,7 @@ export function BillScreen({ billId }: { billId: string }) {
                 disabled={busy !== null || ready || now < armedAt}
                 onClick={() => void run("receive", (s) => receiveBill(s, billId, bill.version))}
               >
-                {busy === "receive" || bill.state === "confirming" ? "Confirming…" : due > 0 ? `I received ${m(due)}` : "Confirm"}
+                {busy === "receive" || bill.state === "confirming" ? "Confirming…" : due > 0 ? `Guest paid me ${m(due)}` : "Confirm"}
               </button>
               <div className={guestReady ? "" : "wp-actions wp-half"}>
                 <button type="button" className="wp-no" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>

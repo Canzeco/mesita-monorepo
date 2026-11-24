@@ -30,14 +30,14 @@ serveJson("consumer-web-get-pay-code", async (req) => {
   const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { mint, bill_id: billId } = bodyRes.body;
+  const { mint, bill_id: billId, place_id: placeId } = bodyRes.body;
 
   try {
     const nowMs = Date.now();
     let code: { url: string; expires_at: string } | null = null;
     if (mint === true) {
       const c = mintPayCode();
-      const r = await callTabRpc(admin, "pay_guest_code_set", { p_consumer_id: user.id, p_token_hash: await hashPayCode(c.token) });
+      const r = await callTabRpc(admin, "pay_guest_code_set", { p_consumer_id: user.id, p_token_hash: await hashPayCode(c.token), p_place_id: isUuid(placeId) ? placeId : null });
       if (r.ok !== true) throw new Error("pay_guest_code_set: refused");
       code = { url: c.url, expires_at: String(r.expires_at) };
     }

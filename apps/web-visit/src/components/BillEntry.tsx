@@ -12,7 +12,7 @@ import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGT
 //   Bill     the bill, before tip
 //   Tip      10 · 15 · 20% · Other; nothing is no tip
 //   Code     the waiter's own 8 digits, then whose QR it is; Send bill
-//   Receive  the handshake: this tap and the guest's Pay, in any order
+//   Confirm  the handshake: this tap and the guest's Pay, in any order
 //   Receipt  what was paid
 //
 // The tip is never picked for the guest.
@@ -20,7 +20,7 @@ import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGT
 const KEYS: Key[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
 const TIP_PCTS = [10, 15, 20] as const;
 
-export const WAITER_STEPS = ["Bill & Tip", "Code", "Receive", "Receipt"] as const;
+export const WAITER_STEPS = ["Bill & Tip", "Code", "Confirm", "Receipt"] as const;
 
 /** Where the waiter is; a picture, not buttons. */
 export function WaiterSteps({ at, onBack, busy }: { at: 1 | 2 | 3 | 4; onBack?: () => void; busy?: boolean }) {
@@ -132,7 +132,7 @@ export function CodeEntry({ busy, error, label, onCode, onBack }: { busy: boolea
 }
 
 /** Whose QR it is, before the bill goes: the waiter looks, then sends. */
-export function GuestCheck({ name, photo, total, busy, error, onSend, onNo }: { name: string | null; photo: string | null; total: string; busy: "send" | "no" | null; error: string | null; onSend: () => void; onNo: () => void }) {
+export function GuestCheck({ name, photo, age, sex, total, busy, error, onSend, onNo }: { name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null; total: string; busy: "send" | "no" | null; error: string | null; onSend: () => void; onNo: () => void }) {
   return (
     <main className="wp" data-bill="guest">
       <WaiterSteps at={2} />
@@ -143,15 +143,19 @@ export function GuestCheck({ name, photo, total, busy, error, onSend, onNo }: { 
           {photo ? <img src={photo} alt="" /> : (name ?? "?").slice(0, 1).toUpperCase()}
         </span>
         <p className="wp-name">{name ?? "A Mesita guest"}</p>
+        {/* MESITA-4890, Pato: "display age and sex". */}
+        {age !== null || sex ? <p className="wp-line">{[sex === "female" ? "Female" : sex === "male" ? "Male" : null, age !== null ? `${age} years` : null].filter(Boolean).join(" · ")}</p> : null}
         <p className="wp-line">{photo ? total : `${total} · No photo, ask their name`}</p>
         <Alert text={error} />
       </div>
-      <button type="button" className="wp-go" disabled={busy !== null} onClick={onSend}>
-        {busy === "send" ? "Sending…" : "Send bill"}
-      </button>
+      <div className="wp-actions wp-half">
       <button type="button" className="wp-no" disabled={busy !== null} onClick={onNo}>
         {busy === "no" ? "Closing…" : "Not my guest"}
       </button>
+      <button type="button" className="wp-go wp-yes" disabled={busy !== null} onClick={onSend}>
+        {busy === "send" ? "Sending…" : "Send bill"}
+      </button>
+      </div>
     </main>
   );
 }
