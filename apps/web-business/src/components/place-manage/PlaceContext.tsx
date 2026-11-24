@@ -13,7 +13,7 @@ import {
   type SetStateAction,
 } from "react";
 import { mergeReviewFoundFlags } from "@/lib/review-found";
-import { setUnsavedEdits } from "@/lib/unsaved-edits";
+import { guardUnsavedEdits } from "@/lib/unsaved-edits";
 import { updatePlace, type AdminPlace, type ProfileRead } from "./actions";
 import {
   dirtyDialogNavBody,
@@ -27,6 +27,7 @@ import {
   type HistoryGuardState,
 } from "./historyGuard";
 import { ConfirmDialog } from "@/components/ui/manage";
+import { attempt } from "@/lib/attempt";
 
 /** Something that would throw away unsaved edits if it ran right now. */
 type GuardedIntent = {
@@ -208,7 +209,7 @@ export function PlaceProvider({
     setSaveLabel("Saving…");
     setSavePending(true);
     void (async () => {
-      const r = await updatePlace(patch);
+      const r = await attempt(updatePlace(patch));
       setSavePending(false);
       if (!r.ok) {
         // Nothing was written, so nothing is re-seeded and every draft stays
@@ -226,7 +227,7 @@ export function PlaceProvider({
         setProfile({ ...profile, familyStored: r.data.familyStored });
       }
       setDirtyMap({});
-        setSaveOk(true);
+      setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
   }, [place, placeId, setPlace, profile, setProfile]);
@@ -257,8 +258,8 @@ export function PlaceProvider({
   // Sync history trap to dirty flips (pushState is an external system).
   // DeploymentWatcher never reloads over these drafts (MESITA-3181).
   useEffect(() => {
-    setUnsavedEdits(isDirty);
-    return () => setUnsavedEdits(false);
+    if (!isDirty) return;
+    return guardUnsavedEdits("profile");
   }, [isDirty]);
 
   useEffect(() => {

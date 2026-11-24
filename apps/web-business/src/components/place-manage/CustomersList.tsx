@@ -17,6 +17,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { FilterBanner } from "./MonitorList";
 import { GuestAvatar } from "./GuestAvatar";
+import { attempt } from "@/lib/attempt";
 
 export function CustomersList({ placeId, initial, customer }: { placeId: string; initial: CustomersPage; customer: string | null }) {
   const [page, setPage] = useState(initial);
@@ -27,7 +28,7 @@ export function CustomersList({ placeId, initial, customer }: { placeId: string;
     if (!page.next || busy) return;
     setBusy(true);
     setError(null);
-    const r = await listCustomers(placeId, customer, page.next);
+    const r = await attempt(listCustomers(placeId, customer, page.next));
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setPage({ ...r.data, rows: [...page.rows, ...r.data.rows] });

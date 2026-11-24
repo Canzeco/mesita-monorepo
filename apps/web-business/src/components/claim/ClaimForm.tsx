@@ -25,6 +25,7 @@ import { callPlaceCode, checkPlaceCode, requestVerification, type ClaimOutcome, 
 import { INPUT_BASE } from "@/components/ui/manage";
 import { PLACES, placeTabHref } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { attempt } from "@/lib/attempt";
 
 const ERROR_COPY: Record<string, string> = {
   too_many_requests: "You can send three requests a day. Try again tomorrow.",
@@ -104,7 +105,7 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
   async function call() {
     setBusy(true);
     setError(null);
-    const r = await callPlaceCode(place.id);
+    const r = await attempt(callPlaceCode(place.id));
     setBusy(false);
     if (!r.ok) {
       if (r.code === "claimed") setMode("claimed");
@@ -270,7 +271,7 @@ function CodeStep({
   async function check(value: string) {
     setBusy(true);
     setError(null);
-    const r = await checkPlaceCode(place.id, value);
+    const r = await attempt(checkPlaceCode(place.id, value));
     setBusy(false);
     if (r.ok) return onVerified();
     setCode("");
@@ -351,7 +352,7 @@ function ManualStep({
   async function send() {
     setBusy(true);
     setError(null);
-    const r = await requestVerification({ placeId, name, role, contact, note });
+    const r = await attempt(requestVerification({ placeId, name, role, contact, note }));
     setBusy(false);
     if (!r.ok) {
       setError((r.code && ERROR_COPY[r.code]) || r.error);

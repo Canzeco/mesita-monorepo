@@ -37,7 +37,7 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   },
   {
     tab: "payments",
-    line: "Loyalty Cards, Cash Payments, App Payments, App Prepayments and the Stripe Account, and which of them are on at your place.",
+    line: "Discounts or credit back on the bill, prepaid vouchers, waiter codes, and the Credits and Stripe accounts behind them.",
   },
   {
     tab: "reservations",

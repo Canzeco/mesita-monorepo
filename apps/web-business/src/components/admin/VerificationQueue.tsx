@@ -10,11 +10,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { decideVerification, type PendingRequest } from "@/lib/business-api";
 import { INPUT_BASE } from "@/components/ui/manage";
-
-function day(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import { day } from "@/lib/format";
+import { attempt } from "@/lib/attempt";
 
 function Who({ name, phone, handle, member }: { name: string | null; phone: string | null; handle: string | null; member: string | null }) {
   return (
@@ -35,7 +32,7 @@ export function VerificationQueue({ pending }: { pending: PendingRequest[] }) {
   async function act(key: string, run: () => ReturnType<typeof decideVerification>) {
     setBusy(key);
     setError(null);
-    const r = await run();
+    const r = await attempt(run());
     setBusy(null);
     if (!r.ok) return setError(r.error);
     router.refresh();
