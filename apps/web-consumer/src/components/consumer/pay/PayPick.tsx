@@ -134,6 +134,14 @@ type OfferBox = { top: string; bottom: string; bonus?: string; tone: string; key
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
+/** The best voucher bonus among these places, in whole percent. */
+export function bestVoucherBonus(places: PayPlace[]): number {
+  const all = places
+    .filter((p) => payPlaceTabs(p).prepay)
+    .flatMap((p) => VOUCHERS_SHOWN.filter((k) => p.offers?.sell.includes(k)).map((k) => (p.offers ? voucherPct(p.offers, k) : 0)));
+  return Math.max(0, ...all);
+}
+
 /** THE BOXES UNDER A PLACE. Prepay: each voucher it sells, what you pay over
  *  what you get. Pay (MESITA-4837): the guest's credits here, then what their
  *  own next bill gets and as which visit. */
