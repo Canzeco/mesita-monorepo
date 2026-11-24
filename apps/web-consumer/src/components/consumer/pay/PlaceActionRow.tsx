@@ -1,10 +1,11 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronRight, Clock3 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { PendingBox, untilLabel } from "@/components/consumer/wallet/WalletLists";
+import { untilLabel } from "@/components/consumer/wallet/WalletLists";
+import { BOX_TINT } from "./pay-flow";
 import { PAY_ROW, PAY_ROW_META, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
 
 // A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
@@ -93,16 +94,18 @@ export function PlaceActionRow({
             card"). */}
         {disabled ? null : <ChevronRight className="text-muted-foreground -ml-1 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />}
       </button>
-      {/* MONEY ON ITS WAY, UNDER THE CARD (Pato, 2026-11-21, MESITA-4594:
-          "if bonus pending, lit it below the loyalty card in that blue box
-          and make loylaty card conatiner taller"): the Loyalty Card page's
-          blue PendingBox, the row growing to hold it; it opens the card. */}
+      {/* MONEY ON ITS WAY, UNDER THE CARD (MESITA-4594), in the Prepay list's
+          green row (Pato, 2026-11-23, MESITA-4813: "also display the green
+          banners mentioning how much is pending"); it opens the card. */}
       {pending && !disabled ? (
         <button type="button" onClick={() => onOpen?.()} className="block w-full px-3 pb-3 text-left" data-loyalty-card-pending>
-          <PendingBox icon={Clock3}>
-            {pending} pending
+          <span
+            className={cn("text-foreground flex min-w-0 items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-sm leading-tight font-semibold tabular-nums", BOX_TINT.prepay)}
+            data-wallet-pending
+          >
+            <span className="truncate">+{pending} pending</span>
             <PendingEta at={pendingAt} />
-          </PendingBox>
+          </span>
         </button>
       ) : null}
     </div>
@@ -110,8 +113,8 @@ export function PlaceActionRow({
 }
 
 /** WHEN IT ARRIVES (Pato, 2026-11-22, MESITA-4644: "in the pending mention
- *  in how much time will they arrive, like the credits"): " · ready in 1 h 48
- *  min", the Loyalty Card page's words, every 30 s; " · ready soon" once due. */
+ *  in how much time will they arrive, like the credits"): "Ready in 1 h 48
+ *  min", the Loyalty Card page's words, every 30 s; "Ready soon" once due. */
 function PendingEta({ at }: { at: string | null }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -121,7 +124,7 @@ function PendingEta({ at }: { at: string | null }) {
   }, [at]);
   const t = at ? Date.parse(at) : Number.NaN;
   if (!Number.isFinite(t)) return null;
-  return <span className="tabular-nums">{t > now ? ` · ready in ${untilLabel(t - now)}` : " · ready soon"}</span>;
+  return <span className="shrink-0">{t > now ? `Ready in ${untilLabel(t - now)}` : "Ready soon"}</span>;
 }
 
 /** The Loyalty Card's face, small: Pay's one 48x32 thumbnail (MESITA-4578), the place's photo. */

@@ -38,6 +38,10 @@ export type GuestTab = {
   /** 0 since MESITA-4708 (no card part); an older bill may carry one. */
   card_bill_cents: number;
   card_tip_cents: number;
+  /** MESITA-4770: the visit discount taken off bill_cents. Absent from an
+   *  older server reads as none. */
+  visit_mechanism?: "cashback" | "discount" | null;
+  discount_cents?: number;
   /** The payment rows the guest's split opened: `outside` (cash); `card` on
    *  an older bill. */
   parts: Array<{

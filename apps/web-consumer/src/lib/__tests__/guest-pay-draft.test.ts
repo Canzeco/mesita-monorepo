@@ -31,13 +31,10 @@ function memoryStorage(): Storage {
 }
 
 const typed = (amount: string) => ({
-  stage: "bill" as const,
-  typing: false,
   amount,
   tip: 10 as const,
   other: "",
   useCredit: true,
-  method: null,
 });
 
 describe("clearGuestDraft", () => {

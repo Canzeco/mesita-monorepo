@@ -516,9 +516,19 @@ export type PayPlace = {
  *  basis points (0 = none: cashback, Off, or an older server). The server
  *  (pay_guest_begin) decides the same and has the last word. */
 export function payPlaceDiscountBps(p: PayPlace | null): number {
-  const o = p?.offers;
-  if (!o || o.visit_mechanism !== "discount") return 0;
-  const line = p?.visit_line;
+  return p?.offers?.visit_mechanism === "discount" ? visitBps(p) : 0;
+}
+
+/** MESITA-4813: the Cashback this guest's next bill here earns, in basis
+ *  points (0 = none). pay_tab_grant_cashback decides the same. */
+export function payPlaceCashbackBps(p: PayPlace | null): number {
+  return p?.offers && p.offers_ok && p.offers.visit_mechanism !== "discount" ? visitBps(p) : 0;
+}
+
+function visitBps(p: PayPlace): number {
+  const o = p.offers;
+  if (!o) return 0;
+  const line = p.visit_line;
   const pct =
     line === "returning_vip" ? o.returning_vip_pct
     : line === "returning" ? o.returning_pct

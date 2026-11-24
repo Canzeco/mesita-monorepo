@@ -13,7 +13,7 @@ import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
 import { PlacePhoto } from "./pay-common";
-import { TicketHeader } from "./pay-flow";
+import { BOX_TINT, TicketHeader } from "./pay-flow";
 import { distanceText, type Loc, roundLocation, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 
@@ -304,11 +304,6 @@ function Section({
 type BoxKind = "vouchers" | "any" | "cashback";
 type OfferBox = { top: string; bottom: string; tone: string; key: string };
 
-/** The tints, light under black ink (MESITA-4770: Prepay blue, Discount
- *  green, Cashback red-pink; offers.ts holds the solid tones). Post's pink
- *  left with Stories (MESITA-4766). */
-// MESITA-4777: Prepay green, Discount red, Cashback blue.
-const BOX_TINT = { prepay: "bg-[#00D66F]/15", discount: "bg-[#FF4D4D]/15", cashback: "bg-[#4DA3FF]/15" } as const;
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
