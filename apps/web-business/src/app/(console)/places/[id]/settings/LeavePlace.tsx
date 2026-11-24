@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { leavePlace } from "@/lib/business-api";
 import { PLACES } from "@/lib/routes";
+import { attempt } from "@/lib/attempt";
 
 export function LeavePlace({ placeId }: { placeId: string }) {
   const router = useRouter();
@@ -23,7 +24,7 @@ export function LeavePlace({ placeId }: { placeId: string }) {
         onClick={async () => {
           if (!armed) return setArmed(true);
           setBusy(true);
-          const r = await leavePlace(placeId);
+          const r = await attempt(leavePlace(placeId));
           setBusy(false);
           if (!r.ok) return setError(r.code === "transfer_first" ? "Make an editor the owner before you leave." : r.error);
           router.push(PLACES);

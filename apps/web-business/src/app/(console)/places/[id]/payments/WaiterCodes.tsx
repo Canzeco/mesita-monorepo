@@ -14,6 +14,7 @@ import { setWaiter, type PlaceWaiter } from "@/lib/business-api";
 import { Switch } from "@/components/ui/config";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import { attempt } from "@/lib/attempt";
 
 const QUIET = "bg-muted hover:bg-muted/70 h-9 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors disabled:opacity-40";
 const CELL = "px-3 py-2.5 whitespace-nowrap first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6";
@@ -23,6 +24,7 @@ export function WaiterCodes({
   initial,
   initialNoCode,
   mechanism,
+  savedMechanism,
   canEdit,
   onError,
 }: {
@@ -31,6 +33,8 @@ export function WaiterCodes({
   initialNoCode: boolean;
   /** What Visit Checkout shows: Cashback needs codes (MESITA-4890). */
   mechanism: "discount" | "cashback";
+  /** What the server holds: it refuses codes off while this is Cashback. */
+  savedMechanism: "discount" | "cashback";
   canEdit: boolean;
   onError: (error: string | null) => void;
 }) {
@@ -44,7 +48,7 @@ export function WaiterCodes({
     if (busy) return null;
     setBusy(key);
     onError(null);
-    const r = await setWaiter(placeId, body);
+    const r = await attempt(setWaiter(placeId, body));
     setBusy(null);
     if (!r.ok) {
       onError(r.error);
@@ -53,6 +57,13 @@ export function WaiterCodes({
     const { waiter_id: id, code } = r.data;
     if (code) setWaiters((ws) => ws.map((w) => (w.id === id ? { ...w, code } : w)));
     return r.data;
+  }
+
+  // Saving Cashback turned codes on again on the server (MESITA-4900).
+  const [lastSaved, setLastSaved] = useState(savedMechanism);
+  if (lastSaved !== savedMechanism) {
+    setLastSaved(savedMechanism);
+    if (savedMechanism === "cashback") setNoCode(false);
   }
 
   const off = noCode && mechanism === "discount";
@@ -84,11 +95,11 @@ export function WaiterCodes({
         <div className="border-border flex items-center justify-between gap-4 border-t px-5 py-3.5 sm:px-6" data-place-state="waiter_codes_required">
           <span>
             <span className="block text-base font-medium">Ask for a waiter code</span>
-            <span className="text-muted-foreground block">{mechanism === "cashback" ? "Cashback always needs a code." : "You can turn it off at Discount only."}</span>
+            <span className="text-muted-foreground block">{mechanism === "cashback" ? "Cashback always needs a code." : savedMechanism === "cashback" ? "Save Discount first to turn it off." : "You can turn it off at Discount only."}</span>
           </span>
           <Switch
             on={!off}
-            pending={busy !== null || mechanism === "cashback"}
+            pending={busy !== null || mechanism === "cashback" || savedMechanism === "cashback"}
             label={`Ask for a waiter code: ${off ? "off" : "on"}`}
             onClick={() => void toggle()}
           />

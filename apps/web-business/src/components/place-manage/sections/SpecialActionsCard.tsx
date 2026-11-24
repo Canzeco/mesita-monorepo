@@ -30,6 +30,7 @@ import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { cn } from "@/lib/utils";
+import { attempt } from "@/lib/attempt";
 
 type Key = "enrich" | "google" | "reviews" | "enable" | "disable";
 type Note = { key: Key; ok: boolean; text: string };
@@ -82,7 +83,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
   async function run(key: Key, fn: () => Promise<{ ok: boolean; error?: string }>, done: string) {
     setBusy(key);
     setNote(null);
-    const r = await fn();
+    const r = await attempt(fn());
     setBusy(null);
     setNote(r.ok ? { key, ok: true, text: done } : { key, ok: false, text: r.error ?? "Something went wrong" });
   }
@@ -100,7 +101,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
     const key: Key = next ? "enable" : "disable";
     setBusy(key);
     setNote(null);
-    void setPlaceListed(place.id, next).then((r) => {
+    void attempt(setPlaceListed(place.id, next)).then((r) => {
       setBusy(null);
       setConfirmDisable(false);
       if (!r.ok) return setNote({ key, ok: false, text: r.error });

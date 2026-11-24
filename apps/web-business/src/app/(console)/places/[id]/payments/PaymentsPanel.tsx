@@ -58,8 +58,10 @@ import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, FOCUS_RING_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
-import { setUnsavedEdits } from "@/lib/unsaved-edits";
+import { guardUnsavedEdits } from "@/lib/unsaved-edits";
 import { prepaymentsOn as prepaymentsLive, stripeTakesCards } from "@/lib/offers-state";
+import { day } from "@/lib/format";
+import { ticketWhen } from "@/lib/ticket-desk";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import {
   CASHBACK_DEFAULTS,
@@ -87,6 +89,7 @@ import {
   signLoyaltyCardsContract,
   startPaymentOnboarding,
 } from "@/lib/business-api";
+import { attempt } from "@/lib/attempt";
 
 /** ONE LAYOUT FOR EVERY BOX (Pato, 2026-11-24, MESITA-4885: "more standarized
  *  … prettier and cleaner … same sections, same params"). A box is a header
@@ -273,8 +276,8 @@ function accountCopy(a: PaymentAccount): { line: string; button: string | null; 
 
 function signedOn(c: LoyaltyCardsContract): string {
   if (!c.signed_at) return "Signed";
-  const d = new Date(c.signed_at);
-  return `Signed ${d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
+  // One fixed zone: the server and the browser print the same day.
+  return `Signed ${day(c.signed_at)}`;
 }
 
 /** What the Credit Limit box says about where the limit comes from. */
@@ -319,6 +322,8 @@ export function PaymentsPanel({
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | "contract" | "cashback" | null>(null);
+  // The cash row being marked received (MESITA-4900: one request per tap).
+  const [receiving, setReceiving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The tier moves when the Credits Account flips here; refetched then.
@@ -362,7 +367,7 @@ export function PaymentsPanel({
   function discard() {
     setEdits({});
     setCashbackDraft(null);
-    setLastRates(restoreRates(cashback));
+    if (anyRate(cashback)) setLastRates(restoreRates(cashback));
     setError(null);
   }
 
@@ -373,23 +378,24 @@ export function PaymentsPanel({
     setError(null);
     try {
       if (cashbackDraft) {
-        const r = await setPlaceCashback(placeId, cashbackDraft);
+        const r = await attempt(setPlaceCashback(placeId, cashbackDraft));
         if (!r.ok) return setError(r.error);
         setCashback(r.data);
         setCashbackDraft(null);
-        setLastRates(restoreRates(r.data));
+        // Saved Off keeps the rates it comes back to (MESITA-4752).
+        if (anyRate(r.data)) setLastRates(restoreRates(r.data));
       }
       let saved = settings;
       const order = [...draftKeys].sort((a, b) => Number(b === "prepayments") - Number(a === "prepayments"));
       for (const key of order) {
         const on = edits[key] === true;
         if (key === "prepayments" && on && !saved.stripe_payments) {
-          const s = await setPlacePayment(placeId, "stripe_payments", true);
+          const s = await attempt(setPlacePayment(placeId, "stripe_payments", true));
           if (!s.ok) return setError(s.error);
           saved = s.data;
           setSettings(saved);
         }
-        const r = await setPlacePayment(placeId, key, on);
+        const r = await attempt(setPlacePayment(placeId, key, on));
         if (!r.ok) return setError(r.error);
         saved = r.data;
         setSettings(saved);
@@ -407,20 +413,14 @@ export function PaymentsPanel({
   // Unsaved edits: the deploy watcher never reloads over them, and closing
   // or reloading the tab asks first.
   useEffect(() => {
-    setUnsavedEdits(dirty);
     if (!dirty) return;
-    const ask = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener("beforeunload", ask);
-    return () => {
-      window.removeEventListener("beforeunload", ask);
-      setUnsavedEdits(false);
-    };
+    return guardUnsavedEdits("offers");
   }, [dirty]);
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
     setError(null);
-    const r = await setPlacePayment(placeId, key, enabled);
+    const r = await attempt(setPlacePayment(placeId, key, enabled));
     setBusy(null);
     if (!r.ok) return setError(r.error);
     setSettings(r.data);
@@ -429,7 +429,7 @@ export function PaymentsPanel({
 
   /** The Credit Limit box's tier follows the Credits Account; read it again. */
   async function refreshCreditLimit() {
-    const r = await getPlacePayments(placeId);
+    const r = await attempt(getPlacePayments(placeId));
     if (r.ok) setCreditLimit(r.data.credit_limit ?? null);
   }
 
@@ -470,7 +470,7 @@ export function PaymentsPanel({
   async function agree() {
     setBusy("contract");
     setError(null);
-    const r = await signLoyaltyCardsContract(placeId);
+    const r = await attempt(signLoyaltyCardsContract(placeId));
     setBusy(null);
     setAgreeing(false);
     if (!r.ok) return setError(r.error);
@@ -483,7 +483,7 @@ export function PaymentsPanel({
   async function stripe() {
     setBusy("stripe");
     setError(null);
-    const r = copy.open ? await openPaymentDashboard(placeId) : await startPaymentOnboarding(placeId, returnUrl(placeTabHref(placeId, "payments")));
+    const r = await attempt(copy.open ? openPaymentDashboard(placeId) : startPaymentOnboarding(placeId, returnUrl(placeTabHref(placeId, "payments"))));
     if (!r.ok) {
       setBusy(null);
       return setError(r.error);
@@ -773,21 +773,25 @@ export function PaymentsPanel({
                 <li key={row.attempt_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm sm:px-6">
                   <span>
                     <span className="font-semibold">{row.cash_cents > 0 ? moneyLabel(row.cash_cents, currency) : `${moneyLabel(row.credit_cents ?? 0, currency)} in credits`}</span>
-                    <span className="text-muted-foreground"> · {row.guest_label} · {new Date(row.created_at).toLocaleString()}</span>
+                    <span className="text-muted-foreground"> · {row.guest_label} · {ticketWhen(row.created_at, "America/Monterrey")}</span>
                   </span>
                   <button
                     type="button"
                     className={ACTION}
+                    disabled={!canEdit || receiving !== null}
                     onClick={() => {
                       const amount = row.cash_cents > 0 ? moneyLabel(row.cash_cents, currency) : `${moneyLabel(row.credit_cents ?? 0, currency)} in credits`;
                       if (!window.confirm(`Mark ${amount} received?`)) return;
-                      void receiveGuestCash(placeId, row.attempt_id, row.cash_cents).then((r) => {
+                      setReceiving(row.attempt_id);
+                      setError(null);
+                      void attempt(receiveGuestCash(placeId, row.attempt_id, row.cash_cents)).then((r) => {
+                        setReceiving(null);
                         if (!r.ok) return setError(r.code === "amount_changed" ? "Amount changed. Refresh this list." : r.error);
                         setCashDue((rows) => rows.filter((x) => x.attempt_id !== row.attempt_id));
                       });
                     }}
                   >
-                    Received
+                    {receiving === row.attempt_id ? "Saving…" : "Received"}
                   </button>
                 </li>
               ))}
@@ -811,7 +815,7 @@ export function PaymentsPanel({
           {head(HashIcon, "Visit Checkout - Waiter Codes", {
             line: line("One 6-digit code per waiter. They scan the guest's QR and type their code to send the bill."),
           })}
-          <WaiterCodes placeId={placeId} initial={initial.waiters} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} canEdit={canEdit} onError={setError} />
+          <WaiterCodes placeId={placeId} initial={initial.waiters} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
 
@@ -880,7 +884,12 @@ export function PaymentsPanel({
       {back === "return" && account.state !== "ready" && !error ? (
         <p className="text-muted-foreground text-sm">Stripe is still checking your details. This page updates when it answers.</p>
       ) : null}
-      {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
+      {error && !(dirty || saving) ? (
+        // In view from every box: the row that failed may be far above (MESITA-4900).
+        <p role="alert" className={cn(ERROR_BOX_CLASS, "bg-card sticky bottom-4 z-40")}>
+          {error}
+        </p>
+      ) : null}
       {!canEdit ? <p className="text-muted-foreground text-sm">Only the owner can change offers.</p> : null}
 
       {/* THE ONE SAVE (MESITA-4769), PlaceSaveBar's look: at the foot of the
@@ -898,7 +907,10 @@ export function PaymentsPanel({
               ) : (
                 <span className="bg-foreground h-2 w-2 shrink-0 animate-pulse rounded-full" aria-hidden />
               )}
-              <span className="text-sm font-semibold">{saving ? "Saving…" : "Unsaved changes"}</span>
+              <span className="min-w-0 text-sm font-semibold">
+                {saving ? "Saving…" : "Unsaved changes"}
+                {error && !saving ? <span role="alert" className="text-destructive block font-medium">{error}</span> : null}
+              </span>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <button

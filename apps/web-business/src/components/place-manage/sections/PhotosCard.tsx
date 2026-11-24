@@ -21,6 +21,7 @@ import { resizeImageFile } from "@/lib/image-resize";
 import { type AdminPlace, updatePlace, uploadPlacePhoto } from "../actions";
 import { usePlaceContext } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
+import { attempt } from "@/lib/attempt";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 /** The server action's body cap is 4 MB; the shrunk JPEG is far below it. */
@@ -39,7 +40,7 @@ export function PhotosCard({ place, staff = false }: { place: AdminPlace; staff?
   const [resetting, setResetting] = useState(false);
   const reset = async () => {
     setResetting(true);
-    const r = await updatePlace({ id: place.id, reset_fields: ["photos"] });
+    const r = await attempt(updatePlace({ id: place.id, reset_fields: ["photos"] }));
     setResetting(false);
     if (r.ok) setPlace((prev) => ({ ...prev, operator_fields: r.data.place.operator_fields ?? [] }));
     else setError(r.error);
@@ -92,7 +93,7 @@ export function PhotosCard({ place, staff = false }: { place: AdminPlace; staff?
         const form = new FormData();
         form.set("place_id", place.id);
         form.set("file", file);
-        const r = await uploadPlacePhoto(form);
+        const r = await attempt(uploadPlacePhoto(form));
         if (!r.ok) {
           setError(r.error);
           continue;

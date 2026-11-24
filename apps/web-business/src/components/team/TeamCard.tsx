@@ -13,6 +13,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Card } from "@/components/shell/Page";
 import { INPUT_BASE } from "@/components/ui/manage";
 import { decideVerification, getTeam, inviteEditor, removeMember, transferOwner, type Team, type TeamMember } from "@/lib/business-api";
+import { day } from "@/lib/format";
+import { attempt } from "@/lib/attempt";
 
 const ERRORS: Record<string, string> = {
   already_invited: "That email is already invited.",
@@ -25,11 +27,6 @@ const ERRORS: Record<string, string> = {
 
 const ROW = "flex min-h-14 items-center gap-3 px-5 py-3 text-sm sm:px-6";
 const QUIET = "border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-50";
-
-function day(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 const ROLE: Record<TeamMember["role"], string> = { owner: "Owner", editor: "Editor" };
 
@@ -58,14 +55,14 @@ export function TeamCard({ placeId }: { placeId: string }) {
   const [confirm, setConfirm] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const r = await getTeam(placeId);
+    const r = await attempt(getTeam(placeId));
     if (r.ok) setTeam(r.data);
     else setError(r.error);
   }, [placeId]);
 
   useEffect(() => {
     let live = true;
-    getTeam(placeId).then((r) => {
+    attempt(getTeam(placeId)).then((r) => {
       if (!live) return;
       if (r.ok) setTeam(r.data);
       else setError(r.error);
@@ -78,7 +75,7 @@ export function TeamCard({ placeId }: { placeId: string }) {
   async function run(key: string, fn: () => Promise<{ ok: boolean; error?: string; code?: string | null }>) {
     setBusy(key);
     setError(null);
-    const r = await fn();
+    const r = await attempt(fn());
     setBusy(null);
     setConfirm(null);
     if (!r.ok) {

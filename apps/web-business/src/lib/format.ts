@@ -29,3 +29,12 @@ export function day(iso: string | null | undefined, tz = "America/Monterrey"): s
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: tz });
 }
+
+/** "99 USD", "999 USD", "41.23 USD": the code after the number and never a
+ *  "$", which reads as pesos in Mexico (Pato, MESITA-3919: "mention the actual
+ *  price"). Whole dollars drop the cents. */
+export function usd(cents: number): string {
+  const whole = cents % 100 === 0;
+  const n = (cents / 100).toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+  return `${n} USD`;
+}
