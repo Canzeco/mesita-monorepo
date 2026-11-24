@@ -5,6 +5,8 @@ import { Camera, Check, ChevronDown } from "lucide-react";
 import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
+import { SexFace } from "./SexFace";
+import { CONSUMER_SEXES, isConsumerSex } from "@/lib/consumer-onboarding";
 import { PrivacyLevels } from "@/components/consumer/me/PrivacyLevels";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { ME_BUTTON_CLASS } from "@/components/consumer/me/settings-rows";
@@ -78,11 +80,8 @@ import {
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes").
 
-/** Sex's two choices, in the select's order. */
-const SEX_OPTIONS = [
-  { value: "female", label: "Female" },
-  { value: "male", label: "Male" },
-] as const;
+/** Sex's choices, in the select's order. */
+const SEX_OPTIONS = CONSUMER_SEXES;
 
 /** The fields' labels. */
 const FIELD_LABEL = {
@@ -90,6 +89,7 @@ const FIELD_LABEL = {
   lastName: "Last name",
   sex: "Sex",
   birthYear: "Year of birth",
+  privacy: "Privacy",
 } as const;
 
 
@@ -204,7 +204,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const storedYear = birthYearOf(profile);
   const [firstName, setFirstName] = useState(storedFirst);
   const [lastName, setLastName] = useState(storedLast);
-  // Male/Female only (MESITA-727). "" = nothing stored yet, which is why the
+  // "" = nothing stored yet, which is why the
   // select carries an empty option — a legacy profile shouldn't silently
   // acquire a sex just by opening this page.
   const [sex, setSex] = useState(profile.sex ?? "");
@@ -284,7 +284,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
       await apiUpdateConsumerProfile(supabase, {
         first_name: first,
         last_name: last,
-        ...(sex === "male" || sex === "female" ? { sex } : {}),
+        ...(isConsumerSex(sex) ? { sex } : {}),
         ...(birthYear !== null ? { birth_year: birthYear } : {}),
       });
       setSaved(true);
@@ -355,6 +355,9 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
                 className="object-cover"
                 unoptimized={Boolean(previewUrl)}
               />
+            ) : sex && birthYear !== null && !profile.social_lock ? (
+              // With no photo: the face others see of them (MESITA-4854).
+              <SexFace sex={sex} age={new Date().getUTCFullYear() - birthYear} className="h-full w-full text-3xl" />
             ) : (
               <DefaultAvatar className="h-full w-full" />
             )}
@@ -462,10 +465,10 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
               className="text-muted-foreground pointer-events-none absolute right-4 h-4 w-4"
             />
           </label>
+          {/* MESITA-4850: the level shows and changes here. */}
+          <PrivacyLevels profile={profile} rowClass={ROW_CLASS} labelClass={ROW_LABEL_CLASS} valueClass={ROW_INPUT_CLASS} />
         </div>
         {saveButton}
-        {/* MESITA-4850: the level shows and changes here. */}
-        <PrivacyLevels profile={profile} />
       </div>
     </MeScreen>
   );

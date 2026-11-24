@@ -17,7 +17,7 @@
 // place profile's line.
 
 import { isUuid } from "./place-id.ts";
-import { shownSex, type SocialFacts, socialLabel, socialLevel } from "./social-level.ts";
+import { shownAge, type ShownSex, shownSex, type SocialFacts, socialLabel, socialLevel } from "./social-level.ts";
 
 export const ACTIVITY_KINDS = ["saved", "viewed"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
@@ -36,8 +36,11 @@ export function isMesitaPlaceId(v: unknown): v is string {
 /** One person as the feed and the line show them. */
 export type ActivityPerson = {
   name: string;
-  /** "female" | "male", adults only (MESITA-4850); null is undisclosed. */
-  sex: "female" | "male" | null;
+  /** Adults only (MESITA-4850); null is undisclosed. */
+  sex: ShownSex | null;
+  /** A Public member's age, in their face (MESITA-4854); null for a
+   *  member sharing Instagram, and for anyone not surely an adult. */
+  age: number | null;
   avatarUrl: string | null;
   /** The verified Instagram username, without "@" (MESITA-2590 shows it in
    *  full), or masked to "per***" when handleLocked. Null without a named
@@ -160,9 +163,12 @@ export function toPerson(
   canSeeHandles = true,
 ): ActivityPerson {
   const isYou = row.consumer_id === viewerId;
-  // The first name where SQL sent one (the instagram level, MESITA-4850); a
-  // Public member is their approximate age and sex ("Woman, mid 20s").
-  const first = row.first_name?.trim() ||
+  // A Public member is their first name and age (MESITA-4854: "Sofia, 25"),
+  // a named one their first name; with no name, age and sex in words. A
+  // Public row is the one SQL marks anonymous with a birth year.
+  const age = row.anonymous === true ? shownAge(row.birth_year) : null;
+  const given = row.first_name?.trim();
+  const first = (given && age !== null ? `${given}, ${age}` : given) ||
     (row.birth_year != null ? socialLabel(row.birth_year, row.sex) : MEMBER_FALLBACK_NAME);
   const sex = shownSex(row.birth_year, row.sex);
   if (row.anonymous === true) {
@@ -171,6 +177,7 @@ export function toPerson(
     return {
       name: first,
       sex,
+      age,
       avatarUrl: row.avatar_url ?? null,
       handle: null,
       handleLocked: false,
@@ -190,6 +197,7 @@ export function toPerson(
     // The name is the first name; the feed leads with it, never the handle (MESITA-3070).
     name: first,
     sex,
+    age,
     avatarUrl: row.avatar_url ?? null,
     handle: handle && locked ? maskHandle(handle) : handle,
     handleLocked: locked,
@@ -290,6 +298,7 @@ export function anonymousPerson(row: ActivityRow): ActivityPerson {
   return {
     name: socialLabel(row.birth_year, row.sex),
     sex: shownSex(row.birth_year, row.sex),
+    age: shownAge(row.birth_year),
     avatarUrl: null,
     handle: null,
     handleLocked: false,

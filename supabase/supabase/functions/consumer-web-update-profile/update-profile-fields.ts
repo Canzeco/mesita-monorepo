@@ -120,8 +120,8 @@ export function parseAvatarUrl(
   return { ok: true, avatarUrl: trimmed };
 }
 
-// Male/Female only — "other" was dropped from the product (MESITA-727).
-const SEX_VALUES = new Set(["male", "female"]);
+// "other" is back (MESITA-4854); MESITA-727 had dropped it.
+const SEX_VALUES = new Set(["male", "female", "other"]);
 
 export type ParseNameResult =
   | { ok: true }
@@ -178,7 +178,7 @@ export function parseSex(sexRaw: string | null): ParseSexResult {
   if (sexRaw && !sex) {
     return {
       ok: false,
-      response: json({ ok: false, error: "sex must be male or female" }, 400),
+      response: json({ ok: false, error: "sex must be male, female or other" }, 400),
     };
   }
   return { ok: true, sex };

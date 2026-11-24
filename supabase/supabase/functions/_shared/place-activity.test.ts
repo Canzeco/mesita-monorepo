@@ -173,6 +173,7 @@ Deno.test("toPerson carries no account id", () => {
     "11111111-1111-1111-1111-111111111111",
   );
   assertEquals(Object.keys(person).sort(), [
+    "age",
     "anonymous",
     "avatarUrl",
     "followers",
@@ -214,6 +215,7 @@ Deno.test("a row without a handle is named by first name, with a face but no han
   assertEquals(anon, {
     name: "Sofia",
     sex: null,
+    age: null,
     avatarUrl: "https://x/y.jpg",
     handle: null,
     handleLocked: false,
@@ -251,6 +253,7 @@ Deno.test("an anonymous visitor sees age, sex and Class, never a name (MESITA-48
   assertEquals(p, {
     name: "Guest",
     sex: null,
+    age: null,
     avatarUrl: null,
     handle: null,
     handleLocked: false,
@@ -273,4 +276,16 @@ Deno.test("an anonymous feed carries the day, never the minute", () => {
   assertEquals(events.length, 1);
   assertEquals(events[0].at, "2026-10-19T00:00:00.000Z");
   assertEquals(events[0].person.handle, null);
+});
+
+Deno.test("a Public member is their first name, age and sex; a named one carries no age (MESITA-4854)", () => {
+  const year = new Date().getUTCFullYear() - 25;
+  const open = toPerson(row({ anonymous: true, first_name: null, birth_year: year, sex: "other" }), "z");
+  assertEquals([open.name, open.sex, open.age], ["Guest, 25", "other", 25]);
+  assertEquals(toPerson(row({ first_name: "Sofia", birth_year: year, sex: "female" }), "z").age, null);
+  const named = toPerson(row({ anonymous: true, first_name: "Sofia", birth_year: year, sex: "female" }), "z");
+  assertEquals([named.name, named.age, named.handle], ["Sofia, 25", 25, null]);
+  assertEquals(anonymousPerson(row({ anonymous: true, first_name: "Sofia", birth_year: year, sex: "female" })).name, "Woman, 25");
+  const minor = toPerson(row({ anonymous: true, first_name: null, birth_year: year + 10, sex: "male" }), "z");
+  assertEquals([minor.name, minor.sex, minor.age], ["Guest", null, null]);
 });

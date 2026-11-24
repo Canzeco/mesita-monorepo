@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
-import { apiListActivityFeed, type ActivityFeedItem } from "@/lib/api/activity";
+import { apiListActivityFeed, SOCIAL_BLOCKED, type ActivityFeedItem, type SocialBlocked } from "@/lib/api/activity";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { Face, VERB, feedWho, shortAgo } from "@/components/consumer/home/SocialFeed";
 
@@ -20,6 +20,7 @@ const CARD = "bg-card border-border divide-border flex flex-col divide-y overflo
 type State =
   | { status: "loading" }
   | { status: "failed" }
+  | { status: "blocked"; why: SocialBlocked }
   | { status: "ready"; items: ActivityFeedItem[]; next: string | null; more: boolean };
 
 export function PlaceSocialList({ placeId }: { placeId: string }) {
@@ -30,7 +31,12 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
     let live = true;
     apiListActivityFeed(supabase, null, undefined, placeId)
       .then((page) => {
-        if (live) setState({ status: "ready", items: page.items, next: page.next, more: false });
+        if (!live) return;
+        setState(
+          page.blocked
+            ? { status: "blocked", why: page.blocked }
+            : { status: "ready", items: page.items, next: page.next, more: false },
+        );
       })
       .catch(() => {
         if (live) setState({ status: "failed" });
@@ -68,6 +74,16 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
       <div className={CARD}>
         <p className="text-muted-foreground p-6 text-center text-sm" data-place-social="failed">
           Couldn&apos;t load this place&apos;s activity.
+        </p>
+      </div>
+    );
+  }
+  if (state.status === "blocked") {
+    const { title, description } = SOCIAL_BLOCKED[state.why];
+    return (
+      <div className={CARD}>
+        <p className="text-muted-foreground p-6 text-center text-sm" data-place-social="blocked">
+          {title}. {description}
         </p>
       </div>
     );

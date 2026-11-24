@@ -1,5 +1,8 @@
 // Privacy levels (MESITA-4850): what other guests see of a member in Social.
-// Private: nothing. Public: approximate age and sex, no name and no photo.
+// A PRIVATE MEMBER SEES NOBODY EITHER (Pato, 2026-11-24, MESITA-4854: "other
+// guests never see your activity, but you cannot see activity of others if
+// private"); a Public one sees everyone but their Instagram.
+// Private: nothing. Public: first name, age and sex, no photo.
 // Public + Instagram: name, photo and @handle, for guests who share theirs.
 //
 // MINORS ARE ALWAYS PRIVATE (Pato, 2026-11-24: "minors have their accounts in
@@ -36,32 +39,37 @@ export function socialLevel(c: SocialFacts, now: Date = new Date()): SocialLevel
   return c.instagram_verified_at != null && c.instagram_handle_shown === true ? "instagram" : "public";
 }
 
+/** Why this member sees nobody's activity, or null when they do. */
+export function socialBlocked(c: SocialFacts | null, now: Date = new Date()): "private" | "minor" | "no_birth_year" | null {
+  if (!c) return "no_birth_year";
+  return socialLock(c.birth_year, now) ?? (socialLevel(c, now) === "private" ? "private" : null);
+}
+
 /** The columns a chosen level writes. The two flags always move together. */
 export function levelPatch(level: SocialLevel): { social_private: boolean; instagram_handle_shown: boolean } {
   return { social_private: level === "private", instagram_handle_shown: level === "instagram" };
 }
 
-/** "early 20s" · "mid 20s" · "late teens" · "60+". Null for anyone who is not
- *  surely an adult: a minor's age is never worded. */
-export function approxAge(birthYear: number | null | undefined, now: Date = new Date()): string | null {
+/** The age another guest may see, by the year alone. Null for anyone who is
+ *  not surely an adult. A number, never words (Pato, 2026-11-24, MESITA-4854:
+ *  "don't say early twenties"). */
+export function shownAge(birthYear: number | null | undefined, now: Date = new Date()): number | null {
   if (birthYear == null || socialLock(birthYear, now)) return null;
-  const age = now.getUTCFullYear() - birthYear;
-  if (age < 20) return "late teens";
-  if (age >= 60) return "60+";
-  const unit = age % 10;
-  return `${unit < 4 ? "early" : unit < 7 ? "mid" : "late"} ${age - unit}s`;
+  return now.getUTCFullYear() - birthYear;
 }
 
-/** Who a Public member is in words: "Woman, mid 20s". */
+/** Who a Public member is in words: "Woman, 25". */
 export function socialLabel(birthYear: number | null | undefined, sex: string | null | undefined, now: Date = new Date()): string {
-  const age = approxAge(birthYear, now);
-  if (!age) return "Guest";
+  const age = shownAge(birthYear, now);
+  if (age === null) return "Guest";
   const who = sex === "female" ? "Woman" : sex === "male" ? "Man" : "Guest";
   return `${who}, ${age}`;
 }
 
-/** Sex as the mark shows it; never for anyone who is not surely an adult. */
-export function shownSex(birthYear: number | null | undefined, sex: string | null | undefined, now: Date = new Date()): "female" | "male" | null {
-  if (!approxAge(birthYear, now)) return null;
-  return sex === "female" || sex === "male" ? sex : null;
+export type ShownSex = "female" | "male" | "other";
+
+/** Sex as the face's colour shows it; never for anyone who is not surely an adult. */
+export function shownSex(birthYear: number | null | undefined, sex: string | null | undefined, now: Date = new Date()): ShownSex | null {
+  if (shownAge(birthYear, now) === null) return null;
+  return sex === "female" || sex === "male" || sex === "other" ? sex : null;
 }

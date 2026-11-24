@@ -54,16 +54,13 @@ describe("consumerCanBrowse — the signup gate", () => {
   });
 
   it("rejects a sex value the DB constraint would not store", () => {
-    // `other` was a real value until 20260825003000 nulled those rows and
-    // narrowed the check. A legacy row still holding it must be sent back to
-    // /onboard, not waved through into a Passport that cannot print it.
-    expect(consumerCanBrowse({ ...complete, sex: "other" })).toBe(false);
-    expect(isConsumerSex("other")).toBe(false);
+    expect(consumerCanBrowse({ ...complete, sex: "unknown" })).toBe(false);
+    expect(isConsumerSex("unknown")).toBe(false);
   });
 
-  it("offers exactly the two values the check constraint allows", () => {
+  it("offers exactly the values the check constraint allows", () => {
     const migration = read(
-      "supabase/supabase/migrations/20260825003000_consumer_plan_and_metal_classes.sql",
+      "supabase/supabase/migrations/20261124123000_sex_other.sql",
     );
     // The constraint is the source of truth; the UI list must not drift from
     // it in either direction.
@@ -74,7 +71,7 @@ describe("consumerCanBrowse — the signup gate", () => {
     for (const { value } of CONSUMER_SEXES) {
       expect(constraint![1]).toContain(`'${value}'`);
     }
-    expect(CONSUMER_SEXES).toHaveLength(2);
+    expect(CONSUMER_SEXES).toHaveLength(3);
   });
 });
 

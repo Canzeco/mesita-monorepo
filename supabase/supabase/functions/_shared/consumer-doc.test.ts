@@ -89,9 +89,10 @@ Deno.test("validateConsumerPatch: rejects a malformed code", () => {
   assert(!validateConsumerPatch({ code: "ABCD-EFGH" }).ok, "non-digits");
 });
 
-Deno.test("validateConsumerPatch: rejects sex = 'other' — dropped from the product (MESITA-727)", () => {
-  const res = validateConsumerPatch({ sex: "other" });
+Deno.test("validateConsumerPatch: rejects a sex outside the list; 'other' is in it (MESITA-4854)", () => {
+  const res = validateConsumerPatch({ sex: "unknown" });
   assert(!res.ok);
+  assert(validateConsumerPatch({ sex: "other" }).ok);
 });
 
 Deno.test("validateConsumerPatch: rejects a malformed Instagram handle", () => {
@@ -129,14 +130,14 @@ Deno.test("writeConsumer: an invalid patch never reaches the DB", async () => {
   // this cast simulates. Belt 2 (validateConsumerPatch, run inside
   // writeConsumer below) is what catches an invalid value once TypeScript
   // can no longer see it.
-  const invalidPatch = { sex: "other" } as unknown as ConsumerPatch;
+  const invalidPatch = { sex: "unknown" } as unknown as ConsumerPatch;
   const res = await writeConsumer(admin, {
     mode: "update",
     id: "11111111-1111-1111-1111-111111111111",
     patch: invalidPatch,
   });
   assert(!res.ok);
-  assertEquals(res.error, "sex must be 'male', 'female', or null");
+  assertEquals(res.error, "sex must be 'male', 'female', 'other', or null");
 });
 
 // Minimal Supabase mock recording the last insert/update call.

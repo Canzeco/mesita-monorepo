@@ -34,9 +34,8 @@
 //
 // It is required rather than optional-with-skip because Pato asked for it
 // twice after the optional version was recommended. The cost is recorded
-// where it lands: `consumers_sex_check` allows male|female ONLY (narrowed by
-// 20260825003000), so this is a two-option choice with no opt-out and there
-// is no third value to offer without a migration.
+// where it lands: `consumers_sex_check` allows male|female|other
+// (20261124123000, MESITA-4854; male|female from MESITA-727 until then).
 //
 // Adding it to the gate re-onboards any profile that lacks it. Verified
 // against live data before shipping: 1 consumer, sex already set, 0 bounced.
@@ -105,13 +104,12 @@ export function birthYearOldEnough(
   return now.getFullYear() - year >= MIN_SIGNUP_AGE;
 }
 
-/** The two values `consumers.sex` accepts. The check constraint was narrowed
- *  to exactly these in 20260825003000 (`other` was dropped and its rows
- *  nulled), so this is the whole vocabulary — every surface that offers a
- *  choice offers these, in this order, and nothing invents a third. */
+/** The values `consumers.sex` accepts (20261124123000), the whole vocabulary — every surface that offers a
+ *  choice offers these, in this order, and nothing invents another. */
 export const CONSUMER_SEXES = [
   { value: "female", label: "Female" },
   { value: "male", label: "Male" },
+  { value: "other", label: "Other" },
 ] as const;
 
 export type ConsumerSex = (typeof CONSUMER_SEXES)[number]["value"];

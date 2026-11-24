@@ -37,7 +37,8 @@
 // time (MESITA-4750).
 //
 // Body: { lat?, lng?, before?, place_id?, shown? }
-//   → { viewer: "member"|"anonymous", items: [{ placeId, kind, at, person, distanceKm, place }], next }
+//   → { viewer: "member"|"anonymous", items: [{ placeId, kind, at, person, distanceKm, place }], next,
+//       blocked?: "private"|"minor"|"no_birth_year" }   (the viewer is private: no items, MESITA-4854)
 //   distanceKm is the guest to the PLACE (it draws the circle and is the
 //   row's "0.7 km away"). Nothing about where the EVENT happened leaves
 //   this function (MESITA-2946: MESITA-2853's eventKm let two readings from
@@ -45,7 +46,7 @@
 //
 // Who appears is the SQL's call (consumer_social_level, MESITA-4850: private
 // members and minors never; a name, photo and handle only at the instagram
-// level; else approximate age and sex), never this file's. The guest's own row counts like anyone's,
+// level; else first name, age and sex), never this file's. The guest's own row counts like anyone's,
 // third person (MESITA-3051). What this file decides is whether the VIEWER
 // sees full handles (MESITA-2594, seesHandles): only with their own Instagram
 // verified and their own handle shown (MESITA-4659); otherwise every other
@@ -66,7 +67,7 @@ import {
   isMesitaPlaceId,
   nearYou,
 } from "../_shared/place-activity.ts";
-import { type Card, readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
+import { type Card, readCards, readViewer } from "../_shared/place-activity-read.ts";
 import { loadDiscoveryConfig, NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { finiteOrNull } from "../_shared/input.ts";
 
@@ -102,7 +103,11 @@ serveJson("consumer-web-list-activity", async (req) => {
   const lat = finiteOrNull(body.lat);
   const lng = finiteOrNull(body.lng);
   const hasPoint = lat != null && lng != null;
-  const canSee = user ? await viewerSeesHandles(admin, user.id) : false;
+  const seen = user ? await readViewer(admin, user.id) : { ok: true as const, blocked: null, canSee: false };
+  if (!seen.ok) return json({ ok: false, error: seen.error }, 500);
+  // A private member sees nobody (MESITA-4854); the app says why.
+  if (seen.blocked) return json({ ok: true, viewer, items: [], next: null, blocked: seen.blocked });
+  const canSee = seen.canSee;
   const shown = typeof body.shown === "number" && Number.isFinite(body.shown) ? Math.max(0, Math.floor(body.shown)) : 0;
   const latest = placeId ? Number.POSITIVE_INFINITY : (await loadDiscoveryConfig(admin)).social.latestEvents;
   const room = latest - shown;
