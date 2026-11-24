@@ -322,12 +322,17 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
   const o = p.offers;
   if (!o) return [];
   if (kind === "vouchers") {
-    return VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => ({
-      key: k,
-      top: `$${pesos.format(Number(k.slice("voucher_".length)))}`,
-      bottom: `+${voucherPct(o, k)}%`,
-      tone: BOX_TINT.prepay,
-    }));
+    return VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => {
+      const pay = Number(k.slice("voucher_".length));
+      const pct = voucherPct(o, k);
+      return {
+        key: k,
+        top: `$${pesos.format(pay)}`,
+        // MESITA-4795: the bonus and what the guest gets, for the row's right side.
+        bottom: `+${pct}% · Get $${pesos.format(Math.round((pay * (100 + pct)) / 100))}`,
+        tone: BOX_TINT.prepay,
+      };
+    });
   }
   // MESITA-4770: the visit lines read "Off" (Discount, green) or "Back"
   // (Cashback, red-pink).
@@ -360,9 +365,18 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
     .map((sl) => ({
       key: sl.key,
       top: sl.lead,
-      bottom: sl.pillShort,
+      // "UP TO" ON PREPAY (Pato, 2026-11-23, MESITA-4795: "mention in prepay
+      // Up to x% bonus"): the place's highest voucher bonus.
+      bottom: sl.key === "prepay" ? prepayUpTo(o) ?? sl.pillShort : sl.pillShort,
       tone: sl.key === "prepay" ? BOX_TINT.prepay : visitTint,
     }));
+}
+
+/** "Up to N% Bonus": the highest bonus among the vouchers this place sells
+ *  (MESITA-4795); null when it sells none. */
+function prepayUpTo(o: NonNullable<PayPlace["offers"]>): string | null {
+  const pcts = VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => voucherPct(o, k));
+  return pcts.length > 0 ? `Up to ${Math.max(...pcts)}% Bonus` : null;
 }
 
 /** A place: photo, name, the address on one line and the distance; under
@@ -391,7 +405,19 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
         </span>
         {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
       </span>
-      {shown.length > 0 ? (
+      {shown.length > 0 && boxes === "vouchers" ? (
+        // ONE ROW PER AMOUNT (Pato, 2026-11-23, MESITA-4795: "in prepay
+        // actually list the offers in 3 rows depending on the amount"):
+        // smallest first, the amount left, the bonus and what you get right.
+        <span className="mt-2 flex w-full flex-col gap-1.5" aria-hidden data-offer-boxes>
+          {shown.map((b) => (
+            <span key={b.key} className={cn("text-foreground flex min-w-0 items-center justify-between gap-3 rounded-lg px-2.5 py-2", b.tone)}>
+              <span className="truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
+              <span className="shrink-0 text-sm leading-tight font-semibold tabular-nums">{b.bottom}</span>
+            </span>
+          ))}
+        </span>
+      ) : shown.length > 0 ? (
         // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
         // two boxes are halves, three are thirds; 14px words, shorter boxes.
         <span className={cn("mt-2 grid w-full gap-2", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
