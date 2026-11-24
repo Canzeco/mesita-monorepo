@@ -61,7 +61,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const [code, setCode] = useState<PayCode | null>(null);
   const [codeFailed, setCodeFailed] = useState(false);
   const [bill, setBill] = useState<GuestBill | null>(null);
-  const [read, setRead] = useState(false);
   const [misses, setMisses] = useState(0);
   const [busy, setBusy] = useState<"accept" | "decline" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +81,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
 
   const take = useCallback(
     (b: GuestBill | null) => {
-      setRead(true);
       setMisses(0);
       setNow(Date.now());
       const shown = b;
@@ -131,7 +129,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       const kept = keptCode();
       if (kept) setCode(kept);
       else setCodeFailed(true);
-      setRead(true);
     }
   }, [getSupabase, take]);
 
@@ -312,7 +309,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           ) : null}
         </PaySection>
       </>,
-      read ? null : <Spinner size="sm" label="Checking for a bill" />,
+      null,
       1,
     );
   }
