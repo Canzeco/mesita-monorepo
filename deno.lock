@@ -13,7 +13,8 @@
     "npm:@supabase/postgrest-js@2.105.4": "2.105.4",
     "npm:@supabase/realtime-js@2.105.4": "2.105.4",
     "npm:@supabase/storage-js@2.105.4": "2.105.4",
-    "npm:openai@^4.52.5": "4.104.0"
+    "npm:openai@^4.52.5": "4.104.0",
+    "npm:prettier@3": "3.10.1"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -268,6 +269,10 @@
         "formdata-node",
         "node-fetch"
       ],
+      "bin": true
+    },
+    "prettier@3.10.1": {
+      "integrity": "sha512-70vp3ZUYoPlFbF9uiTdXHUUCGEIp7d4+6p+8DYbkm2jP7x/3i/paXVF6dopSI3zd/CEitrZN1rc4i85xWmmXlg==",
       "bin": true
     },
     "tr46@0.0.3": {
