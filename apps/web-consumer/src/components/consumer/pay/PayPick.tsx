@@ -53,19 +53,18 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex flex-col" data-pay-list={kind}>
-      <div className="bg-card sticky top-0 z-10 p-2.5">
-        <div className="border-border bg-card flex h-12 items-center rounded-xl border pr-1 pl-4" data-pay-pick-search>
-          <SearchBar
-            query={query}
-            showClear={query.length > 0}
-            onQueryChange={setQuery}
-            onClear={() => setQuery("")}
-            placeholder="Search a place"
-          />
-        </div>
+      {/* The whole row is the field: no box of its own (MESITA-4842). */}
+      <div className="border-border bg-card sticky top-0 z-10 flex h-14 items-center border-b pr-1 pl-4" data-pay-pick-search>
+        <SearchBar
+          query={query}
+          showClear={query.length > 0}
+          onQueryChange={setQuery}
+          onClear={() => setQuery("")}
+          placeholder="Search a place"
+        />
       </div>
       {loc.state === "prime" ? (
-        <div className="border-border border-t px-3.5 py-3">
+        <div className="border-border border-b px-3.5 py-3">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
             See places near you
@@ -84,7 +83,7 @@ export function PlaceList({
           </div>
         </div>
       ) : loc.state === "blocked" ? (
-        <p className="text-muted-foreground border-border border-t px-3.5 py-3 text-sm">
+        <p className="text-muted-foreground border-border border-b px-3.5 py-3 text-sm">
           Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
         </p>
       ) : null}
@@ -101,7 +100,7 @@ export function PlaceList({
       ) : places === null || (loc.state === "asking" && places.length === 0) ? (
         <RowsSkeleton />
       ) : places.length === 0 ? (
-        <p className="text-muted-foreground border-border border-t px-3.5 py-4 text-sm">
+        <p className="text-muted-foreground px-3.5 py-4 text-sm">
           {loc.state !== "on"
             ? "Turn on location to see places near you"
             : kind === "prepay"
@@ -109,9 +108,9 @@ export function PlaceList({
               : "No Mesita place near you"}
         </p>
       ) : shown.length === 0 ? (
-        <p className="text-muted-foreground border-border border-t px-3.5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
+        <p className="text-muted-foreground px-3.5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
       ) : (
-        <div className="border-border divide-border divide-y border-y" data-pay-places>
+        <div className="flex flex-col gap-2" data-pay-places>
           {shown.map((p) => (
             <PlaceRow key={p.place_id} p={p} onPick={onPick} kind={kind} />
           ))}
@@ -200,21 +199,21 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       type="button"
       onClick={() => onPick(p.place_id)}
       aria-label={spoken}
-      className="group flex w-full flex-col p-2.5 text-left"
+      className="group flex w-full flex-col text-left"
       data-pay-pick-place
     >
       {/* THE GRID (Pato, 2026-11-24, MESITA-4839: "data in gray box, offers in
-          green boxes"): the place's box, then its offers, on the search box's
-          own edges, 6px apart. */}
-      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-3 rounded-lg p-2.5 transition-colors">
-        <PlacePhoto place={p} className="h-11 w-11" />
+          green boxes"): the place's box, then its offers, edge to edge with a
+          2px line between (MESITA-4842). */}
+      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-2.5 px-3.5 py-1.5 transition-colors">
+        <PlacePhoto place={p} className={kind === "prepay" ? "h-7 w-7" : "h-9 w-9"} />
         <span className="min-w-0 flex-1">
-          <span className={cn("font-semibold", kind === "prepay" ? "line-clamp-2 text-base leading-tight" : "block truncate text-sm")}>{name}</span>
+          <span className={cn("font-semibold", kind === "prepay" ? "line-clamp-2 text-base leading-tight" : "block truncate text-sm leading-tight")}>{name}</span>
           {p.address && kind === "pay" ? (
-            <span className={"text-muted-foreground mt-0.5 block truncate text-sm"}>{p.address}</span>
+            <span className={"text-muted-foreground block truncate text-sm leading-tight"}>{p.address}</span>
           ) : null}
         </span>
-        {distance ? <span className="text-muted-foreground shrink-0 self-start pt-0.5 text-sm tabular-nums">{distance}</span> : null}
+        {distance ? <span className="text-muted-foreground shrink-0 self-start text-sm leading-tight tabular-nums">{distance}</span> : null}
       </span>
       {shown.length > 0 ? (
         // ONE ROW OF EQUAL COLUMNS (Pato, 2026-11-24, MESITA-4837: "cleaner,
@@ -222,9 +221,9 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
         // amount before (MESITA-4795).
         // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
         // two boxes are halves, three are thirds; 14px words, shorter boxes.
-        <span className={cn("mt-1.5 grid w-full gap-1.5", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+        <span className={cn("mt-0.5 grid w-full gap-0.5", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
           {shown.map((b) => (
-            <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2 py-1.5", b.tone)}>
+            <span key={b.key} className={cn("text-foreground min-w-0 px-3.5 py-2 max-[429px]:px-2", b.tone)}>
               <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{kind === "prepay" ? <span className="max-[359px]:hidden">For </span> : null}
                 {b.top}
               </span>
@@ -247,7 +246,7 @@ function RowsSkeleton() {
       {[0, 1, 2].map((i) => (
         <div key={i} className="px-3.5 py-2.5">
           <div className="flex items-start gap-3.5">
-            <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
             <div className="flex-1 pt-1">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="mt-2 h-3 w-24" />

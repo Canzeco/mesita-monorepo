@@ -27,7 +27,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 //
 //   Mesita ................................ [Tickets]
 //   Pending Tickets                  only with an open bill (MESITA-4625)
-//   [ Prepay ] [ Credits ] [ Pay ]   a tablist; only the chosen one has colour
+//   [ Prepay ] [ Credits ] [ Pay ]   a tablist; the chosen one joins its box
 //   +-----------------------------+
 //   | the chosen tile's list      |  one box in that colour, to the bar,
 //   +-----------------------------+  scrolling inside
@@ -92,13 +92,11 @@ export function PayPage({
           </section>
         ) : null}
         <WalletMenu tab={tab} onTab={chooseTab} />
-        <div className={cn(
-            "my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5",
-            // Under an end tile the box's own corner is straight: one edge.
-            tab === "prepay" && "rounded-tl-none",
-            tab === "pay" && "rounded-tr-none",
-            PAY_TAB_FILL[tab],
-          )} data-pay-menu-box={tab}>
+        {/* ONE BORDER (Pato, 2026-11-24, MESITA-4842: "i don't like double
+            borders ... must be 100% width ... not green and then white"): the
+            box runs edge to edge (-mx-2 undoes the page's 8px) and down to the
+            bar, and what is inside touches its colour with no white gutter. */}
+        <div className={cn("-mx-2 mt-2 flex min-h-0 flex-1 flex-col p-1.5", PAY_TAB_FILL[tab])} data-pay-menu-box={tab}>
           <div
             role="tabpanel"
             id="pay-panel"
@@ -120,18 +118,16 @@ export function PayPage({
                   )}
                 </KeptScroll>
                 {tab === "pay" ? (
-                  // AT THE BOTTOM, THE SEARCH BOX'S TWIN (Pato, 2026-11-24,
-                  // MESITA-4839): same height, edges and corners. Not listed,
-                  // or the list did not load: the QR works anyway.
-                  <div className="border-border shrink-0 border-t p-2.5">
-                    <PushLink
-                      href={CONSUMER_ROUTES.payCode}
-                      className="border-border bg-card hover:bg-muted flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition"
-                      data-pay-pick-any
-                    >
-                      My place isn&apos;t here
-                    </PushLink>
-                  </div>
+                  // AT THE BOTTOM, THE SEARCH ROW'S TWIN (Pato, 2026-11-24,
+                  // MESITA-4839). Not listed, or the list did not load: the QR
+                  // works anyway.
+                  <PushLink
+                    href={CONSUMER_ROUTES.payCode}
+                    className="border-border bg-card hover:bg-muted flex h-14 shrink-0 items-center justify-center border-t px-4 text-sm font-semibold transition"
+                    data-pay-pick-any
+                  >
+                    My place isn&apos;t here
+                  </PushLink>
                 ) : null}
               </>
             )}
@@ -187,18 +183,20 @@ const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
 
 /** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
  *  connect with bottom box when selected"): the tile's colour runs down the
- *  8px gap into the box, with a rounded inner corner on each open side. */
-function TileJoin({ fill, left, right }: { fill: string; left: boolean; right: boolean }) {
+ *  8px gap into the box, with a rounded inner corner on each side. */
+function TileJoin({ fill }: { fill: string }) {
   const corner = (at: string) => ({ maskImage: `radial-gradient(circle at ${at} 0, transparent 7.5px, black 8px)` });
   return (
     <span className={cn("pointer-events-none absolute inset-x-0 top-full h-2", fill)} aria-hidden>
-      {left ? <span className={cn("absolute top-0 -left-2 h-2 w-2", fill)} style={corner("0")} /> : null}
-      {right ? <span className={cn("absolute top-0 -right-2 h-2 w-2", fill)} style={corner("100%")} /> : null}
+      <span className={cn("absolute top-0 -left-2 h-2 w-2", fill)} style={corner("0")} />
+      <span className={cn("absolute top-0 -right-2 h-2 w-2", fill)} style={corner("100%")} />
     </span>
   );
 }
 
-/** THE MENU: three equal tiles, only the chosen one in its colour (look A).
+/** THE MENU: three equal tiles, each always in its own colour (Pato,
+ *  2026-11-24, MESITA-4842: "credits always black, pay always green, purple
+ *  always purple"); the chosen one is joined to the box.
  *  Arrow keys move between them. */
 function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -231,16 +229,16 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
                 move(i, e.key === "ArrowRight" ? 1 : -1);
               }
             }}
-            className={cn(PAY_TILE, "group relative outline-none", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
+            className={cn(PAY_TILE, "group relative outline-none", PAY_TAB_FILL[id], on && "rounded-b-none")}
             data-pay-tab={id}
           >
-            {/* The exact purple, black or green in the disc; white on the chosen. The
+            {/* The
                 keyboard's ring is here: on the tile it cut the joined shape. */}
-            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", on ? cn("bg-white", ink) : PAY_TAB_FILL[id])} aria-hidden>
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", "bg-white", ink)} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>
-            {on ? <TileJoin fill={PAY_TAB_FILL[id]} left={i > 0} right={i < PAY_TABS.length - 1} /> : null}
+            {on ? <TileJoin fill={PAY_TAB_FILL[id]} /> : null}
           </button>
         );
       })}
