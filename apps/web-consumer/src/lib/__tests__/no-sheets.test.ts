@@ -66,8 +66,7 @@ export const CONFIRM_FILES = [
 /** Files that still open a sheet. Remove a file when its sheet becomes a page.
  *  The Pay Bill place picker (MESITA-4478) is the one addition: Pato asked
  *  for the search and the places in a bottom sheet. The ticket stays a page. */
-const SHEET_ALLOWLIST = [
-  "components/consumer/pay/PayPick.tsx",
+const SHEET_ALLOWLIST: string[] = [
 ];
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */

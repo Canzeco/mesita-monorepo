@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BadgePercent, ChevronRight, CreditCard, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, placeOffersPath } from "@/lib/consumer-route-contract";
@@ -47,7 +46,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 // bottom. At a place (within AT_PLACE_M) it reads "Pay Bill at <place>" and
 // opens that bill, "Other place" under it opens the sheet. With a bill open
 // it IS the bill (the amber panel below). The bar is Home · Search · Pay ·
-// Me; /wallet forwards here. /pay/pick redirects here with ?pick=1.
+// Me; /wallet forwards here. /pay/pick is Pay's first step (MESITA-4837).
 //
 // ONE OPEN PAYMENT (Pato, 2026-11-11, MESITA-3772: "you can only have one
 // ticket opened at a time ... in the pay page just display the button to go
@@ -221,12 +220,12 @@ export function PayPage({
             <span className={TILE_LINE}>Pay ahead, get a bonus</span>
           </span>
         </PushLink>
-        {/* THE WAITER LEADS (MESITA-4823): Pay Bill is the guest's QR; no
-            place is picked. */}
+        {/* THE PLACE FIRST (MESITA-4837), then the guest's one QR; an open
+            bill goes straight to it. */}
         <PushLink
-          href={CONSUMER_ROUTES.payCode}
+          href={bill ? CONSUMER_ROUTES.payCode : CONSUMER_ROUTES.payPick}
           className={cn(TILE, "bg-[#635BFF] text-white hover:bg-[#5249e6]")}
-          aria-label={bill ? "Pay: your bill is open" : "Pay: show the waiter your QR"}
+          aria-label={bill ? "Pay: your bill is open" : "Pay: choose the place, then show the waiter your QR"}
           data-pay-bill
         >
           <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
@@ -320,12 +319,6 @@ const TILE_TITLE = "text-lg leading-tight font-semibold"; // 18px: "a bit bigger
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
  *  Card page's round buttons' look. The tiles grew 88 to 96px to hold it. */
 const ICON_CIRCLE = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white"; // 40px: room for the small line (MESITA-4830); 48px under MESITA-4793
-
-/** Pay Bill's shape while the open-bill read runs, so a bill that is open
- *  never flashes the black button first. */
-export function PayBillSkeleton() {
-  return <Skeleton className="mt-2 h-11 w-full rounded-xl" aria-hidden />;
-}
 
 /** The open bill on /pay (MESITA-4086, MESITA-4823): one row of Pending
  *  Tickets: the place, what it waits for with the time left, the amount. */
