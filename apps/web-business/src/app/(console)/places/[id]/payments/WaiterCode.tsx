@@ -3,7 +3,7 @@
 // The waiter code (MESITA-3226, Pato: "there they only set the fucking number";
 // on Payments since MESITA-3600, Pato: "move waiter code configuration to
 // Payments, not there"; its own section, last, since MESITA-3824). Four digits (MESITA-4521)
-// waiters type at visit.mesita.ai to confirm any payment's QR, cash or card. Only a hash is kept, so it is never
+// waiters type once per phone per 12 hours to send bills (MESITA-4823). Only a hash is kept, so it is never
 // shown again and a forgotten one is replaced. The server refuses editors.
 
 import { useState } from "react";
@@ -57,8 +57,8 @@ export function WaiterCodeRow({
           {saved
             ? "Saved. It won't be shown again."
             : isSet
-              ? "Four digits your waiters type at visit.mesita.ai to confirm a guest's payment, cash or card. Type four new digits to replace it."
-              : "Four digits your waiters type at visit.mesita.ai to confirm a guest's payment, cash or card."}
+              ? "Four digits your waiters type once per shift on their phone. A new code signs every phone out."
+              : "Four digits your waiters type once per shift on their phone. Without it, waiters can't send bills."}
         </p>
       </div>
       <p className={cn("font-semibold whitespace-nowrap", !isSet && "text-muted-foreground")}>{isSet ? "Set" : "Not set"}</p>

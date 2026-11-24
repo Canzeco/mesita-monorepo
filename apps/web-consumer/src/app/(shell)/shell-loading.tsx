@@ -32,6 +32,7 @@ import PlaceReportLoading from "./place/[id]/report/loading";
 import PlaceUpgradeLoading from "./place/[id]/upgrade/loading";
 import PlaceMenuLoading from "./place/[id]/menu/[menuId]/loading";
 import PayPlaceLoading from "./pay/place/[placeId]/loading";
+import PayCodeLoading from "./pay/code/loading";
 import PayTabLoading from "./pay/bill/[billId]/loading";
 import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
 import VisitLoading from "./me/tickets/visits/[visitId]/loading";
@@ -72,6 +73,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   reservationReschedule: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
   payPick: () => <PayBillSkeleton />,
+  payCode: () => <PayCodeLoading />,
   payPlace: () => <PayPlaceLoading />,
   payBill: () => <PayTabLoading />,
   payJoin: () => <PayTabLoading />,

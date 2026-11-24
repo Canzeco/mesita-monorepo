@@ -879,3 +879,24 @@ button.verify-reject:disabled {
     animation: none;
   }
 }
+
+/* The waiter's tip picks (MESITA-4823). */
+.tip-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tip-chips button {
+  margin: 0;
+  padding: 0;
+  border: 1px solid #d4d4d4;
+  text-decoration: none;
+}
+
+.tip-chips button[aria-pressed="true"] {
+  border-color: #171717;
+  background: #171717;
+  color: #ffffff;
+}

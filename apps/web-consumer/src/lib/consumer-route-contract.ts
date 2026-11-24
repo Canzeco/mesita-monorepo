@@ -93,6 +93,8 @@ export const CONSUMER_ROUTES = {
   pay: "/pay",
   // PAY BILL'S PLACE PICKER (MESITA-4232): a pushed page, not a modal.
   payPick: "/pay/pick",
+  // The guest's one QR and the waiter's bill (MESITA-4823).
+  payCode: "/pay/code",
   payPlace: { prefix: "/pay/place/" },
   payBill: { prefix: "/pay/bill/" },
   payJoin: { prefix: "/pay/join/" },
@@ -402,6 +404,12 @@ export function isRouteId(id: string | null | undefined): id is string {
   );
 }
 
+/** Pay Bill: the guest's QR (MESITA-4823). `from` is the place it was opened
+ *  from: what they get there shows over the QR, nothing else. */
+export function payCodePath(from: string | null = null): string {
+  return from ? `${CONSUMER_ROUTES.payCode}?from=${from}` : CONSUMER_ROUTES.payCode;
+}
+
 /** Pay at a place: the door that opens (or reuses) the guest's bill there. */
 export function payPlacePath(placeId: string): string {
   return `${CONSUMER_ROUTES.payPlace.prefix}${placeId}`;
@@ -576,6 +584,7 @@ export const ROUTE_MAP = {
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
   payPick: row("/pay/pick", "pay", "page", "pay"),
+  payCode: row("/pay/code", "pay", "page", "pay", false),
   payPlace: row("/pay/place/:placeId", "pay", "door", "pay", false),
   payBill: row("/pay/bill/:billId", "pay", "page", "pay", false),
   payJoin: row("/pay/join/:token", "pay", "door", "pay", false),

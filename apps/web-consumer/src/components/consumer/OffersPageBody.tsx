@@ -19,7 +19,7 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   CONSUMER_ROUTES,
   placePath,
-  payPlacePath,
+  payCodePath,
   walletPlacePath,
 } from "@/lib/consumer-route-contract";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -137,7 +137,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   // the Loyalty Card; otherwise the Loyalty Card replaces Offers.
   const vouchers = usePlaceVouchers(fetched.id);
   const finish = useCallback(() => {
-    if (fromPay) goBack(router, payPlacePath(fetched.id));
+    if (fromPay) goBack(router, payCodePath(fetched.id));
     else if (fromWallet) goBack(router, walletPlacePath(fetched.id));
     else navigateTo(router, walletPlacePath(fetched.id), { replace: true, motion: "push" });
   }, [router, fromPay, fromWallet, fetched.id]);
@@ -148,7 +148,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   }, [load, loadCards]);
 
   const back = useCallback(
-    () => goBack(router, fromPay ? payPlacePath(fetched.id) : fromWallet ? walletPlacePath(fetched.id) : placePath(fetched.id)),
+    () => goBack(router, fromPay ? payCodePath(fetched.id) : fromWallet ? walletPlacePath(fetched.id) : placePath(fetched.id)),
     [router, fromPay, fromWallet, fetched.id],
   );
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
@@ -185,7 +185,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
   const actions: PlaceActions = {
     // MESITA-4699: Checkout's purple Pay Bill (MESITA-4710), a push to this
     // place's bill; Back returns here.
-    onPay: () => navigateTo(router, payPlacePath(fetched.id), { motion: "drill" }),
+    onPay: () => navigateTo(router, payCodePath(fetched.id), { motion: "drill" }),
     onBuyVoucher: buyChecked,
     onOfferOpened: vouchers.opened,
     onOffersDone: finish,

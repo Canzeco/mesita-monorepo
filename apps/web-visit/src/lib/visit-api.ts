@@ -132,7 +132,7 @@ export class ChargeError extends Error {
   }
 }
 
-async function post(name: string, body: Record<string, unknown>): Promise<{ res: Response | null; data: Record<string, unknown> | null }> {
+export async function post(name: string, body: Record<string, unknown>): Promise<{ res: Response | null; data: Record<string, unknown> | null }> {
   try {
     const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${name}`, {
       method: "POST",
