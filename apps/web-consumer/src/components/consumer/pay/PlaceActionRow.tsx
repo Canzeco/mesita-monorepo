@@ -55,11 +55,12 @@ export function PlaceActionRow({
         {/* A CARD'S SHAPE, the + chip's (Pato, 2026-11-24, MESITA-4855). */}
         <PlacePhoto place={{ photo, name }} className="h-8 w-12 rounded-md max-[359px]:hidden" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm leading-tight font-semibold">{name}</span>
+          {/* One size, name and amount (Pato, 2026-11-24, MESITA-4859). */}
+          <span className="block truncate text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
           {subtitle ? (
             <span className="text-muted-foreground block text-sm leading-tight">{subtitle}</span>
           ) : (
-            <span className="block text-lg leading-tight font-semibold whitespace-nowrap tabular-nums max-[429px]:text-base max-[359px]:text-sm" data-loyalty-balance>
+            <span className="block text-base leading-tight font-semibold whitespace-nowrap tabular-nums max-[429px]:text-sm" data-loyalty-balance>
               {amount}
             </span>
           )}
