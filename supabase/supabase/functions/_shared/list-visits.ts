@@ -27,6 +27,8 @@ export type GuestVisit = {
   bill_cents: number | null;
   /** MESITA-4770: the visit discount taken off bill_cents (0 = none). */
   discount_cents: number;
+  /** MESITA-4893: the cashback this bill earned (0 = none). */
+  cashback_cents: number;
   tip_cents: number;
   ticket: string | null;
   waiter_name: string | null;
@@ -105,6 +107,17 @@ export async function listVisits(
     partsByTab.set(p.tab_id, list);
   }
 
+  // What each bill earned, for its row (MESITA-4893). Words on a list: a failed
+  // read shows the visits without them.
+  const { data: backData, error: backError } = tabs.length
+    ? await admin.from("wallet_entries").select("tab_id, amount_cents").eq("consumer_id", consumerId).eq("kind", "cashback").in("tab_id", tabs.map((t) => t.id))
+    : { data: [], error: null };
+  if (backError) console.error(`[list-visits] cashback: ${backError.message}`);
+  const backByTab = new Map<string, number>();
+  for (const e of (backData ?? []) as Array<{ tab_id: string; amount_cents: number }>) {
+    backByTab.set(e.tab_id, (backByTab.get(e.tab_id) ?? 0) + e.amount_cents);
+  }
+
   const placesRes = await readWalletPlaces(admin, [...new Set([...tabs.map((t) => t.place_id), ...attempts.map((a) => a.place_id)])]);
   if (!placesRes.ok) return { ok: false, error: placesRes.error };
 
@@ -118,6 +131,7 @@ export async function listVisits(
       currency: t.currency,
       bill_cents: t.bill_cents,
       discount_cents: t.discount_cents ?? 0,
+      cashback_cents: backByTab.get(t.id) ?? 0,
       tip_cents: t.tip_cents,
       ticket: t.ticket,
       waiter_name: t.waiter_name,
@@ -139,6 +153,7 @@ export async function listVisits(
       currency: a.currency,
       bill_cents: a.bill_cents,
       discount_cents: a.discount_cents ?? 0,
+      cashback_cents: 0,
       tip_cents: a.tip_cents,
       ticket: null,
       waiter_name: null,
