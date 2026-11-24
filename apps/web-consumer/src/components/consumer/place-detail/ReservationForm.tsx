@@ -458,7 +458,7 @@ export function ReservationForm({
                 <span className="bg-reserve h-2 w-2 shrink-0 rounded-full" aria-hidden />
                 <span className="font-semibold">
                   {parked ??
-                    `Mesi is calling ${place.name} ${rescheduling ? "to move your table" : "now"}`}
+                    `Mesi calls ${place.name} as soon as it is open${rescheduling ? " to move your table" : ""}`}
                 </span>
               </div>
             </dl>

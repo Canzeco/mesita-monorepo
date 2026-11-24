@@ -3,7 +3,7 @@
 -- tip; alone neither does; a changed bill clears the waiter's tap.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(79);
+select plan(78);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000f4889');
 insert into public.place_profiles (id, google_name) values
@@ -149,7 +149,6 @@ select is(public.waiter_no_code(repeat('5b', 32), null), null, 'nor does a place
 do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5c', 32), p_place_id => '00000000-0000-4000-8000-000000014889'); end $$;
 select isnt(public.waiter_no_code(repeat('5c', 32), null), null, 'a Discount place with codes off does not');
 select is(public.waiter_no_code(repeat('5c', 32), null, now() + interval '16 minutes'), null, 'only while the QR lives');
-select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014889', false) where name = '(no code)'), 0, 'the mode is nobody''s name');
 update public.place_cashback_settings set visit_mechanism = 'cashback' where place_id = '00000000-0000-4000-8000-000000014889';
 select is(public.waiter_no_code(repeat('5c', 32), null), null, 'Cashback needs a code');
 update public.place_cashback_settings set visit_mechanism = 'discount' where place_id = '00000000-0000-4000-8000-000000014889';

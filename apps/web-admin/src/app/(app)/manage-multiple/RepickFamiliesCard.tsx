@@ -6,13 +6,16 @@
 // retries a failed batch once, and can resume after a reload. Writes go
 // through the RPC that keeps an undo row per place.
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button, ConfirmDialog, Notice, SectionCard } from "@/components/admin-ui";
 import { repickFamilies, type RepickReply, type RepickRow } from "./actions";
 
 const RESUME_KEY = "mesita.repickFamilies.resume";
 
 type Resume = { runId: string; cursor: string; done: number; total?: number };
+
+/** One run at a time, even across a remount while a batch is in flight. */
+let running = false;
 
 /** A call that never reaches the server is a failed batch, not a stuck card. */
 const repick = (body: Parameters<typeof repickFamilies>[0]): ReturnType<typeof repickFamilies> =>
@@ -104,6 +107,13 @@ export function RepickFamiliesCard() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [rows, setRows] = useState<RepickRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   async function dryRun() {
     setBusy(true);
@@ -117,6 +127,8 @@ export function RepickFamiliesCard() {
 
   async function run(start: Resume | null, total: number | undefined) {
     setConfirming(false);
+    if (running) return setError("The last batch is still finishing. Try again in a moment.");
+    running = true;
     setBusy(true);
     setError(null);
     const all: RepickRow[] = [];
@@ -126,7 +138,7 @@ export function RepickFamiliesCard() {
     let done = start?.done ?? 0;
     for (;;) {
       let r = await repick({ cursor, run_id: runId, batch: 5 });
-      if (!r.ok) r = await repick({ cursor, run_id: runId, batch: 5 });
+      if (!r.ok && alive.current) r = await repick({ cursor, run_id: runId, batch: 5 });
       if (!r.ok) {
         setError(`Batch at cursor ${cursor ?? "start"} failed twice: ${r.error}. Resume continues from here.`);
         break;
@@ -144,7 +156,10 @@ export function RepickFamiliesCard() {
       }
       cursor = r.data.next_cursor;
       writeResume({ runId, cursor, done, total });
+      // Left the page: the batch is saved, Resume continues from here.
+      if (!alive.current) break;
     }
+    running = false;
     setBusy(false);
   }
 

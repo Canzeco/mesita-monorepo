@@ -10,7 +10,8 @@ export type VoucherBasketItem = { voucher: VoucherKey; qty: number };
 /** How a voucher buy ended (MESITA-4224): the ticket moves to Credits on
  *  "paid" or "processing" and stays on Pay to try again on "failed" (the
  *  host already said why). */
-export type VoucherBuyOutcome = "paid" | "processing" | "failed";
+/** `full` (MESITA-4923): the place cannot issue this much credit; not charged. */
+export type VoucherBuyOutcome = "paid" | "processing" | "failed" | "full";
 
 /** The profile is on screen before Mesita holds it — a Google-only card the
  *  guest opened (MESITA-2307). While the create runs a Creating fact leads

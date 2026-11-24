@@ -3,8 +3,8 @@
 // field shows.
 //
 // Pato (2026-10-20): a saved location is named from the FINAL pin, never the
-// typed query; the suggestion keeps following the pin until the guest edits
-// the name, and the street line always follows the pin.
+// typed query; the name field follows the pin until the guest edits it, and
+// the suggestion and the street line always follow the pin.
 //
 //   camera idle ──► lookupNeeded? ──► lookup_start (seq++, calls++) ──► EF
 //        ▲                                                          │
@@ -73,9 +73,6 @@ export type PinPickerState = {
   /** The pin the last unsettled failure was about: not asked again here, the
    *  saved entry's backfill does. */
   failedAt: LatLng | null;
-  /** What Google last named the pin, kept while a typed name freezes
-   *  `suggestedName`, so clearing the field hands back the pin's own name. */
-  pinName: string | null;
   /** The newest request; an answer for any other is dropped. */
   seq: number;
   /** Requests spent this session. */
@@ -108,7 +105,6 @@ export function initialPinPickerState(seed: {
     // An edited entry opens already named at its own pin.
     answeredAt: named ? seed.center : null,
     failedAt: null,
-    pinName: seed.suggestedName ?? null,
     seq: 0,
     calls: 0,
     inFlight: false,
@@ -139,14 +135,14 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
       return { ...s, seq: s.seq + 1, calls: s.calls + 1, inFlight: true };
     case "lookup_done": {
       if (a.seq !== s.seq) return s;
-      const suggestedName = s.nameEdited ? s.suggestedName : a.answer.suggestedName;
+      // A typed name never freezes the suggestion: it describes the pin.
+      const { suggestedName } = a.answer;
       return {
         ...s,
         inFlight: false,
         failed: false,
         answeredAt: a.at,
         failedAt: null,
-        pinName: a.answer.suggestedName,
         formattedAddress: a.answer.formattedAddress,
         suggestedName,
         nameValue: s.nameEdited || s.nameFocused ? s.nameValue : (suggestedName ?? ""),
@@ -163,9 +159,8 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
         failed: true,
         answeredAt: settled ? a.at : s.answeredAt,
         failedAt: settled ? null : a.at,
-        pinName: null,
         formattedAddress: null,
-        suggestedName: s.nameEdited ? s.suggestedName : null,
+        suggestedName: null,
         nameValue: s.nameEdited || s.nameFocused ? s.nameValue : "",
       };
     }
@@ -180,7 +175,7 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
     case "name_input":
       return a.value.trim() !== ""
         ? { ...s, nameValue: a.value, nameEdited: true }
-        : { ...s, nameValue: a.value, nameEdited: false, suggestedName: s.pinName };
+        : { ...s, nameValue: a.value, nameEdited: false };
   }
 }
 

@@ -12,6 +12,7 @@ import { apiStartPlan } from "@/lib/api/plan";
 export const REFUSED: Record<string, string> = {
   already_pro: "You're already on Pro.",
   not_subscribed: "You're not paying for Pro.",
+  payment_pending: "Your last payment is still processing. Check back in a minute.",
   stripe_unavailable: "Payments are not available right now.",
 };
 

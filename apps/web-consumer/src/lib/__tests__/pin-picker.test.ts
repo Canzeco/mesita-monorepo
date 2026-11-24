@@ -19,8 +19,8 @@ import {
 import type { SavedLocation } from "@/lib/saved-locations";
 
 // MESITA-2501: the pin picker's rules. Pato (2026-10-20): the name comes from
-// the FINAL pin, never the typed query; the suggestion follows the pin until
-// the guest edits the name; the street always follows the pin.
+// the FINAL pin, never the typed query; the name field follows the pin until
+// the guest edits it; the suggestion and the street always follow the pin.
 
 const run = (s: PinPickerState, ...actions: PinPickerAction[]) => actions.reduce(pinPickerReducer, s);
 const TEC = { lat: 25.6514, lng: -100.2895 };
@@ -65,12 +65,12 @@ describe("the name follows the final pin", () => {
     expect(streetLine(early)).toEqual({ text: "Near Río Orinoco 123", dim: false });
   });
 
-  it("typing freezes the suggestion; the street still follows the pin", () => {
+  it("typing keeps the name; the suggestion and the street still follow the pin", () => {
     let s = answered(start(), TEC, "Tecnológico", "Avenida Eugenio Garza Sada 2501");
     s = run(s, { type: "name_focus" }, { type: "name_input", value: "Casa" }, { type: "name_blur" });
     s = answered(s, ROMA, "Roma", "Río Orinoco 123");
     expect(s.nameValue).toBe("Casa");
-    expect(s.suggestedName).toBe("Tecnológico");
+    expect(s.suggestedName).toBe("Roma");
     expect(s.formattedAddress).toBe("Río Orinoco 123");
     expect(pinDraft(s)).toMatchObject({ customName: "Casa", nameEdited: true, lat: ROMA.lat });
   });

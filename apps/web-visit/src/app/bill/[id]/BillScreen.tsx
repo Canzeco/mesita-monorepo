@@ -49,6 +49,9 @@ export function BillScreen({ billId }: { billId: string }) {
 
   // Another phone, a closed tab or a new code: the code is typed again.
   const [locked, setLocked] = useState(false);
+  // The one try without a code, until the bill reads again: never a loop.
+  const tried = useRef(false);
+  const [unreached, setUnreached] = useState(false);
   const signIn = useCallback(() => {
     keepBillStaff(billId, null);
     setLocked(true);
@@ -76,6 +79,8 @@ export function BillScreen({ billId }: { billId: string }) {
       setTimeout(() => setNow(Date.now()), 1050);
     }
     setRead(r);
+    // Open for real: a later lock is tried again by itself.
+    tried.current = false;
   }, [billId, signIn, staff]);
 
   const state = read?.bill.state ?? null;
@@ -147,25 +152,45 @@ export function BillScreen({ billId }: { billId: string }) {
       return true;
     }
     if (r === "failed" || "refused" in r) {
+      // Not reached: nobody knows yet whether this place has a code.
+      if (code === null && r === "failed") {
+        setUnreached(true);
+        setError("Couldn't reach Mesita.");
+        return false;
+      }
+      setUnreached(false);
       // No code here to try: it is typed (MESITA-4890).
       if (code === null) return false;
       setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
       return r === "failed";
     }
     keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token, waiter: r.waiter?.name ?? null });
+    setUnreached(false);
     setLocked(false);
     return true;
   }
 
   // A place with codes off opens by itself (MESITA-4890).
-  const tried = useRef(false);
   useEffect(() => {
-    if (!locked || tried.current) return;
+    if (!locked || busy || tried.current) return;
     tried.current = true;
     void unlock(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locked]);
+  }, [locked, busy]);
 
+  if (locked && unreached) {
+    return (
+      <main className="proof pay-end" data-bill="unreached">
+        <h1>Can&apos;t open the bill</h1>
+        <p className="proof-status warn" role="alert">
+          {error ?? "Couldn't reach Mesita."}
+        </p>
+        <button type="button" style={{ marginTop: 16, alignSelf: "stretch" }} disabled={busy !== null} onClick={() => void unlock(null)}>
+          {busy === "code" ? "Trying…" : "Try again"}
+        </button>
+      </main>
+    );
+  }
   if (locked) return <CodeEntry label="Open bill" askName={askName} busy={busy === "code"} error={error} onCode={unlock} />;
   if (gone) {
     return (
@@ -417,7 +442,6 @@ export function BillScreen({ billId }: { billId: string }) {
     <BillEntry
       key={bill.state === "declined" ? `declined-${bill.version}` : "type"}
       start={bill.bill_cents ? { bill: bill.bill_cents, tip: bill.tip_cents } : undefined}
-      sendLabel="Send bill"
       busy={busy === "send"}
       error={error}
       top={

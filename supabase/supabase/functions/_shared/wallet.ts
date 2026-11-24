@@ -200,6 +200,10 @@ export type Balance = {
     gift_id: string | null;
     /** A cashback entry's line (MESITA-4766); null on every other row. */
     reason: string | null;
+    /** The card money returned on this entry's purchase so far (MESITA-4915);
+     *  absent when none was. A reversal's own amount is the credit taken,
+     *  which includes the bonus. */
+    refunded_cents?: number;
   }>;
 };
 
@@ -216,6 +220,7 @@ export function balancesOf(
   entries: Entry[],
   nowMs: number = Date.now(),
   spendable: Map<string, number> = new Map(),
+  refunded: Map<string, number> = new Map(),
 ): Balance[] {
   const byKey = new Map<string, Balance>();
   for (const e of entries) {
@@ -239,6 +244,7 @@ export function balancesOf(
     if (pending) b.pending_cents += e.amount_cents;
     else b.available_cents += e.amount_cents;
     if (e.created_at > b.last_at) b.last_at = e.created_at;
+    const refundedCents = e.purchase_id ? refunded.get(e.purchase_id) : undefined;
     b.entries.push({
       kind: e.kind,
       amount_cents: e.amount_cents,
@@ -249,6 +255,7 @@ export function balancesOf(
       purchase_id: e.purchase_id ?? null,
       gift_id: e.gift_id ?? null,
       reason: e.reason ?? null,
+      ...(refundedCents === undefined ? {} : { refunded_cents: refundedCents }),
     });
   }
   const out = [...byKey.values()];

@@ -13,22 +13,28 @@
 //               never sends it, so its read is unchanged.
 // Response: { ok: true, plan: "free" | "premium", granted: boolean,
 //             cap, used, price_cents, currency, paid_until, cancel_at_period_end,
-//             cap_lifted?, cap_override?, confirmed?: "paid" | "pending" }
+//             cap_lifted?, cap_override?, confirmed?: "paid" | "pending" | "failed" }
+//   confirmed (MESITA-4915): only with a session_id. `pending` is the guest's
+//   own Checkout that can still be paid; `failed` is terminal; left out when
+//   Stripe could not be read, so the app keeps the id and asks again.
 //   cap_lifted / cap_override (MESITA-4393, _shared/plan-flags.ts) are left
 //   out when the settings read fails; the web form then fails open.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { boostLivemode, boostStripeKey, StripeError, stripeClient } from "../_shared/stripe.ts";
 import {
   effectivePlan,
+  mayAdopt,
   needsRefresh,
   PLAN_COLUMNS,
   type PlanRow,
   PRO_CURRENCY,
   PRO_PRICE_CENTS,
+  readSubscription,
   reservationsThisMonth,
+  sessionOutcome,
   subscriptionOfSession,
   syncPlan,
 } from "../_shared/guest-plan.ts";
@@ -54,21 +60,36 @@ serveJson("consumer-web-get-plan", async (req) => {
 
   const key = boostStripeKey();
   const livemode = boostLivemode();
-  let confirmed: "paid" | "pending" | undefined;
+  let confirmed: "paid" | "pending" | "failed" | undefined;
+  // A `plan=` value that is no Checkout id can never be paid.
+  if (typeof rawSession === "string" && rawSession !== "" && !sessionId) confirmed = "failed";
 
   if (key && (!light || sessionId || needsRefresh(row, Date.now(), livemode))) {
     const stripe = stripeClient(key);
     try {
       let subId = typeof row.plan_stripe_subscription === "string" ? row.plan_stripe_subscription : null;
       if (sessionId) {
-        confirmed = "pending";
-        const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`);
-        const fromSession = subscriptionOfSession(session, user.id);
-        if (fromSession) subId = fromSession;
+        let session: Record<string, unknown> | null = null;
+        try {
+          session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`);
+        } catch (err) {
+          // Not a session of this Stripe account: nothing to wait for.
+          if (!(err instanceof StripeError) || err.httpStatus !== 404) throw err;
+        }
+        const fromSession = session ? subscriptionOfSession(session, user.id) : null;
+        const sub = fromSession ? await stripe("GET", `subscriptions/${encodeURIComponent(fromSession)}`) : null;
+        const outcome = session ? sessionOutcome(session, user.id, sub, Date.now()) : "failed";
+        let adopted = false;
+        if (fromSession && sub && mayAdopt(row, fromSession, readSubscription(sub, Date.now()))) {
+          row = await syncPlan(admin, stripe, user.id, fromSession, livemode);
+          adopted = true;
+        }
+        // "paid" only once the row says so.
+        confirmed = outcome === "paid" && effectivePlan(row, Date.now(), livemode) !== "premium" ? "pending" : outcome;
+        if (adopted) subId = null;
       }
-      if (subId && (row.plan_livemode === livemode || sessionId)) {
+      if (subId && row.plan_livemode === livemode) {
         row = await syncPlan(admin, stripe, user.id, subId, livemode);
-        if (sessionId && effectivePlan(row, Date.now(), livemode) === "premium") confirmed = "paid";
       }
     } catch (err) {
       // The page still reads; the stored answer stands until the next open.

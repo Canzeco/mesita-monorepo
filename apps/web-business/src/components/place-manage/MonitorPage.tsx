@@ -98,7 +98,7 @@ export async function PayoutsPage({ placeId }: { placeId: string }) {
       ) : null}
       {off ? <CapabilityNote placeId={placeId} off={off} /> : null}
       <MonitorCard>
-        <Payouts placeId={placeId} timezone={r.data.timezone} />
+        <Payouts placeId={placeId} />
       </MonitorCard>
     </div>
   );

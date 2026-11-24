@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { routeFor, type RouteId } from "@/lib/consumer-route-contract";
 
 // Self-updating guard against deployment skew. The JS a user has in memory is
 // frozen at whenever the page first loaded, so after a new production deploy an
@@ -20,11 +21,40 @@ import { usePathname } from "next/navigation";
 // moment the answer came back wiped whatever that click opened ~200ms later,
 // so Search's Filters chip "did nothing" and bottom-bar taps read as dead
 // (MESITA-2762). A stale bundle now only marks itself; the reload waits for the
-// next screen change (the new screen loads on the new build) or for the page
-// to go hidden, when nobody is looking. It can't loop — after the reload the
+// next change to a browse screen (it loads on the new build) or for the page
+// to go hidden on one, when nobody is looking. It can't loop — after the reload the
 // fresh bundle's sha matches the live one. In local dev the sha is "dev" and
 // it's a no-op.
 const LOADED_SHA = process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev";
+
+// ONLY A BROWSE SCREEN RELOADS. Anything else can hold work a reload would
+// lose (a bill, a checkout, a reservation, sign-in, a form), so a stale build
+// there waits until the guest is back on one of these.
+const BROWSE: ReadonlySet<RouteId> = new Set<RouteId>([
+  "home",
+  "homeSocial",
+  "search",
+  "place",
+  "me",
+  "meNotifications",
+  "meReservations",
+  "meReservationsPast",
+  "meTickets",
+  "meTicketsKind",
+]);
+
+/** Nothing on this screen is in progress, so a reload loses nothing. */
+function canReload(): boolean {
+  const route = routeFor(window.location.pathname);
+  if (!route || !BROWSE.has(route)) return false;
+  // Reading the texted code hides the page: keep the code step.
+  if (document.querySelector('input[autocomplete="one-time-code"]')) return false;
+  // An open dialog (a filter, a saved pin, Generate) is work too.
+  if (document.querySelector('[role="dialog"][aria-modal="true"]')) return false;
+  const el = document.activeElement;
+  if (!(el instanceof HTMLElement)) return true;
+  return !el.isContentEditable && !el.matches("input, textarea, select");
+}
 
 export function DeploymentWatcher() {
   const pathname = usePathname();
@@ -36,7 +66,7 @@ export function DeploymentWatcher() {
   useEffect(() => {
     if (pathname === shownPath.current) return;
     shownPath.current = pathname;
-    if (stale.current) window.location.reload();
+    if (stale.current && canReload()) window.location.reload();
   }, [pathname]);
 
   useEffect(() => {
@@ -60,11 +90,7 @@ export function DeploymentWatcher() {
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
-        // Reading the texted code hides the page: keep the code step.
-        const onCodeStep = document.querySelector(
-          'input[autocomplete="one-time-code"]',
-        );
-        if (stale.current && !onCodeStep) window.location.reload();
+        if (stale.current && canReload()) window.location.reload();
         return;
       }
       void checkForUpdate();

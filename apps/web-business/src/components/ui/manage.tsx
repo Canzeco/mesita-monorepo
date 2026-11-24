@@ -172,6 +172,7 @@ export function PhoneField({
   placeholder?: string;
   disabled?: boolean;
 }) {
+  const inputId = useId();
   // Draft = the country + local text as last typed/picked, kept only while it
   // still matches the stored value's digits. Typing keeps the user's spacing
   // and an empty local keeps the picked flag; an EXTERNAL value change (form
@@ -196,7 +197,7 @@ export function PhoneField({
   };
 
   return (
-    <label className="flex flex-col gap-1.5">
+    <label htmlFor={inputId} className="flex flex-col gap-1.5">
       <span className="flex min-h-4 items-center justify-between gap-2">
         <span className="text-foreground/90 flex items-center gap-1.5 type-body font-medium">
           {icon}
@@ -233,6 +234,8 @@ export function PhoneField({
           ))}
         </select>
         <input
+          id={inputId}
+          aria-label={label}
           type="tel"
           inputMode="tel"
           value={local}

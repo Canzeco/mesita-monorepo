@@ -79,6 +79,7 @@ export function PhoneField({
         </select>
         <input
           type="tel"
+          aria-label={label}
           inputMode="tel"
           value={local}
           disabled={disabled}

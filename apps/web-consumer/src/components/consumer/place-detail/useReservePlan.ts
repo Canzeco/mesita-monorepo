@@ -34,6 +34,8 @@ import { startUpgrade } from "@/lib/start-upgrade";
 /** How long the You step waits for the plan before Reserve works anyway. */
 const FAIL_OPEN_MS = 3000;
 
+const NOT_PAID = "Your payment didn't go through. Try again.";
+
 type Marker = { pro: boolean; sessionId: string | null };
 
 /** The return markers, read once and stripped so a reload does not repeat
@@ -136,6 +138,10 @@ export function useReservePlan(args: {
       } else if (outcome.kind === "pending") {
         setPending(true);
         setPro(true);
+      } else if (outcome.kind === "failed") {
+        sessionRef.current = null;
+        setError(NOT_PAID);
+        setPro(true);
       } else if (outcome.kind === "check_failed") {
         setError("Couldn't check your payment. Try again.");
         setCheckFailed(true);
@@ -180,7 +186,13 @@ export function useReservePlan(args: {
       return;
     }
     setCheckFailed(false);
-    if (v.confirmed === "paid" || (!v.confirmed && v.plan === "premium")) {
+    if (v.confirmed === "failed") sessionRef.current = null;
+    if (v.confirmed === "failed" && v.plan !== "premium") {
+      setPending(false);
+      setError(NOT_PAID);
+      return;
+    }
+    if (v.confirmed === "paid" || (v.confirmed !== "pending" && v.plan === "premium")) {
       setPending(false);
       setPaid(true);
       setPro(false);

@@ -2,7 +2,7 @@
 // bill, a tip or their code.
 import { describe, expect, it } from "vitest";
 import { readAmount } from "@mesita/place-profile/lib/money";
-import { amountParts, type Key, pressAmount, pressCode, tipOf } from "./waiter-pad";
+import { amountParts, type Key, pressAmount, pressCode, tipFor, tipOf } from "./waiter-pad";
 
 const amount = (keys: string) => [...keys].reduce((t, k) => pressAmount(t, (k === "<" ? "back" : k) as Key), "");
 
@@ -23,6 +23,12 @@ describe("the waiter's keypad", () => {
     expect(tipOf("")).toBe(0);
     expect(tipOf("0")).toBe(0);
     expect(tipOf("30.5")).toBe(3050);
+  });
+  it("keeps a picked percent on the corrected bill, a typed tip as typed", () => {
+    expect(tipFor(50_000, 15, "")).toBe(7500);
+    expect(tipFor(80_000, 15, "")).toBe(12_000);
+    expect(tipFor(null, 15, "")).toBe(0);
+    expect(tipFor(80_000, null, "75")).toBe(7500);
   });
   it("types six digits, never more", () => {
     expect([..."123456789"].reduce((c, k) => pressCode(c, k as Key), "")).toBe("123456");

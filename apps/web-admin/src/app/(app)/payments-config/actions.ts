@@ -18,7 +18,7 @@ export type VoucherPriceRow = {
 
 export type CurrencyRow = { code: string; country: string; small: number; big: number; selling: boolean };
 
-/** MESITA-4700: the cashback defaults (basis points; no cap since MESITA-4728).
+/** MESITA-4700: the cashback defaults (basis points; at most MX$1,000 a bill, MESITA-4831).
  *  MESITA-4766: and the Returning VIP rate (0 Off · 1000 · 2000). */
 export type CashbackDefaults = {
   welcome_bps: number;

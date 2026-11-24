@@ -63,7 +63,7 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
   },
   {
     name: "Marketing Agent",
-    line: "Connects to Google and Meta. Uses Higgsfield to turn your profile data and guests' Instagram Stories, with their permission, into AI content made to go viral. Create your content, post it to your feed and boost it with ads on every channel, all from one place.",
+    line: "Connects to Google and Meta. Uses Higgsfield to turn your profile data into AI content made to go viral. Create your content, post it to your feed and boost it with ads on every channel, all from one place.",
     icon: BroadcastIcon,
   },
   {
@@ -93,7 +93,7 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
   },
   {
     name: "Mesita POS",
-    line: "Take orders, track the kitchen and close bills on a point of sale connected to your Smart Menu. Counter, table and online sales share the same guest, rewards and payment records.",
+    line: "Take orders, track the kitchen and close bills on a point of sale connected to your Smart Menu. Counter, table and online sales share the same guest and payment records.",
     icon: MonitorIcon,
   },
 ];

@@ -557,9 +557,11 @@ export function usePlaceVouchers(
         request_id: pending.current.requestId,
         card_pm_id: cardId,
       } as Parameters<typeof apiBuyVoucher>[1];
+      let bankChecked = false;
       try {
         let r = await apiBuyVoucher(getSupabase(), args);
         if (r.card.status === "requires_action") {
+          bankChecked = true;
           if ((await runBankCheck(r.card)) === "unavailable") {
             toast("Couldn't open the bank check. Try again.", {
               tone: "error",
@@ -591,13 +593,16 @@ export function usePlaceVouchers(
       } catch (err: unknown) {
         const code = err instanceof EFError ? err.code : null;
         const status = err instanceof EFError ? err.status : null;
-        if (isDefinitiveRefusal(status, code)) pending.current = null;
+        const definitive = isDefinitiveRefusal(status, code, pending.current?.unknown === 0 && !bankChecked);
+        if (definitive) pending.current = null;
         else if (pending.current) pending.current.unknown += 1;
         const action = buyRefusalAction(code);
         if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
+        // The shop's own window says it (MESITA-4923): no toast.
+        if (action.kind === "full") return "full";
         const line =
-          !isDefinitiveRefusal(status, code) &&
+          !definitive &&
           pending.current &&
           pending.current.unknown >= 3
             ? BUY_REFUSAL.unconfirmed

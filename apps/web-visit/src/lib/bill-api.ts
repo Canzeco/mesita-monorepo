@@ -73,6 +73,24 @@ export function keepBillStaff(billId: string, staff: Staff | null) {
   }
 }
 
+// What is typed and not sent yet, in this tab: a reload loses nothing (MESITA-4916).
+const draftOf = (billId: string) => `mesita.bill-draft.${billId}`;
+export function readBillDraft(billId: string): { bill: number; tip: number } | undefined {
+  try {
+    return (JSON.parse(sessionStorage.getItem(draftOf(billId)) ?? "null") as { bill: number; tip: number } | null) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+export function keepBillDraft(billId: string, draft: { bill: number; tip: number } | null) {
+  try {
+    if (draft) sessionStorage.setItem(draftOf(billId), JSON.stringify(draft));
+    else sessionStorage.removeItem(draftOf(billId));
+  } catch {
+    // Private mode: a reload types it again.
+  }
+}
+
 /** What is on the keypad, for the guest's screen (MESITA-4883). Display only:
  *  a lost one is nothing. */
 export type Typing = { bill_cents: number; tip_cents: number; step: "bill" | "tip" | "code" };

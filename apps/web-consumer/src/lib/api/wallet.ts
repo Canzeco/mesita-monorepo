@@ -37,6 +37,10 @@ export type WalletEntry = {
   /** Which line paid a `cashback` entry (MESITA-4766, MESITA-4789): welcome ·
    *  welcome_vip · returning · returning_vip. Absent on other kinds and older reads. */
   reason?: string | null;
+  /** Card money returned on this entry's purchase so far (MESITA-4915); a
+   *  reversal's amount is the credit taken, bonus included. Absent when none
+   *  was, and from an older server. */
+  refunded_cents?: number;
 };
 
 export type WalletBalance = {
@@ -271,26 +275,31 @@ export const BUY_REFUSAL: Record<string, string> = {
 
 /** What a refused buy does (MESITA-3549; MESITA-4065). card_required opens
  *  the card sheet; card_not_found lists the cards again and asks for another;
- *  place_cap only says its line (the offer has not changed); anything else
+ *  place_cap opens the Offers shop's "Full for now" window; anything else
  *  says its line and reloads the offer. Never computes money. */
 export type BuyRefusalAction =
   | { kind: "add_card"; line: string }
   | { kind: "reload_cards"; line: string }
+  | { kind: "full"; line: string }
   | { kind: "say"; line: string; reload: boolean };
 
 export function buyRefusalAction(code: string | null): BuyRefusalAction {
   if (code === "card_required") return { kind: "add_card", line: BUY_REFUSAL.card_required };
   if (code === "card_not_found") return { kind: "reload_cards", line: BUY_REFUSAL.card_not_found };
+  if (code === "place_cap") return { kind: "full", line: BUY_REFUSAL.place_cap };
   const line = (code && BUY_REFUSAL[code]) || BUY_REFUSAL.failed;
-  return { kind: "say", line, reload: code !== "place_cap" };
+  return { kind: "say", line, reload: true };
 }
 
 /** Whether a refusal is definitive (MESITA-4065): a 4xx is the server's
  *  answer, so the next tap starts a new request_id; anything else (no
  *  answer, 5xx, card_failed, stripe_unreachable, or in_progress: the same
  *  request is still charging) may have charged, so the
- *  retry carries the same one. */
-export function isDefinitiveRefusal(status: number | null, code: string | null): boolean {
+ *  retry carries the same one. card_failed ends the purchase before any
+ *  confirm, so on a request's first try it is definitive too (MESITA-4919);
+ *  after an unknown try it is not. */
+export function isDefinitiveRefusal(status: number | null, code: string | null, firstTry = false): boolean {
+  if (code === "card_failed" && firstTry) return true;
   if (code === "card_failed" || code === "stripe_unreachable" || code === "in_progress") return false;
   return status !== null && status >= 400 && status < 500;
 }

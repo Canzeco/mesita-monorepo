@@ -81,6 +81,7 @@ import {
   walletPlacePath,
   walletSendPath,
 } from "@/lib/consumer-route-contract";
+import { backToCard } from "@/lib/ticket-rows";
 import { giftOfEntry } from "@/lib/gift-ticket";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -211,7 +212,10 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
         .filter((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === pid)
         .sort((x, y) => Math.abs(y.amount_cents) - Math.abs(x.amount_cents));
       const refund = reversals[0] ?? e;
-      const refunded = reversals.reduce((n, x) => n + Math.abs(x.amount_cents), 0) || amount;
+      const refunded = backToCard(reversals);
+      // The credit that left the balance: more than the card money when a
+      // bonus came with it, less when some was already spent.
+      const taken = reversals.reduce((n, x) => n + Math.abs(x.amount_cents), 0);
       const original = b.entries.find((x) => BOUGHT.has(x.kind) && x.purchase_id === pid);
       return (
         <TicketPage data-credit-entry>
@@ -234,6 +238,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           />
           <TicketPanel title="Refund">
             <TicketLine label="Refunded amount" value={m(refunded)} />
+            {taken !== refunded ? <TicketLine label="Credit taken back" value={m(taken)} /> : null}
             <TicketLine label="Refunded on" value={entryDate(refund.at)} />
             {original ? (
               <TicketLine
@@ -348,7 +353,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
             <TicketLine
               label="Refund ticket"
               sub={when(refund.at)}
-              value={m(Math.abs(refund.amount_cents))}
+              value={m(refund.refunded_cents ?? Math.abs(refund.amount_cents))}
               href={creditEntryPath(placeId, refund)}
             />
           </TicketPanel>
