@@ -17,7 +17,8 @@ import { Box } from "./box";
 const noSubscribe = () => () => {};
 
 /** Google's embed, unseen until it loads so the box's green shows instead of
- *  its blank page (MESITA-4803). Drawn in the browser only: a load that
+ *  its blank page (MESITA-4803). THE 700ms: Google reports load on its own grey
+ *  canvas, about 150ms before tiles and 600ms before the pin settles (MESITA-4809). Drawn in the browser only: a load that
  *  finished before hydration would never fire `onLoad`. */
 function MapEmbed({ src, title }: { src: string; title: string }) {
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -32,7 +33,7 @@ function MapEmbed({ src, title }: { src: string; title: string }) {
       onLoad={() => setLoaded(true)}
       className={cn(
         "pointer-events-none h-full w-full border-0 transition-opacity duration-200",
-        loaded ? "opacity-100" : "opacity-0",
+        loaded ? "opacity-100 delay-700" : "opacity-0",
       )}
       tabIndex={-1}
       aria-hidden
