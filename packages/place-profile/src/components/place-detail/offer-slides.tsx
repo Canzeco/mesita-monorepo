@@ -174,7 +174,12 @@ function OfferWords({
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
       {/* A slide with no lead is the whole offer in the black tag (the place
           screen's Offers box, MESITA-4157). */}
-      {plain ? (
+      {plain && slide.stacked ? (
+        <span className="flex min-w-0 flex-col items-center leading-none">
+          <span className="max-w-full truncate">{slide.stacked.top}</span>
+          <span className="mt-0.5 max-w-full truncate type-meta font-bold tracking-wider uppercase opacity-75">{slide.stacked.under}</span>
+        </span>
+      ) : plain ? (
         // The chip's words alone (the place screen's row, MESITA-4160):
         // "Prepay +30%", "Pay 5% Back", "Today 20:00".
         // A small-caps caption over the big number (MESITA-4167): PREPAY /
