@@ -87,13 +87,16 @@ export function invoiceSetArgs(rowId: string, invoice: Record<string, unknown>, 
   };
 }
 
-/** The invoice on Mesita's account. Pure. */
-export function feeInvoiceParams(args: { rowId: string; placeId: string; customer: string }): Record<string, unknown> {
+/** The invoice on Mesita's account. Pure. The currency is named: Mesita's
+ *  account defaults to USD and refuses another currency's line. It advances
+ *  only once finalized with its line (MESITA-4924). */
+export function feeInvoiceParams(args: { rowId: string; placeId: string; customer: string; currency: string }): Record<string, unknown> {
   return {
     customer: args.customer,
+    currency: args.currency,
     collection_method: "send_invoice",
     days_until_due: FEE_DAYS_UNTIL_DUE,
-    auto_advance: true,
+    auto_advance: false,
     pending_invoice_items_behavior: "exclude",
     description: "Mesita's 5% fee on App Payments and App Prepayments.",
     metadata: { mesita_kind: "place_fee", fee_invoice_id: args.rowId, place_id: args.placeId },
@@ -175,17 +178,17 @@ export async function issueFeeInvoice(
   customer: string,
 ): Promise<FeeInvoiceStatus> {
   try {
-    let invoice = await stripe("POST", "invoices", feeInvoiceParams({ rowId: row.id, placeId: row.place_id, customer }), {
-      idempotencyKey: `place-fee-invoice:${row.id}`,
+    let invoice = await stripe("POST", "invoices", feeInvoiceParams({ rowId: row.id, placeId: row.place_id, customer, currency: row.currency }), {
+      idempotencyKey: `place-fee-invoice-v2:${row.id}`,
     });
     const invoiceId = String(invoice.id ?? "");
     if (!invoiceId) throw new Error("invoice_create: no id");
     await stripe("POST", "invoiceitems", feeItemParams({ rowId: row.id, customer, invoice: invoiceId, amountCents: row.amount_cents, currency: row.currency }), {
-      idempotencyKey: `place-fee-item:${row.id}`,
+      idempotencyKey: `place-fee-item-v2:${row.id}`,
     });
     if (invoice.status === "draft") {
       invoice = await stripe("POST", `invoices/${encodeURIComponent(invoiceId)}/finalize`, { auto_advance: true }, {
-        idempotencyKey: `place-fee-finalize:${row.id}`,
+        idempotencyKey: `place-fee-finalize-v2:${row.id}`,
       });
     }
     const args = invoiceSetArgs(row.id, invoice, customer);
@@ -195,7 +198,7 @@ export async function issueFeeInvoice(
     return args.p_status;
   } catch (err) {
     const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : errorMessage(err);
-    console.error("[fee-billing] issue_failed", JSON.stringify({ invoice_id: row.id, place_id: row.place_id, code }));
+    console.error("[fee-billing] issue_failed", JSON.stringify({ invoice_id: row.id, place_id: row.place_id, code, message: errorMessage(err) }));
     await admin.rpc("place_fee_invoice_set", { p_invoice_id: row.id, p_status: "draft", p_error: String(code).slice(0, 500) });
     return "draft";
   }
