@@ -8,7 +8,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(14);
+select plan(15);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3461');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3461');
@@ -138,6 +138,13 @@ select ok(
     and not has_function_privilege('anon', 'public.place_fee_invoice_set(uuid, text, text, text, text, timestamptz, timestamptz, text)', 'EXECUTE')
     and has_function_privilege('service_role', 'public.place_fee_claim(uuid, boolean, text, integer, integer, interval)', 'EXECUTE'),
   'the fee RPCs are service-role only'
+);
+
+-- pgTAP's connection does not load safeupdate, PostgREST's does (MESITA-4907).
+select ok(
+  (select prosrc from pg_proc where oid = 'public.place_fee_claim(uuid, boolean, text, integer, integer, interval)'::regprocedure)
+    !~* 'delete\s+from\s+[a-z_.]+\s*;',
+  'the claim has no DELETE without a WHERE'
 );
 
 select * from finish();
