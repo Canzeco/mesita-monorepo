@@ -41,9 +41,9 @@ import { usePayPlaces } from "./use-pay-places";
 // and never pay the tip; the server works every number out, and Accept names
 // the version on screen.
 
-/** While the waiter types (Pato, MESITA-4883: "every 500ms … to simulate real
- *  time writing"), while the QR waits, then with a bill. */
-const TYPING_MS = 500;
+/** While the waiter types (Pato, MESITA-4887: "maybe every 300ms"; the read's
+ *  own time counts in it), while the QR waits, then with a bill. */
+const TYPING_MS = 300;
 const LIVE_MS = 1000;
 const FAST_MS = 3000;
 const SLOW_MS = 5000;
@@ -204,8 +204,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const loop = async () => {
+      const started = Date.now();
       if (document.visibilityState === "visible") await refresh();
-      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? FAST_MS : typingNow.current ? TYPING_MS : LIVE_MS);
+      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? FAST_MS : typingNow.current ? Math.max(TYPING_MS - (Date.now() - started), 0) : LIVE_MS);
     };
     timer = setTimeout(() => void loop(), LIVE_MS);
     const onVisible = () => {
