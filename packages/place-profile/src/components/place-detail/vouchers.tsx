@@ -1615,7 +1615,10 @@ export function VouchersPane({
         role="tabpanel"
         id={`offers-panel-${tab}`}
         aria-labelledby={`offers-tab-${tab}`}
-        className="flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4"
+        // ONE GAP (Pato, 2026-11-23, MESITA-4787: "keep same margins"): the
+        // switch's own pb-3 is the 12px to the list, as the balance's mb-3 is
+        // to the switch and gap-3 is between the boxes; no pt-4 on top.
+        className="flex flex-1 shrink-0 flex-col gap-3 px-4"
         data-offers-panel={tab}
       >
         {tab === "prepay" ? (

@@ -162,9 +162,11 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // VIP IS THE THIRD BOX (Pato, 2026-11-23, MESITA-4774: "vip box must be
   // the third box … not 100% wide but 50%"): a cell like the others, opening
   // Me › VIP (status, or the invitation code). A crown, not Plan's gem.
+  // CALLED CLASS (Pato, 2026-11-23, MESITA-4784: "the box must be called
+  // Class, not VIP"): Class is Regular or VIP; the route stays /me/vip.
   {
     Icon: Crown,
-    title: "VIP",
+    title: "Class",
     summary: "Invitation code",
     href: CONSUMER_ROUTES.mePages.vip,
   },

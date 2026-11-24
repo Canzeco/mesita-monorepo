@@ -65,7 +65,6 @@ export function FamilyFilterSheet({
   onApply,
   special,
   onSpecial,
-  canSave,
 }: {
   open: boolean;
   onClose: () => void;
@@ -73,11 +72,9 @@ export function FamilyFilterSheet({
    *  replaces it with one. */
   applied: readonly FamilyKey[];
   onApply: (families: FamilyKey[]) => void;
-  /** Saved or Nearby, lit (MESITA-4592). */
+  /** Nearby, lit (MESITA-4592). */
   special: MapSpecial | null;
   onSpecial: (special: MapSpecial) => void;
-  /** Signed in: Saved shows (signed out, nothing is saved, MESITA-4325). */
-  canSave: boolean;
 }) {
   const selected = special === null && applied.length === 1 ? applied[0] : null;
   const pick = (families: FamilyKey[]) => {
@@ -93,17 +90,7 @@ export function FamilyFilterSheet({
       // "WHERE THE FUCK IS NEARBY AND SAVED????").
       specials={
         <>
-          {canSave ? (
-            <Circle
-              mark="saved"
-              label="Saved"
-              on={special === "saved"}
-              onPick={() => {
-                onSpecial("saved");
-                onClose();
-              }}
-            />
-          ) : null}
+          {/* No Saved on Search since MESITA-4786. */}
           <Circle
             mark="nearby"
             label="Nearby"
