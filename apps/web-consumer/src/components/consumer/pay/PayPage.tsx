@@ -227,8 +227,8 @@ function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
   const { word, icon: Icon, ink } = TILES[id];
   return (
     <button type="button" onClick={onClick} className={cn(PAY_TILE, PAY_FILL[id])} data-pay-tile={id}>
-      <span className={cn("flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
-        <Icon className="h-9 w-9" strokeWidth={2.25} />
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
+        <Icon className="h-6 w-6" strokeWidth={2.25} />
       </span>
       <span className="text-xl leading-tight font-semibold">{word}</span>
     </button>
