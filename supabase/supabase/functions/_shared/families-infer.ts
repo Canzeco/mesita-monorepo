@@ -103,7 +103,7 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
     "Cuisine and meal families (every cuisine, Breakfast, Brunch, Coffee, " +
     "Quick) describe what the place serves: give each one that truly applies; " +
     "Dinner only when its meaning fits. When unsure about a family, leave " +
-    `it out — but always return at least one, the closest by meaning; only for a " +
+    "it out — but always return at least one, the closest by meaning; only for a " +
     `plain restaurant that truly matches none, return an empty list. ${count}`
   );
 }
