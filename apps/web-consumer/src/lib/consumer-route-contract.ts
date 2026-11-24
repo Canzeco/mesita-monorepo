@@ -70,8 +70,8 @@ export const CONSUMER_ROUTES = {
   //
   //   /pay                       Pay Bill, your money (the tab)
   //   /pay/pick                  an old address: the Wallet's Pay tile (MESITA-4838)
-  //   /pay/place/<placeId>       pay at that place: opens your bill there and
-  //                              becomes /pay/bill/<id> (the table QR's door)
+  //   /pay/place/<placeId>       an old door (table QRs, sent links): opens the QR
+  //                              with that place over it (/pay/code?from=)
   //   /pay/bill/<billId>         the bill at the table (MESITA-3564)
   //   /pay/join/<token>          a friend's share of a split bill
   //                              (MESITA-3695): takes the share, becomes
@@ -408,14 +408,9 @@ export function isRouteId(id: string | null | undefined): id is string {
 }
 
 /** Pay Bill: the guest's QR (MESITA-4823). `from` is the place it was opened
- *  from: what they get there shows over the QR, nothing else. */
+ *  from: what they get there shows over the QR, and the QR carries the place. */
 export function payCodePath(from: string | null = null): string {
   return from ? `${CONSUMER_ROUTES.payCode}?from=${from}` : CONSUMER_ROUTES.payCode;
-}
-
-/** Pay at a place: the door that opens (or reuses) the guest's bill there. */
-export function payPlacePath(placeId: string): string {
-  return `${CONSUMER_ROUTES.payPlace.prefix}${placeId}`;
 }
 
 /** The bill at the table. The id is the wire's tab id. */

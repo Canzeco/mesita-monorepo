@@ -157,32 +157,6 @@ export async function apiGetTab(
   });
 }
 
-/** MESITA-3709: the guest's own payment, in one tap. The guest typed the
- *  bill (before tip) and chose how to pay it (credits, the rest in cash); the
- *  answer is the guest tab and its QR (the waiter scans it to Verify). One
- *  `request_id` per tap: a retry after a lost answer sends the
- *  same and gets the same tab. Refusals arrive as EFError codes. */
-export type PaidGuest = {
-  outcome: "opened" | "replayed";
-  tab_id: string | null;
-  status: "paying" | "paid" | "due";
-  token: string;
-  qr_url: string;
-  expires_at: string | null;
-  test_mode: boolean;
-};
-
-export async function apiReleaseGuestPay(client: SupabaseClient, requestId: string): Promise<void> {
-  await invokeEF(client, "consumer-web-pay-guest", { release: true, request_id: requestId });
-}
-
-export async function apiPayGuest(
-  client: SupabaseClient,
-  args: { place_id: string; bill_cents: number; request_id: string } & TabSplit,
-): Promise<PaidGuest> {
-  return await invokeEF<PaidGuest>(client, "consumer-web-pay-guest", args);
-}
-
 export type TabSplit = {
   credit_cents: number;
   cash_bill_cents: number;

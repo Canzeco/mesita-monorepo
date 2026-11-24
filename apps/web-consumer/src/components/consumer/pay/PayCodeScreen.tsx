@@ -26,7 +26,7 @@ import { usePayPlaces } from "./use-pay-places";
 // general Mesita QR, never a place's; the waiter scans it and sends the bill;
 // this same screen becomes the bill:
 //
-// The steps read QR · Bill · Pay · Receipt since MESITA-4889.
+// The steps read QR · Bill · Payment · Receipt (MESITA-4889, MESITA-4928).
 // FOUR VIEWS (MESITA-4883, Pato: "1. QR 2. Write Bill (observe in real time)
 // 3. Pay Bill 4. Receipt"; three under MESITA-4878):
 //   1 QR          "Show this to your waiter"; opened from a place, the guest's
@@ -35,13 +35,13 @@ import { usePayPlaces } from "./use-pay-places";
 //   2 Bill      the waiter's code being entered, never a digit (first since
 //                 MESITA-4914), then the bill and the tip as the waiter types
 //                 them, read every 250 ms; shown, never paid
-//   3 Pay         what it comes to and the handshake: the guest's Pay and the
+//   3 Payment     what it comes to and the handshake: the guest's Pay and the
 //                 waiter's Receive, in any order, then the receipt by itself
 //   4 Receipt   /pay/bill/<id>
 //   over       declined, cancelled or expired, and the QR again
 //
-// `from` (a place's Pay Bill) only says what the guest gets there; it is never
-// sent: the waiter's phone names the place. Credits are used to the maximum
+// `from`, the place the guest picked, goes with the QR: the waiter's code is
+// checked at that place (MESITA-4904). Credits are used to the maximum
 // and never pay the tip; the server works every number out, and Pay names
 // the version on screen.
 
@@ -582,7 +582,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     return (
       <>
         {frame(
-          "Pay",
+          "Payment",
           <>
             {ticket("Pay your waiter, cash or card")}
             {handshake}
@@ -630,9 +630,15 @@ export function PayCodeScreen({ from }: { from: string | null }) {
 
   // THE BILL: Pay or Decline. Their Pay closes it when the waiter is ready.
   return frame(
-    "Pay",
+    "Payment",
     <>
       {ticket("Pay your waiter, cash or card")}
+      {nothingOwed ? null : (
+        <ol className="flex shrink-0 justify-center gap-4 text-sm font-semibold" data-pay-order>
+          <li>1. Pay your waiter</li>
+          <li>2. Both tap</li>
+        </ol>
+      )}
       {handshake}
       {changedLine}
       <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums">

@@ -16,7 +16,6 @@ import { discountOf, money, type PayPlace, payPlaceCashbackBps } from "@/lib/api
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
-import { clearGuestDraft, reopenGuestDraft } from "@/lib/guest-pay-draft";
 import { trackEvent } from "@/lib/analytics/track";
 import { BAD, BOX_TINT, GOOD, MoneyRow, NOT_PAID_REASON, PaySection, PayTitle, StepBody, StepFooter, StepStrip, WAIT } from "./pay-flow";
 import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, rememberGuestTab, CancelBillButtons } from "./pay-common";
@@ -197,14 +196,12 @@ export function GuestTabView({
   useEffect(() => {
     if (!done) return;
     forgetGuestTab(tab.tab_id);
-    if (signed) clearGuestDraft(tab.place.id);
-  }, [done, signed, tab.tab_id, tab.place.id]);
+  }, [done, tab.tab_id]);
 
   // ← BACK TO BILL, A NEW TICKET (Pato, 2026-11-21, MESITA-4618: "when
   // creating ticket to pay, enable to return and just create other id for
   // the ticket"): while the bill waits for the waiter, ← cancels it on the
-  // server (nothing paid, the credit released) and reopens Bill
-  // with the bill and tip still typed; Show the waiter makes a new ticket.
+  // server (nothing paid, the credit released) and shows the QR again.
   async function backToBill() {
     if (busy) return;
     setBusy(true);
@@ -212,7 +209,6 @@ export function GuestTabView({
     try {
       await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
       forgetGuestTab(tab.tab_id);
-      reopenGuestDraft(tab.place.id);
       onPayAgain(tab.place.id);
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
@@ -241,8 +237,6 @@ export function GuestTabView({
     try {
       await apiCancelTab(getSupabase(), tab.tab_id, "cancel");
       forgetGuestTab(tab.tab_id);
-      // Cancelling closes (MESITA-4018): what was typed goes too.
-      clearGuestDraft(tab.place.id);
       onDone();
     } catch (e) {
       const code = e instanceof EFError ? e.code : null;
@@ -373,9 +367,7 @@ export function GuestTabView({
           size="lg"
           className="min-h-12 w-full shrink-0 text-base font-semibold"
           onClick={() => {
-            // MESITA-4524: a ticket that did not pay is done; this starts a
-            // NEW ticket at an empty Bill.
-            clearGuestDraft(tab.place.id);
+            // A ticket that did not pay is done: the QR again (MESITA-4524).
             onPayAgain(tab.place.id);
           }}
         >
@@ -385,8 +377,6 @@ export function GuestTabView({
           type="button"
           className={cn(QUIET_BUTTON_CLASS, "mt-2 shrink-0")}
           onClick={() => {
-            // Closing a bill that didn't go through ends its ticket (MESITA-3879).
-            clearGuestDraft(tab.place.id);
             onDone();
           }}
         >
