@@ -1,6 +1,5 @@
 import { HOME_WORDMARK_CLASS } from "@/components/brand/home-wordmark";
 import { BAR } from "@/components/consumer/search/header-classes";
-import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 // PAY AND WALLET, EACH ITS OWN PAGE (Pato, 2026-11-14, MESITA-3886:
@@ -26,14 +25,11 @@ import type { ReactNode } from "react";
 export function PayHeader({
   title,
   action,
-  beside,
   bar,
   embedded = false,
 }: {
   title: "Pay" | "Wallet" | "Mesita";
   action?: ReactNode;
-  /** In the title's half, at its right. */
-  beside?: ReactNode;
   bar?: ReactNode;
   /** Inside Wallet's dark slab (MESITA-4505). No sticky white band of its own. */
   embedded?: boolean;
@@ -63,19 +59,14 @@ export function PayHeader({
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      {/* ON THE TILES' GRID (Pato, 2026-11-24, MESITA-4835: "gift must be 25%
-          and tickets 50% exactly on top of pay 50%"): the title and `beside`
-          (Gift) share the left half, a quarter each; the action (Tickets) is
-          the right half, on the tiles' own 8px edges and 8px gap. On a narrow
-          phone the title keeps its whole word and Gift takes what is left. */}
+      {/* ON THE TILES' GRID (Pato, 2026-11-24, MESITA-4836: "gifts 25% and
+          tickets 25%"): the title in the left half, the action filling the
+          right half, exactly on top of Pay, on the tiles' 8px edges and gap. */}
       <div className={action ? "grid min-h-11 grid-cols-2 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
-        <div className={cn("min-w-0", beside ? "grid grid-cols-[minmax(max-content,1fr)_minmax(0,1fr)] items-center gap-2" : "flex")}>
-          <h1 className="flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight">
-            <span className={title === "Mesita" ? HOME_WORDMARK_CLASS : "min-w-0 truncate"}>{title}</span>
-          </h1>
-          {beside}
-        </div>
-        {action}
+        <h1 className="flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight">
+          <span className={title === "Mesita" ? HOME_WORDMARK_CLASS : "min-w-0 truncate"}>{title}</span>
+        </h1>
+        {action ? <div className="min-w-0">{action}</div> : null}
       </div>
       {bar ? (
         <div className="border-border border-t px-4 py-2" data-pay-search>

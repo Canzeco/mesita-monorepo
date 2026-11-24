@@ -23,6 +23,9 @@ import { PILL, WIDE } from "./header-pill";
 // (MESITA-4331, Pato: "a bit dark but not that much"): ink at 15%, between
 // the light bg-muted and the black of MESITA-4091. `tall` is the Wallet
 // header's 40px pill, the card pill's twin: glyph and word, no › (MESITA-4497).
+/** Both buttons' glyph: smaller on a phone, gone where the words need the room. */
+const HEADER_GLYPH = "h-5 w-5 shrink-0 max-[429px]:h-4 max-[429px]:w-4 max-[379px]:hidden";
+
 export function TicketsShortcut({
   tall = false,
   wide = false,
@@ -43,14 +46,14 @@ export function TicketsShortcut({
     return (
       <PushLink
         href={CONSUMER_ROUTES.mePages.tickets}
-        className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl px-2 text-base font-semibold"
+        className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold max-[429px]:text-sm"
         data-tickets-shortcut
       >
         {/* THE WORD, ANOTHER GLYPH, NO › (Pato, 2026-11-21, MESITA-4598: "in
             tickets actually mention Tickets, not only the icons … use a
             different icon because that looks like shit and remove the >"):
             a receipt and "Tickets". */}
-        <ReceiptText className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+        <ReceiptText className={HEADER_GLYPH} strokeWidth={2} aria-hidden />
         Tickets
       </PushLink>
     );
@@ -87,11 +90,23 @@ export function GiftShortcut() {
   return (
     <PushLink
       href={CONSUMER_ROUTES.walletSend}
-      className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold"
+      className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold max-[429px]:text-sm"
       data-send-gift
     >
-      <Gift className="h-5 w-5 shrink-0 max-[359px]:hidden" strokeWidth={2} aria-hidden />
+      <Gift className={HEADER_GLYPH} strokeWidth={2} aria-hidden />
       Gift
     </PushLink>
+  );
+}
+
+/** The Wallet header's right side: Gift, then Tickets (MESITA-4780). */
+export function WalletHeaderActions() {
+  return (
+    // THE SAME WIDTH (MESITA-4783), 16px APART (MESITA-4834, Pato: "gift and
+    // tickets are just too together"): together exactly Pay's half.
+    <div className="grid w-full grid-cols-2 items-center gap-4">
+      <GiftShortcut />
+      <TicketsShortcut icon />
+    </div>
   );
 }
