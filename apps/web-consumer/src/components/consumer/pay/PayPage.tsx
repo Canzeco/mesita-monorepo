@@ -397,7 +397,7 @@ export function PayPage({
             {/* THE WALLET, Prepay's one mark (Pato, 2026-11-23, MESITA-4762: "i
                 don't like the icon for prepay"; the Offers Prepay tab's since
                 MESITA-4726). */}
-            <WalletIcon className="h-5 w-5" strokeWidth={2.25} />
+            <WalletIcon className="h-6 w-6" strokeWidth={2.25} />
           </span>
           <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
         </PushLink>
@@ -412,7 +412,7 @@ export function PayPage({
             data-pay-bill
           >
             <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
-              <QrCode className="h-5 w-5" strokeWidth={2.25} />
+              <QrCode className="h-6 w-6" strokeWidth={2.25} />
             </span>
             <span className={TILE_TITLE}>Pay Bill</span>
           </button>
@@ -489,12 +489,12 @@ const TILE =
 /** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
  *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
  *  size (18px before). */
-const TILE_TITLE = "text-base leading-tight font-semibold"; // 16px again on the 8:5 tile (MESITA-4780)
+const TILE_TITLE = "text-lg leading-tight font-semibold"; // 18px: "a bit bigger" (MESITA-4793)
 /** THE ICON IN A WHITE CIRCLE (Pato, 2026-11-21, MESITA-4586: "+icon inside
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
  *  Card page's round buttons' look. The tiles grew 88 to 96px to hold it. */
-const ICON_CIRCLE = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white"; // 40px on the 8:5 tile (MESITA-4780)
+const ICON_CIRCLE = "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"; // 48px: "a bit bigger" (MESITA-4793)
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
