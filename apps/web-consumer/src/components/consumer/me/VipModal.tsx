@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, PartyPopper, Repeat } from "lucide-react";
+import { Crown, PartyPopper, Repeat, Sparkles, Ticket } from "lucide-react";
+import { Instagram } from "@/components/shared/instagram-icon";
+import { IconChip, RowDivider, SettingsGroup, SettingsLinkRow } from "@/components/consumer/me/settings-rows";
+import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 import { Spinner } from "@/components/shared";
-import { PushLink } from "@/components/consumer/nav/PushLink";
+import { InstagramVip } from "@/components/consumer/me/InstagramModal";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { apiFetchConsumerProfile, type ConsumerProfile } from "@/lib/api/profile";
 import { apiRedeemVipCode } from "@/lib/api/vip";
@@ -21,38 +24,32 @@ import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
 import { groupVipCode, isVip, VIP_CODE_LENGTH, vipCodeDigits, vipRedeemUi, type VipRedeemUi } from "@/lib/vip";
 
-// BECOME VIP (Pato, 2026-11-23, MESITA-4766: "BRING BACK VIP CUSTOMERS ...
-// In order to be VIP, is either invitation code or 5000 followers on
-// instagram"): /me/vip, pushed from Me's "Have an invitation code?" row and
-// the place's Pay tab. One way in, a code field: codes only until the DM bot proves
-// who owns an Instagram (Pato, 2026-11-24, MESITA-4849). A
-// VIP opening it reads their status and no form. The server decides every
-// outcome (consumer-web-redeem-vip-code); this formats the code and says
-// what came back.
+// CLASS IS A MENU WITH SUBPAGES (Pato, 2026-11-24, MESITA-4864: "better design
+// there, with subpages: upgrade via instagram, upgrade via manual … do you have
+// a modeling agency? activate your models"). The server decides every outcome.
 
-const HERE = CONSUMER_ROUTES.mePages.vip;
+const HERE = CONSUMER_ROUTES.mePages.vipCode;
 
 export function VipFrame({ children }: { children: ReactNode }) {
   return <MeScreen title="Class">{children}</MeScreen>;
 }
 
-// WHY, IN ONE CARD (Pato, 2026-11-23, MESITA-4797: "clearer design
-// explaining why VIP"): the Class first, then why, then what VIP gets.
+// ONE CARD SAYS THE CLASS AND WHAT VIP GETS (Pato, 2026-11-24, MESITA-4864:
+// "make class easy"), then one way in below it.
 function ClassCard({ vip, reason }: { vip: boolean; reason: ConsumerProfile["vip_reason"] }) {
   const why = !vip
-    ? "VIP is for guests with an invitation code, or a public Instagram with more than 5,000 followers."
+    ? "VIP gets a better rate on every bill, at places with VIP offers."
     : reason === "code"
-      ? "You joined with an invitation code."
+      ? "You joined with an invitation code. You get each place's VIP rate on every bill."
       : reason === "instagram"
-        ? "Your verified Instagram made you VIP."
-        : "Mesita made you VIP.";
+        ? "Your verified Instagram made you VIP. You get each place's VIP rate on every bill."
+        : "You get each place's VIP rate on every bill.";
   return (
     <div className={cn("flex items-center gap-4 rounded-2xl p-5", vip ? "bg-foreground text-background" : "bg-card border-border border")} data-vip-status={vip ? "vip" : "regular"}>
       <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", vip ? "bg-background text-foreground" : "bg-muted text-foreground")} aria-hidden>
         <Crown className="h-7 w-7" strokeWidth={2} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className={cn("block text-sm font-semibold", vip ? "text-background/70" : "text-muted-foreground")}>Your Class</span>
         <span className="block text-2xl leading-tight font-semibold">{vip ? "VIP" : "Regular"}</span>
         <span className={cn("mt-1 block text-sm", vip ? "text-background/80" : "text-muted-foreground")} data-vip-why>
           {why}
@@ -62,52 +59,60 @@ function ClassCard({ vip, reason }: { vip: boolean; reason: ConsumerProfile["vip
   );
 }
 
-/** What VIP gets (MESITA-4789's two VIP tiers), in the guest's words. */
-function VipPerks() {
-  const rows = [
-    { Icon: PartyPopper, title: "VIP Welcome Visit", line: "A higher rate on your first bill at a place." },
-    { Icon: Repeat, title: "VIP Returning Visit", line: "A higher rate on every bill after that." },
-  ];
-  return (
-    <section className="bg-card border-border overflow-hidden rounded-2xl border" aria-label="What VIP gets" data-vip-perks>
-      <h2 className="border-border border-b px-4 py-3 text-base font-semibold">What VIP gets</h2>
-      <ul className="divide-border divide-y">
-        {rows.map(({ Icon, title, line }) => (
-          <li key={title} className="flex items-center gap-3 px-4 py-3">
-            <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
-              <Icon className="h-5 w-5" strokeWidth={2} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-base font-semibold">{title}</span>
-              <span className="text-muted-foreground block text-sm">{line}</span>
-            </span>
-          </li>
-        ))}
-      </ul>
-      <p className="text-muted-foreground border-border border-t px-4 py-3 text-sm">
-        Each place sets its own rates, as Cashback or a Discount on the bill.
-      </p>
-    </section>
-  );
-}
-
-/** Me › Instagram's door (MESITA-4863): VIP is the only reason for it. */
-function InstagramRow({ handle }: { handle: string | null }) {
-  return (
-    <PushLink
-      href={CONSUMER_ROUTES.mePages.instagram}
-      className="bg-card border-border hover:bg-muted flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-4 text-sm font-semibold transition"
-      data-vip-instagram
-    >
-      <span>Instagram</span>
-      <span className="text-muted-foreground truncate">{handle ? `@${handle}` : "Connect"}</span>
-    </PushLink>
-  );
+/** Signed out: the app's sign-in, back here after (the edge wall does the
+ *  same on a cold load). */
+function useSignedIn(here: string) {
+  const router = useRouter();
+  const viewer = useViewer();
+  useEffect(() => {
+    if (viewer === "anonymous") router.replace(signHref(here));
+  }, [viewer, router, here]);
 }
 
 export function VipModal() {
+  useSignedIn(CONSUMER_ROUTES.mePages.vip);
+  const { data: profile } = useConsumerProfile();
+  const vip = isVip(profile);
+  return (
+    <VipFrame>
+      <div className="flex flex-col gap-4">
+        <ClassCard vip={vip} reason={profile?.vip_reason ?? null} />
+        {vip ? (
+          profile?.instagram_handle ? (
+            <SettingsGroup>
+              <SettingsLinkRow Icon={Instagram} tint="muted" href={CONSUMER_ROUTES.mePages.instagram} label="Instagram" sub={`@${profile.instagram_handle}`} />
+            </SettingsGroup>
+          ) : null
+        ) : (
+          <SettingsGroup title="Upgrade to VIP">
+            <SettingsLinkRow Icon={Instagram} tint="muted" href={CONSUMER_ROUTES.mePages.instagram} label="Upgrade with Instagram" sub="More than 5,000 followers" />
+            <RowDivider />
+            <SettingsLinkRow Icon={Ticket} tint="muted" href={CONSUMER_ROUTES.mePages.vipCode} label="Upgrade manually" sub="With an invitation code" />
+          </SettingsGroup>
+        )}
+        <SettingsGroup>
+          <SettingsLinkRow Icon={Sparkles} tint="muted" href={CONSUMER_ROUTES.mePages.vipAgency} label="Have a modeling agency?" sub="Activate your models" />
+        </SettingsGroup>
+      </div>
+    </VipFrame>
+  );
+}
+
+/** Class › Upgrade with Instagram (/me/instagram). */
+export function VipInstagramPage() {
+  useSignedIn(CONSUMER_ROUTES.mePages.instagram);
+  const { data: profile } = useConsumerProfile();
+  return (
+    <MeScreen title="Upgrade with Instagram">
+      {profile ? <InstagramVip profile={profile} /> : <div className="bg-muted h-56 animate-pulse rounded-2xl" aria-hidden />}
+    </MeScreen>
+  );
+}
+
+/** Class › Upgrade manually (/me/vip/code): the invitation code. */
+export function VipCodePage() {
+  useSignedIn(CONSUMER_ROUTES.mePages.vipCode);
   const router = useRouter();
-  const viewer = useViewer();
   const getSupabase = useLazyBrowserSupabase();
   const { data: profile } = useConsumerProfile();
   const [digits, setDigits] = useState("");
@@ -117,13 +122,6 @@ export function VipModal() {
   // that try landing, a success.
   const lastFailed = useRef(false);
 
-  // Signed out: the app's sign-in, back here after (the edge wall does the
-  // same on a cold load).
-  useEffect(() => {
-    if (viewer === "anonymous") router.replace(signHref(HERE));
-  }, [viewer, router]);
-
-  const vip = isVip(profile);
   const ready = digits.length === VIP_CODE_LENGTH && !busy;
 
   async function join() {
@@ -142,32 +140,18 @@ export function VipModal() {
         // The profile refreshes on its own within minutes.
       }
       toast.success(ui.text);
-      goBack(router, CONSUMER_ROUTES.me);
+      goBack(router, CONSUMER_ROUTES.mePages.vip);
       return;
     }
     setSaid(ui);
     setBusy(false);
   }
 
-  if (vip) {
-    return (
-      <VipFrame>
-        <div className="flex flex-col gap-4">
-          <ClassCard vip reason={profile?.vip_reason} />
-          <VipPerks />
-          {profile?.instagram_handle ? <InstagramRow handle={profile.instagram_handle} /> : null}
-        </div>
-      </VipFrame>
-    );
-  }
-
   return (
-    <VipFrame>
-      <div className="flex flex-col gap-4">
-        <ClassCard vip={false} reason={null} />
-        <VipPerks />
-        <h2 className="px-0.5 pt-1 text-base font-semibold">Become VIP</h2>
-        <InstagramRow handle={profile?.instagram_handle ?? null} />
+    <MeScreen title="Upgrade manually">
+      {isVip(profile) ? (
+        <ClassCard vip reason={profile?.vip_reason ?? null} />
+      ) : (
         <form
           className="bg-card border-border flex flex-col gap-3 rounded-2xl border p-4"
           onSubmit={(e) => {
@@ -218,7 +202,50 @@ export function VipModal() {
             Join VIP
           </button>
         </form>
+      )}
+    </MeScreen>
+  );
+}
+
+const AGENCY_PERKS = [
+  { Icon: PartyPopper, title: "A better first visit", line: "The VIP rate on their first bill at a place." },
+  { Icon: Repeat, title: "A better rate after", line: "The VIP rate on every bill after that." },
+  { Icon: Ticket, title: "One code each", line: "Every model gets their own invitation code." },
+];
+
+/** Class › Have a modeling agency? (/me/vip/agency): what VIP gives a model
+ *  and how an agency asks for codes. An operator issues them (Admin › VIP). */
+export function VipAgencyPage() {
+  useSignedIn(CONSUMER_ROUTES.mePages.vipAgency);
+  return (
+    <MeScreen title="Modeling agencies">
+      <div className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-2xl leading-tight font-semibold">Activate your models</h2>
+          <p className="text-muted-foreground mt-1 text-sm">Get your models VIP at every place with VIP offers.</p>
+        </div>
+        <ul className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border" data-vip-agency-perks>
+          {AGENCY_PERKS.map(({ Icon, title, line }) => (
+            <li key={title} className="flex items-center gap-3 px-4 py-3">
+              <IconChip>
+                <Icon className="h-[18px] w-[18px]" />
+              </IconChip>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{title}</span>
+                <span className="text-muted-foreground type-label block">{line}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+        <a
+          href={`mailto:${MESITA_SUPPORT_EMAIL}?subject=${encodeURIComponent("Activate my models")}&body=${encodeURIComponent("Agency name:\nCity:\nNumber of models:\n")}`}
+          className={cn(PRIMARY_BUTTON_CLASS, "flex items-center justify-center")}
+          data-vip-agency-contact
+        >
+          Request codes
+        </a>
+        <p className="text-muted-foreground text-center text-sm">Email us your agency and how many models. We send one code for each.</p>
       </div>
-    </VipFrame>
+    </MeScreen>
   );
 }

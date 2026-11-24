@@ -101,9 +101,9 @@ export function IdentityBar({
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
-            // CLASS IS BACK (MESITA-4774): Name | Class, opening Me › VIP.
-            // No Plan pill: the Plan tile on the grid opens Me › Plan.
-            guestClass={{ vip: profile?.guest_class === "vip", href: CONSUMER_ROUTES.mePages.vip }}
+            // The Class is a badge in the name's box (MESITA-4864); none until
+            // the profile is read.
+            guestClass={profile ? (profile.guest_class === "vip" ? "vip" : "regular") : undefined}
           />
         )}
       </div>

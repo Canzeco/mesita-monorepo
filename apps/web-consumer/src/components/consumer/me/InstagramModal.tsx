@@ -6,10 +6,8 @@ import { BadgeCheck, Copy, Crown, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
-import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 import { InstagramHandleField } from "@/components/consumer/me/InstagramHandleField";
 import { IconChip, ME_BUTTON_CLASS, SettingsGroup } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -32,7 +30,6 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack } from "@/lib/navigate";
 import { PROFILE_KEY, writeCached } from "@/lib/screen-cache";
 import { instagramVipLine } from "@/lib/vip";
-import { useConsumerProfile } from "@/lib/use-consumer-profile";
 
 // ME › INSTAGRAM IS FOR VIP ONLY (Pato, 2026-11-24, MESITA-4863: "With VIP →
 // connect Instagram only at the VIP unlock, nowhere else"). A guest adds a
@@ -44,6 +41,8 @@ import { useConsumerProfile } from "@/lib/use-consumer-profile";
 function cameFromVip(): boolean {
   return new URLSearchParams(window.location.search).get("from") === "vip";
 }
+
+const VIP_RULE = "Have a public Instagram with more than 5,000 followers? Verify it and you're in.";
 
 const DM_POLL_MS = 3_000;
 
@@ -61,45 +60,20 @@ function useReload() {
   };
 }
 
-export function InstagramModal() {
-  const { data: profile, error } = useConsumerProfile();
+/** Upgrade with Instagram, in one card (MESITA-4864: "just ask for instagram
+ *  in the verification"): the handle, the follower question, the code to send. */
+export function InstagramVip({ profile }: { profile: ConsumerProfile }) {
   const [editing, setEditing] = useState(false);
-
-  if (!profile) {
-    return error ? (
-      <MeScreen title="Instagram">
-        <p className="text-muted-foreground py-10 text-center text-sm">Couldn&apos;t load your Instagram. Try again later.</p>
-      </MeScreen>
-    ) : (
-      <InstagramPlaceholder />
-    );
-  }
   const handle = profile.instagram_handle;
-  return (
-    <MeScreen title="Instagram">
-      <div className="flex flex-col gap-4">
-        <p className="text-muted-foreground text-sm">Connect your Instagram to unlock VIP offers.</p>
-        {handle && !editing ? (
-          <>
-            <AccountCard profile={profile} handle={handle} onEdit={() => setEditing(true)} />
-            <VerifyCard key={`${handle}:${profile.instagram_proved_at ?? ""}`} profile={profile} handle={handle} />
-          </>
-        ) : (
-          <HandleForm current={handle} onDone={() => setEditing(false)} />
-        )}
-      </div>
-    </MeScreen>
-  );
-}
-
-export function InstagramPlaceholder() {
-  return (
-    <MeScreen title="Instagram">
-      <div className="bg-muted h-56 animate-pulse rounded-2xl" aria-hidden />
-      <p role="status" className="sr-only">
-        Loading Instagram
-      </p>
-    </MeScreen>
+  return handle && !editing ? (
+    <VerifyCard
+      key={`${handle}:${profile.instagram_proved_at ?? ""}`}
+      profile={profile}
+      handle={handle}
+      onEdit={() => setEditing(true)}
+    />
+  ) : (
+    <HandleForm current={handle} onDone={() => setEditing(false)} />
   );
 }
 
@@ -109,6 +83,7 @@ function HandleForm({ current, onDone }: { current: string | null; onDone: () =>
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
   const handle = normalizeInstagramHandle(raw);
 
   async function save(e: FormEvent) {
@@ -128,8 +103,9 @@ function HandleForm({ current, onDone }: { current: string | null; onDone: () =>
   }
 
   return (
-    <SettingsGroup title={current ? "Change your Instagram" : "Add your Instagram"}>
+    <SettingsGroup title={current ? "Your Instagram" : "Verify your Instagram"}>
       <form onSubmit={(e) => void save(e)} className="flex flex-col gap-3 px-4 pt-1 pb-4" noValidate data-instagram-form>
+        {!current && <p className="text-muted-foreground text-sm">{VIP_RULE}</p>}
         <InstagramHandleField
           id="me-instagram"
           value={raw}
@@ -149,59 +125,27 @@ function HandleForm({ current, onDone }: { current: string | null; onDone: () =>
           </p>
         )}
         <Button type="submit" disabled={!handle || busy} className={cn(ME_BUTTON_CLASS, "w-full")}>
-          {busy ? "Saving…" : "Save"}
+          {busy ? "Saving…" : current ? "Save" : "Continue"}
         </Button>
         {current && (
-          <button type="button" onClick={onDone} disabled={busy} className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS, "w-full")}>
-            Cancel
-          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={onDone} disabled={busy} className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => setRemoving(true)}
+              disabled={busy}
+              className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS, "text-destructive")}
+              data-instagram-disconnect
+            >
+              Remove
+            </button>
+          </div>
         )}
         <p className="text-muted-foreground type-label text-center">We never ask for your Instagram password.</p>
       </form>
-    </SettingsGroup>
-  );
-}
-
-function AccountCard({ profile, handle, onEdit }: { profile: ConsumerProfile; handle: string; onEdit: () => void }) {
-  const [removing, setRemoving] = useState(false);
-  const verified = Boolean(profile.instagram_proved_at);
-  return (
-    <SettingsGroup>
-      <div className="flex items-center gap-3 px-4 py-3">
-        <IconChip tint="instagram">
-          <Instagram className="h-[18px] w-[18px]" />
-        </IconChip>
-        <a
-          href={`https://www.instagram.com/${handle}/`}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`View @${handle} on Instagram`}
-          className="min-w-0 flex-1 truncate text-sm font-semibold hover:underline"
-        >
-          @{handle}
-        </a>
-        <span
-          className="bg-muted text-foreground flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-          data-instagram-status={verified ? "verified" : "unverified"}
-        >
-          {verified && <BadgeCheck className="h-4 w-4" aria-hidden />}
-          {verified ? "Verified" : "Unverified"}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 px-4 pb-4">
-        <button type="button" onClick={onEdit} className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)} data-instagram-change>
-          Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => setRemoving(true)}
-          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS, "text-destructive")}
-          data-instagram-disconnect
-        >
-          Remove
-        </button>
-      </div>
-      <RemoveDialog open={removing} handle={handle} onClose={() => setRemoving(false)} />
+      {current && <RemoveDialog open={removing} handle={current} onClose={() => setRemoving(false)} />}
     </SettingsGroup>
   );
 }
@@ -209,7 +153,7 @@ function AccountCard({ profile, handle, onEdit }: { profile: ConsumerProfile; ha
 // VERIFY BY ONE DM, with the VIP question first. The choice fetches the code,
 // so the send button is a plain link: the tap copies the code and opens
 // Instagram in one gesture (an await would get the tab blocked on iOS).
-function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: string }) {
+function VerifyCard({ profile, handle, onEdit }: { profile: ConsumerProfile; handle: string; onEdit: () => void }) {
   const supabase = useBrowserSupabase();
   const router = useRouter();
   const reload = useReload();
@@ -293,25 +237,36 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
   const canStart = !verified || !vip;
 
   return (
-    <SettingsGroup title="VIP">
+    <SettingsGroup title={vip ? "Your Instagram" : "Verify your Instagram"}>
       <div className="flex flex-col gap-3 px-4 pt-1 pb-4" data-instagram-verify>
-        <p className="text-muted-foreground text-sm">
-          {verified
-            ? `Mesita verified that you own @${handle}.`
-            : `Send a one-time code from @${handle} to Mesita's Instagram bot. VIP needs a public account with more than 5,000 followers.`}
-        </p>
+        {!vip && <p className="text-muted-foreground text-sm">{VIP_RULE}</p>}
+        <div className="flex items-center gap-3">
+          <IconChip tint="instagram">
+            <Instagram className="h-[18px] w-[18px]" />
+          </IconChip>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold">@{handle}</span>
+          {verified && (
+            <span className="flex shrink-0 items-center gap-1 text-sm font-semibold" data-instagram-status="verified">
+              <BadgeCheck className="h-4 w-4" aria-hidden />
+              Verified
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-muted-foreground hover:text-foreground min-h-11 shrink-0 text-sm font-semibold underline underline-offset-2"
+            data-instagram-change
+          >
+            Edit
+          </button>
+        </div>
         {status && (
           <div className="flex items-start gap-3" data-instagram-vip={status}>
             <IconChip>
               <Crown className="h-[18px] w-[18px]" />
             </IconChip>
             <p className="min-w-0 flex-1 text-sm">
-              {instagramVipLine(profile)}{" "}
-              {!vip && (
-                <PushLink href={CONSUMER_ROUTES.mePages.vip} className="font-semibold underline underline-offset-2">
-                  Use an invitation code
-                </PushLink>
-              )}
+              {instagramVipLine(profile)}
             </p>
           </div>
         )}
@@ -360,9 +315,6 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
         ) : asking ? (
           <div className="flex flex-col gap-2" data-instagram-vip-question>
             <p className="text-sm font-semibold">Allow Mesita to check your Instagram follower count for VIP?</p>
-            <p className="text-muted-foreground type-label">
-              VIP needs a public account with more than 5,000 followers.
-            </p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -392,12 +344,12 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
               className={cn(ME_BUTTON_CLASS, "w-full")}
               data-instagram-verify-start
             >
-              {verified ? "Check VIP again" : "Connect"}
+              {verified ? "Check again" : "Verify"}
             </Button>
           ) : channel ? (
             !verified && (
               <p className="text-muted-foreground type-label" data-instagram-verify-off>
-                Connecting isn&apos;t open yet. An invitation code also makes you VIP.
+                Saved. Verifying opens soon; until then, use an invitation code.
               </p>
             )
           ) : (

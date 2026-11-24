@@ -1,8 +1,8 @@
-import { InstagramModal } from "@/components/consumer/me/InstagramModal";
+import { VipInstagramPage } from "@/components/consumer/me/VipModal";
 
-// /me/instagram — connect. Was a LocalSheet (MESITA-1789).
+// /me/instagram — Class › Upgrade with Instagram (MESITA-4864).
 export const dynamic = "force-dynamic";
 
 export default function Page() {
-  return <InstagramModal />;
+  return <VipInstagramPage />;
 }

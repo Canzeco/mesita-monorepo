@@ -196,11 +196,10 @@ export function IdentityModules({
   name: string;
   avatarUrl: string | null;
   nameHref: string;
-  /** MESITA-4774: the Class pill right of the name ("VIP Class" or
-   *  "Regular Class"), opening Me › VIP. Absent: the name runs full width. */
-  guestClass?: { vip: boolean; href: string };
+  /** The Class badge beside the name. Absent: the name alone. */
+  guestClass?: "vip" | "regular";
 }) {
-  // The photo, then Name | Class. No Instagram (MESITA-4863).
+  // The photo, then the name with its Class. No Instagram (MESITA-4863).
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
@@ -221,31 +220,29 @@ export function IdentityModules({
         </span>
       </PushLink>
       <span className="flex w-full min-w-0 flex-col gap-2">
-        {/* NAME | CLASS (Pato, 2026-11-23, MESITA-4774: "Name Left | Class
-            Right, instagram button … now we have VIP Class"): two halves,
-            then Instagram full width. */}
-        <span className={cn("grid w-full min-w-0 gap-2", guestClass ? "grid-cols-2" : "grid-cols-1")}>
-          <PushLink
-            href={nameHref}
-            aria-label={`Profile: ${name}`}
-            className={IDENTITY_PILL_CLASS}
-            data-identity-name
-          >
-            <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="truncate">{name}</span>
-          </PushLink>
+        {/* ONE BOX, THE CLASS A BADGE IN IT (Pato, 2026-11-24, MESITA-4864:
+            "in the same text box, because having two boxes there just seems
+            weird"): opens Profile; Class keeps its tile on the grid. */}
+        <PushLink
+          href={nameHref}
+          aria-label={`Profile: ${name}${guestClass ? `, ${guestClass === "vip" ? "VIP" : "Regular"} Class` : ""}`}
+          className={IDENTITY_PILL_CLASS}
+          data-identity-name
+        >
+          <span className="truncate">{name}</span>
           {guestClass ? (
-            <PushLink
-              href={guestClass.href}
-              aria-label={guestClass.vip ? "VIP Class" : "Regular Class"}
-              className={IDENTITY_PILL_CLASS}
-              data-identity-class={guestClass.vip ? "vip" : "regular"}
+            <span
+              className={cn(
+                "flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                guestClass === "vip" ? "bg-foreground text-background" : "bg-muted text-muted-foreground",
+              )}
+              data-identity-class={guestClass}
             >
-              <Crown className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-              <span className="truncate">{guestClass.vip ? "VIP Class" : "Regular Class"}</span>
-            </PushLink>
+              {guestClass === "vip" ? <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden /> : null}
+              {guestClass === "vip" ? "VIP" : "Regular"}
+            </span>
           ) : null}
-        </span>
+        </PushLink>
       </span>
     </div>
   );
