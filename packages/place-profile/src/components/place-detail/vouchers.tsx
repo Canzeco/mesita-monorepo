@@ -835,17 +835,20 @@ function HowItWorks({ title, lead, tab, menu, children }: { title: string; lead:
  *  MESITA-4875, Pato: "maybe matrix is clearer"): which visit across, which
  *  Class down. The guest's own cell is the offer's colour with "You"; one they
  *  cannot get wears a lock and why; a tier that gives nothing is a dash. */
-function TierMatrix({
+export function TierMatrix({
   rows,
   guest,
   line,
   big,
+  small,
 }: {
   rows: CashbackLineRow[];
   guest: CashbackLineRow["line"] | null;
   /** The server's line for this guest's next bill; null signed out. */
   line: PlaceCashback["line"];
   big?: boolean;
+  /** The guest's QR screen (MESITA-4878): the QR keeps the room. */
+  small?: boolean;
 }) {
   const cell = (key: CashbackLineRow["line"]) => {
     const row = rows.find((o) => o.line === key);
@@ -856,7 +859,7 @@ function TierMatrix({
         <span
           className={cn(
             "flex flex-col items-center justify-center gap-0.5 rounded-xl leading-tight font-semibold tabular-nums",
-            big ? "min-h-20 text-2xl" : "min-h-12 text-base",
+            big ? "min-h-20 text-2xl" : small ? "min-h-10 text-sm" : "min-h-12 text-base",
             mine ? visitTone(row.mech) : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
           )}
           data-how-tier={key}
@@ -893,7 +896,7 @@ function TierMatrix({
             {visits.map((v) => (
               <th key={v.title} scope="col" className="pb-1 pl-2 font-semibold">
                 {v.title}
-                <span className="text-muted-foreground block text-xs font-normal">{v.who}</span>
+                {small ? null : <span className="text-muted-foreground block text-xs font-normal">{v.who}</span>}
               </th>
             ))}
           </tr>

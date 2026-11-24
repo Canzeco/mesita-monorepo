@@ -892,13 +892,15 @@ button.verify-reject:disabled {
 }
 
 .wp-head {
-  display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  display: flex;
   align-items: center;
+  align-self: stretch;
+  gap: 10px;
   min-height: 44px;
 }
 
 button.wp-back {
+  flex-shrink: 0;
   width: 44px;
   height: 44px;
   margin: 0;
@@ -911,9 +913,11 @@ button.wp-back {
 
 .wp-steps {
   display: flex;
+  flex: 1;
   gap: 6px;
-  margin: 0 12px;
+  margin: 0;
   padding: 0;
+  border: 0;
   list-style: none;
 }
 
@@ -924,9 +928,11 @@ button.wp-back {
   padding-top: 6px;
   border: 0;
   border-top: 4px solid #e5e5e5;
-  color: #a3a3a3;
-  font-size: 13px;
+  color: #737373;
+  font-size: 12px;
   font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .wp-steps li.wp-on {
@@ -969,8 +975,8 @@ button.wp-back {
 
 .wp-tips {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
   align-self: stretch;
   margin-top: 16px;
 }
@@ -983,10 +989,11 @@ button.wp-back {
   gap: 2px;
   height: 60px;
   margin: 0;
+  padding: 0;
   border-radius: 16px;
   background: #f5f5f5;
   color: #171717;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
@@ -1075,4 +1082,64 @@ button.wp-go {
   margin-top: 10px;
   font-size: 18px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Whose QR it is (MESITA-4878). */
+.wp-face {
+  display: grid;
+  place-items: center;
+  width: min(220px, 34dvh);
+  aspect-ratio: 1;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: #f5f5f5;
+  color: #525252;
+  font-size: 80px;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.wp-face img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wp-name {
+  margin-top: 12px;
+  color: #171717;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+button.wp-no {
+  flex-shrink: 0;
+  margin-top: 8px;
+  background: #f5f5f5;
+  color: #171717;
+}
+
+.wp-paid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 18px 12px;
+  border-radius: 16px;
+  background: #15803d;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-paid-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.wp-paid-amount {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
 }

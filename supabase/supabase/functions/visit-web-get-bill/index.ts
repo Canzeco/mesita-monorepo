@@ -1,12 +1,13 @@
 // Supabase Edge Function — visit-web-get-bill
 //
-// MESITA-4823 (waiter-led pay): the waiter's poll. Never who the guest is
-// (their photo only), and no credits before the guest accepts.
+// MESITA-4823 (waiter-led pay): the waiter's poll. The guest's photo and first
+// name (MESITA-4878: the waiter checks it is their guest), and no credits
+// before the guest accepts.
 //
 // Body: { bill_id, place_id, staff_token }
 // Response: { ok: true, bill: { id, state, version, currency, bill_cents, tip_cents,
 //             discount_cents, credit_cents, outside_bill_cents, outside_cents,
-//             expires_at, test_mode }, place: { id, name }, guest_photo }
+//             expires_at, test_mode }, place: { id, name }, guest_photo, guest_name }
 //   403 staff_code_needed · 404 gone
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -33,15 +34,17 @@ serveJson("visit-web-get-bill", async (req) => {
     const [attempt, placeRes, guest] = await Promise.all([
       readBillAttempt(admin, bill),
       readVoucherPlace(admin, bill.place_id),
-      admin.from("consumers").select("avatar_url").eq("id", bill.consumer_id).maybeSingle(),
+      admin.from("consumers").select("avatar_url, first_name").eq("id", bill.consumer_id).maybeSingle(),
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
-    const photo = (guest.data as { avatar_url: string | null } | null)?.avatar_url ?? null;
+    const g = guest.data as { avatar_url: string | null; first_name: string | null } | null;
+    const photo = g?.avatar_url ?? null;
     return json({
       ok: true,
       bill: staffBillView(bill, attempt, Date.now()),
       place: { id: bill.place_id, name: placeRes.place?.name ?? null },
       guest_photo: typeof photo === "string" && photo.startsWith("https://") ? photo : null,
+      guest_name: g?.first_name?.trim() || null,
     });
   } catch (err) {
     return failWithRequestId("visit-web-get-bill", "Couldn't read the bill. Try again.", err);

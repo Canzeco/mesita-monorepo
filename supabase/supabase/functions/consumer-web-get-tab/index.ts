@@ -37,6 +37,9 @@
 //   1. Pay 2. Wait 1 hour 3. Get Back"): the sum of its cashback lines, when
 //   the last one lands, and whether it is still Pending; null when the bill
 //   earned none (or is not paid). The Visit ticket draws its three steps.
+//   MESITA-4878: `prepay_tip` on a paid guest bill: the voucher here that would
+//   have paid the part paid outside and what it would have saved; null when
+//   none, or when that read fails (the receipt never waits on it).
 //   400 (a malformed call) · 401 sign_in · 404 not_found (no such tab of
 //   this guest)
 
@@ -47,7 +50,8 @@ import { isUuid } from "../_shared/place-id.ts";
 import { readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { readPlaceBalance } from "../_shared/vouchers.ts";
+import { readPlaceBalance, voucherOffer } from "../_shared/vouchers.ts";
+import { prepayTip } from "../_shared/prepay-tip.ts";
 import { callTabRpc, guestTabView, hashTabToken, mintTabToken, readShares, readTabById, readTabParts, tableView, tabUrl } from "../_shared/tab.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { attemptAsTab, attemptParts, endAttempt, phaseOf, pollPlacingHold, readAttemptById, readAttemptPayment } from "../_shared/guest-attempt.ts";
@@ -148,6 +152,24 @@ serveJson("consumer-web-get-tab", async (req) => {
       myShareTabId = shares.filter((s) => s.consumer_id === user.id && ["billed", "paying", "paid"].includes(s.status)).at(-1)?.id ?? null;
     }
 
+    const back = backOf((backRes.data ?? []) as BackLine[], nowMs);
+    // Paid: the screen stops polling, so this runs about once a receipt.
+    let tip: ReturnType<typeof prepayTip> = null;
+    if (!attemptView && tabNow.status === "paid" && tabNow.origin === "guest" && placeRes.place) {
+      try {
+        const offer = await voucherOffer(admin, placeRes.place, user.id, tabNow.livemode);
+        tip = offer.currency === tabNow.currency
+          ? prepayTip(
+            tabNow.cash_bill_cents,
+            back?.amount_cents ?? 0,
+            offer.sell.map((k) => ({ voucher: k, price_cents: offer.catalog[k].price_cents, credit_cents: offer.catalog[k].credit_cents })),
+          )
+          : null;
+      } catch (err) {
+        console.error("[consumer-web-get-tab] prepay_tip", err instanceof Error ? err.message : err);
+      }
+    }
+
     return json({
       ok: true,
       tab: guestTabView(tabNow, parts, {
@@ -159,7 +181,8 @@ serveJson("consumer-web-get-tab", async (req) => {
         cashOk: cashMoney.cash,
         nowMs,
       }),
-      back: backOf((backRes.data ?? []) as BackLine[], nowMs),
+      back,
+      prepay_tip: tip,
       ...(reminted ?? {}),
       server_now: new Date(nowMs).toISOString(),
     });
