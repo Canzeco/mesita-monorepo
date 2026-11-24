@@ -32,8 +32,9 @@ import { usePayPlaces } from "./use-pay-places";
 //   1 QR          "Show this to your waiter"; opened from a place, the guest's
 //                 credits and rate there and nothing more (MESITA-4881, Pato:
 //                 "don't overexplain here")
-//   2 Bill      the bill and the tip as the waiter types them, read every
-//                 250 ms; shown, never paid
+//   2 Bill      the waiter's code being entered, never a digit (first since
+//                 MESITA-4914), then the bill and the tip as the waiter types
+//                 them, read every 250 ms; shown, never paid
 //   3 Pay         what it comes to and the handshake: the guest's Pay and the
 //                 waiter's Receive, in any order, then the receipt by itself
 //   4 Receipt   /pay/bill/<id>
@@ -354,6 +355,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   if (writing) {
     const shown = (c: number) => money(c, here?.currency ?? "mxn");
     const t = typing;
+    // The code comes before the bill (MESITA-4914); a waiter's page opened before
+    // that still sends it after the amounts.
+    const coding = t.step === "code" && t.bill_cents === 0;
     const row = (label: string, cents: number, on: boolean, empty: string) => (
       <div className={cn("flex items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-all duration-300", on ? "border-[#00D66F] bg-[#00D66F]/10" : "border-border")} data-write-bill-row={label}>
         <dt className={cn("text-base font-semibold", !on && "text-muted-foreground")}>{label}</dt>
@@ -375,8 +379,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
             Live
           </p>
           <p className="text-muted-foreground text-base" role="status">
-            {t.step === "bill" ? "Your waiter is writing your bill" : t.step === "tip" ? "Your waiter is writing the tip" : "Your bill is ready"}
-            {t.step === "code" ? null : <LiveDots />}
+            {coding ? <Lock className="mr-2 inline h-4 w-4 align-[-2px]" aria-hidden /> : null}
+            {coding ? "Your waiter is entering their code" : t.step === "bill" ? "Your waiter is writing your bill" : t.step === "tip" ? "Your waiter is writing the tip" : "Your bill is ready"}
+            {t.step === "code" && !coding ? null : <LiveDots />}
           </p>
           <p className={cn("leading-tight font-bold tracking-tight tabular-nums", shown(t.bill_cents + t.tip_cents).length > 10 ? "text-4xl" : "text-5xl")}>
             <LiveAmount text={shown(t.bill_cents + t.tip_cents)} />
@@ -384,16 +389,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         </div>
         <dl className="flex flex-col gap-2">
           {row("Bill", t.bill_cents, t.step === "bill", shown(0))}
-          {row("Tip", t.tip_cents, t.step === "tip", t.step === "code" ? "No tip" : shown(0))}
+          {row("Tip", t.tip_cents, t.step === "tip", t.step === "code" && !coding ? "No tip" : shown(0))}
         </dl>
-        {/* THE WAITER'S CODE (Pato, 2026-11-24, MESITA-4889: "in a discreet way,
-            like waiter is authenticating, below tip"): that it is being typed,
-            never a digit nor how many. */}
-        <p className={cn("text-muted-foreground flex min-h-6 items-center justify-center gap-2 text-sm transition-opacity duration-500", t.step !== "code" && "opacity-0")} aria-hidden={t.step !== "code"} data-waiter-code>
-          <Lock className="h-4 w-4 animate-pulse motion-reduce:animate-none" aria-hidden />
-          Your waiter is entering their code
-          <LiveDots />
-        </p>
         <p className="text-muted-foreground text-center text-sm">You check it and pay next. Nothing is paid yet.</p>
       </section>,
       <button type="button" className={QUIET_BUTTON_CLASS} onClick={() => setQrOver(true)}>
@@ -430,6 +427,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           <h2 className="text-base font-semibold" role="status">
             Show this to your waiter
           </h2>
+          {bill?.state === "open" ? <p className="text-muted-foreground text-sm">Your waiter has your bill open</p> : null}
           <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
             <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
               {code ? (
