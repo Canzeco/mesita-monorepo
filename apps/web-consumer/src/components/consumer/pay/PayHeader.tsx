@@ -1,5 +1,6 @@
 import { HOME_WORDMARK_CLASS } from "@/components/brand/home-wordmark";
 import { BAR } from "@/components/consumer/search/header-classes";
+import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 // PAY AND WALLET, EACH ITS OWN PAGE (Pato, 2026-11-14, MESITA-3886:
@@ -59,11 +60,10 @@ export function PayHeader({
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      {/* ON THE TILES' GRID (Pato, 2026-11-24, MESITA-4836: "gifts 25% and
-          tickets 25%"): the title in the left half, the action filling the
-          right half, exactly on top of Pay, on the tiles' 8px edges and gap. */}
-      <div className={action ? "grid min-h-11 grid-cols-2 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
-        <h1 className="flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight">
+      {/* ON THE MENU'S GRID (MESITA-4838): the title over the first two
+          thirds, the action (Tickets) exactly over the Pay tile. */}
+      <div className={action ? "grid min-h-11 grid-cols-3 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
+        <h1 className={cn("flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight", action && "col-span-2")}>
           <span className={title === "Mesita" ? HOME_WORDMARK_CLASS : "min-w-0 truncate"}>{title}</span>
         </h1>
         {action ? <div className="min-w-0">{action}</div> : null}

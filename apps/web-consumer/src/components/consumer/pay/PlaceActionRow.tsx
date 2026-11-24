@@ -1,7 +1,8 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Gift } from "lucide-react";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
@@ -22,6 +23,7 @@ export function PlaceActionRow({
   pendingAt = null,
   placeId,
   disabled = false,
+  giftHref = null,
   onOpen,
 }: {
   name: string;
@@ -39,6 +41,8 @@ export function PlaceActionRow({
   pendingAt?: string | null;
   placeId?: string;
   disabled?: boolean;
+  /** Send this card's credit to a friend; null when there is none to send. */
+  giftHref?: string | null;
   /** The first line's tap: its Loyalty Card page (or the place). */
   onOpen?: () => void;
 }) {
@@ -55,6 +59,7 @@ export function PlaceActionRow({
     // outside. that must only be the list"): the moving offer line is gone;
     // the offers live one tap in, on the Loyalty Card page and the place.
     <div data-wallet-row data-place-id={placeId}>
+      <div className="flex items-center">
       <button
         type="button"
         disabled={disabled}
@@ -70,14 +75,22 @@ export function PlaceActionRow({
         onClick={() => {
           if (!disabled) onOpen?.();
         }}
-        className={cn(PAY_ROW, disabled && "cursor-default opacity-60")}
+        className={cn(PAY_ROW, giftHref && "h-[4.5rem] pr-2", disabled && "cursor-default opacity-60")}
         data-loyalty-card
       >
         <MiniCard photo={photo} name={name} />
-        <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>{name}</span>
+        <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+          <span className={cn(PAY_ROW_TEXT, "max-w-full truncate leading-tight")}>{name}</span>
+          {/* Under the name beside a Gift button, so a long name fits. */}
+          {giftHref && amount && !subtitle ? (
+            <span className="bg-foreground text-background rounded-lg px-2 py-0.5 text-sm font-semibold tabular-nums" data-loyalty-balance>
+              {amount}
+            </span>
+          ) : null}
+        </span>
         {subtitle ? (
           <span className={cn(PAY_ROW_META, "max-w-[45%] shrink-0 truncate")}>{subtitle}</span>
-        ) : amount ? (
+        ) : giftHref ? null : amount ? (
           // THE BALANCE IN A BLACK PILL (Pato, 2026-11-21, MESITA-4586: "balance
           // put it in a black box with white text, just to make it clearer").
           <span
@@ -92,8 +105,22 @@ export function PlaceActionRow({
         {/* A › AFTER THE BALANCE (Pato, 2026-11-21, MESITA-4598: "at the right
             of balance use this icon > to express that you can open that
             card"). */}
-        {disabled ? null : <ChevronRight className="text-muted-foreground -ml-1 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />}
+        {disabled || giftHref ? null : <ChevronRight className="text-muted-foreground -ml-1 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />}
       </button>
+      {/* A QUICK GIFT ON EACH CARD (Pato, 2026-11-24, MESITA-4838: "each
+          credit card having a quick button to gift"); one Gift in the header
+          before. */}
+      {giftHref ? (
+        <PushLink
+          href={giftHref}
+          aria-label={`Send a gift from ${name}`}
+          className="bg-muted text-foreground hover:bg-foreground/15 mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          data-card-gift
+        >
+          <Gift className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </PushLink>
+      ) : null}
+      </div>
       {/* MONEY ON ITS WAY, UNDER THE CARD (MESITA-4594), in the Prepay list's
           green row (Pato, 2026-11-23, MESITA-4813: "also display the green
           banners mentioning how much is pending"); it opens the card. */}

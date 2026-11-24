@@ -1,7 +1,7 @@
-import { PayPickPage } from "@/components/consumer/pay/PayPick";
+import { redirect } from "next/navigation";
+import { payTabPath } from "@/components/consumer/pay/pay-sections";
 
-// /pay/pick — Pay's first step (MESITA-4837): the guest chooses the place,
-// seeing their credits and what the next bill gets there, then shows the QR.
+// /pay/pick: an old address. The places are the Wallet's Pay tile (MESITA-4838).
 export default function Page() {
-  return <PayPickPage />;
+  redirect(payTabPath("pay"));
 }

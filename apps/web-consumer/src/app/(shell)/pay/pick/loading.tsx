@@ -1,5 +1,5 @@
-import { PayPickLoading } from "@/components/consumer/pay/PayPick";
+import { PayFrameLoading } from "@/components/consumer/pay/PayFrameLoading";
 
 export default function Loading() {
-  return <PayPickLoading />;
+  return <PayFrameLoading />;
 }

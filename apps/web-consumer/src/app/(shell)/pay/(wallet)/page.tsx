@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PayPage } from "@/components/consumer/pay/PayPage";
-import { CONSUMER_ROUTES, isRouteId, payCodePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
+import { readPayTab } from "@/components/consumer/pay/pay-sections";
+import { isRouteId, payCodePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +28,7 @@ export default async function Page({ searchParams }: { searchParams: Search }) {
   if (isRouteId(tab)) redirect(payBillPath(tab));
   const place = one(sp.place);
   if (isRouteId(place)) redirect(payCodePath(place));
-  // ?tab=cards (MESITA-4765, D6): the Loyalty Cards tab the guest left. An
-  // id there is an old bill reload, forwarded above.
-  // The old sheet's address: the picker is a page (MESITA-4837).
-  if (one(sp.pick) === "1") redirect(CONSUMER_ROUTES.payPick);
-  return <PayPage tab={tab === "cards" ? "cards" : "offers"} />;
+  // ?tab= names the menu's tile (MESITA-4838). An id there is an old bill
+  // reload, forwarded above.
+  return <PayPage tab={readPayTab(tab)} />;
 }

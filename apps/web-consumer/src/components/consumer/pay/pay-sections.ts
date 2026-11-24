@@ -36,7 +36,21 @@ export const PAY_ROW_TEXT = "text-foreground text-base font-semibold";
 /** The row's secondary words: a distance, a note. */
 export const PAY_ROW_META = "text-muted-foreground text-sm";
 
-/** Pay's two tabs (MESITA-4765): Nearby Offers, then Loyalty Cards. The
- *  address carries `?tab=cards` while Loyalty Cards is chosen (D6). */
-export type PayTab = "offers" | "cards";
-export const PAY_TAB_PARAM = "tab";
+/** The Wallet's menu (MESITA-4838): Prepay, Credits, Pay. /pay is Pay; the
+ *  address carries `?tab=` for the other two, so Back lands on the same tile. */
+export const PAY_TABS = ["prepay", "cards", "pay"] as const;
+export type PayTab = (typeof PAY_TABS)[number];
+export function readPayTab(v: string | undefined): PayTab {
+  return PAY_TABS.find((t) => t === v) ?? "pay";
+}
+export function payTabPath(t: PayTab): string {
+  return t === "pay" ? "/pay" : `/pay?tab=${t}`;
+}
+/** Each tile's own colour; its box wears it too. */
+export const PAY_TAB_FILL: Record<PayTab, string> = {
+  prepay: "bg-[#00D66F] text-neutral-950",
+  cards: "bg-foreground text-background",
+  pay: "bg-[#635BFF] text-white",
+};
+/** A tile: a third of the row, 92px. */
+export const PAY_TILE = "flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition active:scale-[0.99]";
