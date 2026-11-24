@@ -137,6 +137,17 @@ describe("every other kind lands on its tab with its kind", () => {
     expect(rows[0]!.big).toBe(money(50000, "MXN"));
   });
 
+  it("a refund with a bonus shows the card money, not the credit taken (MESITA-4915)", () => {
+    const rows = walletRows(
+      wallet([
+        e("prepay", 50000, { purchase_id: "u1", refunded_cents: 50000 }),
+        e("bonus", 5000, { purchase_id: "u1", refunded_cents: 50000 }),
+        e("reversal", -55000, { purchase_id: "u1", refunded_cents: 50000 }),
+      ]),
+    ).filter((r) => r.type === "refunds");
+    expect(rows[0]!.big).toBe(money(50000, "MXN"));
+  });
+
   it("a gift is never a ticket row: Tickets' Gifts list draws it (MESITA-4036)", () => {
     const rows = walletRows(
       wallet([e("gift_in", 20000), e("gift_out", -20000), e("gift_back", 20000)], {

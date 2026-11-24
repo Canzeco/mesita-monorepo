@@ -24,7 +24,8 @@
 //               offers: { sell } (MESITA-4262, what Home's offer button says),
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, pinned,
-//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, purchase_id, gift_id }] }],
+//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, purchase_id, gift_id, refunded_cents? }] }],
+//   refunded_cents (MESITA-4915): card money returned on the entry's purchase.
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
@@ -144,11 +145,22 @@ serveJson("consumer-web-get-wallet", async (req) => {
     spendable.set(balanceKey(r.place_id, r.currency), r.spendable_cents);
   }
   const entries = (rows ?? []) as Entry[];
+  // What each refunded purchase gave back to the card (MESITA-4915).
+  const { data: refundRows, error: refundErr } = await admin
+    .from("wallet_purchases")
+    .select("id, refunded_cents")
+    .eq("consumer_id", userId)
+    .eq("livemode", livemode)
+    .gt("refunded_cents", 0)
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  if (refundErr) return json({ ok: false, error: `refunds: ${refundErr.message}` }, 500);
+  const refunded = new Map(((refundRows ?? []) as Array<{ id: string; refunded_cents: number }>).map((r) => [r.id, r.refunded_cents]));
   // PINNED LOYALTY CARDS (MESITA-3582): a place the guest added by hand with
   // no entries reads as a $0 card after the ones holding money, never twice.
   const pinsRes = await readPins(admin, userId);
   if (!pinsRes.ok) return json({ ok: false, error: pinsRes.error }, 500);
-  const balances = withPins(balancesOf(entries, Date.now(), spendable), pinsRes.pins, MONEY_CURRENCY);
+  const balances = withPins(balancesOf(entries, Date.now(), spendable, refunded), pinsRes.pins, MONEY_CURRENCY);
 
   // EVERY GIFT SENT OR RECEIVED (MESITA-4036): Tickets' one Gifts list,
   // sender on the left, receiver on the right. The open ones the guest sent

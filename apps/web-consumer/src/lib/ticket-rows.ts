@@ -197,6 +197,10 @@ export function visitRows(
 // Tickets' Gifts list draws the server's gifts, sender to receiver.
 const GIFT_KINDS = new Set(["gift_out", "gift_in", "gift_back"]);
 const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
+/** What a purchase's refund sent back to the card: the server's figure, else
+ *  (a wallet cached from an older server) the credit taken. */
+export const backToCard = (reversals: WalletEntry[]) =>
+  reversals.find((x) => x.refunded_cents !== undefined)?.refunded_cents ?? Math.abs(sum(reversals));
 const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
 
 export function walletRows(w: Wallet): Row[] {
@@ -300,7 +304,7 @@ export function walletRows(w: Wallet): Row[] {
           place,
           photo,
           status: { label: "Refunded", tone: "grey" },
-          big: money(Math.abs(sum(all)), cur),
+          big: money(backToCard(all), cur),
           money: true,
           line: "Back to your card",
           href: creditEntryPath(b.place_id, e),

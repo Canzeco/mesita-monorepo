@@ -5,12 +5,16 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
+  blockingSubscription,
   effectivePlan,
+  findBlockingSubscription,
+  mayAdopt,
   needsRefresh,
   planCheckoutParams,
   planPatch,
   PRO_PRICE_CENTS,
   readSubscription,
+  sessionOutcome,
   subscriptionOfSession,
 } from "./guest-plan.ts";
 
@@ -88,4 +92,54 @@ Deno.test("planCheckoutParams: $2 a month, the guest's customer, back with plan=
   assertEquals(item.unit_amount, 100);
   assertEquals(item.currency, "usd");
   assertEquals(item.recurring, { interval: "month" });
+});
+
+const END = Math.floor(Date.parse(LATER) / 1000);
+const META = { mesita_kind: "guest_plan", consumer_id: "c1" };
+const sub = (status: string, over: Record<string, unknown> = {}) => ({ id: `sub_${status}`, status, current_period_end: END, metadata: META, ...over });
+
+Deno.test("sessionOutcome: pending only for the guest's own session in flight (MESITA-4915)", () => {
+  const s = { mode: "subscription", status: "complete", client_reference_id: "c1", metadata: META, payment_status: "paid" };
+  assertEquals(sessionOutcome(s, "c1", sub("active"), NOW), "paid");
+  assertEquals(sessionOutcome(s, "c1", sub("incomplete"), NOW), "pending");
+  assertEquals(sessionOutcome({ ...s, status: "open" }, "c1", null, NOW), "pending");
+  assertEquals(sessionOutcome({ ...s, payment_status: "unpaid" }, "c1", null, NOW), "pending");
+  assertEquals(sessionOutcome({ ...s, status: "expired" }, "c1", null, NOW), "failed");
+  assertEquals(sessionOutcome(s, "c1", sub("canceled"), NOW), "failed");
+  assertEquals(sessionOutcome(s, "c1", sub("past_due"), NOW), "failed");
+  assertEquals(sessionOutcome({ ...s, status: "open" }, "c2", null, NOW), "failed");
+  assertEquals(sessionOutcome({ ...s, status: "open", metadata: {} }, "c1", null, NOW), "failed");
+});
+
+Deno.test("mayAdopt: an old link never undoes a paid Pro or a grant (MESITA-4915)", () => {
+  const dead = readSubscription(sub("canceled"), NOW);
+  const unpaid = readSubscription(sub("incomplete"), NOW);
+  assert(!mayAdopt(paid(), "sub_old", dead));
+  assert(!mayAdopt(paid(), "sub_old", unpaid));
+  assert(!mayAdopt({ plan: "premium" }, "sub_old", unpaid));
+  assert(mayAdopt(paid(), "sub_1", dead));
+  assert(mayAdopt({ plan: "free" }, "sub_old", unpaid));
+  assert(mayAdopt(paid(), "sub_new", readSubscription(sub("active"), NOW)));
+});
+
+Deno.test("blockingSubscription: any Pro not over blocks Checkout, paying one first (MESITA-4915)", () => {
+  assertEquals(blockingSubscription([sub("canceled"), sub("incomplete_expired")], "c1", NOW), null);
+  assertEquals(blockingSubscription([sub("active", { metadata: {} })], "c1", NOW), null);
+  assertEquals(blockingSubscription([sub("active")], "c2", NOW), null);
+  assertEquals(blockingSubscription([sub("past_due"), sub("active")], "c1", NOW), { id: "sub_active", active: true, payUrl: null });
+  const latest_invoice = { status: "open", hosted_invoice_url: "https://invoice.stripe.com/i/1" };
+  assertEquals(blockingSubscription([sub("past_due", { latest_invoice })], "c1", NOW)?.payUrl, "https://invoice.stripe.com/i/1");
+  assertEquals(blockingSubscription([sub("incomplete")], "c1", NOW), { id: "sub_incomplete", active: false, payUrl: null });
+});
+
+Deno.test("findBlockingSubscription: closes only the guest's Pro Checkouts, before reading subscriptions (MESITA-4915)", async () => {
+  const calls: string[] = [];
+  const found = await findBlockingSubscription((method, path) => {
+    calls.push(`${method} ${path}`);
+    if (path === "checkout/sessions") return Promise.resolve({ data: [{ id: "cs_a", metadata: META }, { id: "cs_premier", metadata: {} }] });
+    if (path === "subscriptions") return Promise.resolve({ data: [sub("incomplete")] });
+    return Promise.resolve({});
+  }, "cus_1", "c1");
+  assertEquals(calls, ["GET checkout/sessions", "POST checkout/sessions/cs_a/expire", "GET subscriptions"]);
+  assertEquals(found?.id, "sub_incomplete");
 });
