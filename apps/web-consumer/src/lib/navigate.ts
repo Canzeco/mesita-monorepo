@@ -265,7 +265,7 @@ export function previousEntryPath(): string | null {
 }
 
 /** Is there a screen of ours under this one? */
-function hasInAppBack(): boolean {
+export function hasInAppBack(): boolean {
   const at = entryIndex();
   // With the Navigation API, an unmarked trail (just after a sign-in) has
   // nothing of ours under it yet: never fall back to history.length there.

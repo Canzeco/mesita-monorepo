@@ -34,7 +34,7 @@ import { type ReactNode, useState } from "react";
 import { Gift } from "lucide-react";
 
 import { Screen } from "@/components/consumer/nav/Screen";
-import { payTabPath } from "@/components/consumer/pay/pay-sections";
+import { payModalPath } from "@/components/consumer/pay/pay-sections";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { walletSendPath } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
@@ -100,7 +100,7 @@ export function SendGiftPage() {
             icon={Gift}
             title="No Loyalty Cards yet"
             description="Buy credits at a place first."
-            action={{ label: "Buy Credits", href: payTabPath("prepay") }}
+            action={{ label: "Buy Credits", href: payModalPath("prepay") }}
           />
         </div>
       ) : (

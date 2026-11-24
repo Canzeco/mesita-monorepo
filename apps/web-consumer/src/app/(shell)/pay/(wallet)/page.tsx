@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { PayPage } from "@/components/consumer/pay/PayPage";
-import { readPayTab } from "@/components/consumer/pay/pay-sections";
 import { isRouteId, payCodePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Search }) {
   if (isRouteId(tab)) redirect(payBillPath(tab));
   const place = one(sp.place);
   if (isRouteId(place)) redirect(payCodePath(place));
-  // ?tab= names the menu's tile (MESITA-4838). An id there is an old bill
-  // reload, forwarded above.
-  return <PayPage tab={readPayTab(tab)} />;
+  // ?tab= names the open modal (MESITA-4846); the page reads it itself. An id
+  // there is an old bill reload, forwarded above.
+  return <PayPage />;
 }

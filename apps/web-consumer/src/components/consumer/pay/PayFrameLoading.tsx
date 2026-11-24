@@ -10,21 +10,18 @@ import { PAY_ROW, PAY_THUMB, SECTION_ROWS } from "./pay-sections";
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "proof" }) {
   if (body === "list") {
-    // /pay: the Wallet's header, the menu's three tiles and its box
-    // (MESITA-4838), in grey bones with no words (MESITA-4596).
+    // /pay: the Wallet's header, its two tiles and the Credits box
+    // (MESITA-4846), in grey bones with no words (MESITA-4596).
     return (
       <div className="bg-card flex h-full min-h-0 flex-col px-2" aria-busy>
         <PayHeader title="Mesita" action={<TicketsShortcut icon />} />
-        <div className="mt-2 grid shrink-0 grid-cols-3 gap-2">
-          <Skeleton className="h-[92px] min-w-0 rounded-2xl" aria-hidden />
-          <Skeleton className="h-[92px] min-w-0 rounded-2xl" aria-hidden />
-          <Skeleton className="h-[92px] min-w-0 rounded-2xl" aria-hidden />
+        <div className="mt-2 grid shrink-0 grid-cols-2 gap-2">
+          <Skeleton className="h-[148px] min-w-0 rounded-2xl" aria-hidden />
+          <Skeleton className="h-[148px] min-w-0 rounded-2xl" aria-hidden />
         </div>
-        <div className="bg-muted -mx-2 mt-2 flex min-h-0 flex-1 flex-col p-1.5">
+        <div className="bg-muted -mx-2 mt-2 flex min-h-0 flex-1 flex-col px-1.5 pb-1.5">
+          <div className="h-12 shrink-0" />
           <div className="bg-card min-h-0 flex-1 overflow-hidden rounded-xl">
-            <div className="border-border flex h-14 items-center border-b px-4">
-              <Skeleton className="h-4 w-32" aria-hidden />
-            </div>
             <div className={SECTION_ROWS}>
               <LoyaltyCardBoxSkeleton />
               <LoyaltyCardBoxSkeleton />

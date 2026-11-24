@@ -36,21 +36,20 @@ export const PAY_ROW_TEXT = "text-foreground text-base font-semibold";
 /** The row's secondary words: a distance, a note. */
 export const PAY_ROW_META = "text-muted-foreground text-sm";
 
-/** The Wallet's menu (MESITA-4838): Prepay, Credits, Pay. /pay is Pay; the
- *  address carries `?tab=` for the other two, so Back lands on the same tile. */
-export const PAY_TABS = ["prepay", "cards", "pay"] as const;
-export type PayTab = (typeof PAY_TABS)[number];
-export function readPayTab(v: string | undefined): PayTab {
-  return PAY_TABS.find((t) => t === v) ?? "pay";
+/** The Wallet's two modals (MESITA-4846): `?tab=` names the open one, so the
+ *  phone's Back closes it and Back from a place lands in it. */
+export const PAY_MODALS = ["prepay", "pay"] as const;
+export type PayModal = (typeof PAY_MODALS)[number];
+export function readPayModal(v: string | null | undefined): PayModal | null {
+  return PAY_MODALS.find((t) => t === v) ?? null;
 }
-export function payTabPath(t: PayTab): string {
-  return t === "pay" ? "/pay" : `/pay?tab=${t}`;
+export function payModalPath(t: PayModal): string {
+  return `/pay?tab=${t}`;
 }
-/** Each tile's own colour; its box wears it too. */
-export const PAY_TAB_FILL: Record<PayTab, string> = {
+/** Each tile's own colour; its modal wears it too. */
+export const PAY_FILL: Record<PayModal, string> = {
   prepay: "bg-[#635BFF] text-white",
-  cards: "bg-foreground text-background",
   pay: "bg-[#00D66F] text-neutral-950",
 };
-/** A tile: a third of the row, 92px. */
-export const PAY_TILE = "flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center";
+/** A tile: half the row, 148px. */
+export const PAY_TILE = "flex h-[148px] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl p-2 text-center";

@@ -67,6 +67,9 @@ export const CONFIRM_FILES = [
  *  The Pay Bill place picker (MESITA-4478) is the one addition: Pato asked
  *  for the search and the places in a bottom sheet. The ticket stays a page. */
 const SHEET_ALLOWLIST: string[] = [
+  // The Wallet's Prepay and Pay modals (MESITA-4846, decision: Pato asked for
+  // "a modal"; full page): search and places only.
+  "components/consumer/pay/PayPage.tsx",
 ];
 
 /** Non-confirm dialogs that become pages (MESITA-4112/4113). Only shrinks. */

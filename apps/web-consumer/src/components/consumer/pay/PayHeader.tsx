@@ -60,8 +60,7 @@ export function PayHeader({
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      {/* ON THE MENU'S GRID (MESITA-4838): the title over the first two
-          thirds, the action (Tickets) exactly over the Pay tile. */}
+      {/* Thirds (MESITA-4838): the title over two, the action (Tickets) the last. */}
       <div className={action ? "grid min-h-11 grid-cols-3 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
         <h1 className={cn("flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight", action && "col-span-2")}>
           <span className={title === "Mesita" ? HOME_WORDMARK_CLASS : "min-w-0 truncate"}>{title}</span>

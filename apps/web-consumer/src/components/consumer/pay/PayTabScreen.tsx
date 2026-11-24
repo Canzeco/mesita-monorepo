@@ -1,5 +1,6 @@
 "use client";
 
+import { payModalPath } from "./pay-sections";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -115,7 +116,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
                 navigateTo(router, payPlacePath(id), { replace: true })
               }
               onChoosePlace={() =>
-                navigateTo(router, `${CONSUMER_ROUTES.pay}?pick=1`, {
+                navigateTo(router, payModalPath("pay"), {
                   replace: true,
                 })
               }
