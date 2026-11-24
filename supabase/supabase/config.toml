@@ -487,6 +487,29 @@ verify_jwt = false
 [functions.visit-web-reject-tab]
 verify_jwt = false
 
+# MESITA-4823 (waiter-led pay): the guest's QR and answer (signed in); the
+# waiter's side has no sign-in: the staff token (the waiter code) is the gate.
+[functions.consumer-web-get-pay-code]
+verify_jwt = true
+
+[functions.consumer-web-answer-bill]
+verify_jwt = true
+
+[functions.visit-web-sign-in]
+verify_jwt = false
+
+[functions.visit-web-open-bill]
+verify_jwt = false
+
+[functions.visit-web-send-bill]
+verify_jwt = false
+
+[functions.visit-web-get-bill]
+verify_jwt = false
+
+[functions.visit-web-close-bill]
+verify_jwt = false
+
 # MESITA-3462: the staff list of a place's Mesita Payments. No sign-in on
 # visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
 # the place's current code hash), and the 15 s reads carry the token.
