@@ -34,6 +34,11 @@ export function proofUrl(token: string, read: ReadEnv = envRead): string {
   return `${visitOrigin(read)}/proof/${token}`;
 }
 
+/** The guest's one general QR (MESITA-4823): the waiter scans it. */
+export function payCodeUrl(token: string, read: ReadEnv = envRead): string {
+  return `${visitOrigin(read)}/pay/${token}`;
+}
+
 /** A table's tab (MESITA-3562): the QR the guest shows the waiter. */
 export function tabUrl(token: string, read: ReadEnv = envRead): string {
   return `${visitOrigin(read)}/tab/${token}`;

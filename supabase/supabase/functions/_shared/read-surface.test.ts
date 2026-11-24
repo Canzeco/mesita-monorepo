@@ -329,6 +329,8 @@ const CONSUMER_READ_ALLOWLIST = [
   // MESITA-3857: the waiter's screen shows the guest's photo on a guest bill;
   // avatar_url only, never a name. Read-only, error logged.
   "visit-web-get-tab/index.ts",
+  // MESITA-4823: the avatar only, as visit-web-get-tab.
+  "visit-web-get-bill/index.ts",
   // Tickets › Gifts (MESITA-4036): the first name and photo of each friend a
   // gift went to or came from (every profile is public, MESITA-4690).
   // Read-only, error logged.
