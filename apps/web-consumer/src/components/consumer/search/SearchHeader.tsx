@@ -20,10 +20,8 @@
 // here too"; Home's column has worn them since MESITA-3683).
 // Popular, as on Home (Pato, MESITA-4466: "rename top to popular here and
 // follow rule and filters is menu"; Top since MESITA-2882). MENU, NOT
-// FILTERS: the disc became Home's Menu box, the grid mark and the word, a
-// rounded square; Popular and every family are pills (Pato, MESITA-4468:
-// "better in this page only popular too rounded"; MESITA-4466 had Popular
-// square too). THE DISC OPENS THE FILTERS SHEET
+// FILTERS: the grid mark and the word, a pill like Popular and every family
+// (Pato, MESITA-4829; a rounded square under MESITA-4466). THE DISC OPENS THE FILTERS SHEET
 // (Pato, MESITA-2903). ONE FAMILY (Pato, MESITA-4469: "not multiselector"):
 // the Menu opens Home's Categories modal and a tap picks that one family,
 // or Popular, and closes. A chip does the same. Popular is lit when none
@@ -60,7 +58,6 @@ import {
   CHIP,
   CHIP_OFF,
   CHIP_ON,
-  CHIP_SPECIAL,
   HEADER_ICON,
   HEADER_ICON_STROKE,
   SEARCH_BAR,
@@ -138,7 +135,7 @@ export function SearchHeader({
             onClick={() => setSheetOpen(true)}
             aria-label={filtered ? "Menu, a family is chosen" : "Menu"}
             aria-haspopup="dialog"
-            className={cn(CHIP_SPECIAL, CHIP_OFF, "relative")}
+            className={cn(CHIP, CHIP_OFF, "relative")}
             data-search-filters
           >
             <LayoutGrid
@@ -152,7 +149,7 @@ export function SearchHeader({
             {filtered ? (
               <span
                 aria-hidden
-                className="bg-destructive ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
+                className="bg-destructive ring-card absolute top-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
                 data-menu-filter-dot
               />
             ) : null}

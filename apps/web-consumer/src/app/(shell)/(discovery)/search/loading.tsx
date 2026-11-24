@@ -1,7 +1,6 @@
 import { Skeleton } from "@/components/shared";
 import {
   CHIP,
-  CHIP_SPECIAL,
   SEARCH_BAR,
 } from "@/components/consumer/search/header-classes";
 import {
@@ -15,8 +14,8 @@ import { cn } from "@/lib/utils";
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader on its
 // top edge: the 48px bar with AI inside it, white and floating (MESITA-4799),
-// then the floating 32px chip row (the Menu
-// square, then Popular and the families as pills; MESITA-4468). Then the spinner on the cross, and the carousel floating
+// then the floating 32px chip row (Menu,
+// Popular and the families, all pills; MESITA-4829). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
 // tiles and catalog land, so nothing moves on arrival.
@@ -27,15 +26,13 @@ import { cn } from "@/lib/utils";
 function ControlSkeleton({
   token,
   label,
-  square = false,
 }: {
   token: string;
   label: string;
-  square?: boolean;
 }) {
   return (
     <div aria-hidden className={cn(token, "invisible relative")}>
-      <Skeleton className={cn("bg-card visible absolute -inset-px shadow-float", square ? "rounded-lg" : "rounded-full")} />
+      <Skeleton className="bg-card visible absolute -inset-px rounded-full shadow-float" />
       <span className="h-4 w-4 shrink-0" />
       <span>{label}</span>
     </div>
@@ -56,7 +53,7 @@ export default function SearchLoading() {
             <div className={cn(SEARCH_BAR, "flex-1")} />
           </div>
           <div className="flex items-center gap-2 overflow-hidden pt-1 pl-3">
-            <ControlSkeleton token={CHIP_SPECIAL} label="Menu" square />
+            <ControlSkeleton token={CHIP} label="Menu" />
             <div className="flex items-center gap-2 py-2 pr-3">
               <ControlSkeleton token={CHIP} label="Popular" />
               {["Coffee", "Breakfast", "Brunch", "Bakery"].map((label) => (

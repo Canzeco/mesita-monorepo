@@ -8,7 +8,7 @@
 // without the control shifting a pixel.
 //
 //   [ ⌖ │ ⚲ Search places…      │ ✦ AI ]   ← SEARCH_BAR (BAR_LOCATE + SearchBar + BAR_ACTION)
-//   [▦ Menu] (☆ Popular) (○ Coffee) …      ← CHIP_SPECIAL · CHIP + CHIP_ON / CHIP_OFF
+//   (▦ Menu) (☆ Popular) (○ Coffee) …      ← CHIP + CHIP_ON / CHIP_OFF
 //
 // 1.5 TO 1 (Pato, 2026-11-23, MESITA-4811: "1.5 and 1 is the best"): the
 // bar 48px, the chips 32px. LOCATE IS THE BAR'S LEFT END (Pato, MESITA-4814:
@@ -50,11 +50,9 @@ export const BAR_ACTION = `border-border hover:bg-muted focus-visible:bg-muted a
 /** A labelled 40px grey pill: Pay's Tickets shortcut. */
 export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
+/** EVERY CHIP ON THE MAP IS A PILL, Menu too (Pato, 2026-11-24, MESITA-4829:
+ *  "make the menu rounded, not squared"; a rounded square since MESITA-4466). */
 export const CHIP = `flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 ${HEADER_TEXT} whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]`;
-/** MENU IS THE ONE SQUARE ON THE MAP (MESITA-4466, MESITA-4468: "only
- *  popular too rounded"): Menu is a rounded square, Popular and every
- *  family chip are pills. */
-export const CHIP_SPECIAL = CHIP.replace("rounded-full", "rounded-lg");
 /** A dark border is invisible on the ink chip, and the nav's overflow clips
  *  an outer ring: the selected chip focuses with an inset ring. */
 export const CHIP_ON =
