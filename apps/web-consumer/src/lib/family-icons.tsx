@@ -1,231 +1,89 @@
-// The consumer app's family marks: monochrome line icons, never emoji
-// (Pato, MESITA-2478: "emojis uses color and that takes attention"). The
-// app is ink on white; an emoji was the only color besides photos.
+// The guest's family marks: Microsoft's Fluent Emoji Flat art (MIT), drawn
+// from our own files, never the phone's emoji font (Pato, 2026-11-23,
+// MESITA-4782: "colors encode information", then chose "A · Fluent Flat"
+// over Apple's emoji, Noto, Twemoji, OpenMoji and one-colour icons). The
+// same picture on every phone. Fluent has no flags, so Mexican's flag is
+// Twemoji's (CC-BY 4.0, Twitter). Files: public/families/<key>.svg.
 //
-// CONSUMER ONLY. The family list and its emoji (lib/place-families.ts) are
-// unchanged, and admin keeps showing the emoji. This file maps a key to the
-// icon the guest sees: Home's column, Search's chips, and the Google card
-// with no photo. Icons draw in `currentColor`; callers pick the stroke
-// (1.75, the chosen row 2.25 — BottomNav's pair).
+// CONSUMER ONLY. The family list and its emoji (lib/place-families.ts) stay
+// the data admin and business show. Home's strip and menu, Search's chips
+// and Search's families sheet draw `FamilyMark`.
 
-import { createElement, type ComponentType, type SVGProps } from "react";
-import {
-  Beef,
-  Beer,
-  CakeSlice,
-  Coffee,
-  Croissant,
-  Dices,
-  Drumstick,
-  EggFried,
-  Fish,
-  Gamepad2,
-  Hamburger,
-  HandPlatter,
-  Heart,
-  Moon,
-  Music,
-  Pizza,
-  Salad,
-  Shrimp,
-  Soup,
-  Star,
-  Users,
-  Utensils,
-  UtensilsCrossed,
-  Zap,
-} from "lucide-react";
+/** Every row and chip key the guest sees that has its own picture. */
+export const FAMILY_MARK_KEYS = [
+  "saved",
+  "social",
+  "near",
+  "all",
+  "dinner",
+  "coffee",
+  "drinks",
+  "quick_bite",
+  "breakfast",
+  "mexican",
+  "tacos",
+  "seafood",
+  "asian",
+  "european",
+  "fancy",
+  "steak",
+  "japanese",
+  "american",
+  "healthy",
+  "italian",
+  "sushi",
+  "pizza",
+  "burgers",
+  "arabic",
+  "chinese",
+  "indian",
+  "chicken",
+  "sweet",
+  "night_out",
+  "bakery",
+  "nightclub",
+  "music",
+  "fun",
+  "casino",
+] as const;
 
-export type LineIcon = ComponentType<{
-  className?: string;
-  strokeWidth?: number;
-  "aria-hidden"?: boolean;
-}>;
+const KNOWN = new Set<string>(FAMILY_MARK_KEYS);
+/** Search calls Home's `near` chip `nearby`. */
+const ALIASES: Readonly<Record<string, string>> = { nearby: "near" };
+/** A key with no picture of its own wears Dinner's plate. */
+export const FALLBACK_FAMILY_MARK = "dinner";
 
-/** Lucide has no mark for these families, so each is drawn in lucide's own
- *  24px grid, stroke and caps and sits beside the others (MESITA-2953). */
-function drawnIcon(name: string, paths: readonly string[]) {
-  function DrawnIcon({
-    className,
-    strokeWidth = 2,
-    ...rest
-  }: SVGProps<SVGSVGElement>) {
-    return (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width={24}
-        height={24}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className={className}
-        {...rest}
-      >
-        {paths.map((d) => (
-          <path key={d} d={d} />
-        ))}
-      </svg>
-    );
-  }
-  DrawnIcon.displayName = name;
-  return DrawnIcon;
+/** The file for a row, chip or family key. */
+export function familyMarkSrc(key: string): string {
+  const k = ALIASES[key] ?? key;
+  return `/families/${KNOWN.has(k) ? k : FALLBACK_FAMILY_MARK}.svg`;
 }
 
-/** A folded shell and its filling. */
-export const Taco = drawnIcon("Taco", [
-  "M2 18a10 10 0 0 1 20 0Z",
-  "M6 12c1-1.5 2-.5 3-1.5s2 .5 3-1 2 .5 3-1 2 .5 3 1",
-]);
-
-/** The flag of Mexico: three bands and the eagle's round emblem in the
- *  middle one, Mexican's 🇲🇽. Not a chili (Pato, MESITA-3108). */
-const MexicanFlag = drawnIcon("MexicanFlag", [
-  "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
-  "M9 5v14",
-  "M15 5v14",
-  "M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0",
-]);
-
-/** Spaghetti wound on a fork over its bowl: Italian's 🍝. */
-const Pasta = drawnIcon("Pasta", [
-  "M4 15h16c0 3.3-3.6 6-8 6s-8-2.7-8-6Z",
-  "M12 9.5V3",
-  "M10 2.5v2.5a2 2 0 0 0 4 0V2.5",
-  "M8.5 9.5c0-.8 1.6-1.5 3.5-1.5s3.5.7 3.5 1.5-1.6 1.5-3.5 1.5-3.5-.7-3.5-1.5Z",
-  "M9 11c-.6 1.2.4 2.8-.2 4",
-  "M15 11c.6 1.2-.4 2.8.2 4",
-]);
-
-/** A rice triangle in its nori band: Japanese. */
-const Onigiri = drawnIcon("Onigiri", [
-  "M10.3 4.6 3.8 15.9C2.6 18 4 20.5 6.4 20.5h11.2c2.4 0 3.8-2.5 2.6-4.6L13.7 4.6a2 2 0 0 0-3.4 0Z",
-  "M9 20.5V15h6v5.5",
-]);
-
-/** The folded takeout pail and its wire handle: Chinese's 🥡. */
-const TakeoutBox = drawnIcon("TakeoutBox", [
-  "M5.5 10h13L17 21H7Z",
-  "M5.5 10 8 5.5h8l2.5 4.5",
-  "M8 5.5 10 10",
-  "M16 5.5 14 10",
-  "M8.5 5.5C8.5 3.5 10 2 12 2s3.5 1.5 3.5 3.5",
-]);
-
-/** A bowl and its chopsticks: Asian. */
-const NoodleBowl = drawnIcon("NoodleBowl", [
-  "M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z",
-  "M13 9.5 20 3",
-  "M10 9.5 15.5 2.5",
-]);
-
-/** Three chunks on a skewer: Arabic. */
-const Kebab = drawnIcon("Kebab", [
-  "M2.5 21.5 6.3 17.7",
-  "M8.7 15.3l2.1-2.1",
-  "M13.2 10.8l2.1-2.1",
-  "M17.7 6.3l3.8-3.8",
-  "M10.8 17.4 6.6 13.2 4.2 15.6 8.4 19.8Z",
-  "M15.3 12.9 11.1 8.7 8.7 11.1 12.9 15.3Z",
-  "M19.8 8.4 15.6 4.2 13.2 6.6 17.4 10.8Z",
-]);
-
-/** European's 🥨: one rope, its ends crossed onto the belly. */
-const Pretzel = drawnIcon("Pretzel", [
-  "M15.5 18 12 12.5C10.5 10 10 5 7 5 4.5 5 3 7 3 10c0 5.5 4 10.5 9 10.5s9-5 9-10.5c0-3-1.5-5-4-5-3 0-3.5 5-5 7.5L8.5 18",
-]);
-
-/** A carton of fries: American's 🍟. */
-const Fries = drawnIcon("Fries", [
-  "M5.5 10.5 7 21h10l1.5-10.5",
-  "M5.5 10.5c4 2.5 9 2.5 13 0",
-  "M8 11.5 7 4",
-  "M10.5 12V3",
-  "M13.5 12V3",
-  "M16 11.5 17 4",
-]);
-
-/** A hanging mirror ball and a glint: Club's 🪩. */
-const DiscoBall = drawnIcon("DiscoBall", [
-  "M12 2v4",
-  "M12 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Z",
-  "M4.5 13.5h15",
-  "M5.4 10h13.2",
-  "M5.4 17h13.2",
-  "M12 6c-2 2-3.2 4.7-3.2 7.5S10 19 12 21",
-  "M12 6c2 2 3.2 4.7 3.2 7.5S14 19 12 21",
-  "M19.5 2.5v3",
-  "M18 4h3",
-]);
-
-/** A family with no icon of its own. */
-export const FALLBACK_FAMILY_ICON: LineIcon = Utensils;
-
-/** Every row and chip key the guest sees → its line icon. All (Search's
- *  chip, MESITA-2502; Home's row, MESITA-2516), Home's Social and Saved by
- *  their chip keys; families by their family key. Each mark names the thing
- *  a guest goes there for, as its emoji does (MESITA-2953: a grape for
- *  Italian, a flag for American, wind for Hookah and a TV for Sports did
- *  not). */
-export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
-  // Top (MESITA-2534) wears a star (Pato, MESITA-2557: fire "feels like
-  // trending"); before that fire, a trending-up arrow, a grid of everything.
-  all: Star,
-  social: Users,
-  saved: Heart,
-  coffee: Coffee,
-  breakfast: EggFried,
-  bakery: Croissant,
-  sweet: CakeSlice,
-  healthy: Salad,
-  quick_bite: Zap,
-  tacos: Taco,
-  burgers: Hamburger,
-  pizza: Pizza,
-  chicken: Drumstick,
-  sushi: Fish,
-  mexican: MexicanFlag,
-  steak: Beef,
-  seafood: Shrimp,
-  italian: Pasta,
-  japanese: Onigiri,
-  chinese: TakeoutBox,
-  asian: NoodleBowl,
-  indian: Soup,
-  arabic: Kebab,
-  european: Pretzel,
-  american: Fries,
-  dinner: UtensilsCrossed,
-  fancy: HandPlatter,
-  drinks: Beer,
-  fun: Gamepad2,
-  casino: Dices,
-  night_out: Moon,
-  nightclub: DiscoBall,
-  music: Music,
-};
-
-/** The icon for a row, chip or family key; Utensils when it has none. */
-export function familyIcon(key: string): LineIcon {
-  return FAMILY_ICONS[key] ?? FALLBACK_FAMILY_ICON;
-}
-
-/** Draws the icon for `name` (a row, chip or family key). One stable
- *  component, so a caller never creates one during render. */
-export function FamilyIcon({
+/** Draws `name`'s picture. Decorative: the chip's label names it. */
+export function FamilyMark({
   name,
+  size = 22,
   className,
-  strokeWidth = 1.75,
 }: {
   name: string;
+  /** Kept for callers; the picture is the same on the chosen ink circle. */
+  on?: boolean;
+  size?: number;
   className?: string;
-  strokeWidth?: number;
 }) {
-  return createElement(familyIcon(name), {
-    className,
-    strokeWidth,
-    "aria-hidden": true,
-  });
+  return (
+    // A 1 KB static SVG: next/image would add a request hop for nothing.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={familyMarkSrc(name)}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      draggable={false}
+      decoding="async"
+      className={className}
+      style={{ display: "block", width: size, height: size }}
+    />
+  );
 }

@@ -56,6 +56,7 @@ import {
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { FamilyFilterSheet } from "./FamilyFilterSheet";
+import { FamilyMark } from "@/lib/family-icons";
 import { cn } from "@/lib/utils";
 import {
   BAR,
@@ -69,10 +70,9 @@ import {
   HEADER_PILL,
 } from "./header-classes";
 
-// A chip's mark is its family's emoji, the same one Home's column wears
-// (MESITA-3760, undoing MESITA-2478's line icons here); Popular is ⭐ as on Home.
-const CHIP_EMOJI = "w-4 shrink-0 text-center text-sm leading-none";
-const POPULAR_EMOJI = "⭐";
+// A chip's mark is its family's Fluent Flat picture, the same one Home's
+// strip wears (MESITA-4782; the phone's emoji since MESITA-3760).
+const CHIP_MARK = "shrink-0";
 
 
 export function SearchHeader({
@@ -183,9 +183,7 @@ export function SearchHeader({
                 className={cn(CHIP, special === "nearby" ? CHIP_ON : CHIP_OFF)}
                 data-search-chip-nearby
               >
-                <span aria-hidden className={CHIP_EMOJI}>
-                  📍
-                </span>
+                <FamilyMark name="nearby" on={special === "nearby"} size={16} className={CHIP_MARK} />
                 <span>Nearby</span>
               </button>
               <button
@@ -195,9 +193,7 @@ export function SearchHeader({
                 className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
                 data-search-chip-top
               >
-                <span aria-hidden className={CHIP_EMOJI}>
-                  {POPULAR_EMOJI}
-                </span>
+                <FamilyMark name="all" on={everyFamily} size={16} className={CHIP_MARK} />
                 <span>Popular</span>
               </button>
               {FILTERABLE_PLACE_FAMILIES.map((family) => {
@@ -211,9 +207,7 @@ export function SearchHeader({
                     aria-pressed={on}
                     className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
                   >
-                    <span aria-hidden className={CHIP_EMOJI}>
-                      {family.emoji}
-                    </span>
+                    <FamilyMark name={family.key} on={on} size={16} className={CHIP_MARK} />
                     <span>{family.label}</span>
                   </button>
                 );

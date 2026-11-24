@@ -1,34 +1,22 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { Star, Users, Utensils } from "lucide-react";
-import {
-  FAMILY_ICONS,
-  FALLBACK_FAMILY_ICON,
-  Taco,
-  familyIcon,
-} from "@/lib/family-icons";
+import { FAMILY_MARK_KEYS, familyMarkSrc } from "@/lib/family-icons";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 
-// The consumer's family marks are line icons, never emoji (MESITA-2478).
-describe("family icons (MESITA-2478)", () => {
-  it("every guest family and the four pinned rows has its own icon", () => {
-    for (const f of FILTERABLE_PLACE_FAMILIES) {
-      expect(FAMILY_ICONS[f.key], f.key).toBeDefined();
+// The guest's family marks are Fluent Flat files (MESITA-4782). A family
+// added without its file would render a broken image on Home and Search.
+describe("family marks (MESITA-4782)", () => {
+  it("every guest family and special row has its own file on disk", () => {
+    const keys = new Set<string>(FAMILY_MARK_KEYS);
+    for (const f of FILTERABLE_PLACE_FAMILIES) expect(keys.has(f.key), f.key).toBe(true);
+    for (const k of FAMILY_MARK_KEYS) {
+      expect(existsSync(join(process.cwd(), "public", familyMarkSrc(k))), k).toBe(true);
     }
-    for (const k of ["all", "social", "saved"]) {
-      expect(FAMILY_ICONS[k], k).toBeDefined();
-    }
-    expect(familyIcon("social")).toBe(Users);
-    expect(familyIcon("tacos")).toBe(Taco);
   });
 
-  it("an unknown family falls back to Utensils", () => {
-    expect(FALLBACK_FAMILY_ICON).toBe(Utensils);
-    expect(familyIcon("undefined")).toBe(Utensils);
-    expect(familyIcon("not_a_family")).toBe(Utensils);
-  });
-
-  // Top wears a star (MESITA-2557; fire read as trending); the key stays all.
-  it("draws Top as a star", () => {
-    expect(FAMILY_ICONS.all).toBe(Star);
+  it("Search's nearby is Home's near; an unknown key wears Dinner's plate", () => {
+    expect(familyMarkSrc("nearby")).toBe("/families/near.svg");
+    expect(familyMarkSrc("not_a_family")).toBe("/families/dinner.svg");
   });
 });

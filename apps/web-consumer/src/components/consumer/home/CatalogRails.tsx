@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { FamilyMark } from "@/lib/family-icons";
 
 // Home — two tabs under Home's header (Pato, MESITA-2517: "header (Mesita
 // location as it is) then another header (Places. Social) … If places, show
@@ -655,10 +656,11 @@ export function CatalogRails() {
             isSpecial(c.key) && CAT_SQUARE,
           )}
         >
-          {/* SOCIAL IS A HAPPY FACE (Pato, 2026-11-23, MESITA-4768: "change
-              the icon of social for a happy face"; the Instagram mark of
-              MESITA-4761 before): an emoji like every other chip. */}
-          {c.emoji}
+          {/* FLUENT FLAT, NOT THE PHONE'S EMOJI (Pato, 2026-11-23,
+              MESITA-4782: "colors encode information"; chose "A · Fluent
+              Flat"): each chip wears its family's picture from our files.
+              Social stays a happy face (MESITA-4768). */}
+          <FamilyMark name={c.key} on={on} />
         </span>
         <span
           className={cn(
