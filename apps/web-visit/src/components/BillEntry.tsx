@@ -9,9 +9,11 @@ import { amountParts, type Key, percentTip, pressAmount, pressCode, tipFor, WAIT
 // code came after the tip under MESITA-4889), one thing per screen, on keys drawn
 // in the page (MESITA-4871):
 //
-//   Code     the place's 6 digits (the waiter's name first, if asked, MESITA-4904), then whose QR it is
+//   Code     the place's 6 digits
+//   Name     the waiter's, only where the owner asks (Pato, MESITA-4925: "it must be
+//            after the code not before"); then whose QR it is
 //   Bill     the bill, before tip; then the tip, 10 · 15 · 20% · Other, nothing is no tip; Send bill
-//   Confirm  the handshake: this tap and the guest's Pay, in any order
+//   Payment  the handshake: this tap and the guest's Pay, in any order
 //   Receipt  what was paid
 //
 // The tip is never picked for the guest.
@@ -20,10 +22,12 @@ const KEYS: Key[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "bac
 const REARM_MS = 700;
 const TIP_PCTS = [10, 15, 20] as const;
 
-export const WAITER_STEPS = ["Code", "Bill", "Confirm", "Receipt"] as const;
+export const WAITER_STEPS = ["Code", "Name", "Bill", "Payment", "Receipt"] as const;
+export type WaiterStep = (typeof WAITER_STEPS)[number];
 
-/** Where the waiter is; a picture, not buttons. */
-export function WaiterSteps({ at, onBack, busy }: { at: 1 | 2 | 3 | 4; onBack?: () => void; busy?: boolean }) {
+/** Where the waiter is; a picture, not buttons. `named`: this place asks for a name. */
+export function WaiterSteps({ at, named, onBack, busy }: { at: WaiterStep; named: boolean; onBack?: () => void; busy?: boolean }) {
+  const steps = WAITER_STEPS.filter((s) => named || s !== "Name");
   return (
     <div className="wp-head">
       {onBack ? (
@@ -32,8 +36,8 @@ export function WaiterSteps({ at, onBack, busy }: { at: 1 | 2 | 3 | 4; onBack?: 
         </button>
       ) : null}
       <ol className="wp-steps">
-        {WAITER_STEPS.map((s, i) => (
-          <li key={s} aria-current={i + 1 === at ? "step" : undefined} className={i < at ? "wp-on" : undefined}>
+        {steps.map((s, i) => (
+          <li key={s} aria-current={s === at ? "step" : undefined} className={i <= steps.indexOf(at) ? "wp-on" : undefined}>
             {s}
           </li>
         ))}
@@ -108,21 +112,24 @@ const Alert = ({ text }: { text: string | null }) =>
     </p>
   ) : null;
 
-/** The place's code: after the scan, or again from another phone. `askName`: the
- *  owner asks for the waiter's name first (MESITA-4904). Nothing is kept. */
-export function CodeEntry({ busy, error, label, askName, onCode }: { busy: boolean; error: string | null; label: string; askName: boolean; onCode: (code: string, name: string | null) => Promise<boolean> }) {
+/** The place's code: after the scan, or again from another phone. `named`: the
+ *  owner asks for the waiter's name; `askName`: the code was right, so it is asked
+ *  now (MESITA-4925). Nothing is kept. */
+export function CodeEntry({ busy, error, label, named, askName, onCode, onBack }: { busy: boolean; error: string | null; label: string; named: boolean; askName: boolean; onCode: (code: string, name: string | null) => Promise<boolean>; onBack: () => void }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
-  const [named, setNamed] = useState(false);
   const ready = code.length === WAITER_CODE_LENGTH && !busy;
   const go = () => {
-    if (ready) void onCode(code, askName ? name.trim() : null).then((ok) => !ok && setCode(""));
+    if (ready) void onCode(code, null).then((ok) => !ok && setCode(""));
   };
-  if (askName && !named) {
-    const next = () => name.trim() && setNamed(true);
+  if (askName) {
+    const sendable = name.trim() !== "" && !busy;
+    const next = () => {
+      if (sendable) void onCode(code, name.trim()).then((ok) => !ok && setCode(""));
+    };
     return (
       <main className="wp" data-bill="name">
-        <WaiterSteps at={1} busy={busy} />
+        <WaiterSteps at="Name" named busy={busy} onBack={onBack} />
         <div className="wp-body">
           <h1 className="wp-title">Your name</h1>
           <input
@@ -141,15 +148,15 @@ export function CodeEntry({ busy, error, label, askName, onCode }: { busy: boole
           />
           <Alert text={error} />
         </div>
-        <button type="button" className="wp-go" disabled={!name.trim()} onClick={next}>
-          Next
+        <button type="button" className="wp-go" disabled={!sendable} onClick={next}>
+          {busy ? "Checking…" : label}
         </button>
       </main>
     );
   }
   return (
     <main className="wp" data-bill="code">
-      <WaiterSteps at={1} busy={busy} onBack={askName ? () => setNamed(false) : undefined} />
+      <WaiterSteps at="Code" named={named} busy={busy} />
       <div className="wp-body">
         <h1 className="wp-title">Waiter code</h1>
         <Code code={code} />
@@ -157,17 +164,17 @@ export function CodeEntry({ busy, error, label, askName, onCode }: { busy: boole
       </div>
       <Keypad onKey={(k) => setCode((c) => pressCode(c, k))} onEnter={go} />
       <button type="button" className="wp-go" disabled={!ready} onClick={go}>
-        {busy ? "Checking…" : label}
+        {busy ? "Checking…" : named ? "Next" : label}
       </button>
     </main>
   );
 }
 
 /** Whose QR it is, before the bill is typed. */
-export function GuestCheck({ name, photo, age, sex, busy, error, onYes, onNo }: { name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null; busy: boolean; error: string | null; onYes: () => void; onNo: () => void }) {
+export function GuestCheck({ named, name, photo, age, sex, busy, error, onYes, onNo }: { named: boolean; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null; busy: boolean; error: string | null; onYes: () => void; onNo: () => void }) {
   return (
     <main className="wp" data-bill="guest">
-      <WaiterSteps at={1} />
+      <WaiterSteps at={named ? "Name" : "Code"} named={named} />
       <div className="wp-body">
         <h1 className="wp-title">Is this your guest?</h1>
         <span className="wp-face" aria-hidden>
@@ -193,6 +200,8 @@ export function GuestCheck({ name, photo, age, sex, busy, error, onYes, onNo }: 
 }
 
 export type BillEntryProps = {
+  /** This place asks for the waiter's name. */
+  named: boolean;
   /** Cents to start from, on an edit. */
   start?: { bill: number; tip: number };
   busy: boolean;
@@ -205,7 +214,7 @@ export type BillEntryProps = {
   onLeave?: () => void;
 };
 
-export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }: BillEntryProps) {
+export function BillEntry({ named, start, busy, error, top, onTyping, onSend, onLeave }: BillEntryProps) {
   const [step, setStep] = useState(0);
   const [bill, setBill] = useState(start?.bill ? amountText(start.bill) : "");
   // A tip is a picked percent, which follows the bill, or typed.
@@ -240,7 +249,7 @@ export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }
 
   return (
     <main className="wp" data-bill="type" data-step={step === 0 ? "bill" : "tip"}>
-      <WaiterSteps at={2} busy={busy} onBack={step > 0 ? () => setStep(0) : onLeave} />
+      <WaiterSteps at="Bill" named={named} busy={busy} onBack={step > 0 ? () => setStep(0) : onLeave} />
       {top}
       <div className="wp-body">
         <h1 className="wp-title">{step === 0 ? "How much is the bill?" : "Tip? Ask the guest"}</h1>

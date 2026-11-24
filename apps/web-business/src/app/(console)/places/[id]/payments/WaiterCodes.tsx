@@ -2,7 +2,7 @@
 
 // The place's ONE 6-digit code (Pato, MESITA-4904: "just one 6-digits code per
 // place thats it"), made by Mesita, always shown to the owner (MESITA-4886: "it's
-// not a nuclear code. show it"), and whether the waiter types their name before it.
+// not a nuclear code. show it"), and whether the waiter types their name after it.
 // THE CODE IS OPTIONAL AT DISCOUNT (Pato, MESITA-4890: "enable the mode of no
 // password, only for discounts … display a red warning"); saving Cashback turns
 // it on again, on the server.
@@ -121,7 +121,7 @@ export function WaiterCodes({
           <div className={ROW}>
             <span>
               <span className="block text-base font-medium">Ask for the waiter&apos;s name</span>
-              <span className="text-muted-foreground block">They type it before the code. It shows on the visit.</span>
+              <span className="text-muted-foreground block">They type it after the code. It shows on the visit.</span>
             </span>
             <Switch on={askName} pending={busy || !code} label={`Ask for the waiter's name: ${askName ? "on" : "off"}`} onClick={() => void toggleName()} />
           </div>

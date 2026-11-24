@@ -468,7 +468,7 @@ export type PlacePayments = {
   code_set: boolean;
   /** The place's one 6-digit code (MESITA-4904); null for an editor, or none. */
   staff_code: string | null;
-  /** The waiter types their name before the code. */
+  /** The waiter types their name after the code. */
   name_required: boolean;
   /** MESITA-4890: bills need no waiter code (Discount only). */
   no_code?: boolean;

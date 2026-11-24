@@ -14,7 +14,7 @@
 // Body: { code?: 6 digits, name?, token | bill_id }
 // Response: { ok: true, place: { id, name }, waiter: { name }, staff_token }
 //   400 bad_request · 403 staff_only (a wrong code) |
-//       code_needed (+name_required) · 400 name_needed (no code was tried) ·
+//       code_needed (+name_required) · 400 name_needed (the code is right, nothing is signed yet) ·
 //   409 ticket_closed (the third wrong code on this QR or bill, MESITA-4898) |
 //       place_needed (the QR was opened on no place) · 404 code_gone (the QR) ·
 //   409 locked (+retry_after_s; per guest or per address, for ten minutes or a
@@ -62,10 +62,6 @@ serveJson("visit-web-sign-in", async (req) => {
       console.log("[visit-web-sign-in]", JSON.stringify({ outcome: "no_code", place_id: row.placeId }));
       return json({ ok: true, place: { id: row.placeId, name: at.place?.name ?? null }, waiter: null, staff_token: await mintWaiterToken(env.serviceKey, row, null, nowMs) });
     }
-    const required = await asks();
-    if (required && !name) {
-      return json({ ok: false, code: "name_needed", error: `Type your name, up to ${WAITER_NAME_MAX} characters.` }, 400);
-    }
     const r = await callTabRpc(admin, "waiter_code_try", {
       p_token_hash: tokenHash,
       p_bill_id: billId,
@@ -86,6 +82,11 @@ serveJson("visit-web-sign-in", async (req) => {
       if (r.code === "ticket_closed") return json({ ok: false, code: "ticket_closed", error: "Too many wrong codes. This ticket is closed." }, 409);
       const left = typeof r.left === "number" && r.left > 0 ? ` ${r.left} ${r.left === 1 ? "try" : "tries"} left.` : "";
       return json({ ok: false, code: "staff_only", error: `That code is not right for the place the guest opened.${left}` }, 403);
+    }
+    const required = await asks();
+    // After the code (Pato, MESITA-4925): only who knows it is asked.
+    if (required && !name) {
+      return json({ ok: false, code: "name_needed", error: `Type your name, up to ${WAITER_NAME_MAX} characters.` }, 400);
     }
     const placeId = String(r.place_id);
     const placeRes = await readVoucherPlace(admin, placeId);

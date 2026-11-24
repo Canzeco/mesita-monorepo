@@ -7,7 +7,7 @@ import { Bones } from "@/components/Bones";
 import { closeBill, getBill, keepBillDraft, keepBillStaff, openBill, readBillDraft, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR: the Code first
-// (MESITA-4916): the place's 6 digits (MESITA-4904), then whose QR it is; then
+// (MESITA-4916): the place's 6 digits (MESITA-4904), the name where asked, then whose QR it is; then
 // Bill, Tip and Send bill. Nothing about the phone is kept.
 
 type Found = { billId: string; staff: Staff; version: number; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
@@ -19,6 +19,8 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const [view, setView] = useState<"start" | "code" | "guest" | "type" | "ended" | "closed">("start");
   const [found, setFound] = useState<Found | null>(null);
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
+  // This place asks for a name; the code was right, so it is asked now.
+  const [named, setNamed] = useState(false);
   const [askName, setAskName] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +85,16 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       return r === "failed" || !("code" in r) || r.code !== "staff_only";
     };
     const key = await signIn(code, { token }, name);
-    if (key !== "failed" && "refused" in key && key.name_required) setAskName(true);
+    if (key !== "failed" && "refused" in key) {
+      if (key.name_required) setNamed(true);
+      if (key.code === "name_needed" && !name) {
+        setAskName(true);
+        setBusy(null);
+        return true;
+      }
+      // The code changed meanwhile: it is typed again.
+      if (key.code === "staff_only") setAskName(false);
+    }
     if (code === null && key !== "failed" && "refused" in key && key.code === "code_needed") {
       setBusy(null);
       setView("code");
@@ -201,6 +212,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   if (view === "guest" && found) {
     return (
       <GuestCheck
+        named={found.staff.waiter != null}
         name={found.name}
         photo={found.photo}
         age={found.age}
@@ -220,7 +232,12 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     return (
       <CodeEntry
         label="Next"
+        named={named}
         askName={askName}
+        onBack={() => {
+          setError(null);
+          setAskName(false);
+        }}
         busy={busy === "code"}
         error={error}
         onCode={enter}
@@ -229,6 +246,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   }
   return (
     <BillEntry
+      named={found?.staff.waiter != null}
       start={start}
       onTyping={onType}
       busy={busy === "send"}
