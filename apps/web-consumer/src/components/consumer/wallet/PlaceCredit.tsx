@@ -2,7 +2,7 @@
 
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Clock3, Gift, QrCode, Store, Wallet as WalletIcon } from "lucide-react";
+import { BadgePlus, ChevronRight, Clock3, Gift, QrCode, Store } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -323,7 +323,7 @@ export function PlaceCredit({
               (Pay Bill) (Send Gift) (View Place). and make prepay green";
               View Offers before): get credit, spend it, share it, then the
               place. Shown where a voucher is sold; every offer is the Offers
-              tile under the card. The wallet is Prepay's one mark. */}
+              tile under the card. The plus badge is Prepay's one mark (MESITA-4843). */}
           {prepay ? (
             <PushLink
               href={offerHref(href, prepay, true)}
@@ -331,7 +331,7 @@ export function PlaceCredit({
               data-loyalty-card-prepay
             >
               <span className={cn(ROUND_FACE, "bg-[#635BFF] text-white")}>
-                <WalletIcon className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+                <BadgePlus className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Prepay
             </PushLink>

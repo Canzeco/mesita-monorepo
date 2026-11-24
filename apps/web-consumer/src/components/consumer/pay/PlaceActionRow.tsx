@@ -9,7 +9,7 @@ import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
 // A CARD, NOT A ROW (Pato, 2026-11-24, MESITA-4839: "credits must be more
 // visible. that looks like shit. try better"): the place's photo, repeated, under a dark
-// scrim, the name over the balance, a white Gift button at the right. 72px
+// scrim, the name over the balance, a white Gift button at the right. 56px, Add Loyalty Card's height
 // (Pato, MESITA-4842: "make this way shorter") (MESITA-4838: "each credit card having a quick button to
 // gift"). The whole card opens the Loyalty Card; Gift is its own link over
 // it. A one-line row with a black pill before (MESITA-4573, 4586).
@@ -45,7 +45,7 @@ export function PlaceActionRow({
 }) {
   return (
     <div
-      className={cn("bg-foreground relative isolate flex min-h-18 items-center overflow-hidden text-white", disabled && "opacity-60 grayscale")}
+      className={cn("bg-foreground relative isolate flex min-h-14 items-center overflow-hidden text-white", disabled && "opacity-60 grayscale")}
       data-wallet-row
       data-place-id={placeId}
     >
@@ -59,20 +59,20 @@ export function PlaceActionRow({
           aria-hidden
         />
       ) : null}
-      <span className="absolute inset-0 -z-10 bg-gradient-to-r from-black/90 via-black/85 to-black/40" aria-hidden />
+      <span className="absolute inset-0 -z-10 bg-gradient-to-r from-black/75 via-black/50 to-black/10" aria-hidden />
       <button
         type="button"
         disabled={disabled}
         aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}, ${amount} in credits`}
         onClick={() => onOpen?.()}
-        className="flex min-w-0 flex-1 flex-col items-start gap-1 px-3.5 py-2.5 text-left disabled:cursor-default"
+        className="flex min-w-0 flex-1 flex-col items-start gap-0.5 px-3.5 py-1 text-left [text-shadow:0_1px_3px_rgb(0_0_0/0.8)] disabled:cursor-default"
         data-loyalty-card
       >
         <span className="block max-w-full truncate text-sm leading-tight font-semibold">{name}</span>
         {subtitle ? (
           <span className="block text-sm leading-tight font-semibold">{subtitle}</span>
         ) : (
-          <span className="block text-2xl leading-none font-semibold tabular-nums" data-loyalty-balance>
+          <span className="block text-xl leading-tight font-semibold tabular-nums" data-loyalty-balance>
             {amount}
           </span>
         )}
@@ -86,7 +86,7 @@ export function PlaceActionRow({
         <PushLink
           href={giftHref}
           aria-label={`Send a gift from ${name}`}
-          className="mr-3 flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-base font-semibold text-neutral-950 hover:bg-white/90"
+          className="relative mr-3 flex h-10 shrink-0 items-center after:absolute after:-inset-y-0.5 after:inset-x-0 justify-center gap-2 rounded-xl bg-white px-4 text-base font-semibold text-neutral-950 hover:bg-white/90"
           data-card-gift
         >
           <Gift className="h-5 w-5" strokeWidth={2} aria-hidden />
