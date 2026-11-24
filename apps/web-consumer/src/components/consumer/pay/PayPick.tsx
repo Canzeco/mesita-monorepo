@@ -125,8 +125,8 @@ export function PlaceList({
             </div>
           ) : null}
           <div className="divide-border border-border divide-y border-b">
-            {shown.map((p, i) => (
-              <PlaceRow key={`${p.place_id}:${i}`} p={p} onPick={onPick} kind={kind} />
+            {shown.map((p) => (
+              <PlaceRow key={p.place_id} p={p} onPick={onPick} kind={kind} />
             ))}
           </div>
         </div>
