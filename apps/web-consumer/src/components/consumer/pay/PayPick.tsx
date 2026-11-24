@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, QrCode } from "lucide-react";
+import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -121,6 +121,7 @@ export function PlaceList({
                 {h}
               </span>
             ))}
+            <span />
           </div>
           <div className="divide-border border-border divide-y border-b">
             {shown.map((p, i) => (
@@ -144,12 +145,13 @@ function fold(v: string): string {
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
 /** The table's columns (Pato, 2026-11-24, MESITA-4845: "name 50% and then
- *  prepay offers 50% wide, each 16.66%"): no ›, no gaps. Pay is thirds, with no
+ *  prepay offers 50% wide, each 16.66%"): no gaps. A › ends every row: it opens (Pato,
+ *  MESITA-4848). Pay is thirds, with no
  *  distance (Pato: "33% and 33% and 33%"). */
 const HEADS: Record<ListKind, string[]> = { prepay: ["$200", "$1,000", "$5,000"], pay: ["Your credits", "This bill"] };
 const ROW_GRID: Record<ListKind, string> = {
-  prepay: "grid w-full grid-cols-[50%_repeat(3,minmax(0,1fr))] items-center",
-  pay: "grid w-full grid-cols-3 items-center",
+  prepay: "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center",
+  pay: "grid w-full grid-cols-[repeat(3,minmax(0,1fr))_1.5rem] items-center",
 };
 
 /** A place, one row, the one button. Prepay: the bonus of each voucher it
@@ -201,6 +203,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
           </span>
         </>
       )}
+      <ChevronRight className="text-muted-foreground h-4 w-4" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }
