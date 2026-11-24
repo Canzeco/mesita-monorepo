@@ -162,8 +162,6 @@ const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: st
 /** MESITA-4770: the mechanism picks, in the owner's words. */
 const MECHANISM_LABEL: Record<VisitMechanism, string> = { discount: "Discount", cashback: "Cashback" };
 const pct = (bps: number) => `${bps / 100}%`;
-/** A cashback pick: Off or the rate. */
-const ratePick = (bps: number) => (bps === 0 ? "Off" : pct(bps));
 /** Every visit rate at 0: what Enabled Off stores. */
 const NO_RATES = { welcome_bps: 0, returning_bps: 0, returning_vip_bps: 0, welcome_vip_bps: 0 } as const;
 const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0 || r.returning_vip_bps > 0 || r.welcome_vip_bps > 0;
@@ -726,7 +724,16 @@ export function PaymentsPanel({
                 })}
               </div>
             </li>
+            {/* LIKE A VOUCHER ROW (Pato, 2026-11-23, MESITA-4789: "same design
+                for these cashback mechanics"): two rate pills, then the
+                voucher's switch for On/Off; no Off pill. Off keeps the last
+                rate on its pill, greyed, and On brings it back. */}
             {RATE_ROWS.map((row) => {
+              const live = discount || settings.loyalty_cards ? rates[row.key] : 0;
+              const on = live > 0;
+              const steps = VISIT_PICKS_BPS[row.key].filter((b) => b > 0);
+              const remembered = lastRates[row.key] > 0 ? lastRates[row.key] : CASHBACK_DEFAULTS[row.key] > 0 ? CASHBACK_DEFAULTS[row.key] : steps[0];
+              const locked = pending || !!visitBlock;
               return (
                 <li key={row.key} id={row.id} className={MARK_ROW} data-place-state={row.key}>
                   <div className="min-w-0">
@@ -734,10 +741,20 @@ export function PaymentsPanel({
                     <p className="text-muted-foreground">{discount ? row.line.replace("Cashback", "Discount") : row.line}</p>
                     {under(visitBlock, row.note ?? null)}
                   </div>
-                  <span />
-                  {picks(row.name, VISIT_PICKS_BPS[row.key], settings.loyalty_cards ? rates[row.key] : 0, ratePick, pending || !!creditsBlock, (b) =>
-                    editRates({ ...rates, [row.key]: b }),
-                  )}
+                  {picks(row.name, steps, on ? live : remembered, pct, locked || !on, (b) => editRates({ ...rates, [row.key]: b }))}
+                  <Switch
+                    on={on}
+                    pending={locked}
+                    onClick={() => {
+                      if (on) {
+                        setLastRates((l) => ({ ...l, [row.key]: live }));
+                        editRates({ ...rates, [row.key]: 0 });
+                      } else {
+                        editRates({ ...rates, [row.key]: remembered });
+                      }
+                    }}
+                    label={`${row.name}: ${on ? "on" : "off"}`}
+                  />
                 </li>
               );
             })}
