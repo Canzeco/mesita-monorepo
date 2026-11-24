@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Store, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/format";
 import {
@@ -13,7 +14,7 @@ type PlaceEmptyScreenProps = {
   line?: string;
   /** Short lines under the title, one per row (MESITA-4182: the Smart Menu
    *  Soon screen lists its features instead of a paragraph). */
-  items?: readonly string[];
+  items?: readonly ReactNode[];
 };
 
 /** Overview while a Google-only profile is being created (MESITA-2685).
@@ -44,8 +45,8 @@ export function PlaceEmptyScreen({ icon: Icon, title, line, items }: PlaceEmptyS
       ) : null}
       {items?.length ? (
         <ul className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
-          {items.map((item) => (
-            <li key={item}>{item}</li>
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
           ))}
         </ul>
       ) : null}
