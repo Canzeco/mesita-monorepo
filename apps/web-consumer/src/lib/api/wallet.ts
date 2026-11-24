@@ -275,18 +275,20 @@ export const BUY_REFUSAL: Record<string, string> = {
 
 /** What a refused buy does (MESITA-3549; MESITA-4065). card_required opens
  *  the card sheet; card_not_found lists the cards again and asks for another;
- *  place_cap only says its line (the offer has not changed); anything else
+ *  place_cap opens the Offers shop's "Full for now" window; anything else
  *  says its line and reloads the offer. Never computes money. */
 export type BuyRefusalAction =
   | { kind: "add_card"; line: string }
   | { kind: "reload_cards"; line: string }
+  | { kind: "full"; line: string }
   | { kind: "say"; line: string; reload: boolean };
 
 export function buyRefusalAction(code: string | null): BuyRefusalAction {
   if (code === "card_required") return { kind: "add_card", line: BUY_REFUSAL.card_required };
   if (code === "card_not_found") return { kind: "reload_cards", line: BUY_REFUSAL.card_not_found };
+  if (code === "place_cap") return { kind: "full", line: BUY_REFUSAL.place_cap };
   const line = (code && BUY_REFUSAL[code]) || BUY_REFUSAL.failed;
-  return { kind: "say", line, reload: code !== "place_cap" };
+  return { kind: "say", line, reload: true };
 }
 
 /** Whether a refusal is definitive (MESITA-4065): a 4xx is the server's

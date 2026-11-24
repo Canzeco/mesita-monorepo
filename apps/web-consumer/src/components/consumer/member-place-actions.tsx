@@ -599,6 +599,8 @@ export function usePlaceVouchers(
         const action = buyRefusalAction(code);
         if (action.kind === "add_card") openAddCard();
         if (action.kind === "reload_cards") void loadCards();
+        // The shop's own window says it (MESITA-4923): no toast.
+        if (action.kind === "full") return "full";
         const line =
           !definitive &&
           pending.current &&
