@@ -106,8 +106,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Clock, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { SexFace } from "@/components/consumer/SexFace";
-import { Instagram } from "@/components/shared/instagram-icon";
-import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
   apiListActivityFeed,
   SOCIAL_BLOCKED,
@@ -132,13 +130,11 @@ import { EmptyState, Skeleton } from "@/components/shared";
 import { goBack } from "@/lib/navigate";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import {
-  PersonInstagramPill,
   PersonModules,
 } from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
 import { useViewer } from "@/lib/identity-context";
-import { trackEvent } from "@/lib/analytics/track";
 import { openSignGate } from "@/lib/anonymous";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -224,20 +220,6 @@ export function Face({ person }: { person: ActivityPerson }) {
           <DefaultAvatar className="h-full w-full" />
         </span>
       )}
-      {person.instagram && (
-        <span
-          aria-hidden
-          className={cn(
-            MARK_CLASS,
-            "-left-1 text-white",
-            INSTAGRAM_ICON_GRADIENT_CLASS,
-          )}
-          data-social-mark="instagram"
-        >
-          <Instagram className="h-[11px] w-[11px]" strokeWidth={2.5} />
-        </span>
-      )}
-      {person.instagram && <span className="sr-only">On Instagram</span>}
     </span>
   );
 }
@@ -343,14 +325,6 @@ function FeedRow({
           className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
           data-social-quiet
         >
-          {item.person.handle && (
-            <>
-              <span className="min-w-0 truncate" data-social-handle>
-                @{item.person.handle}
-              </span>
-              <span aria-hidden>·</span>
-            </>
-          )}
           <span className="flex shrink-0 items-center gap-0.5" data-social-ago>
             <Clock className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             {ago}
@@ -545,7 +519,6 @@ function PersonCard({
   onTab: (tab: HistoryTab) => void;
   onClose: () => void;
 }) {
-  const supabase = useBrowserSupabase();
   const history = useMemberHistory(event);
   const scrollRef = useRef<HTMLDivElement>(null);
   const key = event ? cardKey(event) : null;
@@ -564,10 +537,6 @@ function PersonCard({
   if (!event || !key) return null;
   const person = history?.person ?? fallback;
   const who = person ? person.name : "Member";
-  const igUrl =
-    person && person.handle && !person.handleLocked
-      ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
-      : null;
   return (
     <div
       className="bg-card flex min-h-0 flex-1 flex-col"
@@ -625,28 +594,12 @@ function PersonCard({
             the gap. Each block carries its own inset instead. */}
         <div className="px-5 pt-5">
           {person ? (
-            // THE ME CARD'S FORMAT (Pato, 2026-11-22, MESITA-4695): name,
-            // then Instagram (no Class or Plan since MESITA-4709): a link to
-            // whoever shows it (MESITA-4858); hidden and none read alike.
+            // The Mesita profile alone: no Instagram (MESITA-4863).
             <PersonModules
               name={who}
               avatarUrl={person.avatarUrl}
               sex={person.sex}
               age={person.age}
-              instagram={
-                person.handle ? (
-                  <PersonInstagramPill
-                    label={`@${person.handle}`}
-                    verified={person.instagramBadge}
-                    href={igUrl}
-                    onOpen={() =>
-                      trackEvent(supabase, "social_open_instagram", {})
-                    }
-                  />
-                ) : (
-                  <PersonInstagramPill label="No Instagram" />
-                )
-              }
             />
           ) : history ? (
             // A link to a member who is gone (deleted, or the event is).

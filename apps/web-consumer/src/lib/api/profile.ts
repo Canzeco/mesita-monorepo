@@ -8,7 +8,7 @@ import { PROFILE_KEY, writeCached } from "@/lib/screen-cache";
 // ─── Consumer profile ───────────────────────────────────────────────────────
 
 /** What other guests see of you (MESITA-4850). */
-export type SocialLevel = "private" | "public" | "instagram";
+export type SocialLevel = "private" | "public";
 
 export type ConsumerProfile = {
   id: string;
@@ -38,10 +38,6 @@ export type ConsumerProfile = {
   // and what the VIP follower check answered, if the guest allowed it.
   instagram_proved_at?: string | null;
   instagram_vip_status?: "eligible" | "not_enough" | "not_public" | "unconfirmed" | null;
-  // MESITA-4659: may other guests and places see the @handle? Only true
-  // shows it; null (no choice recorded) and false hide it. Linking never
-  // sets it. Optional (older EF payloads).
-  instagram_handle_shown?: boolean | null;
   // MESITA-4850: the privacy level and why it cannot leave Private, if it
   // cannot. The server decides both. Optional (older EF payloads).
   social_level?: SocialLevel;
@@ -52,8 +48,6 @@ export type ConsumerProfile = {
   // (older EF payloads read as off).
   instagram_followers_emulated?: number | null;
   emulator_available?: boolean;
-  // MESITA-4858: the verified badge; the server decides it.
-  instagram_badge?: boolean;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;
@@ -96,11 +90,6 @@ type ConsumerAvatarPatch = {
   avatar_url: string | null;
 };
 
-// "Show my handle on Mesita" on Me › Instagram (MESITA-4659).
-type ConsumerHandleShownPatch = {
-  instagram_handle_shown: boolean;
-};
-
 // The privacy level on Me › Profile (MESITA-4850).
 type ConsumerSocialLevelPatch = {
   social_level: SocialLevel;
@@ -111,7 +100,6 @@ export async function apiUpdateConsumerProfile(
   input:
     | ConsumerOnboardingInput
     | ConsumerAvatarPatch
-    | ConsumerHandleShownPatch
     | ConsumerSocialLevelPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(
@@ -150,13 +138,9 @@ export async function apiInstagramChannel(client: SupabaseClient): Promise<Insta
   return await invokeEF<InstagramChannel>(client, CLAIM_EF, { action: "channel" });
 }
 
-/** Saves the handle, unverified. `show` absent keeps the choice, or starts hidden. */
-export async function apiSetInstagram(
-  client: SupabaseClient,
-  handle: string,
-  show?: boolean,
-): Promise<{ handle: string; shown: boolean }> {
-  return await invokeEF(client, CLAIM_EF, { action: "set", handle, ...(show === undefined ? {} : { show }) });
+/** Saves the handle, unverified. */
+export async function apiSetInstagram(client: SupabaseClient, handle: string): Promise<{ handle: string }> {
+  return await invokeEF(client, CLAIM_EF, { action: "set", handle });
 }
 
 /** Takes the Instagram off the account. The page confirms first. */

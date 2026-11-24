@@ -143,26 +143,26 @@ select ok(
      from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
     and (select bool_and(instagram_handle is null) and count(*) = 5
            from public.place_activity_history_by('00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours'))
-    and (select count(*) = 0
+    and (select count(*) = 1 and bool_and(instagram_handle is null and avatar_url is null)
            from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
   'no choice recorded: feed and person card hide the handle'
 );
 
 update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(
-  (select public.consumer_social_level(c) = 'instagram' and public.place_shown_handle(c) = 'probe.3219'
+  (select public.consumer_social_level(c) = 'public' and public.place_shown_handle(c) is null
      from public.consumers c where id = '00000000-0000-4000-8000-0000000a3219'),
-  'opted in without proof: shared, unverified (MESITA-4858)'
+  'an old opt-in shares nothing (MESITA-4863)'
 );
 update public.consumers set instagram_proved_at = now() where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(
-  (select bool_and(instagram_handle = 'probe.3219')
+  (select bool_and(instagram_handle is null and instagram_followers_count is null and avatar_url is null)
      from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))
-    and (select bool_and(instagram_handle = 'probe.3219')
+    and (select bool_and(instagram_handle is null and instagram_followers_count is null and avatar_url is null)
            from public.place_activity_history_by('00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours'))
-    and (select bool_and(instagram_handle = 'probe.3219')
+    and (select bool_and(instagram_handle is null and instagram_followers_count is null and avatar_url is null)
            from public.place_activity_people('00000000-0000-4000-8000-000000003219')),
-  'opted in: feed, person card and people line show the handle'
+  'verified and opted in: no reader gives another guest the Instagram (MESITA-4863)'
 );
 
 -- MESITA-4850: private and minors never appear, past events included; a Public

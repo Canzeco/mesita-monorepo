@@ -647,7 +647,7 @@ describe("T6 — Activity's chips are Me's pages (MESITA-3855)", () => {
 // Integrations, MESITA-3954).
 // Plan read Soon under MESITA-3855 and opens again since it is sold
 // (MESITA-3870).
-describe("T8 — Me's grid is eleven cells, every one a live door", () => {
+describe("T8 — Me's grid is ten cells, every one a live door", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -656,7 +656,7 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders eleven cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -671,10 +671,9 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
     // and Integrations moved inside Settings; MESITA-4709: gone again ("no
     // more VIP").
     // MESITA-4736: grouped by topic, two to a row. MESITA-4774: VIP is the
-    // third cell, called Class since MESITA-4784.
+    // third cell, called Class since MESITA-4784. MESITA-4863: no Instagram.
     expect(gridTitles()).toEqual([
       "Profile",
-      "Instagram",
       "Class",
       "Reservations",
       "Notifications",

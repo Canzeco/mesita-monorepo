@@ -3,7 +3,7 @@
 // guests never see your activity, but you cannot see activity of others if
 // private"); a Public one sees everyone but their Instagram.
 // Private: nothing. Public: first name, age and sex, no photo.
-// Public + Instagram: name, photo and @handle, verified or not (MESITA-4858).
+// Instagram is never shown to a guest (MESITA-4863): it only unlocks VIP.
 //
 // MINORS ARE ALWAYS PRIVATE (Pato, 2026-11-24: "minors have their accounts in
 // private automatically and cannot change that configuration. only ask for
@@ -11,7 +11,7 @@
 // so that is the line; no birth year is no proof. The same rule as SQL's
 // consumer_social_level, which decides who the feed returns.
 
-export const SOCIAL_LEVELS = ["private", "public", "instagram"] as const;
+export const SOCIAL_LEVELS = ["private", "public"] as const;
 export type SocialLevel = typeof SOCIAL_LEVELS[number];
 export type SocialLock = "minor" | "no_birth_year" | null;
 
@@ -30,13 +30,11 @@ export function socialLock(birthYear: number | null | undefined, now: Date = new
 export type SocialFacts = {
   birth_year: number | null;
   social_private: boolean | null;
-  instagram_verified_at: string | null;
-  instagram_handle_shown: boolean | null;
 };
 
 export function socialLevel(c: SocialFacts, now: Date = new Date()): SocialLevel {
   if (c.social_private === true || socialLock(c.birth_year, now)) return "private";
-  return c.instagram_verified_at != null && c.instagram_handle_shown === true ? "instagram" : "public";
+  return "public";
 }
 
 /** Why this member sees nobody's activity, or null when they do. */
@@ -45,9 +43,9 @@ export function socialBlocked(c: SocialFacts | null, now: Date = new Date()): "p
   return socialLock(c.birth_year, now) ?? (socialLevel(c, now) === "private" ? "private" : null);
 }
 
-/** The columns a chosen level writes. The two flags always move together. */
-export function levelPatch(level: SocialLevel): { social_private: boolean; instagram_handle_shown: boolean } {
-  return { social_private: level === "private", instagram_handle_shown: level === "instagram" };
+/** The column a chosen level writes. */
+export function levelPatch(level: SocialLevel): { social_private: boolean } {
+  return { social_private: level === "private" };
 }
 
 /** The age another guest may see, by the year alone. Null for anyone who is

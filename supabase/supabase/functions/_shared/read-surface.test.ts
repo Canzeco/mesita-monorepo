@@ -340,10 +340,6 @@ const CONSUMER_READ_ALLOWLIST = [
   // way to pay. Read-only, error logged (null falls back to the card).
   // Writes go through the consumer_set_pay_method RPC.
   "_shared/cards.ts",
-  // The verified Instagram badge (MESITA-4858): the handle and its proof of
-  // the members a Social list shows, one batched
-  // read; only the boolean leaves the server. Read-only, error logged.
-  "_shared/instagram-badge.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

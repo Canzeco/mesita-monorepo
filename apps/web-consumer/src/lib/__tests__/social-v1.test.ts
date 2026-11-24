@@ -153,23 +153,3 @@ describe("Social has no sample", () => {
     );
   });
 });
-
-// MESITA-2590: the person card opens Instagram in a new tab and counts it.
-// No Public profile switch since MESITA-4690: every profile is public.
-describe("full handle and Open Instagram", () => {
-  const FEED = readFileSync(
-    join(__dirname, "../../components/consumer/home/SocialFeed.tsx"),
-    "utf8",
-  );
-
-  it("the card's Open Instagram is a new-tab link to the profile, counted", () => {
-    const card = FEED.slice(FEED.indexOf("function PersonCard("));
-    expect(card).toContain(
-      "https://www.instagram.com/${encodeURIComponent(person.handle)}/",
-    );
-    // The handle pill opens it in a new tab (IdentityCard's
-    // PersonInstagramPill since MESITA-4695), counted.
-    expect(card).toContain("<PersonInstagramPill");
-    expect(card).toContain('trackEvent(supabase, "social_open_instagram", {})');
-  });
-});

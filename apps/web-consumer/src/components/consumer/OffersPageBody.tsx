@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
-import { isVip } from "@/lib/vip";
+import { instagramVipLine, isVip } from "@/lib/vip";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
@@ -155,6 +155,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         guest: {
           instagramLinked: Boolean(profile.instagram_handle),
           guestClass: profile.guest_class === "vip" ? "vip" : "regular",
+          vipNote: instagramVipLine(profile),
           // MESITA-4662: the emulated count when the emulator is on (test mode).
           instagramFollowers:
             (profile.emulator_available ? profile.instagram_followers_emulated : null) ??
@@ -163,10 +164,11 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         },
       }
       : {}),
-    // "How to become VIP" under Pay's Returning VIP line (MESITA-4766): only
-    // for a signed-in guest the profile says is not VIP; a push to /me/vip.
+    // "Connect Instagram to unlock" under the locked VIP line (MESITA-4863):
+    // only for a signed-in guest the profile says is not VIP. A finished check
+    // there pops back to this page.
     ...(profile && !isVip(profile)
-      ? { onBecomeVip: () => navigateTo(router, CONSUMER_ROUTES.mePages.vip, { motion: "drill" }) }
+      ? { onBecomeVip: () => navigateTo(router, `${CONSUMER_ROUTES.mePages.instagram}?from=vip`, { motion: "drill" }) }
       : {}),
   };
 

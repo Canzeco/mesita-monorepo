@@ -61,8 +61,8 @@ select is(
 update public.consumers set instagram_handle_shown = true, instagram_proved_at = now() where id = '00000000-0000-4000-8000-0000000a3213';
 select is(
   (select instagram_handle from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Public' and kind = 'viewed'),
-  'public_one',
-  'a guest who opted in shows their handle (MESITA-4659)'
+  null,
+  'no handle is shown, an old opt-in included (MESITA-4863)'
 );
 
 -- MESITA-4690: every profile is public. A signed-in guest without a verified

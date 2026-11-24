@@ -1,14 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import { toast } from "@/lib/toast";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
-import { useConsumerIdentity } from "@/lib/identity-context";
-import {
-  instagramSummary,
-  instagramWithFollowers,
-  type ConsumerFacts,
-} from "@/lib/consumer-identity";
 import { DestTile, type TileState } from "./profile-sections";
 import { MeHubFrame } from "./hub-tiles";
 import { IdentityBar } from "./IdentityBar";
@@ -23,9 +15,8 @@ import { isOpenVisit, isTicketVisit } from "@/lib/ticket-rows";
 // The Me surface — the identity header, then nine cells in Pato's order
 // (MESITA-3855):
 //
-//   header         identity + Instagram; the bar IS a door (MESITA-1652)
-//   2              Profile · Instagram
-//   2              Class · Plan (Soon)
+//   header         name and Class; no Instagram (MESITA-4863)
+//   2              Profile · Class
 //   2              Notifications · Reservations
 //   2              Tickets · Share (MESITA-3885; Share for Gift, MESITA-3940)
 //   1              Settings
@@ -66,42 +57,12 @@ import { isOpenVisit, isTicketVisit } from "@/lib/ticket-rows";
 // its page share one read.
 
 export function ProfileClient() {
-  const identity = useConsumerIdentity();
   // The row the shell already read (MESITA-3014): Me paints the guest's name
   // and photo on its first frame, and revalidates in the background.
   const { data: profile, loading } = useConsumerProfile();
   const unseen = useUnseenNotificationCount();
   const reservations = useReservations();
   const visits = useVisits();
-
-  // THE CONTEXT IS SEEDED SERVER-SIDE AND THE PROFILE IS FETCHED HERE, so the
-  // handle can land in either place first. The context wins when it has one —
-  // a fresh connect updates it before the profile refetches — and the profile
-  // row covers the cold load.
-  const igFacts: ConsumerFacts = identity.igHandle
-    ? identity
-    : {
-        ...identity,
-        igHandle: profile?.instagram_handle ?? null,
-        igConnected: identity.igConnected || Boolean(profile?.instagram_handle),
-      };
-  // ONE STRING FOR THE CHIP AND THE TILE (MESITA-2606): "@pato (~25K
-  // followers". The fresh profile count wins; the seeded one covers a fetch
-  // that has not landed.
-  const igLabel = instagramWithFollowers(
-    instagramSummary(igFacts),
-    profile?.instagram_followers_count ?? igFacts.igFollowers,
-    igFacts.igConnected && !igFacts.unknown,
-  );
-
-  // The Instagram page reloads onto /me?instagram=success after a claim, so
-  // the server-seeded identity is fresh when the toast lands.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("instagram") === "success") {
-      toast.success("Instagram connected.");
-    }
-  }, []);
 
   // THE BOXES' STATES (MESITA-3885). A read not landed yet, or failed,
   // leaves its box plain.
@@ -152,9 +113,6 @@ export function ProfileClient() {
         <IdentityBar
           profile={profile}
           loading={loading}
-          instagramLabel={igLabel}
-          // Couldn't load keeps the colour: it is not a "no".
-          instagramConnected={igFacts.igConnected || igFacts.unknown}
         />
       }
       tile={(cell, shape) => (

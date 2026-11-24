@@ -438,8 +438,8 @@ export async function disconnectInstagram(
 
 // ── readSocialStanding — what Social masks by (MESITA-2594) ───────────────
 
-/** What decides the viewer's own privacy level (MESITA-4850): you see others'
- *  handles only at the instagram level, showing yours. */
+/** What decides the viewer's own privacy level (MESITA-4850): a
+ *  private member sees nobody. */
 export async function readSocialStanding(
   admin: SupabaseClient,
   consumerId: string,
@@ -452,7 +452,7 @@ export async function readSocialStanding(
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("birth_year, social_private, instagram_verified_at, instagram_handle_shown")
+    .select("birth_year, social_private")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -463,9 +463,6 @@ export async function readSocialStanding(
       ? {
         birth_year: (data.birth_year as number | null) ?? null,
         social_private: (data.social_private as boolean | null) ?? null,
-        instagram_verified_at: (data.instagram_verified_at as string | null) ??
-          null,
-        instagram_handle_shown: (data.instagram_handle_shown as boolean | null) ?? null,
       }
       : null,
   };

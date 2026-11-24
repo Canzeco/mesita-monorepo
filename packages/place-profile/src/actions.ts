@@ -95,9 +95,12 @@ export type PlaceActions = {
     /** The guest's Class (MESITA-4640): the VIP voucher is VIP only. Absent
      *  reads Regular, so a signed-out or unread guest sees VIP locked. */
     guestClass?: "regular" | "vip";
+    /** Why a connected Instagram has not made the guest VIP (MESITA-4863):
+     *  followers and privacy, in the host's words. */
+    vipNote?: string | null;
   };
-  /** "How to become VIP" under the Returning VIP line (MESITA-4766): the
-   *  host opens Me › Become VIP. The host passes it only for a signed-in
+  /** "Connect Instagram to unlock" under the Returning VIP line (MESITA-4863):
+   *  the host opens Me › Instagram. The host passes it only for a signed-in
    *  guest it knows is not VIP; absent, no link. */
   onBecomeVip?: () => void;
 };
