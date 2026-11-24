@@ -57,11 +57,15 @@ export function PayHeader({
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-2">
-        <h1 className="flex min-h-11 min-w-0 items-center text-xl font-semibold tracking-tight">
+      {/* THE TILES' GRID (Pato, 2026-11-23, MESITA-4796: "the button at the
+          top must be 25% and 25% to clearly cover pay bill 50%"): the title in
+          the left half, the action filling the right half, on the same 8px
+          edges and 8px gap as Prepay | Pay Bill below. */}
+      <div className={action ? "grid min-h-11 grid-cols-2 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
+        <h1 className="flex min-h-11 min-w-0 items-center pl-1 text-xl font-semibold tracking-tight">
           <span className="min-w-0 truncate">{title}</span>
         </h1>
-        {action ? <div className="flex shrink-0 justify-end">{action}</div> : null}
+        {action ? <div className="min-w-0">{action}</div> : null}
       </div>
       {bar ? (
         <div className="border-border border-t px-4 py-2" data-pay-search>

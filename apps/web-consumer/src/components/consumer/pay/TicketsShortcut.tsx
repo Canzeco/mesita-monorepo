@@ -43,7 +43,7 @@ export function TicketsShortcut({
     return (
       <PushLink
         href={CONSUMER_ROUTES.mePages.tickets}
-        className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 items-center justify-center gap-2 rounded-xl px-3.5 text-base font-semibold"
+        className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl px-2 text-base font-semibold"
         data-tickets-shortcut
       >
         {/* THE WORD, ANOTHER GLYPH, NO › (Pato, 2026-11-21, MESITA-4598: "in
@@ -87,7 +87,7 @@ export function GiftShortcut() {
   return (
     <PushLink
       href={CONSUMER_ROUTES.walletSend}
-      className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 items-center justify-center gap-2 rounded-xl px-3.5 text-base font-semibold"
+      className="bg-muted text-foreground hover:bg-foreground/15 flex h-11 min-w-0 items-center justify-center gap-2 rounded-xl px-2 text-base font-semibold"
       data-send-gift
     >
       <Gift className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
@@ -101,7 +101,7 @@ export function WalletHeaderActions() {
   return (
     // THE SAME WIDTH (Pato, 2026-11-23, MESITA-4783: "gift and tickets must
     // be the same length"): two equal columns, each word centred.
-    <div className="grid grid-cols-2 items-center gap-2">
+    <div className="grid w-full grid-cols-2 items-center gap-2">
       <GiftShortcut />
       <TicketsShortcut icon />
     </div>
