@@ -1153,8 +1153,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         className="relative min-h-0 flex-1 overflow-hidden"
       >
         {/* Search's header, floating on the map's top edge with no band (Pato,
-          MESITA-2996, was MESITA-2409/2413's white band): locate, then one bar —
-          query · Ask AI (MESITA-4799) — then the family chips; the
+          MESITA-2996, was MESITA-2409/2413's white band): one bar —
+          query · Ask AI (MESITA-4799) — then locate and the family chips; the
           bar's results and the load error cover the chips. */}
         <SearchHeader
           locate={

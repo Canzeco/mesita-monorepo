@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/shared";
 import {
   CHIP,
   CHIP_SPECIAL,
-  HEADER_DISC,
+  CHIP_DISC,
   SEARCH_BAR,
 } from "@/components/consumer/search/header-classes";
 import {
@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 // /search Suspense fallback: SearchClient's frame, block for block (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader on its
-// top edge: the 40px locate disc and the 40px bar with AI inside it, white and
-// floating (MESITA-4799), then the floating 32px chip row (the Menu
+// top edge: the 40px bar with AI inside it, white and floating (MESITA-4799),
+// then the floating 32px chip row (the locate disc, MESITA-4800, the Menu
 // square, then Popular and the families as pills; MESITA-4468). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
@@ -36,7 +36,7 @@ function ControlSkeleton({
 }) {
   return (
     <div aria-hidden className={cn(token, "invisible relative")}>
-      <Skeleton className={cn("visible absolute -inset-px", square ? "rounded-lg" : "rounded-full")} />
+      <Skeleton className={cn("bg-card visible absolute -inset-px shadow-float", square ? "rounded-lg" : "rounded-full")} />
       <span className="h-4 w-4 shrink-0" />
       <span>{label}</span>
     </div>
@@ -52,12 +52,12 @@ export default function SearchLoading() {
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <MapVeil />
         <div className="absolute inset-x-0 top-0 z-30">
-          <div aria-hidden className="flex items-center gap-3 px-3 pt-3">
-            {/* White pills: grey ones would vanish on the grey veil. */}
-            <div className={HEADER_DISC} />
+          <div aria-hidden className="flex items-center px-3 pt-3">
+            {/* A white pill: a grey one would vanish on the grey veil. */}
             <div className={cn(SEARCH_BAR, "flex-1")} />
           </div>
-          <div className="flex items-center gap-3 overflow-hidden pt-1 pl-3">
+          <div className="flex items-center gap-2 overflow-hidden pt-1 pl-3">
+            <div aria-hidden className={CHIP_DISC} />
             <ControlSkeleton token={CHIP_SPECIAL} label="Menu" square />
             <div className="flex items-center gap-2 py-2 pr-3">
               <ControlSkeleton token={CHIP} label="Popular" />
