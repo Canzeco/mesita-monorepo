@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, placeOffersPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
-import { BadgePercent, Banknote, CircleCheck, HandCoins, Loader2, PenLine, ReceiptText, Wallet, XCircle } from "lucide-react";
+import { BadgePercent, Banknote, ChevronRight, CircleCheck, HandCoins, Loader2, PenLine, ReceiptText, Wallet, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
@@ -40,6 +40,13 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 // The page reads the bill every two seconds while it's open.
 
 const POLL_MS = 2000;
+const PREPAY_NAME: Record<string, string> = {
+  voucher_200: "Small Bonus",
+  voucher_1000: "Medium Bonus",
+  voucher_5000: "Big Bonus",
+  voucher_welcome: "Welcome Bonus",
+  voucher_vip: "VIP Bonus",
+};
 
 export function GuestTabView({
   tab: first,
@@ -65,6 +72,8 @@ export function GuestTabView({
   const [tab, setTab] = useState(first);
   // MESITA-4813: the Cashback the paid bill earned; undefined = not read yet.
   const [back, setBack] = useState<TabRead["back"]>(undefined);
+  // MESITA-4878: what prepaying would have saved.
+  const [prepay, setPrepay] = useState<TabRead["prepay_tip"]>(null);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +139,7 @@ export function GuestTabView({
           setFailedReads(0);
           setTab(r.tab);
           if (r.back !== undefined) setBack(r.back);
+          if (r.prepay_tip) setPrepay(r.prepay_tip);
         })
         .catch(() => {
           if (alive) setFailedReads((n) => n + 1);
@@ -149,7 +159,9 @@ export function GuestTabView({
     let alive = true;
     void apiGetTab(getSupabase(), tab.tab_id)
       .then((r) => {
-        if (alive) setBack(r.back ?? null);
+        if (!alive) return;
+        setBack(r.back ?? null);
+        setPrepay(r.prepay_tip ?? null);
       })
       .catch(() => {});
     return () => {
@@ -294,6 +306,30 @@ export function GuestTabView({
               value={<CircleCheck className={cn("h-5 w-5", GOOD)} aria-label="Confirmed" />}
             />
           </PaySection>
+          {/* WHAT IT SAVED, WHAT PREPAY WOULD HAVE (Pato, 2026-11-24,
+              MESITA-4878). Every number is the server's. */}
+          {discount > 0 ? (
+            <p className={cn("flex shrink-0 items-center justify-between gap-3 rounded-2xl px-4 py-3 text-base font-semibold tabular-nums", BOX_TINT.discount)} data-guest-saved>
+              <span>You saved</span>
+              <span>{m(discount)}</span>
+            </p>
+          ) : null}
+          {prepay && PREPAY_NAME[prepay.voucher] ? (
+            <button
+              type="button"
+              onClick={() => navigateTo(router, placeOffersPath(tab.place.id, "prepayment"), { motion: "drill" })}
+              className="flex w-full shrink-0 items-center gap-3 rounded-2xl bg-indigo-50 px-4 py-3 text-left text-indigo-700"
+              data-guest-prepay-tip
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-base font-semibold tabular-nums">Prepay would have saved you {m(prepay.saving_cents)}{discount > 0 ? " more" : ""}</span>
+                <span className="block text-sm tabular-nums">
+                  {PREPAY_NAME[prepay.voucher]}: pay {m(prepay.price_cents)}, get {m(prepay.credit_cents)} for your next visits.
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+            </button>
+          ) : null}
         </StepBody>
         {/* The footer, always in reach. */}
         <div className="border-border -mx-4 mt-3 grid shrink-0 gap-3 border-t px-4 pt-3">

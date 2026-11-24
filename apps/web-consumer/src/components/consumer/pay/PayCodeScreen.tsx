@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { BadgePercent, Banknote, HandCoins, Loader2, ReceiptText, Wallet, XCircle } from "lucide-react";
+import { Loader2, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -16,7 +16,7 @@ import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { cn } from "@/lib/utils";
-import { BAD, BOX_TINT, MoneyRow, PaySection, StepBody, StepStrip, TicketHeader } from "./pay-flow";
+import { BAD, BOX_TINT, PaySection, StepBody, StepStrip, TicketHeader } from "./pay-flow";
 import { CancelBillButtons, NETWORK_FAILURE, PlacePhoto, QUIET_BUTTON_CLASS } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
 
@@ -24,10 +24,13 @@ import { usePayPlaces } from "./use-pay-places";
 // general Mesita QR, never a place's; the waiter scans it and sends the bill;
 // this same screen becomes the bill:
 //
-//   QR         "Show this to your waiter"; no digits under it (MESITA-4826)
-//   bill       what it comes to; Accept or Decline
-//   accepted   Pay $X at the place; only the waiter confirms it
-//   paid       the receipt (/pay/bill/<id>)
+// THREE VIEWS (MESITA-4878, Pato: "1. QR 2. Pay Bill & Confirm payment 3. Receipt"):
+//   1 QR        "Show this to your waiter"; opened from a place, the guest's
+//               credits and rate there and nothing more (MESITA-4881, Pato: "don't
+//               overexplain here"; the tiers and a Prepay line under MESITA-4878)
+//   2 Pay Bill  what it comes to, Accept or Decline; then Pay $X at the place,
+//               which only the waiter confirms
+//   3 Receipt   /pay/bill/<id>
 //   over       declined, cancelled or expired, and the QR again
 //
 // `from` (a place's Pay Bill) only says what the guest gets there; it is never
@@ -254,7 +257,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     const discount = here ? payPlaceDiscountBps(here) : 0;
     const back = here && discount === 0 ? payPlaceCashbackBps(here) : 0;
     return frame(
-      "Show your QR",
+      "Your QR",
       <>
         {here && (here.available_cents > 0 || discount > 0 || back > 0) ? (
           <PaySection className="flex items-center gap-3 px-4 py-3" data-pay-code-from>
@@ -322,13 +325,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const placeName = bill.place.name ?? "A Mesita place";
   const secs = Math.max(0, Math.ceil((Date.parse(bill.expires_at) - now) / 1000));
   const left = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-  const placeRow = (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <PlacePhoto place={{ photo: bill.place.photo_url, name: placeName }} className="h-10 w-10" />
-      <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
-    </div>
-  );
-
   // OVER.
   if (bill.state === "cancelled" || bill.state === "expired" || bill.state === "declined" || !q) {
     const words =
@@ -351,29 +347,42 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     );
   }
 
+  // THE AMOUNT FIRST (Pato, 2026-11-24, MESITA-4882: "make this design
+  // better"): the place, what the guest pays and how, large and alone; under it
+  // what it is made of, a plain receipt. Every number is the server's.
+  const nothingOwed = q.outside_cents === 0;
+  const big = m(nothingOwed ? q.credit_cents : q.outside_cents);
+  const saved = q.discount_cents > 0 ? `You save ${m(q.discount_cents)}` : q.cashback_cents > 0 ? `You get ${m(q.cashback_cents)} cashback` : null;
+  const hero = (words: string) => (
+    <section className="flex min-h-fit flex-1 flex-col items-center justify-center gap-1 py-4 text-center [@media(max-height:740px)]:py-0" aria-label={`${words} ${m(q.outside_cents)}`} data-pay-bill-hero>
+      <PlacePhoto place={{ photo: bill.place.photo_url, name: placeName }} className="h-16 w-16 [@media(max-height:740px)]:h-11 [@media(max-height:740px)]:w-11" />
+      <p className="mt-1 max-w-full truncate text-base font-semibold">{placeName}</p>
+      {from && from !== bill.place.id ? <p className="text-muted-foreground text-sm">This bill is from {placeName}.</p> : null}
+      <p className="text-muted-foreground mt-2 text-base">{nothingOwed ? "Paid with your credits" : words}</p>
+      <p className={cn("leading-tight font-bold tracking-tight tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
+      {saved ? (
+        <p className={cn("mt-2 rounded-full px-3.5 py-1.5 text-sm font-semibold tabular-nums", q.discount_cents > 0 ? BOX_TINT.discount : BOX_TINT.cashback)} data-pay-bill-saved>
+          {saved}
+        </p>
+      ) : null}
+    </section>
+  );
+  const line = (label: string, value: string, good = false) => (
+    <div className={cn("flex items-baseline justify-between gap-3", good ? "font-semibold text-green-700" : "text-muted-foreground")}>
+      <dt className="truncate">{label}</dt>
+      <dd className={cn("shrink-0", !good && "text-foreground")}>{value}</dd>
+    </div>
+  );
   const rows = (
-    <PaySection className="divide-border divide-y text-base" data-pay-bill-rows>
-      {placeRow}
-      {from && from !== bill.place.id ? (
-        <p className="text-muted-foreground px-4 py-2 text-left text-sm">This bill is from {placeName}.</p>
-      ) : null}
-      <MoneyRow icon={<ReceiptText />} label="Bill" value={m(bill.bill_cents ?? 0)} />
-      {q.discount_cents > 0 ? (
-        <MoneyRow className={BOX_TINT.discount} icon={<BadgePercent />} label={`${q.discount_bps / 100}% Discount`} value={`−${m(q.discount_cents)}`} />
-      ) : null}
-      {q.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Your credits" value={`−${m(q.credit_cents)}`} /> : null}
-      {bill.tip_cents > 0 ? (
-        <MoneyRow
-          icon={<HandCoins />}
-          label={bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip"}
-          value={m(bill.tip_cents)}
-        />
-      ) : null}
-      <MoneyRow icon={<Banknote />} label="Pay at the place" value={m(q.outside_cents)} strong />
-      {q.cashback_cents > 0 ? (
-        <MoneyRow className={BOX_TINT.cashback} icon={<BadgePercent />} label={q.cashback_capped ? "Cashback you get (maximum)" : `${q.cashback_bps / 100}% Cashback you get`} value={`+${m(q.cashback_cents)}`} />
-      ) : null}
-    </PaySection>
+    <dl className="bg-muted/60 flex w-full shrink-0 flex-col gap-1.5 rounded-2xl px-4 py-3 text-left text-base tabular-nums" data-pay-bill-rows>
+      {line("Bill", m(bill.bill_cents ?? 0))}
+      {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
+      {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
+      {bill.tip_cents > 0
+        ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))
+        : null}
+      {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
+    </dl>
   );
 
   // CONFIRMING, or paid and on its way to the receipt.
@@ -396,15 +405,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     return (
       <>
         {frame(
-          "Pay your waiter",
+          "Pay Bill",
           <>
-            <section className="flex w-full shrink-0 items-center gap-3 rounded-2xl bg-[#00D66F] px-4 py-4 text-neutral-950" aria-label={`Pay the place ${m(q.outside_cents)}, cash or card`}>
-              <span className="min-w-0 flex-1 text-left">
-                <span className="block text-base leading-tight font-semibold">Pay at {placeName}</span>
-                <span className="block text-sm leading-tight">Cash or their card terminal</span>
-              </span>
-              <span className="shrink-0 text-2xl font-semibold tabular-nums">{m(q.outside_cents)}</span>
-            </section>
+            {hero("Pay your waiter, cash or card")}
             {rows}
             <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm tabular-nums">
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
@@ -448,23 +451,34 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   }
 
   // THE BILL: Accept or Decline.
-  const nothingOwed = q.outside_cents === 0;
   return frame(
-    "Your bill",
+    "Pay Bill",
     <>
+      {hero("You pay your waiter, cash or card")}
       {rows}
-      <p className="text-muted-foreground text-sm tabular-nums">Answer in {left}</p>
-      <button type="button" className="text-muted-foreground self-center text-sm font-semibold underline" disabled={busy !== null} onClick={() => void answer("not_mine")}>
-        Not my bill
-      </button>
+      <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums [@media(max-height:740px)]:-my-3">
+        Answer in {left}
+        <span aria-hidden>·</span>
+        <button type="button" className="min-h-11 font-semibold underline underline-offset-2" disabled={busy !== null} onClick={() => void answer("not_mine")}>
+          Not my bill
+        </button>
+      </p>
     </>,
-    <div className="grid gap-2">
-      <Button size="lg" className="min-h-12 w-full bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]" disabled={busy !== null || now < armedAt} onClick={() => void answer("accept")} data-bill-accept>
-        {busy === "accept" ? <Spinner size="sm" label="Accepting" /> : nothingOwed ? `Accept · use ${m(q.credit_cents)} credits` : `Accept · pay ${m(q.outside_cents)} here`}
-      </Button>
+    // Decline a third, Accept two thirds: one clear next step.
+    <div className="grid grid-cols-[1fr_2fr] gap-2">
       <button type="button" className={QUIET_BUTTON_CLASS} disabled={busy !== null} onClick={() => void answer("decline")} data-bill-decline>
-        {busy === "decline" ? "Declining…" : "Decline"}
+        {busy === "decline" ? <Spinner size="sm" label="Declining" /> : "Decline"}
       </button>
+      <Button
+        size="lg"
+        className="min-h-12 w-full rounded-2xl bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]"
+        disabled={busy !== null || now < armedAt}
+        onClick={() => void answer("accept")}
+        aria-label={nothingOwed ? `Accept, use ${m(q.credit_cents)} of credits` : `Accept, pay ${m(q.outside_cents)} here`}
+        data-bill-accept
+      >
+        {busy === "accept" ? <Spinner size="sm" label="Accepting" /> : "Accept"}
+      </Button>
     </div>,
     2,
   );
@@ -475,7 +489,7 @@ export function PayCodeLoading() {
   const router = useRouter();
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col">
-      <TicketHeader title="Show your QR" onClose={() => goBack(router)} closeLabel="Close" />
+      <TicketHeader title="Your QR" onClose={() => goBack(router)} closeLabel="Close" />
       <div className="flex flex-1 flex-col px-4 py-4">
         <Skeleton className="min-h-0 w-full flex-1 rounded-2xl" aria-hidden />
       </div>

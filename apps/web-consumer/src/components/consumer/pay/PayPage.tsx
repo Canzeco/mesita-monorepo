@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BadgePercent, ChevronRight, type LucideIcon, QrCode, Wallet as WalletIcon, X } from "lucide-react";
+import { Percent, ChevronRight, type LucideIcon, QrCode, Wallet as WalletIcon, X } from "lucide-react";
 import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payCodePath, placeOffersPath } from "@/lib/consumer-route-contract";
@@ -216,11 +216,11 @@ const PENDING_ROW =
   "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
-// The discount badge (Pato, MESITA-4859; a money badge for an hour) and
+// A plain % (Pato, MESITA-4876; a badge around it under MESITA-4859) and
 // the QR, the same marks everywhere.
 const TILES: Record<PayModal, { word: string; line: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", line: "Get big discount", icon: BadgePercent, ink: "bg-white text-indigo-500" },
-  pay: { word: "Pay Bill", line: "Get small discount", icon: QrCode, ink: "bg-neutral-950 text-white" },
+  prepay: { word: "Prepay", line: "Get bonus", icon: Percent, ink: "bg-white text-indigo-500" },
+  pay: { word: "Pay", line: "Show to waiter", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** ONE LETTER SIZE for the three words (Pato, 2026-11-24,

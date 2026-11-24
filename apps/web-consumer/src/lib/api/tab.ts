@@ -138,6 +138,9 @@ export type TabRead = {
    *  summed), Pending until `available_at` (paid + 1 hour); null when it
    *  earned none. Absent from a server before MESITA-4747. */
   back?: { amount_cents: number; currency: string; available_at: string | null; pending: boolean } | null;
+  /** MESITA-4878: the voucher here that would have paid the part paid outside,
+   *  and what it would have saved; null when none. */
+  prepay_tip?: { voucher: string; price_cents: number; credit_cents: number; saving_cents: number } | null;
   /** MESITA-3709: a new QR for a guest tab, only when asked (`remint`). */
   token?: string;
   qr_url?: string;

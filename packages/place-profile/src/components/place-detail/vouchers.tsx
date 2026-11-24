@@ -2,7 +2,7 @@
 
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Wallet, Clock, ArrowRight, Banknote, Percent, Receipt as ReceiptIcon, ChevronDown, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, QrCode, Ticket, X, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
@@ -427,126 +427,6 @@ export function readyClock(iso: string, now = new Date()): string {
   return at.toDateString() === now.toDateString() ? time : `${at.toLocaleDateString("en-US", { weekday: "short" })} ${time}`;
 }
 
-/** HOW IT WORKS, IN THREE STEPS (Pato, 2026-11-17, MESITA-4299: "Write all
- *  the steps clearer ... 1. Pay X 2. Receive principal right now 3. Receive
- *  bonus in 3 hours. JUST THIS 3 STEPS"): each step is one thing that
- *  happens, its amount on the right of a bold line and one small line under
- *  it; the bonus step in green. Where the credit spends and that it never
- *  expires is one line under the steps, never a step. The Right now · In 3
- *  hours · Anytime labels were MESITA-4290; each special's own first step
- *  MESITA-4234; four grey bullets MESITA-4224. */
-type Step = {
-  Icon: LucideIcon;
-  title: string;
-  /** The money this step moves, on the right of the title. */
-  amount?: string;
-  line: ReactNode;
-  green?: boolean;
-  /** The Credits step lights the step the guest is on and ticks the one done. */
-  state?: "current" | "done";
-  /** The word under the icon when the steps run across (MESITA-4635). */
-  short?: string;
-};
-
-const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
-
-/** THE STEPS RUN ACROSS (Pato, 2026-11-21, MESITA-4635: "steps of this
- *  must be horizontal similar to visits steps"): one column per step, a
- *  round icon on a line joining the next, the step's short word, its amount
- *  and one small line under it; the bonus in green. Down the sheet before. */
-function StepList({ steps, dim }: { steps: Step[]; dim?: boolean }) {
-  return (
-    <ol
-      className={cn("grid gap-2", dim && "opacity-50")}
-      style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
-      aria-label="How it works"
-      data-offer-steps
-    >
-      {steps.map((s, i) => (
-        <li key={s.title} className="flex min-w-0 flex-col items-center text-center" aria-current={s.state === "current" ? "step" : undefined} data-offer-step={s.state}>
-          <span className="relative flex w-full justify-center" aria-hidden>
-            {i < steps.length - 1 ? <span className="bg-border absolute top-1/2 left-1/2 h-0.5 w-[calc(100%+0.5rem)]" /> : null}
-            <span
-              className={cn(
-                "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                s.state === "current"
-                  ? "bg-foreground text-paper"
-                  : s.state === "done"
-                    ? "bg-[#E9FBF1] text-[#00A85A]"
-                    : s.green
-                      ? "bg-[#00D66F] text-neutral-950"
-                      : "bg-muted text-foreground",
-              )}
-            >
-              {s.state === "done" ? <Check className="h-5 w-5" strokeWidth={2.75} /> : <s.Icon className="h-5 w-5" strokeWidth={2.25} />}
-            </span>
-          </span>
-          <span className={cn("mt-2 text-sm leading-tight font-bold", s.green ? "text-[#00A85A]" : "text-foreground")}>{s.short ?? s.title}</span>
-          {s.amount ? <span className={cn("mt-0.5 text-sm font-bold tabular-nums", s.green ? "text-[#00A85A]" : "text-foreground")}>{s.amount}</span> : null}
-          <span className="text-muted-foreground mt-1 text-xs leading-snug">{s.line}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-/** A WHITE BOX ON THE GREY GROUND (Pato, 2026-11-17, MESITA-4303: "MORE
- *  MODULAR ... IN BOXES ... ONE BOX FOR THE STEPS AND ONE BOX FOR THE
- *  EXPLANATION ... KEEP THIS ORDERED"; D2): the Reserve page's panel, its
- *  small label inside, one job per box. */
-function Box({
-  title,
-  className,
-  children,
-  ...data
-}: { title?: string; className?: string; children: ReactNode } & { [k: `data-${string}`]: string | undefined }) {
-  return (
-    <section className={cn(CARD, "shrink-0 px-4 py-3", className)} {...data}>
-      {title ? <h4 className={cn(SECTION_LABEL, "mb-2.5")}>{title}</h4> : null}
-      {children}
-    </section>
-  );
-}
-
-/** One line of a Good to know box. */
-type Fact = { Icon: LucideIcon; text: string };
-
-function GoodToKnow({ facts }: { facts: Fact[] }) {
-  return (
-    <Box title="Good to know" data-offer-good-to-know="">
-      <ul className="flex flex-col gap-2">
-        {facts.map((f) => (
-          <li key={f.text} className="text-foreground flex items-start gap-2.5 text-base leading-snug">
-            <f.Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-            {f.text}
-          </li>
-        ))}
-      </ul>
-    </Box>
-  );
-}
-
-/** Every offer of a tab inside How it works (MESITA-4804): its name, what it
- *  asks, its own rule, and its rate at the right. */
-function OfferFacts({ rows }: { rows: { key: string; title: string; line: string; rule?: string | null; rate: string }[] }) {
-  return (
-    <Box title="Offers" data-how-offers="">
-      <ul className="divide-border divide-y">
-        {rows.map((o) => (
-          <li key={o.key} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0" data-how-offer={o.key}>
-            <span className="min-w-0">
-              <span className="text-foreground block text-base leading-snug font-semibold">{o.title}</span>
-              <span className="text-muted-foreground block text-sm tabular-nums">{o.line}</span>
-              {o.rule ? <span className="block text-sm font-semibold text-amber-900">{o.rule}</span> : null}
-            </span>
-            <span className="text-foreground shrink-0 text-base leading-snug font-semibold tabular-nums">{o.rate}</span>
-          </li>
-        ))}
-      </ul>
-    </Box>
-  );
-}
-
 /** THE MOST OF ONE VOUCHER IN A BASKET (MESITA-4647): the server's own caps
  *  (`_shared/vouchers.ts` BASKET_MAX_QTY 5; BASKET_ONE_ONLY Welcome and VIP
  *  1). The server refuses past them whatever this says. */
@@ -759,7 +639,7 @@ function CashbackPanel({ cashback }: { cashback: PlaceCashback }) {
   if (rows.length === 0) return null;
   return (
     <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Visit offers" data-promos="cashback">
-      <TierMatrix rows={rows} guest={you} line={cashback.line} big />
+      <TierMatrix rows={rows} guest={you} line={cashback.line} />
       {/* NO FOOTNOTE (Pato, MESITA-4702: "remove the explanations there,
           that's why we have the i"): the rules live in How it works. */}
     </section>
@@ -839,13 +719,11 @@ function TierMatrix({
   rows,
   guest,
   line,
-  big,
 }: {
   rows: CashbackLineRow[];
   guest: CashbackLineRow["line"] | null;
   /** The server's line for this guest's next bill; null signed out. */
   line: PlaceCashback["line"];
-  big?: boolean;
 }) {
   const cell = (key: CashbackLineRow["line"]) => {
     const row = rows.find((o) => o.line === key);
@@ -855,8 +733,7 @@ function TierMatrix({
       <td className="py-1 pl-2">
         <span
           className={cn(
-            "flex flex-col items-center justify-center gap-0.5 rounded-xl leading-tight font-semibold tabular-nums",
-            big ? "min-h-20 text-2xl" : "min-h-12 text-base",
+            "flex min-h-20 flex-col items-center justify-center gap-0.5 rounded-xl text-2xl leading-tight font-semibold tabular-nums",
             mine ? visitTone(row.mech) : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
           )}
           data-how-tier={key}
@@ -880,7 +757,7 @@ function TierMatrix({
     { title: "Returning Visit", who: "Every bill after" },
   ];
   return (
-    <div className={big ? "p-3" : undefined} data-cashback-lines>
+    <div className="p-3" data-cashback-lines>
       <table className="w-full table-fixed">
         <colgroup>
           <col className="w-[26%]" />
@@ -915,67 +792,113 @@ function TierMatrix({
   );
 }
 
-/** The steps in full sentences (Pato, 2026-11-24, MESITA-4828: "write the how
- *  it works clearer, even if more text"): a number, a bold line, what happens. */
-function NumberedSteps({ steps }: { steps: { title: string; text: string }[] }) {
-  return (
-    <Box title="Step by step">
-      <ol className="flex flex-col gap-3" data-how-steps>
-        {steps.map((x, i) => (
-          <li key={x.title} className="flex items-start gap-3">
-            <span className="bg-foreground text-background flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums" aria-hidden>
-              {i + 1}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground block text-base leading-7 font-semibold">{x.title}</span>
-              <span className="text-muted-foreground block text-sm leading-snug">{x.text}</span>
-            </span>
-          </li>
-        ))}
-      </ol>
-    </Box>
-  );
-}
+// ── THE EXPLANATIONS (Pato, 2026-11-24, MESITA-4881: "clearer … with
+// illustrations too, beautiful clean design for all the explanations") ──
+// One design for Prepay, Discounts and Cashback: one sentence, three scenes
+// (a drawing with real numbers, a bold line, what happens), one closing line.
+// No boxes inside boxes. The drawings are the app's own things: the QR, the
+// bill, the credit card.
 
 /** The bill the worked example uses, in whole pesos. */
 const EXAMPLE_BILL = 500;
 
-/** Pay's How it works (Pato, 2026-11-23, MESITA-4807: "this explanation
- *  clearer"): one sentence, the steps as a worked example at the guest's own
- *  rate (else the first tier's), one table of rates, the rules in full. */
+const SCENE_TINT = { prepay: "bg-indigo-50", discount: "bg-green-50", cashback: "bg-green-50" } as const;
+
+function Scene({ n, tint, art, title, text }: { n: number; tint: keyof typeof SCENE_TINT; art: ReactNode; title: string; text: string }) {
+  return (
+    <li className="flex flex-col" data-how-scene={n}>
+      <div className={cn("flex h-36 items-center justify-center gap-3 overflow-hidden rounded-2xl px-3", SCENE_TINT[tint])} aria-hidden>
+        {art}
+      </div>
+      <h4 className="text-foreground mt-3 flex items-center gap-2 text-lg leading-tight font-semibold">
+        <span className="bg-foreground text-background flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums">{n}</span>
+        {title}
+      </h4>
+      <p className="text-muted-foreground mt-1 text-base leading-snug">{text}</p>
+    </li>
+  );
+}
+
+function Scenes({ children, note }: { children: ReactNode; note: string }) {
+  return (
+    <>
+      <ol className="mt-1 flex flex-col gap-6" data-how-steps>
+        {children}
+      </ol>
+      <p className="text-muted-foreground border-border mt-3 border-t pt-4 text-sm leading-relaxed">{note}</p>
+    </>
+  );
+}
+
+/** A phone with the guest's QR. */
+function ArtPhone() {
+  return (
+    <span className="border-foreground bg-card relative flex h-28 w-[4.25rem] shrink-0 flex-col items-center justify-center rounded-2xl border-[3px] shadow-sm">
+      <span className="bg-foreground absolute top-1.5 h-1 w-5 rounded-full" />
+      <QrCode className="text-foreground h-11 w-11" strokeWidth={1.75} />
+    </span>
+  );
+}
+
+/** A printed bill: its lines, the last one bold. */
+function ArtBill({ lines }: { lines: { label: string; value: string; green?: boolean }[] }) {
+  return (
+    <span className="bg-card flex w-40 min-w-0 flex-col gap-1.5 rounded-xl px-3 py-3 text-sm tabular-nums shadow-sm">
+      {lines.map((l, i) => (
+        <span
+          key={l.label}
+          className={cn(
+            "flex items-center justify-between gap-3",
+            i === lines.length - 1 ? "border-border text-foreground border-t pt-1.5 font-bold" : l.green ? "font-semibold text-[#00A85A]" : "text-muted-foreground",
+          )}
+        >
+          <span>{l.label}</span>
+          <span>{l.value}</span>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** The guest's credit at the place: the Wallet's black card. */
+function ArtCredit({ label, amount }: { label: string; amount: string }) {
+  return (
+    <span className="bg-foreground text-background flex h-[5.5rem] w-40 min-w-0 flex-col justify-between rounded-2xl px-4 py-3 shadow-sm">
+      <span className="flex items-center justify-between text-sm">
+        {label}
+        <Wallet className="h-4 w-4" strokeWidth={2.25} />
+      </span>
+      <span className="text-2xl leading-none font-bold tabular-nums">{amount}</span>
+    </span>
+  );
+}
+
+function ArtArrow() {
+  return <ArrowRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2.5} />;
+}
+
+function ArtClock({ text }: { text: string }) {
+  return (
+    <span className="flex flex-col items-center gap-1">
+      <span className="bg-card text-foreground flex h-14 w-14 items-center justify-center rounded-full shadow-sm">
+        <Clock className="h-7 w-7" strokeWidth={2} />
+      </span>
+      <span className="text-foreground text-sm font-semibold">{text}</span>
+    </span>
+  );
+}
+
+/** Pay's How it works: Discounts and Cashback (MESITA-4874), opening on this
+ *  place's mechanism; the other one is an example. */
 function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
-  // MESITA-4770: a Discount comes off the printed bill before paying; the
-  // waiter sees it on the bill. Cashback lands as credit an hour later.
   const shown = rows.find((o) => o.line === guest) ?? rows[0];
-  // TWO SECTIONS (Pato, 2026-11-24, MESITA-4874): how discounts work, how
-  // cashback works; it opens on this place's. The other one is an example.
   const [section, setSection] = useState<VisitMechanism>(shown.mech);
   const here = section === shown.mech;
   const discount = section === "discount";
   const rate = `${shown.bps / 100}%`;
   const gives = (EXAMPLE_BILL * shown.bps) / 10000;
-  const steps: Step[] = discount
-    ? [
-        { Icon: QrCode, title: "Your bill", amount: `$${EXAMPLE_BILL}`, line: "Your waiter sends it" },
-        { Icon: Wallet, title: "Discount", amount: `−$${gives}`, line: `${rate} off`, green: true },
-        { Icon: Utensils, title: "You pay", amount: `$${EXAMPLE_BILL - gives}`, line: "Plus your tip" },
-      ]
-    : [
-        { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: here ? "At this place" : "At the place" },
-        { Icon: Clock, title: "Wait", amount: "1 hour", line: "Nothing to do" },
-        { Icon: Wallet, title: "You get", amount: `$${gives}`, line: `${rate} back as credit`, green: true },
-      ];
-  // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day).
-  const facts: Fact[] = discount
-    ? [
-        { Icon: Utensils, text: "The discount is on the bill, never on the tip." },
-        { Icon: Wallet, text: `If you have credits ${here ? "here" : "there"}, they are used first. Credits never pay the tip.` },
-      ]
-    : [
-        { Icon: Utensils, text: here ? "Use your cashback to pay any bill at this place." : "Use your cashback to pay any bill at the place that gave it." },
-        { Icon: InfinityIcon, text: "It never expires." },
-        { Icon: Wallet, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip. One bill earns $1,000 of cashback at most." },
-      ];
+  const what = (m: VisitMechanism) =>
+    m === "discount" ? "discounts: part of your bill comes off before you pay" : "cashback: part of what you pay comes back as credit for your next visit";
   return (
     <HowItWorks
       tab="pay"
@@ -999,77 +922,136 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
           ))}
         </div>
       }
-      lead={
-        here
-          ? discount
-            ? "This place gives discounts. When you pay your bill here with Mesita, the discount comes off before you pay."
-            : "This place gives cashback. Pay your bill with Mesita and part of it comes back to you as credit for your next visit here."
-          : discount
-            ? "Some places give discounts. When you pay your bill with Mesita, the discount comes off before you pay. This place gives cashback instead."
-            : "Some places give cashback. Pay your bill with Mesita and part of it comes back to you as credit for your next visit there. This place gives discounts instead."
-      }
+      lead={here ? `This place gives ${what(section)}.` : `This place gives ${discount ? "cashback" : "discounts"}. Other places give ${what(section)}.`}
     >
-      <NumberedSteps
-        steps={[
-          { title: "Show your QR", text: "When you want the bill, open Pay Bill and show your QR to your waiter." },
-          {
-            title: "Check the bill",
-            text: `Your waiter types the bill and the tip. You see them on your phone${discount ? ", with the discount already taken off," : ""} and tap Accept.`,
-          },
-          { title: "Pay at the place", text: "Pay your waiter in cash or on the place's card terminal. Mesita doesn't charge your card." },
-          discount
-            ? { title: "Done", text: "Your waiter confirms the payment and you get your receipt." }
-            : { title: "Get your cashback", text: `Your waiter confirms the payment. One hour later the cashback is in your Wallet, as credit for ${here ? "this" : "that"} place.` },
-        ]}
-      />
-      <Box title={`Example: a $${EXAMPLE_BILL} bill`}>
-        <StepList steps={steps} />
-      </Box>
-      {here ? (
-        <Box title={`${visitWord(rows[0].mech)} you get`} data-how-offers="">
-          <TierMatrix rows={rows} guest={guest} line={guest} />
-        </Box>
-      ) : null}
-      <GoodToKnow facts={facts} />
+      {discount ? (
+        <Scenes
+          note={`The discount is on the bill, never on the tip. If you have credits ${here ? "here" : "there"}, they are used first; credits never pay the tip.`}
+        >
+          <Scene n={1} tint="discount" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter." />
+          <Scene
+            n={2}
+            tint="discount"
+            art={
+              <ArtBill
+                lines={[
+                  { label: "Bill", value: `$${EXAMPLE_BILL}` },
+                  { label: `${rate} off`, value: `−$${gives}`, green: true },
+                  { label: "You pay", value: `$${EXAMPLE_BILL - gives}` },
+                ]}
+              />
+            }
+            title="Check your bill"
+            text="It arrives on your phone with the discount already taken off. Tap Accept."
+          />
+          <Scene
+            n={3}
+            tint="discount"
+            art={
+              <>
+                <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
+                <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
+              </>
+            }
+            title="Pay your waiter"
+            text="Cash or card, like always. Your waiter confirms it and you get your receipt."
+          />
+        </Scenes>
+      ) : (
+        <Scenes note="The tip and the part you pay with credit earn no cashback, and one bill earns $1,000 at most. Your credit never expires.">
+          <Scene n={1} tint="cashback" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter. Check the bill on your phone and tap Accept." />
+          <Scene
+            n={2}
+            tint="cashback"
+            art={
+              <>
+                <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
+                <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
+              </>
+            }
+            title={`Pay your waiter $${EXAMPLE_BILL}`}
+            text="Cash or card, like always. Your waiter confirms it."
+          />
+          <Scene
+            n={3}
+            tint="cashback"
+            art={
+              <>
+                <ArtClock text="1 hour" />
+                <ArtArrow />
+                <ArtCredit label={`${rate} back`} amount={`+$${gives}`} />
+              </>
+            }
+            title={`Get $${gives} back`}
+            text={`One hour later it is in your Wallet. Use it on any bill at ${here ? "this place" : "the place that gave it"}.`}
+          />
+        </Scenes>
+      )}
     </HowItWorks>
   );
 }
 
-/** Prepay's How it works: the steps, every voucher's deal and rule, the rules. */
+/** Prepay's How it works, on one of this place's own offers: the middle one. */
 function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout }) {
-  const { loading, catalog, currency } = co;
-  const rule = (k: MoneyVoucherKey) =>
-    k === "voucher_welcome" ? "Once per guest at this place." : k === "voucher_vip" ? "One per visit." : null;
-  const facts: Fact[] = [
-    { Icon: Utensils, text: "Your credit pays any bill at this place. It can't be used at other places, and it never pays the tip." },
-    { Icon: Gift, text: "You can send your credit to a friend as a gift." },
-    { Icon: InfinityIcon, text: "Your credit never expires." },
-    ...(products.some((p) => rule(p.key) === null) ? [{ Icon: Repeat, text: "You can buy as many as you like." }] : []),
-  ];
+  const { catalog, currency } = co;
+  const p = products[Math.floor((products.length - 1) / 2)];
+  if (!p) return null;
+  const line = catalog[p.key];
+  const pay = whole(priceValue(p, line, currency));
+  const get = whole(creditValue(p, line, currency));
   return (
-    <HowItWorks tab="prepay" title="How prepaying works" lead="You buy a voucher today and get more credit than you paid, to spend at this place on your next visits.">
-      <NumberedSteps
-        steps={[
-          { title: "Pick a voucher and pay", text: "Choose one or more with the + button and pay with your card." },
-          { title: "Wait 3 hours", text: "What you paid and your bonus arrive together, as credit in your Wallet. You don't have to do anything." },
-          { title: "Spend it here", text: "When you want the bill, open Pay Bill and show your QR to your waiter. Your credit is used first and you pay only what is left." },
-        ]}
-      />
-      {loading ? null : (
-        <OfferFacts
-          rows={products.map((p) => {
-            const line = catalog[p.key];
-            return {
-              key: p.key,
-              title: p.short,
-              line: `You pay ${whole(priceValue(p, line, currency))}, you get ${whole(creditValue(p, line, currency))}`,
-              rule: rule(p.key),
-              rate: `${bonusValue(p, line)} Bonus`,
-            };
-          })}
+    <HowItWorks tab="prepay" title="How Prepay works" lead="Pay now and get more to spend here on your next visits.">
+      <Scenes note="Your credit pays any bill at this place, never the tip, and never expires. You can also send it to a friend as a gift.">
+        <Scene
+          n={1}
+          tint="prepay"
+          art={
+            <>
+              <span className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center rounded-2xl bg-[#635BFF] text-2xl font-bold text-white tabular-nums shadow-sm">
+                {bonusValue(p, line)}
+              </span>
+              <span className="text-foreground flex flex-col text-left">
+                <span className="text-base font-semibold">{p.short}</span>
+                <span className="text-2xl leading-tight font-bold tabular-nums">Pay {pay}</span>
+              </span>
+            </>
+          }
+          title={`Pay ${pay}`}
+          text="Pick a bonus with the + button and pay with your card. The bigger it is, the more you get."
         />
-      )}
-      <GoodToKnow facts={facts} />
+        <Scene
+          n={2}
+          tint="prepay"
+          art={
+            <>
+              <ArtClock text="3 hours" />
+              <ArtArrow />
+              <ArtCredit label="Credits" amount={get} />
+            </>
+          }
+          title={`Get ${get}`}
+          text="What you paid and your bonus arrive together in your Wallet, 3 hours later. You don't have to do anything."
+        />
+        <Scene
+          n={3}
+          tint="prepay"
+          art={
+            <>
+              <ArtPhone />
+              <ArtArrow />
+              <ArtBill
+                lines={[
+                  { label: "Bill", value: "$200" },
+                  { label: "Credits", value: "−$200", green: true },
+                  { label: "You pay", value: "$0" },
+                ]}
+              />
+            </>
+          }
+          title="Spend it here"
+          text="When you want the bill, open Pay and show your QR to your waiter. Your credits are used first and you pay only what is left, plus the tip."
+        />
+      </Scenes>
     </HowItWorks>
   );
 }
@@ -1083,7 +1065,7 @@ export type OffersTab = "prepay" | "pay";
 // THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay the discount badge (MESITA-4844; the wallet, credit
 // loaded ahead, before), Pay a receipt (the bill).
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { id: "prepay", word: "Prepay", Icon: BadgePercent },
+  { id: "prepay", word: "Prepay", Icon: Percent },
   { id: "pay", word: "Pay", Icon: ReceiptIcon },
 ];
 
@@ -1269,7 +1251,7 @@ function PrepaySection({
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="flex min-w-0 items-center gap-1">
-                        <span className={cn("truncate text-base font-semibold", blocked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
+                        <span className={cn("truncate text-lg leading-tight font-semibold", blocked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
                       </span>
                       <span className={cn("text-sm font-semibold tabular-nums", blocked ? "text-muted-foreground" : "text-foreground")}>
                         Pay {whole(pay)} <span className="text-muted-foreground">·</span> Get {whole(get)}
