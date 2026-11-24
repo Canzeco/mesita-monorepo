@@ -31,15 +31,27 @@ import { PlaceEmptyScreen } from "./empty-screen";
 // delivery. A visual-menu line too (Pato: "graphical menu … beautiful
 // images and videos"; the screen signals what is coming, for investors
 // who audit the app, so it may promise a little ahead).
-// One paragraph since MESITA-4437 (Pato, 2026-11-18: "smart menu in one
-// paragraph"): the same three sentences as one item, not three lines.
+// One paragraph since MESITA-4437 until MESITA-4884 (Pato, 2026-11-24:
+// "Mesita focuses on table orders or takeaway orders. order and pay,
+// clearer description"): order and pay leads, table or takeaway, then the
+// menu and the asking, then Coming soon.
 export function SoonScreen() {
   return (
     <PlaceEmptyScreen
       icon={BookOpen}
       title="Smart Menu"
       items={[
-        "Smart Menu is coming to Mesita. A visual menu with beautiful photos and videos of every dish. Order and pay from your table, and ask AI about any dish: calories, ingredients and more.",
+        <span key="lead" className="text-foreground font-semibold">
+          Order and pay from your phone.
+        </span>,
+        "At your table or for takeaway.",
+        <span key="menu" className="mt-3 block">
+          See photos and videos of every dish, and ask AI about ingredients,
+          calories and more.
+        </span>,
+        <span key="soon" className="mt-3 block">
+          Coming soon
+        </span>,
       ]}
     />
   );
