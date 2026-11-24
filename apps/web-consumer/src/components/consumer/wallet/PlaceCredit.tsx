@@ -45,7 +45,7 @@ const ROUND_GLYPH = "h-5 w-5";
 //   [mini Loyalty Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "Loyalty Card"
-//   (Pay Bill)(Add Funds)(Send Gift)(View Place)  four round buttons, label
+//   (View Offers)(Pay Bill)(Send Gift)(View Place)  four round buttons, label
 //                         under (MESITA-4281); only Pay Bill purple; Add Funds
 //                         wears a +N% chip and hides when nothing is for sale;
 //                         Send Gift follows giftAction (hidden, dimmed, open)
@@ -316,20 +316,10 @@ export function PlaceCredit({
            (MESITA-4273, Pato: "remove share mesita from here. view place must
            be same a grey button of the same size"); it was a pill under the
            card (MESITA-4116). Since MESITA-4281 the four are one bank row
-           of round buttons: Pay Bill, Add Funds (this page's word for
-           Offers), Send Gift, View Place. */
+           of round buttons. */
         <div className="mt-5 flex justify-around gap-1" data-loyalty-card-actions>
-          <PushLink
-            href={payPlacePath(row.placeId)}
-            className={ROUND}
-            aria-label={spendable > 0 ? `Pay Bill: use ${money(spendable, card.currency)} at the table` : "Pay Bill"}
-            data-loyalty-card-pay
-          >
-            <span className={cn(ROUND_FACE, "bg-[#635bff] text-white")}>
-              <QrCode className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
-            </span>
-            Pay Bill
-          </PushLink>
+          {/* OFFERS FIRST (Pato, 2026-11-23, MESITA-4815: "more natural"): get
+              credit, spend it, share it, then the place. */}
           {offers.length > 0 ? (
             <PushLink
               href={offerHref(href, offers[0], true)}
@@ -352,6 +342,17 @@ export function PlaceCredit({
               View Offers
             </PushLink>
           ) : null}
+          <PushLink
+            href={payPlacePath(row.placeId)}
+            className={ROUND}
+            aria-label={spendable > 0 ? `Pay Bill: use ${money(spendable, card.currency)} at the table` : "Pay Bill"}
+            data-loyalty-card-pay
+          >
+            <span className={cn(ROUND_FACE, "bg-[#635bff] text-white")}>
+              <QrCode className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+            </span>
+            Pay Bill
+          </PushLink>
           {/* Send Gift is its own page (MESITA-4096); it was a sheet here. */}
           {gift === "open" ? (
             <PushLink href={walletSendPath(row.placeId)} className={ROUND} data-send-credit-open>
