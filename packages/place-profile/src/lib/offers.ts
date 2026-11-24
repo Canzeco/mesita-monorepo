@@ -202,12 +202,12 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       // one offer"): the guest's own line, else the highest one.
       void flat;
       const words = `${pct}% ${word}`;
-      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${word}`, stacked: { top: `PAY ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
+      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${word}`, stacked: { top: `Pay ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
     }
     if (s.key === "prepay")
       // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
       // renderer's own "Up To" prefix (MESITA-4676) went: the words live here.
-      return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, pillShort: `${top[1]}% Bonus`, stacked: { top: `PREPAY ${top[1]}%`, under: "Bonus" }, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
+      return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, pillShort: `${top[1]}% Bonus`, stacked: { top: `Prepay ${top[1]}%`, under: "Bonus" }, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
     return sell.has(s.key) ? [s] : [];
   });
 }
