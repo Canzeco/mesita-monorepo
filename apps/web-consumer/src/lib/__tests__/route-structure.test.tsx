@@ -671,11 +671,11 @@ describe("T8 — Me's grid is eleven cells, every one a live door", () => {
     // and Integrations moved inside Settings; MESITA-4709: gone again ("no
     // more VIP").
     // MESITA-4736: grouped by topic, two to a row. MESITA-4774: VIP is the
-    // third cell.
+    // third cell, called Class since MESITA-4784.
     expect(gridTitles()).toEqual([
       "Profile",
       "Instagram",
-      "VIP",
+      "Class",
       "Reservations",
       "Notifications",
       "Tickets",

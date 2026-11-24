@@ -11,7 +11,7 @@ export default function VipLoading() {
         <Skeleton className="h-[170px] w-full rounded-2xl" />
       </div>
       <p role="status" className="sr-only">
-        Loading Become VIP
+        Loading Class
       </p>
     </VipFrame>
   );
