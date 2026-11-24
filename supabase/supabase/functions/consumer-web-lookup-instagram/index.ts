@@ -21,6 +21,10 @@
 // counts, failed scrapes included. Connecting the handle already connected
 // runs the sync path.
 //
+// IT NEVER SHARES (MESITA-4856): a typed username connects, but Social shows
+// the account only once it is proved (Mesita's DM or the bio code), and a
+// handle another account proved is refused.
+//
 // This knowingly sets aside MESITA-2461's proof rule for the testing period:
 // anyone can connect any public handle. The Meta DM bot (MESITA-2579) is the
 // proof and replaces this once Meta approves. The name stayed "lookup" from
@@ -31,7 +35,7 @@
 // Response: { ok: true, result: "connected" | "synced", source, profile,
 //             photo: "updated" | "off" | "failed", previousFollowers? }
 //   400 invalid_action · invalid_username · not_confirmed
-//   404 profile_not_found · 409 not_connected · changed
+//   404 profile_not_found · 409 not_connected · changed · handle_taken
 //   429 slow_down · daily_limit ({ retryAfterSeconds?, remaining?, resetsAt?, limit }, Retry-After)
 //   500 sync_write_failed (+ requestId) · 502 scrape · 503 unavailable
 
@@ -302,6 +306,14 @@ serveJson("consumer-web-lookup-instagram", async (req) => {
     p_followers: profile.followerCount,
     p_private: profile.isPrivate,
   });
+  // MESITA-4856: the owner proved it; a typed username never takes it.
+  if (verifyErr?.message.includes("handle_proved_elsewhere")) {
+    return json({
+      ok: false,
+      error: `@${username} belongs to another Mesita account.`,
+      code: "handle_taken",
+    }, 409);
+  }
   if (verifyErr) {
     return serverError(
       "connect_write_failed",

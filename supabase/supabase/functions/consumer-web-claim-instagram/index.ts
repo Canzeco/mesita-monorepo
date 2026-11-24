@@ -65,6 +65,8 @@ const QUIET_PHOTO_REASONS = new Set(["no_photo", "photo_off"]);
 
 // The profile scrape is synchronous; a cold actor takes ~10–20s.
 const SCRAPE_TIMEOUT_MS = 45_000;
+/** consumer-web-lookup-instagram's own daily budget. */
+const SCRAPE_DAILY_MAX = 10;
 
 serveJson("consumer-web-claim-instagram", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -207,6 +209,22 @@ serveJson("consumer-web-claim-instagram", async (req) => {
 
     const apifyKey = Deno.env.get("APIFY_KEY")?.trim();
     if (!apifyKey) return jsonError("Instagram check is unavailable right now.", 503);
+    // Every check is a paid scrape: it spends the account's one daily budget,
+    // shared with connect and sync (MESITA-4856).
+    const { data: slot, error: slotErr } = await admin.rpc("consumer_instagram_claim_scrape", {
+      p_consumer_id: consumerId,
+      p_kind: "connect",
+      p_cooldown_s: 0,
+      p_daily_max: SCRAPE_DAILY_MAX,
+    });
+    if (slotErr) return jsonError(slotErr.message, 500);
+    if ((slot as { status?: string } | null)?.status !== "ok") {
+      return json({
+        ok: false,
+        error: "You’ve used today’s Instagram lookups. Try again tomorrow.",
+        code: "daily_limit",
+      }, 429);
+    }
     const run = await runApifyActor<Record<string, unknown>>(
       APIFY_ACTORS.instagramProfile,
       { usernames: [claim.handle] },
@@ -240,6 +258,8 @@ serveJson("consumer-web-claim-instagram", async (req) => {
       p_followers: verdict.followers,
       // VIP needs a public account (MESITA-4263).
       p_private: scrapedPrivate(profile),
+      // The code in the bio is the proof (MESITA-4856).
+      p_proved: true,
     });
     if (verifyErr) return jsonError(verifyErr.message, 500);
 

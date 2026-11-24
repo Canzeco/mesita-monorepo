@@ -336,8 +336,14 @@ export function privacyRefusal(
   if (lock === "no_birth_year") {
     return json({ ok: false, code: "birth_year_needed", error: "Add your year of birth first." }, 409);
   }
-  if (level === "instagram" && (!stored?.instagram_handle || !stored.instagram_verified_at)) {
-    return json({ ok: false, code: "instagram_needed", error: "Connect your Instagram first." }, 409);
+  if (level === "instagram" || body.instagram_handle_shown === true) {
+    if (!stored?.instagram_handle || !stored.instagram_verified_at) {
+      return json({ ok: false, code: "instagram_needed", error: "Connect your Instagram first." }, 409);
+    }
+    // MESITA-4856: a typed username connects but never shares.
+    if (!stored.instagram_proved_at) {
+      return json({ ok: false, code: "instagram_proof_needed", error: "Prove this Instagram is yours first." }, 409);
+    }
   }
   return null;
 }

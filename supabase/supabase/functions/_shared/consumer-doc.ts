@@ -483,7 +483,7 @@ export async function readSocialStanding(
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("birth_year, social_private, instagram_verified_at, instagram_handle_shown")
+    .select("birth_year, social_private, instagram_verified_at, instagram_proved_at, instagram_handle_shown")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -494,6 +494,7 @@ export async function readSocialStanding(
       ? {
         birth_year: (data.birth_year as number | null) ?? null,
         social_private: (data.social_private as boolean | null) ?? null,
+        instagram_proved_at: (data.instagram_proved_at as string | null) ?? null,
         instagram_verified_at: (data.instagram_verified_at as string | null) ??
           null,
         instagram_handle_shown: (data.instagram_handle_shown as boolean | null) ?? null,

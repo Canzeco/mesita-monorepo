@@ -389,6 +389,7 @@ export type Database = {
           instagram_handle: string | null
           instagram_handle_shown: boolean | null
           instagram_is_private: boolean | null
+          instagram_proved_at: string | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
           instagram_sync_day: string | null
@@ -431,6 +432,7 @@ export type Database = {
           instagram_handle?: string | null
           instagram_handle_shown?: boolean | null
           instagram_is_private?: boolean | null
+          instagram_proved_at?: string | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
           instagram_sync_day?: string | null
@@ -473,6 +475,7 @@ export type Database = {
           instagram_handle?: string | null
           instagram_handle_shown?: boolean | null
           instagram_is_private?: boolean | null
+          instagram_proved_at?: string | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
           instagram_sync_day?: string | null
@@ -3949,6 +3952,7 @@ export type Database = {
           instagram_handle: string | null
           instagram_handle_shown: boolean | null
           instagram_is_private: boolean | null
+          instagram_proved_at: string | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
           instagram_sync_day: string | null
@@ -4011,6 +4015,7 @@ export type Database = {
           instagram_handle: string | null
           instagram_handle_shown: boolean | null
           instagram_is_private: boolean | null
+          instagram_proved_at: string | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
           instagram_sync_day: string | null
@@ -4142,6 +4147,7 @@ export type Database = {
           p_followers: number
           p_handle: string
           p_private?: boolean
+          p_proved?: boolean
         }
         Returns: undefined
       }

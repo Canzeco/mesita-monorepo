@@ -58,7 +58,7 @@ select is(
   'a guest who chose to hide their handle: hidden (MESITA-4659)'
 );
 
-update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3213';
+update public.consumers set instagram_handle_shown = true, instagram_proved_at = now() where id = '00000000-0000-4000-8000-0000000a3213';
 select is(
   (select instagram_handle from public.place_views_log('00000000-0000-4000-8000-000000003213') where first_name = 'Public' and kind = 'viewed'),
   'public_one',

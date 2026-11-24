@@ -36,11 +36,13 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
+  apiCheckInstagramProof,
   apiDisconnectInstagram,
   apiInstagramChannel,
   apiInstagramDmStatus,
   apiLookupInstagram,
   apiStartInstagramDm,
+  apiStartInstagramProof,
   apiSyncInstagram,
   apiUpdateConsumerProfile,
   dmVerified,
@@ -87,8 +89,8 @@ import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
 // server says whether that channel is live; until it is (the Meta secrets,
 // MESITA-2579) no code is asked for, and the card connects a typed username
 // through an Apify scrape (MESITA-3039, ConnectLookup), trusted for testing.
-// The bio-code screen is gone from the page; the server still answers its
-// actions.
+// The bio code is back, inside the account card, as the proof sharing needs
+// (MESITA-4856, Pato: "Yes, require proof").
 //
 // NO STEPS FOR A DEAD BUTTON (Pato, MESITA-3001: "this is confusing"). The
 // off card used to number three instructions over a greyed "Soon" button,
@@ -1059,6 +1061,11 @@ function ShareRow({ pending = false }: { pending?: boolean }) {
     );
   }
 
+  // Not proved: nothing to share yet, only the proof (MESITA-4856).
+  if (data?.social_level && !data.instagram_proved_at && handle && !pending) {
+    return <ProveCard handle={handle} />;
+  }
+
   if (data?.social_level && data.instagram_handle_shown == null && handle && !pending) {
     return (
       <div
@@ -1122,6 +1129,84 @@ function ShareRow({ pending = false }: { pending?: boolean }) {
       </span>
       <Switch on={shown} />
     </button>
+  );
+}
+
+// PROVE IT'S YOURS (MESITA-4856): the code, where to put it, and the check.
+// The check is a paid scrape of the bio, so it never polls. It lands by a
+// reload, like a Sync, so every screen reads the proved account.
+function ProveCard({ handle }: { handle: string }) {
+  const supabase = useBrowserSupabase();
+  const [code, setCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  async function run(step: () => Promise<void>) {
+    if (busy) return;
+    setBusy(true);
+    setFailed(null);
+    try {
+      await step();
+    } catch (e) {
+      if (e instanceof EFError && (e.code === "code_expired" || e.code === "no_claim")) setCode(null);
+      setFailed(errMsg(e, "That didn't work. Try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  const start = () => run(async () => setCode(await apiStartInstagramProof(supabase, handle)));
+  const check = () =>
+    run(async () => {
+      await apiCheckInstagramProof(supabase);
+      window.location.reload();
+    });
+  const copy = () => {
+    if (!code) return;
+    navigator.clipboard.writeText(code).then(
+      () => toast.success("Code copied."),
+      () => toast.error("Couldn't copy. Type the code instead."),
+    );
+  };
+
+  return (
+    <div
+      className="border-border/60 mx-4 mb-3 flex flex-col gap-3 rounded-xl border p-3"
+      data-instagram-share="prove"
+    >
+      <div>
+        <p className="text-sm font-semibold">Prove @{handle} is yours</p>
+        <p className="text-muted-foreground type-label">
+          {code
+            ? "Put this code in your Instagram bio, save it, then check. You can remove it afterwards."
+            : "Needed to share your Instagram and see other guests'. It takes a minute."}
+        </p>
+      </div>
+      {code ? (
+        <>
+          <button
+            type="button"
+            onClick={copy}
+            aria-label={`Copy ${code}`}
+            className={cn(QUIET_BUTTON_CLASS, "h-12 w-full rounded-xl text-base font-semibold tabular-nums")}
+          >
+            {code}
+            <Copy className="h-4 w-4" aria-hidden />
+          </button>
+          <Button type="button" className={ME_BUTTON_CLASS} disabled={busy} onClick={() => void check()}>
+            {busy ? "Reading your bio…" : "Check my bio"}
+          </Button>
+        </>
+      ) : (
+        <Button type="button" className={ME_BUTTON_CLASS} disabled={busy} onClick={() => void start()}>
+          {busy ? "Getting your code…" : "Get my code"}
+        </Button>
+      )}
+      {failed && (
+        <p role="alert" className="text-destructive type-label">
+          {failed}
+        </p>
+      )}
+    </div>
   );
 }
 

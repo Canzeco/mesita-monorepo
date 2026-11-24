@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(20);
+select plan(23);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3060'),
@@ -124,6 +124,21 @@ select is(
   (select row(instagram_handle is null, instagram_handle_shown is null)::text
      from public.consumers where id = '00000000-0000-4000-8000-0000000a3060'),
   '(t,t)', 'the account the handle was taken from loses it and its choice');
+
+-- MESITA-4856: only a proof is proof, and a typed connect cannot take a
+-- handle its owner proved.
+select ok(
+  (select instagram_proved_at is null from public.consumers where id = '00000000-0000-4000-8000-0000000d3060'),
+  'a typed connect proves nothing');
+select public.consumer_instagram_verify('00000000-0000-4000-8000-0000000d3060', 'ana.3060', 300, null, true);
+select throws_ok(
+  $$ select public.consumer_instagram_verify('00000000-0000-4000-8000-0000000a3060', 'ana.3060', 300) $$,
+  'P0001', 'handle_proved_elsewhere',
+  'a typed connect cannot take a proved handle');
+select public.consumer_instagram_verify('00000000-0000-4000-8000-0000000d3060', 'dan.3060', 300);
+select ok(
+  (select instagram_proved_at is null from public.consumers where id = '00000000-0000-4000-8000-0000000d3060'),
+  'a new handle starts unproved');
 
 -- ━━━ only the service role runs them ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
