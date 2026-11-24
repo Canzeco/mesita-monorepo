@@ -11,8 +11,10 @@ import { placeTabFromPathname } from "@/lib/routes";
 export function PlaceScroll({ children, staff = false }: { children: React.ReactNode; staff?: boolean }) {
   const tab = placeTabFromPathname(usePathname());
   const onProfile = tab === "profile";
+  // No overflow here: the window scrolls. An overflow box with no height never
+  // scrolls, and the sticky save bars inside stuck to it (MESITA-4922).
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto pb-8">
+    <div className="pb-8">
       <div className={onProfile ? undefined : "hidden"} inert={!onProfile}>
         <ProfileTab staff={staff} />
       </div>
