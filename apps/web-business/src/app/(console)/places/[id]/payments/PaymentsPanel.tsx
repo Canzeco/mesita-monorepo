@@ -11,11 +11,11 @@
 //                                            Credits Payments (Loyalty Cards: on
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
-//   Visit Checkout     #visit-checkout     · Enabled · Visit Offer (MESITA-4770:
-//                                            Discount | Cashback) · Welcome
-//                                            Everyone · Returning Regular ·
-//                                            Returning VIP (three picks each, Off
-//                                            included)
+//   Visit Checkout     #visit-checkout     · Enabled · Visit Mechanic (MESITA-4770,
+//                                            MESITA-4789: Discount | Cashback) ·
+//                                            Welcome Regular · Returning Regular ·
+//                                            Welcome VIP · Returning VIP (three
+//                                            picks each, Off included)
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -140,13 +140,16 @@ function wholeMoney(cents: number, currency: string): string {
   }
 }
 
-/** Visit Checkout's three lines (MESITA-4698; VIP back since MESITA-4766),
+/** Visit Checkout's four lines (MESITA-4698; VIP back since MESITA-4766; four since MESITA-4789),
  *  each Off or one of two rates, all always shown, paid out by the place's
  *  one mechanism (MESITA-4770: Discount off this bill, or Cashback for the
  *  next visit). `line` names Cashback; a Discount place reads Discount. */
 const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; note?: string; icon: Icon }> = [
-  { key: "welcome_bps", id: "welcome-everyone", name: "Welcome Everyone", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
+  // FOUR TIERS (Pato, 2026-11-23, MESITA-4789: "Welcome Regular, Returning
+  // Regular, Welcome VIP, Returning VIP"), in his order.
+  { key: "welcome_bps", id: "welcome-regular", name: "Welcome Regular", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
   { key: "returning_bps", id: "returning-regular", name: "Returning Regular", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
+  { key: "welcome_vip_bps", id: "welcome-vip", name: "Welcome VIP", line: "Cashback on a VIP guest's first bill here.", icon: CrownSimpleIcon },
   {
     key: "returning_vip_bps",
     id: "returning-vip",
@@ -159,11 +162,9 @@ const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: st
 /** MESITA-4770: the mechanism picks, in the owner's words. */
 const MECHANISM_LABEL: Record<VisitMechanism, string> = { discount: "Discount", cashback: "Cashback" };
 const pct = (bps: number) => `${bps / 100}%`;
-/** A cashback pick: Off or the rate. */
-const ratePick = (bps: number) => (bps === 0 ? "Off" : pct(bps));
 /** Every visit rate at 0: what Enabled Off stores. */
-const NO_RATES = { welcome_bps: 0, returning_bps: 0, returning_vip_bps: 0 } as const;
-const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0 || r.returning_vip_bps > 0;
+const NO_RATES = { welcome_bps: 0, returning_bps: 0, returning_vip_bps: 0, welcome_vip_bps: 0 } as const;
+const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0 || r.returning_vip_bps > 0 || r.welcome_vip_bps > 0;
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
 function voucherProducts(currency: string, rates: CashbackRates): Product[] {
@@ -199,6 +200,7 @@ const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
   "welcome_bps",
   "returning_bps",
   "returning_vip_bps",
+  "welcome_vip_bps",
   "visit_mechanism",
   "small_bonus_bps",
   "medium_bonus_bps",
@@ -210,8 +212,13 @@ const sameRates = (a: CashbackRates, b: CashbackRates) => CASHBACK_FIELDS.every(
  *  the set with any rate on, else the defaults. */
 const restoreRates = (c: CashbackRates): Pick<CashbackRates, VisitRateField> =>
   anyRate(c)
-    ? { welcome_bps: c.welcome_bps, returning_bps: c.returning_bps, returning_vip_bps: c.returning_vip_bps }
-    : { welcome_bps: CASHBACK_DEFAULTS.welcome_bps, returning_bps: CASHBACK_DEFAULTS.returning_bps, returning_vip_bps: CASHBACK_DEFAULTS.returning_vip_bps };
+    ? { welcome_bps: c.welcome_bps, returning_bps: c.returning_bps, returning_vip_bps: c.returning_vip_bps, welcome_vip_bps: c.welcome_vip_bps }
+    : {
+        welcome_bps: CASHBACK_DEFAULTS.welcome_bps,
+        returning_bps: CASHBACK_DEFAULTS.returning_bps,
+        returning_vip_bps: CASHBACK_DEFAULTS.returning_vip_bps,
+        welcome_vip_bps: CASHBACK_DEFAULTS.welcome_vip_bps,
+      };
 
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
@@ -689,13 +696,14 @@ export function PaymentsPanel({
                 credit for the next visit. */}
             <li id="visit-mechanism" className={MARK_ROW} data-place-state="visit_mechanism">
               <div className="min-w-0">
-                <p className="font-medium">Visit Offer</p>
+                {/* "Visit Mechanic" (Pato, 2026-11-23, MESITA-4789). */}
+                <p className="font-medium">Visit Mechanic</p>
                 <p className="text-muted-foreground">
                   {discount ? "Off the bill at the table. No Credits Agreement needed." : "Credit back for the guest's next visit here."}
                 </p>
               </div>
               <span />
-              <div className="flex gap-1" role="group" aria-label="Visit Offer">
+              <div className="flex gap-1" role="group" aria-label="Visit Mechanic">
                 {VISIT_MECHANISMS.map((m) => {
                   const picked = rates.visit_mechanism === m;
                   return (
@@ -716,7 +724,16 @@ export function PaymentsPanel({
                 })}
               </div>
             </li>
+            {/* LIKE A VOUCHER ROW (Pato, 2026-11-23, MESITA-4789: "same design
+                for these cashback mechanics"): two rate pills, then the
+                voucher's switch for On/Off; no Off pill. Off keeps the last
+                rate on its pill, greyed, and On brings it back. */}
             {RATE_ROWS.map((row) => {
+              const live = discount || settings.loyalty_cards ? rates[row.key] : 0;
+              const on = live > 0;
+              const steps = VISIT_PICKS_BPS[row.key].filter((b) => b > 0);
+              const remembered = lastRates[row.key] > 0 ? lastRates[row.key] : CASHBACK_DEFAULTS[row.key] > 0 ? CASHBACK_DEFAULTS[row.key] : steps[0];
+              const locked = pending || !!visitBlock;
               return (
                 <li key={row.key} id={row.id} className={MARK_ROW} data-place-state={row.key}>
                   <div className="min-w-0">
@@ -724,10 +741,20 @@ export function PaymentsPanel({
                     <p className="text-muted-foreground">{discount ? row.line.replace("Cashback", "Discount") : row.line}</p>
                     {under(visitBlock, row.note ?? null)}
                   </div>
-                  <span />
-                  {picks(row.name, VISIT_PICKS_BPS[row.key], settings.loyalty_cards ? rates[row.key] : 0, ratePick, pending || !!creditsBlock, (b) =>
-                    editRates({ ...rates, [row.key]: b }),
-                  )}
+                  {picks(row.name, steps, on ? live : remembered, pct, locked || !on, (b) => editRates({ ...rates, [row.key]: b }))}
+                  <Switch
+                    on={on}
+                    pending={locked}
+                    onClick={() => {
+                      if (on) {
+                        setLastRates((l) => ({ ...l, [row.key]: live }));
+                        editRates({ ...rates, [row.key]: 0 });
+                      } else {
+                        editRates({ ...rates, [row.key]: remembered });
+                      }
+                    }}
+                    label={`${row.name}: ${on ? "on" : "off"}`}
+                  />
                 </li>
               );
             })}

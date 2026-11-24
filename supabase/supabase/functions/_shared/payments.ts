@@ -188,6 +188,8 @@ export type ListRowOffers = {
   welcome_pct: number | null;
   returning_pct: number | null;
   returning_vip_pct: number | null;
+  /** MESITA-4789: Welcome VIP, a VIP's first paid bill here. */
+  welcome_vip_pct: number | null;
   /** MESITA-4770: how the three visit lines pay out here: "discount" (off
    *  this bill, "N% Off") or "cashback" (credit for the next visit, "N%
    *  Back"). A discount needs no Credits Agreement. */
@@ -197,21 +199,22 @@ export type ListRowOffers = {
   voucher_pct: Partial<Record<MoneyVoucherKey, number>>;
 };
 /** A row with nothing on offer. */
-export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, returning_vip_pct: null, visit_mechanism: "cashback", voucher_pct: {} };
+export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, returning_vip_pct: null, welcome_vip_pct: null, visit_mechanism: "cashback", voucher_pct: {} };
 
 /** A place's visit lines as list rows read them (MESITA-4702, MESITA-4766,
  *  MESITA-4770): each line in whole percent (null = gives nothing), the
  *  highest, whether all three are the same rate, and the mechanism. No rates
  *  (Loyalty Cards Off on a cashback place, or a failed read) = none. */
-export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRowOffers, "cashback_pct" | "cashback_flat" | "welcome_pct" | "returning_pct" | "returning_vip_pct" | "visit_mechanism"> {
+export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRowOffers, "cashback_pct" | "cashback_flat" | "welcome_pct" | "returning_pct" | "returning_vip_pct" | "welcome_vip_pct" | "visit_mechanism"> {
   const pct = (bps: number | undefined) => (bps && bps > 0 ? bps / 100 : null);
   const top = r ? maxCashbackBps(r) : 0;
   return {
     cashback_pct: top > 0 ? top / 100 : null,
-    cashback_flat: !!r && r.welcome_bps === r.returning_bps && r.returning_bps === r.returning_vip_bps,
+    cashback_flat: !!r && r.welcome_bps === r.returning_bps && r.returning_bps === r.returning_vip_bps && r.returning_vip_bps === r.welcome_vip_bps,
     welcome_pct: pct(r?.welcome_bps),
     returning_pct: pct(r?.returning_bps),
     returning_vip_pct: pct(r?.returning_vip_bps),
+    welcome_vip_pct: pct(r?.welcome_vip_bps),
     visit_mechanism: r?.visit_mechanism === "discount" ? "discount" : "cashback",
   };
 }

@@ -2,7 +2,9 @@
 // plain module: business-api.ts is "use server" and may export only async
 // functions.
 
-// THREE LINES SINCE MESITA-4766 (Pato, 2026-11-23: "BRING BACK VIP CUSTOMERS.
+// FOUR LINES SINCE MESITA-4789 (Pato: "Welcome Regular, Returning Regular,
+// Welcome VIP, Returning VIP"): Welcome VIP is a VIP's first bill, Off · 10 ·
+// 20 %. THREE LINES SINCE MESITA-4766 (Pato, 2026-11-23: "BRING BACK VIP CUSTOMERS.
 // REMOVE INSTAGRAM STORIES."): Welcome Everyone (the guest's first paid bill
 // here) Off · 10 · 20 %, Returning Regular (every later bill) Off · 5 · 10 %,
 // Returning VIP (every later bill of a VIP guest: invitation code or more than
@@ -20,6 +22,8 @@ export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
   returning_vip_bps: number;
+  /** MESITA-4789: Welcome VIP, a VIP guest's first paid bill here. */
+  welcome_vip_bps: number;
   visit_mechanism: VisitMechanism;
   small_bonus_bps: number;
   medium_bonus_bps: number;
@@ -29,6 +33,7 @@ export const VISIT_PICKS_BPS = {
   welcome_bps: [0, 1000, 2000],
   returning_bps: [0, 500, 1000],
   returning_vip_bps: [0, 1000, 2000],
+  welcome_vip_bps: [0, 1000, 2000],
 } as const;
 export type VisitRateField = keyof typeof VISIT_PICKS_BPS;
 export const VOUCHER_BONUS_PICKS_BPS = {
@@ -41,6 +46,7 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
   returning_vip_bps: 1000,
+  welcome_vip_bps: 1000,
   visit_mechanism: "cashback",
   small_bonus_bps: 1000,
   medium_bonus_bps: 2000,

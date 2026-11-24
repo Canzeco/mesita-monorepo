@@ -135,7 +135,7 @@ create function pg_temp.line(n int) returns text language sql as $$
   select reason || ':' || amount_cents from public.wallet_entries
    where tab_id = ('00000000-0000-4000-8000-000000' || lpad(n::text, 2, '0') || '4766')::uuid and kind = 'cashback' $$;
 
-select is(pg_temp.line(1), 'welcome:1000', 'a VIP''s first bill is Welcome Everyone');
+select is(pg_temp.line(1), 'welcome_vip:1000', 'a VIP''s first bill is Welcome VIP (MESITA-4789)');
 select is(pg_temp.line(2), 'returning_vip:2000', 'an invited VIP''s later bill is Returning VIP');
 select is(pg_temp.line(4), 'returning:500', 'a Regular''s later bill is Returning Regular');
 select is(pg_temp.line(6), 'returning_vip:2000', 'a real 6,000-follower guest''s later bill is Returning VIP');
@@ -150,7 +150,7 @@ values
    repeat('9', 64), 'mxn', now() + interval '1 day', 'paid', 10000, 0, 'waiter', now() + interval '20 minutes', 10000, 0, false),
   ('00000000-0000-4000-8000-000000104766', '00000000-0000-4000-8000-000000014766', '00000000-0000-4000-8000-0000000f4766',
    repeat('a', 64), 'mxn', now() + interval '1 day', 'paid', 10000, 0, 'waiter', now() + interval '21 minutes', 10000, 0, false);
-select is(pg_temp.line(9), 'welcome:1000', 'test mode counts its own first bill: Welcome');
+select is(pg_temp.line(9), 'welcome_vip:1000', 'test mode counts its own first bill: Welcome VIP (MESITA-4789)');
 select is(pg_temp.line(10), 'returning_vip:2000', 'test mode lets the emulator make a VIP');
 
 -- Off pays nothing.

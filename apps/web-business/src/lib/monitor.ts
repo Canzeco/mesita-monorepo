@@ -179,7 +179,8 @@ const PAYOUT: Record<string, string> = {
 const GIFT: Record<string, string> = { open: "Open link", claimed: "Claimed", taken_back: "Taken back" };
 /** The cashback line a credit came from (wallet_entries.reason, MESITA-4766). */
 const CASHBACK_REASON: Record<string, string> = {
-  welcome: "Welcome Everyone",
+  welcome: "Welcome Regular",
+  welcome_vip: "Welcome VIP",
   returning: "Returning Regular",
   returning_vip: "Returning VIP",
 };

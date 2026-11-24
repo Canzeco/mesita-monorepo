@@ -34,8 +34,8 @@ export type WalletEntry = {
   /** The gift behind a gift_out, gift_in or gift_back (MESITA-4066): the
    *  entry page forwards to that gift's page. Absent before MESITA-4066. */
   gift_id?: string | null;
-  /** Which Back line paid a `cashback` entry (MESITA-4766): welcome ·
-   *  returning · returning_vip. Absent on other kinds and older reads. */
+  /** Which line paid a `cashback` entry (MESITA-4766, MESITA-4789): welcome ·
+   *  welcome_vip · returning · returning_vip. Absent on other kinds and older reads. */
   reason?: string | null;
 };
 
@@ -499,6 +499,9 @@ export type PayPlace = {
     welcome_pct?: number | null;
     returning_pct?: number | null;
     returning_vip_pct?: number | null;
+    /** MESITA-4789: a VIP's first bill here; absent from an older server
+     *  reads welcome_pct (what a VIP got then). */
+    welcome_vip_pct?: number | null;
     /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for
      *  the three lines. Absent from an older server reads as cashback. */
     visit_mechanism?: "discount" | "cashback";
@@ -506,7 +509,7 @@ export type PayPlace = {
     voucher_pct?: Record<string, number>;
   };
   /** MESITA-4770: the line this guest's next bill here falls in. */
-  visit_line?: "welcome" | "returning" | "returning_vip";
+  visit_line?: "welcome" | "welcome_vip" | "returning" | "returning_vip";
 };
 
 /** MESITA-4770: the visit discount this guest's next bill here gets, in
@@ -515,7 +518,12 @@ export type PayPlace = {
 export function payPlaceDiscountBps(p: PayPlace | null): number {
   const o = p?.offers;
   if (!o || o.visit_mechanism !== "discount") return 0;
-  const pct = p?.visit_line === "returning_vip" ? o.returning_vip_pct : p?.visit_line === "returning" ? o.returning_pct : o.welcome_pct;
+  const line = p?.visit_line;
+  const pct =
+    line === "returning_vip" ? o.returning_vip_pct
+    : line === "returning" ? o.returning_pct
+    : line === "welcome_vip" ? (o.welcome_vip_pct !== undefined ? o.welcome_vip_pct : o.welcome_pct)
+    : o.welcome_pct;
   return pct && pct > 0 ? Math.round(pct * 100) : 0;
 }
 
@@ -609,11 +617,12 @@ export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "paymen
   return ENTRY_LABEL[e.kind] ?? e.kind;
 }
 
-/** The Back lines by a cashback entry's `reason` (MESITA-4766). A guest
- *  never reads "Regular": the middle line is plain Returning. */
+/** The lines by a cashback entry's `reason` (MESITA-4766), in Pato's four
+ *  tier names since MESITA-4789. */
 export const BACK_LINE_LABEL: Record<string, string> = {
-  welcome: "Welcome",
-  returning: "Returning",
+  welcome: "Welcome Regular",
+  returning: "Returning Regular",
+  welcome_vip: "Welcome VIP",
   returning_vip: "Returning VIP",
 };
 

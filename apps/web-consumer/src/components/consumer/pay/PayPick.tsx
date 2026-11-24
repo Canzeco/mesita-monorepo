@@ -336,16 +336,19 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
   const word = discount ? "Discount" : "Cashback";
   const visitTint = discount ? BOX_TINT.discount : BOX_TINT.cashback;
   if (kind === "cashback") {
-    // Welcome · Returning · Returning VIP (MESITA-4766); a 0% line is Off
-    // and has no box. One rate on all three is one "Every bill" box.
+    // The four tiers (MESITA-4789): Welcome Regular · Returning Regular ·
+    // Welcome VIP · Returning VIP; a 0% line is Off and has no box. One rate
+    // on all four is one "Every bill" box.
     const on = (pct: number | null | undefined) => (pct != null && pct > 0 ? pct : null);
     const w = on(o.welcome_pct);
     const r = on(o.returning_pct);
+    const wv = on(o.welcome_vip_pct !== undefined ? o.welcome_vip_pct : o.welcome_pct);
     const v = on(o.returning_vip_pct);
-    if (w !== null && w === r && r === v) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
+    if (w !== null && w === r && r === wv && wv === v) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
     return [
-      ...(w !== null ? [{ key: "welcome", top: "Welcome", bottom: `${w}% ${word}`, tone: visitTint }] : []),
-      ...(r !== null ? [{ key: "returning", top: "Returning", bottom: `${r}% ${word}`, tone: visitTint }] : []),
+      ...(w !== null ? [{ key: "welcome", top: "Welcome Regular", bottom: `${w}% ${word}`, tone: visitTint }] : []),
+      ...(r !== null ? [{ key: "returning", top: "Returning Regular", bottom: `${r}% ${word}`, tone: visitTint }] : []),
+      ...(wv !== null ? [{ key: "welcome_vip", top: "Welcome VIP", bottom: `${wv}% ${word}`, tone: visitTint }] : []),
       ...(v !== null ? [{ key: "returning_vip", top: "Returning VIP", bottom: `${v}% ${word}`, tone: visitTint }] : []),
     ];
   }

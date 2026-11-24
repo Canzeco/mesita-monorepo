@@ -44,9 +44,11 @@ export type OfferInput = {
     welcome_bps: number;
     returning_bps: number;
     returning_vip_bps?: number;
+    /** MESITA-4789: a VIP guest's first bill here. */
+    welcome_vip_bps?: number;
     visit_mechanism?: VisitMechanism;
     /** The line this guest's next bill falls in (null signed out). */
-    line?: "welcome" | "returning" | "returning_vip" | null;
+    line?: "welcome" | "welcome_vip" | "returning" | "returning_vip" | null;
   } | null;
   /** MESITA-4770: how the visit lines pay out (a list row's field); absent
    *  reads `cashback.visit_mechanism`, else cashback. */
@@ -79,13 +81,20 @@ function cashbackOf(o: OfferInput): { pct: number; flat: boolean } {
   if (o.cashback_pct != null) return { pct: o.cashback_pct, flat: o.cashback_flat === true };
   const c = o.cashback;
   if (!c) return { pct: 0, flat: false };
-  // MESITA-4766: the highest of Welcome, Returning and Returning VIP.
+  // MESITA-4766, MESITA-4789: the highest of the four lines.
   const vip = c.returning_vip_bps ?? 0;
+  const welcomeVip = c.welcome_vip_bps ?? c.welcome_bps;
   // MESITA-4781: the guest's own line when the server knows it (one line
   // applies to a bill).
-  const mine = c.line === "welcome" ? c.welcome_bps : c.line === "returning" ? c.returning_bps : c.line === "returning_vip" ? vip : 0;
+  const mine =
+    c.line === "welcome" ? c.welcome_bps
+    : c.line === "welcome_vip" ? welcomeVip
+    : c.line === "returning" ? c.returning_bps
+    : c.line === "returning_vip" ? vip
+    : 0;
   if (mine > 0) return { pct: mine / 100, flat: true };
-  return { pct: Math.max(c.welcome_bps, c.returning_bps, vip) / 100, flat: c.welcome_bps === c.returning_bps && c.returning_bps === vip };
+  const all = [c.welcome_bps, c.returning_bps, welcomeVip, vip];
+  return { pct: Math.max(...all) / 100, flat: all.every((b) => b === all[0]) };
 }
 
 // THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "ONLY SHOW THE HIGHEST
