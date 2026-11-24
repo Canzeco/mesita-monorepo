@@ -59,7 +59,7 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
   fun: "an activity a group does — bowling, arcades, karts, escape rooms, billiards, mini golf, rinks, water parks; not a lively restaurant or a beach club",
   casino: "a casino — slots and gaming tables are the draw",
-  night_out: "a club — a nightclub (antro) with a dance floor or DJs, a late-night party or live-music venue; not a quiet lounge, rooftop or cocktail bar, nor a restaurant that is merely open late",
+  night_out: "a club — a nightclub (antro) with a dance floor or DJs, a late-night party, or a place known for live bands; not a quiet lounge, rooftop or cocktail bar, nor a restaurant that is merely open late",
 };
 
 /** The FAMILY LIST block a prompt carries: `slug — Label`, plus its meaning. */
