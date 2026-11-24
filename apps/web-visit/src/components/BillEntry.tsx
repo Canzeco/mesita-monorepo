@@ -4,23 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import { amountText, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGTH } from "@/lib/waiter-pad";
 
-// THE WAITER'S FOUR STEPS since MESITA-4889 (Bill and Tip are one step, two
-// screens; five under MESITA-4879, Pato: "Bill Tip Code Charge (confirm)
-// Receipt … you first input code, then you send bill"), one thing per screen,
-// on keys drawn in the page (MESITA-4871):
+// THE WAITER'S FOUR STEPS since MESITA-4916 (Pato, 2026-11-24: "before anything,
+// input the actual 6 digits code: 1. Code 2. Bill 3. Confirm 4. Receipt"; the
+// code came after the tip under MESITA-4889), one thing per screen, on keys drawn
+// in the page (MESITA-4871):
 //
-//   Bill     the bill, before tip
-//   Tip      10 · 15 · 20% · Other; nothing is no tip
-//   Code     the place's 6 digits (the waiter's name first, if asked, MESITA-4904), then whose QR it is; Send bill
+//   Code     the place's 6 digits (the waiter's name first, if asked, MESITA-4904), then whose QR it is
+//   Bill     the bill, before tip; then the tip, 10 · 15 · 20% · Other, nothing is no tip; Send bill
 //   Confirm  the handshake: this tap and the guest's Pay, in any order
 //   Receipt  what was paid
 //
 // The tip is never picked for the guest.
 
 const KEYS: Key[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
+const REARM_MS = 700;
 const TIP_PCTS = [10, 15, 20] as const;
 
-export const WAITER_STEPS = ["Bill & Tip", "Code", "Confirm", "Receipt"] as const;
+export const WAITER_STEPS = ["Code", "Bill", "Confirm", "Receipt"] as const;
 
 /** Where the waiter is; a picture, not buttons. */
 export function WaiterSteps({ at, onBack, busy }: { at: 1 | 2 | 3 | 4; onBack?: () => void; busy?: boolean }) {
@@ -110,7 +110,7 @@ const Alert = ({ text }: { text: string | null }) =>
 
 /** The place's code: after the scan, or again from another phone. `askName`: the
  *  owner asks for the waiter's name first (MESITA-4904). Nothing is kept. */
-export function CodeEntry({ busy, error, label, askName, onCode, onBack }: { busy: boolean; error: string | null; label: string; askName: boolean; onCode: (code: string, name: string | null) => Promise<boolean>; onBack?: () => void }) {
+export function CodeEntry({ busy, error, label, askName, onCode }: { busy: boolean; error: string | null; label: string; askName: boolean; onCode: (code: string, name: string | null) => Promise<boolean> }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [named, setNamed] = useState(false);
@@ -122,7 +122,7 @@ export function CodeEntry({ busy, error, label, askName, onCode, onBack }: { bus
     const next = () => name.trim() && setNamed(true);
     return (
       <main className="wp" data-bill="name">
-        <WaiterSteps at={2} busy={busy} onBack={onBack} />
+        <WaiterSteps at={1} busy={busy} />
         <div className="wp-body">
           <h1 className="wp-title">Your name</h1>
           <input
@@ -149,7 +149,7 @@ export function CodeEntry({ busy, error, label, askName, onCode, onBack }: { bus
   }
   return (
     <main className="wp" data-bill="code">
-      <WaiterSteps at={2} busy={busy} onBack={askName ? () => setNamed(false) : onBack} />
+      <WaiterSteps at={1} busy={busy} onBack={askName ? () => setNamed(false) : undefined} />
       <div className="wp-body">
         <h1 className="wp-title">Waiter code</h1>
         <Code code={code} />
@@ -163,11 +163,11 @@ export function CodeEntry({ busy, error, label, askName, onCode, onBack }: { bus
   );
 }
 
-/** Whose QR it is, before the bill goes: the waiter looks, then sends. */
-export function GuestCheck({ name, photo, age, sex, total, busy, error, onSend, onNo }: { name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null; total: string; busy: "send" | "no" | null; error: string | null; onSend: () => void; onNo: () => void }) {
+/** Whose QR it is, before the bill is typed. */
+export function GuestCheck({ name, photo, age, sex, busy, error, onYes, onNo }: { name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null; busy: boolean; error: string | null; onYes: () => void; onNo: () => void }) {
   return (
     <main className="wp" data-bill="guest">
-      <WaiterSteps at={2} />
+      <WaiterSteps at={1} />
       <div className="wp-body">
         <h1 className="wp-title">Is this your guest?</h1>
         <span className="wp-face" aria-hidden>
@@ -177,15 +177,15 @@ export function GuestCheck({ name, photo, age, sex, total, busy, error, onSend, 
         <p className="wp-name">{name ?? "A Mesita guest"}</p>
         {/* MESITA-4890, Pato: "display age and sex". */}
         {age !== null || sex ? <p className="wp-line">{[sex === "female" ? "Female" : sex === "male" ? "Male" : null, age !== null ? `${age} years` : null].filter(Boolean).join(" · ")}</p> : null}
-        <p className="wp-line">{photo ? total : `${total} · No photo, ask their name`}</p>
+        {photo ? null : <p className="wp-line">No photo, ask their name</p>}
         <Alert text={error} />
       </div>
       <div className="wp-actions wp-half">
-      <button type="button" className="wp-no" disabled={busy !== null} onClick={onNo}>
-        {busy === "no" ? "Closing…" : "Not my guest"}
+      <button type="button" className="wp-no" disabled={busy} onClick={onNo}>
+        {busy ? "Closing…" : "Not my guest"}
       </button>
-      <button type="button" className="wp-go wp-yes" disabled={busy !== null} onClick={onSend}>
-        {busy === "send" ? "Sending…" : "Send bill"}
+      <button type="button" className="wp-go wp-yes" disabled={busy} onClick={onYes}>
+        Yes
       </button>
       </div>
     </main>
@@ -199,21 +199,18 @@ export type BillEntryProps = {
   error: string | null;
   /** Above the amount: the test band, or why it is typed again. */
   top?: React.ReactNode;
-  /** The last button: Next to the code, or Send bill on an edit. */
-  sendLabel: string;
   /** Every key, for the guest's screen (MESITA-4883). */
   onTyping?: (billCents: number, tipCents: number, step: "bill" | "tip") => void;
-  /** Open on the tip (back from the code). */
-  atTip?: boolean;
   onSend: (billCents: number, tipCents: number) => void;
   onLeave?: () => void;
 };
 
-export function BillEntry({ start, busy, error, top, sendLabel, atTip, onTyping, onSend, onLeave }: BillEntryProps) {
-  const [step, setStep] = useState(atTip ? 1 : 0);
+export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }: BillEntryProps) {
+  const [step, setStep] = useState(0);
   const [bill, setBill] = useState(start?.bill ? amountText(start.bill) : "");
   const [tip, setTip] = useState(start?.tip ? amountText(start.tip) : "");
   const [other, setOther] = useState(false);
+  const tipAt = useRef(0);
   const billCents = readAmount(bill);
   const tipCents = tipOf(tip);
   const m = (c: number) => moneyLabel(c, "USD");
@@ -228,13 +225,18 @@ export function BillEntry({ start, busy, error, top, sendLabel, atTip, onTyping,
 
   const go = () => {
     if (!ready || billCents === null) return;
-    if (step === 0) return setStep(1);
+    if (step === 0) {
+      tipAt.current = Date.now();
+      return setStep(1);
+    }
+    // Next and Send bill are one spot: a second tap is not a bill with no tip.
+    if (Date.now() - tipAt.current < REARM_MS) return;
     onSend(billCents, tipCents);
   };
 
   return (
     <main className="wp" data-bill="type" data-step={step === 0 ? "bill" : "tip"}>
-      <WaiterSteps at={1} busy={busy} onBack={step > 0 ? () => setStep(0) : onLeave} />
+      <WaiterSteps at={2} busy={busy} onBack={step > 0 ? () => setStep(0) : onLeave} />
       {top}
       <div className="wp-body">
         <h1 className="wp-title">{step === 0 ? "How much is the bill?" : "Tip? Ask the guest"}</h1>
@@ -246,7 +248,7 @@ export function BillEntry({ start, busy, error, top, sendLabel, atTip, onTyping,
         ) : (
           <>
             <Amount text={tip} label="Tip" />
-            <p className="wp-line">Bill {m(billCents ?? 0)}</p>
+            <p className="wp-line">Bill {m(billCents ?? 0)} · Total {m((billCents ?? 0) + tipCents)}</p>
             <div className="wp-tips" role="group" aria-label="Tip">
               {TIP_PCTS.map((p) => (
                 <button
@@ -296,7 +298,7 @@ export function BillEntry({ start, busy, error, top, sendLabel, atTip, onTyping,
         onEnter={go}
       />
       <button type="button" className="wp-go" disabled={!ready} onClick={go}>
-        {busy ? "Sending…" : step === 0 ? "Next" : sendLabel === "Next" && tipCents === 0 ? "No tip" : sendLabel}
+        {busy ? "Sending…" : step === 0 ? "Next" : tipCents === 0 ? "Send bill, no tip" : "Send bill"}
       </button>
     </main>
   );
