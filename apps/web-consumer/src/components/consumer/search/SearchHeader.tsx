@@ -4,12 +4,12 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   [ ⚲ Search places…       │ ✨ AI ]      one 40px bar
-//   (⌖) [▦ Menu] [⭐ Popular] …             32px chips, floating
+//   [ ⚲ Search places…       │ ✨ AI ]      one 48px bar
+//   [▦ Menu] [⭐ Popular] (○ Coffee) …      32px chips, floating
 //
 // AI IS THE BAR'S RIGHT END (Pato, 2026-11-23, MESITA-4799: "put the askai
 // button joined to the searchbar"; a separate pill since MESITA-3009). LOCATE
-// IS LEFT OF MENU (MESITA-4800: "at the left of menu"). Row one is one pill holding the query and AI, which opens a popup
+// IS AT THE MAP'S BOTTOM RIGHT, not here (MESITA-4811). Row one is one pill holding the query and AI, which opens a popup
 // over Search (MESITA-4480). One token set: header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
@@ -72,13 +72,10 @@ const CHIP_MARK = "shrink-0";
 
 
 export function SearchHeader({
-  locate,
   bar,
   chipsHidden = false,
   children,
 }: {
-  /** The locate disc, left of Menu on the chip row. */
-  locate: ReactNode;
   /** The query field; the bar takes what AI leaves. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
@@ -123,8 +120,6 @@ export function SearchHeader({
         </div>
       </div>
       <div className="relative" data-search-chip-band>
-        {/* HIDDEN, NOT UNMOUNTED, while the bar queries: locate lives here and
-            would toast a refused location again on every remount. */}
         {/* py-2 inside the scroller, not around it: its overflow would clip
             the chips' shadows. 12px above the bar, below it (pt-1 + py-2) and
             at the sides (MESITA-3012); every gap on this row is 8px. */}
@@ -134,7 +129,6 @@ export function SearchHeader({
             chipsHidden && "hidden",
           )}
         >
-          {locate}
           <button
             type="button"
             onClick={() => setSheetOpen(true)}

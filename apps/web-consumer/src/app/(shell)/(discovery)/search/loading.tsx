@@ -2,7 +2,6 @@ import { Skeleton } from "@/components/shared";
 import {
   CHIP,
   CHIP_SPECIAL,
-  CHIP_DISC,
   SEARCH_BAR,
 } from "@/components/consumer/search/header-classes";
 import {
@@ -15,8 +14,8 @@ import { cn } from "@/lib/utils";
 // /search Suspense fallback: SearchClient's frame, block for block (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader on its
-// top edge: the 40px bar with AI inside it, white and floating (MESITA-4799),
-// then the floating 32px chip row (the locate disc, MESITA-4800, the Menu
+// top edge: the 48px bar with AI inside it, white and floating (MESITA-4799),
+// then the floating 32px chip row (the Menu
 // square, then Popular and the families as pills; MESITA-4468). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
@@ -57,7 +56,6 @@ export default function SearchLoading() {
             <div className={cn(SEARCH_BAR, "flex-1")} />
           </div>
           <div className="flex items-center gap-2 overflow-hidden pt-1 pl-3">
-            <div aria-hidden className={CHIP_DISC} />
             <ControlSkeleton token={CHIP_SPECIAL} label="Menu" square />
             <div className="flex items-center gap-2 py-2 pr-3">
               <ControlSkeleton token={CHIP} label="Popular" />
