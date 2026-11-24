@@ -13,7 +13,7 @@ export type Bill = {
   currency: string;
   bill_cents: number | null;
   tip_cents: number;
-  /** Filled only once the guest accepted. */
+  /** From the moment the bill is sent (MESITA-4889). */
   discount_cents: number;
   credit_cents: number;
   outside_bill_cents: number | null;
@@ -21,6 +21,10 @@ export type Bill = {
   expires_at: string;
   updated_at: string;
   test_mode: boolean;
+  /** The waiter tapped Receive on this version. */
+  waiter_ready?: boolean;
+  /** What that tap said was taken, even if the bill changed since. */
+  took_cents?: number | null;
 };
 export type BillRead = { bill: Bill; place: { id: string; name: string | null }; guest_photo: string | null; guest_name?: string | null };
 
@@ -79,5 +83,12 @@ export const sendBill = (staff: Staff, args: { bill_id: string; version: number;
 
 export const getBill = (staff: Staff, bill_id: string) => call<BillRead>("visit-web-get-bill", { ...keyed(staff), bill_id }, "Couldn't read the bill.");
 
-export const closeBill = (staff: Staff, bill_id: string, action: "received" | "cancel") =>
+/** The waiter's side of the handshake (MESITA-4889): `paid` when the guest
+ *  already paid, `ready` when not. */
+export const receiveBill = (staff: Staff, bill_id: string, version: number) =>
+  call<{ outcome: string }>("visit-web-close-bill", { ...keyed(staff), bill_id, action: "receive", version }, "Couldn't reach Mesita. Tap again.");
+export const unreceiveBill = (staff: Staff, bill_id: string) =>
+  call<{ outcome: string }>("visit-web-close-bill", { ...keyed(staff), bill_id, action: "unreceive" }, "Couldn't reach Mesita. Tap again.");
+
+export const closeBill = (staff: Staff, bill_id: string, action: "cancel") =>
   call<{ outcome: string }>("visit-web-close-bill", { ...keyed(staff), bill_id, action }, "Couldn't reach Mesita. Tap again.");

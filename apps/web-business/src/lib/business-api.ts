@@ -473,7 +473,7 @@ export type PlacePayments = {
    *  it is paid; invoice = the one to pay, on Stripe's page. */
   fee: PlaceFee;
   /** MESITA-4502: cash amounts waiting for Received. Not tickets. */
-  cash_due?: { attempt_id: string; cash_cents: number; guest_label: string; created_at: string }[];
+  cash_due?: { attempt_id: string; cash_cents: number; credit_cents?: number; guest_label: string; created_at: string }[];
   /** MESITA-4698: the three cashback lines (Welcome Everyone, Returning
    *  Regular, Returning VIP; MESITA-4766) and the voucher bonuses, in basis
    *  points; older servers lack it. */

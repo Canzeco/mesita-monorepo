@@ -145,9 +145,10 @@ serveJson("business-web-get-payments", async (req) => {
   // No Staff QR any more (MESITA-3734): the waiter code is the one staff key.
   const hold = account?.livemode === paymentsLivemode() && account?.fee_hold === true;
   const { data: dueRows } = await admin.from("guest_pay_attempts")
-    .select("id, cash_cents, guest_label, created_at")
+    .select("id, cash_cents, credit_cents, guest_label, created_at")
     .eq("place_id", placeId)
-    .eq("status", "due")
+    // A bill the credits cover whole waits for its waiter too (MESITA-4889).
+    .or("status.eq.due,and(status.eq.opening,tender.eq.credits,held_at.not.is.null)")
     .order("created_at", { ascending: true });
   // MESITA-4698: a failed read shows the defaults rather than no page.
   const cashback = await readCashbackRates(admin, placeId).catch((err) => {
@@ -187,6 +188,7 @@ serveJson("business-web-get-payments", async (req) => {
     cash_due: (dueRows ?? []).map((row) => ({
       attempt_id: row.id,
       cash_cents: row.cash_cents,
+      credit_cents: row.credit_cents,
       guest_label: row.guest_label,
       created_at: row.created_at,
     })),

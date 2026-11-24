@@ -4,19 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
-import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, sendBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
+import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, receiveBill, sendBill, unreceiveBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
 import { BillEntry, CodeEntry, WaiterSteps } from "@/components/BillEntry";
 import { Bones } from "@/components/Bones";
 import { UserIcon } from "@/app/tab/[token]/icons";
 
 // THE WAITER'S BILL (MESITA-4823), by its state:
 //
-// The waiter's Charge and Receipt, and Bill and Tip again on an edit (MESITA-4879):
+// The waiter's Receive and Receipt, and Bill and Tip again on an edit (MESITA-4879):
 //
 //   open       Bill and Tip, Send bill
-//   sent       waiting for the guest: Edit, Cancel
+//   sent       Receive $X, Edit, Cancel; once tapped, waiting for the guest, Undo
 //   declined   the same boxes, "The guest declined"
-//   accepted   Collect $X, what it is made of, Received, Cancel
+//   accepted   the guest already paid on their phone: Receive $X closes it
 //   paid       the green screen, Next guest
 //   cancelled, expired   why, Send again
 //
@@ -24,9 +24,9 @@ import { UserIcon } from "@/app/tab/[token]/icons";
 // waiter never reads the guest's name or balance. Every peso is the server's.
 
 const DONE: BillState[] = ["paid", "cancelled", "expired"];
-/** Every 2 s while it moves, 5 s after 30 s still, 10 s after 3 min. */
+/** Every second while it moves, 5 s after 30 s still, 10 s after 3 min. */
 function nextDelay(stillMs: number): number {
-  if (stillMs < 30_000) return 2000;
+  if (stillMs < 30_000) return 1000;
   return stillMs < 180_000 ? 5000 : 10_000;
 }
 
@@ -39,7 +39,10 @@ export function BillScreen({ billId }: { billId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [checking, setChecking] = useState(false);
+  const reads = useRef(0);
+  // A bill that just changed is not received by a tap already on its way.
+  const [armedAt, setArmedAt] = useState(0);
+  const [now, setNow] = useState(0);
   const changedAt = useRef(0);
   const stamp = useRef("");
 
@@ -54,17 +57,22 @@ export function BillScreen({ billId }: { billId: string }) {
   const refresh = useCallback(async () => {
     const s = staff();
     if (!s) return signIn();
+    const n = ++reads.current;
     const r = await getBill(s, billId);
-    if (r === "failed") return setMisses((n) => n + 1);
+    // A newer read is on its way: this one is old.
+    if (n !== reads.current) return;
+    if (r === "failed") return setMisses((x) => x + 1);
     if ("refused" in r) {
       if (r.code === "staff_code_needed") return signIn();
       return setGone(true);
     }
     setMisses(0);
-    const next = `${r.bill.state}:${r.bill.version}`;
+    const next = `${r.bill.state}:${r.bill.version}:${r.bill.waiter_ready === true}`;
     if (next !== stamp.current) {
       stamp.current = next;
       changedAt.current = Date.now();
+      setArmedAt(Date.now() + 1000);
+      setTimeout(() => setNow(Date.now()), 1050);
     }
     setRead(r);
   }, [billId, signIn, staff]);
@@ -210,6 +218,7 @@ export function BillScreen({ billId }: { billId: string }) {
       <i />
     </span>
   );
+  const took = bill.took_cents ?? null;
   const billLine = { label: "Bill", value: m(bill.bill_cents ?? 0) };
   const tipLine = { label: "Tip", value: bill.tip_cents > 0 ? m(bill.tip_cents) : "None" };
   const offLines = [
@@ -232,7 +241,7 @@ export function BillScreen({ billId }: { billId: string }) {
     // RECEIPT.
     return (
       <main className="wp" data-bill="paid">
-        <WaiterSteps at={5} />
+        <WaiterSteps at={4} />
         {band}
         {ticket("green", collected > 0 ? "✓ Paid · Cash or card" : "✓ Paid with credits", m(collected > 0 ? collected : bill.credit_cents), [
           billLine,
@@ -254,7 +263,9 @@ export function BillScreen({ billId }: { billId: string }) {
         <h1>{bill.state === "expired" ? "This bill expired" : "This bill was cancelled"}</h1>
         {/* Cash may already have changed hands: never "nothing was paid". */}
         <p className="proof-line">
-          {bill.bill_cents ? `${m(total)}. No credits were used. Send it again if the guest still wants Mesita.` : "Nothing was sent."}
+          {took !== null && took > 0
+            ? `You took ${m(took)} and no credits or discount were used. Give it back${took < total ? `, or collect ${m(total - took)} more` : ""}.`
+            : bill.bill_cents ? `${m(total)}. No credits were used. Send it again if the guest still wants Mesita.` : "Nothing was sent."}
         </p>
         {alert}
         <button type="button" style={{ marginTop: 16, alignSelf: "stretch" }} disabled={busy !== null} onClick={() => void sendAgain()}>
@@ -267,7 +278,7 @@ export function BillScreen({ billId }: { billId: string }) {
   const cancelRow = cancelling ? (
     <div className="pay-reject-confirm" role="group" aria-label="Cancel this bill?">
       <p className="proof-line pay-reject-title">Cancel this bill?</p>
-      {bill.state === "accepted" ? <p className="pay-final-line">No credits are used. Give back any money the guest already paid.</p> : null}
+      {bill.state === "accepted" || took !== null ? <p className="pay-final-line">No credits are used. Give back any money the guest already paid.</p> : null}
       <div className="yes-no">
         <button type="button" className="verify-reject" disabled={busy !== null} onClick={() => void run("cancel", (s) => closeBill(s, billId, "cancel")).then(() => setCancelling(false))}>
           {busy === "cancel" ? "Cancelling…" : "Yes, cancel"}
@@ -279,72 +290,81 @@ export function BillScreen({ billId }: { billId: string }) {
     </div>
   ) : null;
 
-  const receive = () => void run("received", (s) => closeBill(s, billId, "received")).then(() => setChecking(false));
-  const checkRow = checking ? (
-    <div className="pay-reject-confirm" role="group" aria-label="Did you receive the money?">
-      <p className="proof-line pay-reject-title">Did you receive {m(bill.outside_cents ?? 0)}?</p>
-      <p className="pay-final-line">This can&apos;t be undone here.</p>
-      <div className="yes-no">
-        <button type="button" className="verify-sign" disabled={busy !== null} onClick={receive}>
-          {busy === "received" ? "Confirming…" : "Yes, received"}
-        </button>
-        <button type="button" className="quiet" disabled={busy !== null} onClick={() => setChecking(false)}>
-          No
-        </button>
-      </div>
-    </div>
-  ) : null;
-
-  // COLLECT.
-  if (bill.state === "accepted" || bill.state === "confirming") {
+  // THE HANDSHAKE (Pato, 2026-11-24, MESITA-4889: "a screen that waits for both
+  // sides to confirm, not sequential order, but just both sides to coincide").
+  // The other person's tap is the second check: nothing is asked twice.
+  if ((bill.state === "sent" && !editing) || bill.state === "accepted" || bill.state === "confirming") {
     const due = bill.outside_cents ?? 0;
-    // HOW THE GUEST PAYS (Pato, MESITA-4879: "probably he is using credits so
-    // just subtracting from what you expect"). Their credits show only once they
-    // accept: a bill is never a way to read a balance.
-    return (
-      <main className="wp" data-bill="collect">
-        <WaiterSteps at={4} />
-        {band}
-        {reconnecting}
-        {ticket("ink", due > 0 ? "Accepted · Collect, cash or card" : "Accepted · Nothing to collect", m(due), [billLine, ...offLines, tipLine])}
-        {alert}
-        <div className="wp-space" />
-        <p className="wp-line wp-center">Open until {clockTime(bill.expires_at)}</p>
-        {cancelRow ?? checkRow ?? (
-          <div className="wp-actions">
-            <button type="button" className="wp-no" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
-              Cancel
-            </button>
-            <button type="button" className="wp-go wp-yes" disabled={busy !== null || bill.state === "confirming"} onClick={() => setChecking(true)}>
-              {busy === "received" || bill.state === "confirming" ? "Confirming…" : "Received"}
-            </button>
-          </div>
-        )}
-      </main>
+    const guest = guestName ?? "The guest";
+    const guestReady = bill.state !== "sent";
+    const ready = bill.waiter_ready === true || bill.state === "confirming";
+    const changed = took !== null && !ready && took !== due;
+    const side = (who: string, on: boolean) => (
+      <span className={`hs-side${on ? " hs-on" : ""}`} data-ready={on}>
+        <i aria-hidden>{on ? "✓" : "…"}</i>
+        <b>{who}</b>
+        <span>{on ? "Ready" : "Waiting"}</span>
+      </span>
     );
-  }
-
-  // WAITING FOR THE GUEST.
-  if (bill.state === "sent" && !editing) {
+    const waiting = ready && !guestReady;
     return (
-      <main className="wp" data-bill="sent">
-        <WaiterSteps at={4} />
+      <main className="wp" data-bill="handshake" data-ready={ready}>
+        <WaiterSteps at={3} />
         {band}
         {reconnecting}
-        {ticket("ink", <>Waiting for {guestName ?? "the guest"} to accept {dots}</>, m(total), [billLine, tipLine])}
+        {ticket(
+          "ink",
+          waiting ? <>Waiting for {guest} {dots}</> : due > 0 ? "Collect, cash or card" : "Nothing to collect, paid with credits",
+          m(due),
+          [billLine, ...offLines, tipLine],
+        )}
+        <div className="hs" role="status">
+          {side("You", ready)}
+          <span className={`hs-line${ready || guestReady ? " hs-on" : ""}`} aria-hidden />
+          {side(guest, guestReady)}
+        </div>
+        {changed ? (
+          <p className="proof-status warn" role="status">
+            The bill changed. You took {m(took)}; now it is {m(due)}.
+          </p>
+        ) : null}
         {alert}
         <div className="wp-space" />
-        <p className="wp-line wp-center">Ask them to accept on their phone · until {clockTime(bill.expires_at)}</p>
-        {cancelRow ?? (
-          <div className="wp-actions wp-half">
-            <button type="button" className="wp-no" onClick={() => setCancelling(true)}>
-              Cancel
-            </button>
-            <button type="button" className="wp-no" onClick={() => setEditing(true)}>
-              Edit
-            </button>
-          </div>
-        )}
+        <p className={`wp-line wp-center${waiting ? " hs-warn" : ""}`}>
+          {waiting ? `Not done yet. Don't let ${guest} leave until they tap Pay.` : `Open until ${clockTime(bill.expires_at)}`}
+        </p>
+        {cancelRow ??
+          (waiting ? (
+            <div className="wp-actions wp-half">
+              <button type="button" className="wp-no" disabled={busy !== null} onClick={() => setCancelling(true)}>
+                Cancel
+              </button>
+              <button type="button" className="wp-no" disabled={busy !== null} onClick={() => void run("undo", (s) => unreceiveBill(s, billId))}>
+                {busy === "undo" ? "Undoing…" : "Undo"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="wp-go wp-yes hs-go"
+                disabled={busy !== null || ready || now < armedAt}
+                onClick={() => void run("receive", (s) => receiveBill(s, billId, bill.version))}
+              >
+                {busy === "receive" || bill.state === "confirming" ? "Confirming…" : due > 0 ? `Receive ${m(due)}` : "Confirm"}
+              </button>
+              <div className={guestReady ? "" : "wp-actions wp-half"}>
+                <button type="button" className="wp-no" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
+                  Cancel
+                </button>
+                {guestReady ? null : (
+                  <button type="button" className="wp-no" disabled={busy !== null} onClick={() => setEditing(true)}>
+                    Edit
+                  </button>
+                )}
+              </div>
+            </>
+          ))}
       </main>
     );
   }
@@ -364,6 +384,7 @@ export function BillScreen({ billId }: { billId: string }) {
           {bill.state === "declined" ? (
             <p className="proof-status warn" role="status">
               The guest declined {m(total)}. Fix it and send again.
+              {took !== null && took > 0 ? ` You took ${m(took)}: give it back or collect the difference.` : ""}
             </p>
           ) : null}
         </>

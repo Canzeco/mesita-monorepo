@@ -1,5 +1,6 @@
 // Waiter-led pay, the guest's side (MESITA-4823). The guest shows one general
-// QR; the waiter sends the bill; the guest accepts or declines. Every number
+// QR; the waiter sends the bill; the guest's Pay and the waiter's Receive, in any
+// order, close it (MESITA-4889). Every number
 // is the server's: the screen never works one out.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -18,6 +19,10 @@ export type GuestBill = {
   attempt_id: string | null;
   tab_id: string | null;
   test_mode: boolean;
+  /** The waiter already tapped Receive on this version (MESITA-4889). */
+  waiter_ready?: boolean;
+  /** What the waiter said they took, even if the bill changed since. */
+  took_cents?: number | null;
   place: { id: string; name: string | null; photo_url: string | null };
   quote: {
     mechanism: "cashback" | "discount";
