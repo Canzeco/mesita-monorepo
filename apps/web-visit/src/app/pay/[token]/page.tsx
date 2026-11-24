@@ -22,7 +22,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // THE GUEST WATCHES IT BEING TYPED (MESITA-4883): every half second when it
+  // THE GUEST WATCHES IT BEING TYPED (MESITA-4887): every 300 ms when it
   // changed, every five while it did not, one call at a time.
   const typing = useRef<Typing>({ bill_cents: 0, tip_cents: 0, step: "bill" });
   const onTyping = useCallback((bill_cents: number, tip_cents: number, step: "bill" | "tip") => {
@@ -45,7 +45,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       });
     };
     tick();
-    const id = setInterval(tick, 500);
+    const id = setInterval(tick, 300);
     return () => clearInterval(id);
   }, [live, token]);
 
