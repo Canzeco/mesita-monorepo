@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, PartyPopper, Repeat, Sparkles, Ticket } from "lucide-react";
+import { Camera, Check, ConciergeBell, Crown, PartyPopper, Sparkles, Ticket, Users } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { IconChip, RowDivider, SettingsGroup, SettingsLinkRow } from "@/components/consumer/me/settings-rows";
 import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
@@ -91,7 +91,7 @@ export function VipModal() {
           </SettingsGroup>
         )}
         <SettingsGroup>
-          <SettingsLinkRow Icon={Sparkles} tint="muted" href={CONSUMER_ROUTES.mePages.vipAgency} label="Have a modeling agency?" sub="Activate your models" />
+          <SettingsLinkRow Icon={Users} tint="muted" href={CONSUMER_ROUTES.mePages.vipAgency} label="Bring your people" sub="Agencies, creators, promoters, hotels" />
         </SettingsGroup>
       </div>
     </VipFrame>
@@ -207,44 +207,85 @@ export function VipCodePage() {
   );
 }
 
-const AGENCY_PERKS = [
-  { Icon: PartyPopper, title: "A better first visit", line: "The VIP rate on their first bill at a place." },
-  { Icon: Repeat, title: "A better rate after", line: "The VIP rate on every bill after that." },
-  { Icon: Ticket, title: "One code each", line: "Every model gets their own invitation code." },
-];
+// WHO BRINGS PEOPLE (Pato, 2026-11-24, MESITA-4867): four types, each with its
+// own word for its people in the email.
+const GROUPS = [
+  { key: "agency", Icon: Sparkles, title: "Model or talent agency", line: "Models, actors, hosts", people: "models" },
+  { key: "creators", Icon: Camera, title: "Creators", line: "Influencer agencies and creators", people: "creators" },
+  { key: "promoters", Icon: PartyPopper, title: "Promoter or events", line: "Nightlife, concerts, festivals", people: "guests" },
+  { key: "hotels", Icon: ConciergeBell, title: "Hotel or concierge", line: "Guests asking where to go", people: "guests" },
+] as const;
 
-/** Class › Have a modeling agency? (/me/vip/agency): what VIP gives a model
- *  and how an agency asks for codes. An operator issues them (Admin › VIP). */
+function codesMail(group: (typeof GROUPS)[number]): string {
+  const subject = encodeURIComponent(`VIP codes: ${group.title}`);
+  const body = encodeURIComponent(`Name:\nCity:\nWebsite or Instagram:\nNumber of ${group.people}:\n`);
+  return `mailto:${MESITA_SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+}
+
+/** Class › Bring your people (/me/vip/agency): who you are, what your people
+ *  get, and the email that asks for codes. An operator issues them, one per
+ *  person (Admin › VIP). */
 export function VipAgencyPage() {
   useSignedIn(CONSUMER_ROUTES.mePages.vipAgency);
+  const [picked, setPicked] = useState<(typeof GROUPS)[number] | null>(null);
   return (
-    <MeScreen title="Modeling agencies">
+    <MeScreen title="Bring your people">
       <div className="flex flex-col gap-4">
         <div>
-          <h2 className="text-2xl leading-tight font-semibold">Activate your models</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Get your models VIP at every place with VIP offers.</p>
+          <h2 className="text-2xl leading-tight font-semibold">Make your people VIP</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            They get each place&apos;s VIP rate, on their first bill and every one after. One code per person.
+          </p>
         </div>
-        <ul className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border" data-vip-agency-perks>
-          {AGENCY_PERKS.map(({ Icon, title, line }) => (
-            <li key={title} className="flex items-center gap-3 px-4 py-3">
-              <IconChip>
-                <Icon className="h-[18px] w-[18px]" />
-              </IconChip>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{title}</span>
-                <span className="text-muted-foreground type-label block">{line}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <a
-          href={`mailto:${MESITA_SUPPORT_EMAIL}?subject=${encodeURIComponent("Activate my models")}&body=${encodeURIComponent("Agency name:\nCity:\nNumber of models:\n")}`}
-          className={cn(PRIMARY_BUTTON_CLASS, "flex items-center justify-center")}
-          data-vip-agency-contact
-        >
-          Request codes
-        </a>
-        <p className="text-muted-foreground text-center text-sm">Email us your agency and how many models. We send one code for each.</p>
+        <section className="flex flex-col gap-2">
+          <h3 id="vip-group" className="text-base font-semibold">
+            Who are you?
+          </h3>
+          <div
+            role="radiogroup"
+            aria-labelledby="vip-group"
+            className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border"
+            data-vip-groups
+          >
+            {GROUPS.map((g) => {
+              const on = picked?.key === g.key;
+              return (
+                <button
+                  key={g.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setPicked(g)}
+                  className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+                  data-vip-group={g.key}
+                >
+                  <IconChip>
+                    <g.Icon className="h-[18px] w-[18px]" />
+                  </IconChip>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{g.title}</span>
+                    <span className="text-muted-foreground type-label block">{g.line}</span>
+                  </span>
+                  <Check aria-hidden className={cn("h-5 w-5 shrink-0", !on && "invisible")} strokeWidth={2.5} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+        {picked ? (
+          <a
+            href={codesMail(picked)}
+            className={cn(PRIMARY_BUTTON_CLASS, "flex items-center justify-center")}
+            data-vip-agency-contact
+          >
+            Request codes
+          </a>
+        ) : (
+          <button type="button" disabled className={PRIMARY_BUTTON_CLASS}>
+            Pick one to request codes
+          </button>
+        )}
+        <p className="text-muted-foreground text-center text-sm">It opens an email to us. We review it and reply.</p>
       </div>
     </MeScreen>
   );
