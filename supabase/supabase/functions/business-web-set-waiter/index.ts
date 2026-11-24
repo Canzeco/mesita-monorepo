@@ -1,15 +1,14 @@
 // Supabase Edge Function — business-web-set-waiter
 //
-// MESITA-4871: the waiters of a place, one 8-digit code each, so a bill and
-// its tip have a name. Mesita makes the code (an owner-typed one would read
-// "taken" and reveal another place's), matched by a keyed hash, and kept for the
+// MESITA-4871: the waiters of a place, one 4-digit code each, so a bill and
+// its tip have a name. Mesita makes the code and keeps it for the
 // owner's screen (MESITA-4886). The owner and Mesita staff only.
 //
 // Body: { place_id, action: "add", name }
 //     | { place_id, action: "codes_off" | "codes_on" }  (MESITA-4890: bills with no
 //       code, Discount only; saving Cashback turns codes on again)
 //     | { place_id, action: "new_code" | "remove", waiter_id }
-// Response: { ok: true, waiter_id, name, code?: "12345678" }
+// Response: { ok: true, waiter_id, name, code?: "1234" }
 //   400 bad_request · 403 · 404 gone · 409 name_taken | too_many | cashback
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -17,12 +16,12 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { lookupWaiterCode, mintWaiterCode, readWaiterName, WAITER_NAME_MAX, WAITERS_MAX } from "../_shared/waiter-code.ts";
+import { mintWaiterCode, mintWaiterKey, readWaiterName, WAITER_NAME_MAX, WAITERS_MAX } from "../_shared/waiter-code.ts";
 
 serveJson("business-web-set-waiter", async (req) => {
   const ctx = await requireBusinessRequest(req);
   if (ctx instanceof Response) return ctx;
-  const { env, admin, user } = ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -49,8 +48,7 @@ serveJson("business-web-set-waiter", async (req) => {
     if (mech.data !== "discount") {
       return json({ ok: false, code: "cashback", error: "Cashback needs waiter codes. Save Discount first." }, 409);
     }
-    // A key nobody can type: 32 random bytes.
-    const lookup_hash = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const lookup_hash = mintWaiterKey();
     const { error } = await admin.from("place_waiters").insert({ place_id: placeId, name: "(no code)", no_code: true, lookup_hash, ...stamp });
     // Already off: the same answer.
     if (error && error.code !== "23505") return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
@@ -74,10 +72,10 @@ serveJson("business-web-set-waiter", async (req) => {
     if ((count ?? 0) >= WAITERS_MAX) return json({ ok: false, code: "too_many", error: `A place has up to ${WAITERS_MAX} waiters.` }, 409);
   } else if (!isUuid(waiterId)) return gone();
 
-  // A code is one waiter's: a collision draws again.
-  for (let i = 0; i < 5; i++) {
+  // A code is one waiter's in its place: a collision draws again.
+  for (let i = 0; i < 10; i++) {
     const code = mintWaiterCode();
-    const lookup_hash = await lookupWaiterCode(env.serviceKey, code);
+    const lookup_hash = mintWaiterKey();
     const q = action === "add"
       ? admin.from("place_waiters").insert({ place_id: placeId, name, lookup_hash, code, ...stamp })
       : admin.from("place_waiters").update({ lookup_hash, code, ...stamp }).eq("id", waiterId).eq("place_id", placeId).eq("no_code", false).is("removed_at", null);

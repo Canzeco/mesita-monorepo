@@ -1,7 +1,7 @@
 // Supabase Edge Function — visit-web-sign-in
 //
-// MESITA-4871: the waiter types their own 8-digit code on a bill. The code
-// alone names the place and the waiter (place_waiters.lookup_hash); nothing
+// MESITA-4871: the waiter types their own 4-digit code on a bill. The code
+// names the waiter in the place of the guest's QR or the bill (MESITA-4897); nothing
 // about the phone is remembered. Answers that waiter's token, which the bill's
 // own calls carry.
 //
@@ -11,9 +11,10 @@
 // Without `code` (MESITA-4890): a Discount place that turned codes off, named by
 // the page the guest opened their QR on, answers the same token.
 //
-// Body: { code?: 8 digits, token | bill_id }
+// Body: { code?: 4 digits, token | bill_id }
 // Response: { ok: true, place: { id, name }, waiter: { name }, staff_token }
-//   400 bad_request · 403 staff_only (a wrong code) | code_needed · 404 code_gone (the QR) ·
+//   400 bad_request · 403 staff_only (a wrong code) | code_needed ·
+//   409 place_needed (the QR was opened on no place) · 404 code_gone (the QR) ·
 //   409 locked (+retry_after_s; five wrong codes on one guest, or thirty from
 //   one address, in ten minutes)
 
@@ -24,7 +25,7 @@ import { readVoucherPlace } from "../_shared/wallet.ts";
 import { clientAddress, staffTryKey } from "../_shared/charge.ts";
 import { callTabRpc } from "../_shared/tab.ts";
 import { hashPayCode, readSignInBy } from "../_shared/pay-bill.ts";
-import { lookupWaiterCode, mintWaiterToken, readWaiter, readWaiterCode } from "../_shared/waiter-code.ts";
+import { mintWaiterToken, readWaiter, readWaiterCode } from "../_shared/waiter-code.ts";
 
 serveJson("visit-web-sign-in", async (req) => {
   const ctx = openRequest(req);
@@ -34,7 +35,7 @@ serveJson("visit-web-sign-in", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const code = readWaiterCode(bodyRes.body.code);
   const without = bodyRes.body.code === undefined;
-  if (!code && !without) return json({ ok: false, code: "bad_request", error: "Type the 8-digit code" }, 400);
+  if (!code && !without) return json({ ok: false, code: "bad_request", error: "Type the 4-digit code" }, 400);
   const by = readSignInBy(bodyRes.body);
   if (!by) return json({ ok: false, code: "bad_request", error: "Scan the guest's QR again" }, 400);
 
@@ -46,7 +47,7 @@ serveJson("visit-web-sign-in", async (req) => {
       const { data, error } = await admin.rpc("waiter_no_code", { p_token_hash: tokenHash, p_bill_id: billId });
       if (error) throw new Error(`waiter_no_code: ${error.message}`);
       const row = typeof data === "string" ? await readWaiter(admin, data) : null;
-      if (!row) return json({ ok: false, code: "code_needed", error: "Type your 8-digit code" }, 403);
+      if (!row) return json({ ok: false, code: "code_needed", error: "Type your 4-digit code" }, 403);
       const at = await readVoucherPlace(admin, row.placeId);
       if (!at.ok) throw new Error(at.error);
       console.log("[visit-web-sign-in]", JSON.stringify({ outcome: "no_code", place_id: row.placeId }));
@@ -56,13 +57,14 @@ serveJson("visit-web-sign-in", async (req) => {
       p_token_hash: tokenHash,
       p_bill_id: billId,
       p_addr_hash: await staffTryKey(env.serviceKey, clientAddress(req.headers)),
-      p_lookup_hash: await lookupWaiterCode(env.serviceKey, code),
+      p_code: code,
     });
     if (r.ok !== true) {
       console.log("[visit-web-sign-in]", JSON.stringify({ outcome: r.code }));
       if (r.code === "locked") return json({ ok: false, code: "locked", error: "Too many wrong codes. Wait a few minutes.", retry_after_s: r.retry_after_s }, 409);
+      if (r.code === "place_needed") return json({ ok: false, code: "place_needed", error: "Ask the guest to open Pay on your place, then scan again." }, 409);
       if (r.code === "code_gone") return json({ ok: false, code: "code_gone", error: "That QR expired. Scan the guest's QR again." }, 404);
-      return json({ ok: false, code: "staff_only", error: "That code is not right" }, 403);
+      return json({ ok: false, code: "staff_only", error: "That code is not right for the place the guest opened" }, 403);
     }
     const placeId = String(r.place_id);
     const placeRes = await readVoucherPlace(admin, placeId);

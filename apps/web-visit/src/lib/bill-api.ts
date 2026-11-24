@@ -46,7 +46,7 @@ async function call<T>(name: string, body: Record<string, unknown>, fallback: st
 export type Staff = { place_id: string; staff_token: string; waiter?: string | null };
 const keyed = (s: Staff) => ({ place_id: s.place_id, staff_token: s.staff_token });
 
-/** The waiter's 8-digit code; it names the place and the waiter, and is tried
+/** The waiter's 4-digit code; it names the waiter in the QR's place, and is tried
  *  only with the guest's QR or a bill (MESITA-4833). Null: a Discount place that
  *  turned codes off (MESITA-4890); refused `code_needed` anywhere else. */
 export const signIn = (code: string | null, by: { token: string } | { bill_id: string }) =>

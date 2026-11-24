@@ -7,7 +7,7 @@ import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
 import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR: Bill, Tip, then Code
-// (MESITA-4879): their own 8 digits, which name the place and the waiter, then
+// (MESITA-4879): their own 4 digits, which name the waiter, then
 // whose QR it is, and Send bill. Nothing about the phone is kept.
 
 type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
