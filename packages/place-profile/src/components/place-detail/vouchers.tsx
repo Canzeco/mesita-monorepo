@@ -2,7 +2,7 @@
 
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePlus, Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { BadgePercent, Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -1073,10 +1073,10 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
  *  Tickets. */
 export type OffersTab = "prepay" | "pay";
 
-// THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay a wallet (credit
-// loaded ahead), Pay a receipt (the bill).
+// THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay the discount badge (MESITA-4844; the wallet, credit
+// loaded ahead, before), Pay a receipt (the bill).
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { id: "prepay", word: "Prepay", Icon: BadgePlus },
+  { id: "prepay", word: "Prepay", Icon: BadgePercent },
   { id: "pay", word: "Pay", Icon: ReceiptIcon },
 ];
 
