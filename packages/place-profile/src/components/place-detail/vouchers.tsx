@@ -2,7 +2,7 @@
 
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Coins, BadgePlus, Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { BadgePlus, Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -983,18 +983,18 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
     : [
         { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: "At this place" },
         { Icon: Clock, title: "Wait", amount: "1 hour", line: "Nothing to do" },
-        { Icon: Coins, title: "You get", amount: `$${gives}`, line: `${rate} back as credit`, green: true },
+        { Icon: Wallet, title: "You get", amount: `$${gives}`, line: `${rate} back as credit`, green: true },
       ];
   // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day).
   const facts: Fact[] = discount
     ? [
         { Icon: Utensils, text: "The discount is on the bill, never on the tip." },
-        { Icon: Coins, text: "If you have credits here, they are used first. Credits never pay the tip." },
+        { Icon: Wallet, text: "If you have credits here, they are used first. Credits never pay the tip." },
       ]
     : [
         { Icon: Utensils, text: "Use your cashback to pay any bill at this place." },
         { Icon: InfinityIcon, text: "It never expires." },
-        { Icon: Coins, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip. One bill earns $1,000 of cashback at most." },
+        { Icon: Wallet, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip. One bill earns $1,000 of cashback at most." },
       ];
   return (
     <HowItWorks
