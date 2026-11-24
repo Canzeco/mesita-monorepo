@@ -11,6 +11,7 @@
 //   • one place to evolve the contract (telemetry, retry, etc.).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { noteSuspended } from "@/lib/suspended";
 import { logCall } from "@/lib/call-log";
 import { reportEFFailure } from "@/lib/report-error";
 import {
@@ -113,6 +114,7 @@ export async function invokeEF<T>(
       request: body,
       response: parsed ?? { error: error.message },
     });
+    if (code === "suspended") noteSuspended();
     reportEFFailure(fn, message, status);
     throw new EFError(message, {
       fn,

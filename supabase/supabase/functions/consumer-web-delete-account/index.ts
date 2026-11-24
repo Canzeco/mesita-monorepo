@@ -23,7 +23,7 @@ import { closeGuard } from "./guard.ts";
 serveJson("consumer-web-delete-account", async (req) => {
   // Account close is self-only — the JWT identifies which row to
   // tombstone or hard-delete. No body needed.
-  const ctx = await requireConsumerRequest(req);
+  const ctx = await requireConsumerRequest(req, { suspendedOk: true });
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
   const userId = user.id;

@@ -3,7 +3,7 @@
 -- tip; alone neither does; a changed bill clears the waiter's tap.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(73);
+select plan(79);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000f4889');
 insert into public.place_profiles (id, google_name) values
@@ -154,6 +154,15 @@ select is(public.waiter_no_code(repeat('5c', 32), null), null, 'Cashback needs a
 update public.place_cashback_settings set visit_mechanism = 'discount' where place_id = '00000000-0000-4000-8000-000000014889';
 select is(public.waiter_no_code(repeat('5c', 32), null), null, 'and going back to Discount does not turn codes off again');
 select ok(not has_function_privilege('anon', 'public.waiter_no_code(text, uuid, timestamptz)', 'execute'), 'clients never call it');
+
+-- ── Five closed tickets at one restaurant suspend the guest (MESITA-4899) ──
+select is((select count(*)::int from generate_series(1, 4) g where public.guest_ticket_closed('00000000-0000-4000-8000-0000900d4889', '00000000-0000-4000-8000-000000014889')), 0, 'four do not');
+select is(public.guest_ticket_closed('00000000-0000-4000-8000-0000900d4889', '00000000-0000-4000-8000-000000024889'), false, 'nor one at another place');
+select is(public.guest_ticket_closed('00000000-0000-4000-8000-0000900d4889', '00000000-0000-4000-8000-000000014889'), true, 'the fifth at one place does');
+select is((select closures from public.guest_suspensions where consumer_id = '00000000-0000-4000-8000-0000900d4889' and reinstated_at is null), 5, 'and it is on record');
+update public.guest_suspensions set reinstated_at = now() + interval '1 second' where consumer_id = '00000000-0000-4000-8000-0000900d4889';
+select is(public.guest_ticket_closed('00000000-0000-4000-8000-0000900d4889', '00000000-0000-4000-8000-000000014889', now() + interval '2 seconds'), false, 'reinstated, the count starts over');
+select ok(not has_table_privilege('authenticated', 'public.guest_suspensions', 'select') and not has_function_privilege('anon', 'public.guest_ticket_closed(uuid, uuid, timestamptz)', 'execute'), 'clients never touch it');
 
 select * from finish();
 rollback;
