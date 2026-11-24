@@ -346,8 +346,8 @@ export function LocationChooser({
   /** Use my location: with a fix, choose it; without one, ask and stay (a
    *  fix is the choice, a failure says why). */
   const chooseHere = () => {
-    noteChoice(null);
     if (coords !== null) {
+      noteChoice(null);
       setActiveLocation(null);
       done();
       return;

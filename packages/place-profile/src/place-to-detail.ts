@@ -189,7 +189,11 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     open_now: openState.open_now ??
       (typeof row.open_now === "boolean" ? row.open_now : null),
     opens_at: openState.opens_at,
-    closes_at: openState.closes_at || (str(row.closes_at) ?? ""),
+    // A known state with no closing time is a 24 h place: the raw column would
+    // print a time it does not have.
+    closes_at: openState.open_now === true
+      ? openState.closes_at
+      : openState.closes_at || (str(row.closes_at) ?? ""),
     timezone: str(row.timezone) ?? "",
     city: str(row.city) ?? "",
     address: str(row.address) ?? "",

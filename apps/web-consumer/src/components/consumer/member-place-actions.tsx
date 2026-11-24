@@ -479,7 +479,7 @@ export function usePlaceVouchers(
       setPayCards({ state: "ready", cards: list, cardFirst });
       // The default picked on Payment methods, else the last card paid with.
       const chosen = readDefaultCard();
-      const remembered = list.some((c) => c.id === chosen) ? chosen : readLastCard(userKey.current);
+      const remembered = chosen && pickPayCard(list, chosen) === chosen ? chosen : readLastCard(userKey.current);
       setPayCardId((prev) =>
         prev && list.some((c) => c.id === prev)
           ? prev

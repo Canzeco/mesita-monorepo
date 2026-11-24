@@ -72,6 +72,10 @@ export function LocationGate() {
   const here = needsLocation(usePathname() ?? "");
   const asking = here && answered && !hasPoint;
   const wasAsking = useRef(false);
+  const hasPointRef = useRef(hasPoint);
+  useEffect(() => {
+    hasPointRef.current = hasPoint;
+  }, [hasPoint]);
   useEffect(() => {
     if (settled) markAnswered();
   }, [settled]);
@@ -129,6 +133,12 @@ export function LocationGate() {
         onClose={close}
         picker={picker}
         onPickerChange={(next) => {
+          // A search pick that resolves after a point landed and the gate
+          // closed must not bring it back.
+          if (next !== null && picker === null && hasPointRef.current) {
+            setOpen(false);
+            return;
+          }
           setPicker(next);
           // Back with a point already: nothing left to ask.
           if (next === null && hasPoint) setOpen(false);
