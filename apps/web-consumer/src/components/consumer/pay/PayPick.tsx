@@ -52,9 +52,8 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex flex-col" data-pay-list={kind}>
-      {/* The whole row is the field (MESITA-4842), closed by the box's own line
-          (Pato, MESITA-4844: "purple line, searchbar, purple line"). */}
-      <div className={cn("bg-card sticky top-0 z-20 flex h-14 items-center border-b-[6px] pr-1 pl-4", kind === "prepay" ? "border-[#635BFF]" : "border-[#00D66F]")} data-pay-pick-search>
+      {/* The whole row is the field (MESITA-4842), a hairline under it. */}
+      <div className="bg-card border-border sticky top-0 z-20 flex h-14 items-center border-b pr-1 pl-4" data-pay-pick-search>
         <SearchBar
           query={query}
           showClear={query.length > 0}
@@ -187,7 +186,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       </span>
       {kind === "prepay" ? (
         bonuses.map((pct, i) => (
-          <span key={VOUCHERS_SHOWN[i]} className={cn("text-center text-sm font-semibold tabular-nums", pct ? "text-indigo-700" : "text-muted-foreground")}>
+          <span key={VOUCHERS_SHOWN[i]} className={cn("text-center text-sm font-semibold tabular-nums", pct ? "text-foreground" : "text-muted-foreground")}>
             {pct ? `+${pct}%` : "–"}
           </span>
         ))
@@ -197,9 +196,9 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
             {credits ?? "–"}
             {p.pending_cents > 0 ? <span className="text-muted-foreground block text-xs">+{money(p.pending_cents, p.currency)}</span> : null}
           </span>
-          <span className={cn("text-center text-sm leading-tight font-semibold tabular-nums", offer ? "text-emerald-700" : "text-muted-foreground")}>
+          <span className={cn("text-center text-sm leading-tight font-semibold tabular-nums", offer ? "text-foreground" : "text-muted-foreground")}>
             {offer ? `${bps / 100}%` : "–"}
-            {offer ? <span className="block text-xs">{offer}</span> : null}
+            {offer ? <span className="text-muted-foreground block text-xs">{offer}</span> : null}
           </span>
         </>
       )}

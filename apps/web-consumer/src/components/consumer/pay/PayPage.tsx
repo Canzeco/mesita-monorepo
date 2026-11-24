@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { BadgePercent, ChevronRight, type LucideIcon, QrCode, Wallet as WalletIcon, X } from "lucide-react";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payCodePath, placeOffersPath } from "@/lib/consumer-route-contract";
@@ -131,22 +130,7 @@ export function PayPage({
           onPick={(id) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" })}
         />
       </PlaceModal>
-      <PlaceModal
-        id="pay"
-        open={modal === "pay"}
-        onClose={closeModal}
-        foot={
-          // AT THE BOTTOM, THE SEARCH ROW'S TWIN (MESITA-4839). Not listed, or
-          // the list did not load: the QR works anyway.
-          <PushLink
-            href={CONSUMER_ROUTES.payCode}
-            className="bg-card hover:bg-muted flex min-h-14 shrink-0 items-center justify-center border-t-[6px] border-[#00D66F] px-4 pb-[env(safe-area-inset-bottom)] text-sm font-semibold transition"
-            data-pay-pick-any
-          >
-            My place isn&apos;t here
-          </PushLink>
-        }
-      >
+      <PlaceModal id="pay" open={modal === "pay"} onClose={closeModal}>
         <PlaceList kind="pay" {...list} onPick={(id) => navigateTo(router, payCodePath(id), { motion: "drill" })} />
       </PlaceModal>
     </>
@@ -158,30 +142,36 @@ function openNow(): PayModal | null {
   return readPayModal(new URLSearchParams(window.location.search).get("tab"));
 }
 
+function focusTitle(el: HTMLElement | null) {
+  el?.focus({ preventScroll: true });
+}
+
 /** A FULL-PAGE MODAL (Pato, 2026-11-24, MESITA-4846): from the bottom over the
- *  whole app, its title on its colour with ✕, the place table under it. Back
- *  to it (from a place, from the QR) shows it at once. */
+ *  whole app, its title with ✕, the place table under it, all white (Pato,
+ *  MESITA-4852: "keep it clean"; the tile's colour before). Back to it (from a
+ *  place, from the QR) shows it at once. */
 function PlaceModal({
   id,
   open,
   onClose,
-  foot,
   children,
 }: {
   id: PayModal;
   open: boolean;
   onClose: () => void;
-  foot?: ReactNode;
   children: ReactNode;
 }) {
   const [back] = useState(() => open && lastMoveWasTraverse());
   const { word } = TILES[id];
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={word} fullScreen startShown={back}>
-      <div className={cn("shrink-0 pt-[env(safe-area-inset-top)]", PAY_FILL[id])} data-pay-modal={id}>
+      <div className="border-border bg-card text-foreground shrink-0 border-b pt-[env(safe-area-inset-top)]" data-pay-modal={id}>
         <div className="grid h-14 grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] items-center">
           <span />
-          <h2 className="text-center text-xl font-semibold">{word}</h2>
+          {/* Focus lands on the title, so no ring is drawn on ✕ at opening. */}
+          <h2 ref={focusTitle} tabIndex={-1} className="text-center text-xl font-semibold outline-none">
+            {word}
+          </h2>
           <button type="button" onClick={onClose} aria-label="Close" className="flex h-14 items-center justify-center">
             <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
           </button>
@@ -189,7 +179,6 @@ function PlaceModal({
       </div>
       {/* No bar over the table (Pato, 2026-11-24, MESITA-4845). */}
       <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</KeptScroll>
-      {foot}
     </LocalSheet>
   );
 }
@@ -229,8 +218,8 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 
 // The discount badge and the QR, the same marks everywhere (MESITA-4844).
 const TILES: Record<PayModal, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: BadgePercent, ink: "bg-white text-indigo-500" },
-  pay: { word: "Pay", icon: QrCode, ink: "bg-neutral-950 text-white" },
+  prepay: { word: "Prepay & Get Bonus", icon: BadgePercent, ink: "bg-white text-indigo-500" },
+  pay: { word: "Pay Bill", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** A tile, always in its own colour (MESITA-4842). */
@@ -238,10 +227,10 @@ function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
   const { word, icon: Icon, ink } = TILES[id];
   return (
     <button type="button" onClick={onClick} className={cn(PAY_TILE, PAY_FILL[id])} data-pay-tile={id}>
-      <span className={cn("flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
-        <Icon className="h-9 w-9" strokeWidth={2.25} />
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
+        <Icon className="h-6 w-6" strokeWidth={2.25} />
       </span>
-      <span className="text-xl leading-tight font-semibold">{word}</span>
+      <span className="text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg">{word}</span>
     </button>
   );
 }
