@@ -318,6 +318,9 @@ export function PaymentsPanel({
   // The rates Visit Checkout comes back to when enabled again (Off stores 0
   // for all three; MESITA-4752): the last saved set with any rate on.
   const [lastRates, setLastRates] = useState(() => restoreRates(initial.cashback ?? CASHBACK_DEFAULTS));
+  // What the server last held with a rate on: where Discard goes back to, so
+  // an abandoned draft never returns (MESITA-4918).
+  const [savedRates, setSavedRates] = useState(lastRates);
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
@@ -361,13 +364,16 @@ export function PaymentsPanel({
 
   /** The cashback record into the draft; equal to the saved one drops it. */
   function editRates(next: CashbackRates) {
-    setCashbackDraft(sameRates(next, cashback) ? null : next);
+    const same = sameRates(next, cashback);
+    setCashbackDraft(same ? null : next);
+    // Back to a saved Off drops the rates picked on the way there.
+    if (same && !anyRate(cashback)) setLastRates(savedRates);
   }
 
   function discard() {
     setEdits({});
     setCashbackDraft(null);
-    if (anyRate(cashback)) setLastRates(restoreRates(cashback));
+    setLastRates(savedRates);
     setError(null);
   }
 
@@ -383,7 +389,10 @@ export function PaymentsPanel({
         setCashback(r.data);
         setCashbackDraft(null);
         // Saved Off keeps the rates it comes back to (MESITA-4752).
-        if (anyRate(r.data)) setLastRates(restoreRates(r.data));
+        if (anyRate(r.data)) {
+          setLastRates(restoreRates(r.data));
+          setSavedRates(restoreRates(r.data));
+        }
       }
       let saved = settings;
       const order = [...draftKeys].sort((a, b) => Number(b === "prepayments") - Number(a === "prepayments"));

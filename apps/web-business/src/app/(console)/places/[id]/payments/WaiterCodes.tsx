@@ -8,7 +8,7 @@
 // it on again, on the server.
 // Instant, not under Save changes: these are actions. The server refuses editors.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { setWaiter } from "@/lib/business-api";
 import { Switch } from "@/components/ui/config";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -61,10 +61,17 @@ export function WaiterCodes({
     if (savedMechanism === "cashback") setNoCode(false);
   }
 
+  // Read after the answer: Cashback may have been saved while codes_off was
+  // in flight, and that turned the code on again (MESITA-4918).
+  const savedNow = useRef(savedMechanism);
+  useEffect(() => {
+    savedNow.current = savedMechanism;
+  }, [savedMechanism]);
+
   const off = noCode && mechanism === "discount";
   async function toggle() {
     if (!off && !window.confirm("Turn the waiter code off? Anyone who scans a guest's QR could send and confirm bills in your name.")) return;
-    if (await run(off ? "codes_on" : "codes_off")) setNoCode(!off);
+    if (await run(off ? "codes_on" : "codes_off")) setNoCode(!off && savedNow.current === "discount");
   }
 
   async function newCode() {

@@ -10,9 +10,9 @@ import {
 //
 // Every statement below describes behaviour that exists in this repo today:
 // phone + one-time-code sign-in, the age floor of 14, the reservation agent
-// booking on your behalf, and account deletion from Settings. The MVP takes no
-// payments and pays no rewards (MESITA-2092), so the terms say nothing about
-// either. Nothing here promises a
+// booking on your behalf, prepayments and credits on the place's own Stripe
+// account (MESITA-4918), suspension (MESITA-4899) and account deletion from
+// Settings. Nothing here promises a
 // timeframe, names a regulator, or grants a right the code does not already
 // implement — see the draft banner.
 
@@ -35,7 +35,8 @@ export default function TermsPage() {
           Mesita is an app for going out. It lists restaurants, cafés and bars,
           helps you find one, and books a table for you: Mesita&apos;s
           reservation agent phones the place on your behalf and tells you how it
-          went.
+          went. At places that turn it on, you can also pay ahead, pay your bill
+          with credit, and get a discount or credit back.
         </p>
         <p>
           Mesita is in development. Some parts of the app are live, some are
@@ -46,7 +47,7 @@ export default function TermsPage() {
 
       <LegalSection heading="Who can sign up">
         <p>
-          You must be 14 or older to have a Mesita account. We ask for your date
+          You must be 14 or older to have a Mesita account. We ask for your year
           of birth when you sign up and check it, and the server checks it
           again, so an account for someone under 14 will not be created.
         </p>
@@ -80,11 +81,39 @@ export default function TermsPage() {
         </p>
       </LegalSection>
 
+      <LegalSection heading="Paying ahead and credits">
+        <p>
+          When you pay a place ahead, the charge is made on that place&apos;s
+          own Stripe account, so the place is the one that sells to you. You get
+          what you paid as credit, plus the bonus shown before you pay; the
+          bonus arrives 3 hours later. Card payments are being tested while
+          Mesita is in development, and the app marks a place in test mode.
+        </p>
+        <p>
+          Credit is the place&apos;s debt to you. It spends only at that place,
+          does not expire, is not money you can withdraw, and can be sent to
+          someone else as a gift. A refund you get appears in the app, in
+          Settings. If you think you are owed one, write to us or to the place.
+        </p>
+        <p>
+          At the table, you show a QR code, the waiter sends the bill, and it
+          closes when both of you confirm it. Read the amount before you
+          confirm. A discount comes off that bill. Credit back arrives about an
+          hour after it closes, on the part you did not pay with credit, up to
+          the limit the app shows.
+        </p>
+        <p>
+          You can also buy a place Premier, which makes it more visible and is
+          always marked as an ad. Plans renew until you stop them.
+        </p>
+      </LegalSection>
+
       <LegalSection heading="What we ask of you">
         <p>
           Do not sign in as someone else, do not book tables you do not mean to
           keep, and do not try to break, overload or take apart the service. Do
-          not use Mesita to harass anyone, a place included.
+          not use Mesita to harass anyone, a place included. Do not type or
+          guess a waiter&apos;s code, or confirm a bill you did not pay.
         </p>
       </LegalSection>
 
@@ -92,7 +121,14 @@ export default function TermsPage() {
         <p>
           You can delete your account from the app at any time, in Settings,
           with your data. You type DELETE to confirm, and the account is
-          deleted.
+          closed. Any plan you pay for stops first. Use your credit before you
+          delete: it cannot be used from a closed account. Someone who runs a
+          place on Mesita has to hand it over before deleting.
+        </p>
+        <p>
+          Three wrong waiter codes close a bill. If that happens to you five
+          times at one place in 30 days, your account is suspended; your credit
+          stays, and you can write to us to have it looked at.
         </p>
         <p>
           We can close an account that is being used to break these terms, or to
