@@ -686,11 +686,11 @@ function ReceiptRow({ label, value, green }: { label: string; value: ReactNode; 
 /** − n + (MESITA-4647): one voucher's count in the basket. */
 function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number; max: number; disabled: boolean; onChange: (n: number) => void }) {
   const btn =
-    "border-border text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-30";
+    "border-border text-foreground hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-30";
   return (
-    <div className="flex shrink-0 items-center gap-1" data-offer-stepper>
+    <div className="flex shrink-0 items-center gap-0.5" data-offer-stepper>
       <button type="button" aria-label={`Remove one ${name}`} disabled={disabled || n <= 0} onClick={() => onChange(n - 1)} className={btn} data-offer-minus>
-        <Minus className="h-4 w-4" strokeWidth={2.5} />
+        <Minus className="h-3.5 w-3.5" strokeWidth={2.5} />
       </button>
       {/* THE COUNT READS FIRST (Pato, 2026-11-22, MESITA-4672: "make the
           number of amount between - and + more visible"): 18px bold in a
@@ -698,7 +698,7 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
           white digits, 0 stays plain and muted. */}
       <span
         className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-lg leading-none font-bold tabular-nums",
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base leading-none font-bold tabular-nums",
           n > 0 ? "bg-foreground text-paper" : "text-muted-foreground",
         )}
         aria-live="polite"
@@ -707,7 +707,7 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
         {n}
       </span>
       <button type="button" aria-label={`Add one ${name}`} disabled={disabled || n >= max} onClick={() => onChange(n + 1)} className={btn} data-offer-plus>
-        <Plus className="h-4 w-4" strokeWidth={2.5} />
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
       </button>
     </div>
   );
@@ -801,7 +801,9 @@ function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string
  *  `pick` preselects one voucher (an old link) when it is buyable. */
 /** One size for every offer badge (Pato, 2026-11-22, MESITA-4702: "boxes
  *  same size"): cashback and vouchers alike. */
-const BADGE = "flex min-h-12 w-[4.75rem] shrink-0 flex-col items-center justify-center rounded-xl py-2 tabular-nums";
+// SMALLER ON A NARROW PHONE (Pato, 2026-11-23, MESITA-4788: "info gets lost,
+// make items smaller"): 64px, not 76px, so the name and its line keep room.
+const BADGE = "flex min-h-11 w-16 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums";
 
 export type CashbackLineRow = { line: "welcome" | "returning" | "returning_vip"; title: string; who: string; bps: number; mech: VisitMechanism };
 
@@ -852,10 +854,10 @@ function CashbackPanel({
         {rows.map((r) => {
           const mine = you === r.line;
           return (
-            <li key={r.line} data-cashback={r.line} className="flex min-h-[4.5rem] flex-wrap items-center gap-3 px-3.5 py-2">
+            <li key={r.line} data-cashback={r.line} className="flex min-h-16 flex-wrap items-center gap-2.5 px-3 py-2">
               <span className={cn(BADGE, visitTone(r.mech))} aria-hidden>
-                <span className="text-lg leading-none font-bold tracking-tight">{r.bps / 100}%</span>
-                <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">{visitWord(r.mech)}</span>
+                <span className="text-base leading-none font-bold tracking-tight">{r.bps / 100}%</span>
+                <span className="mt-1 type-meta leading-none font-bold tracking-wide uppercase">{visitWord(r.mech)}</span>
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-1">
@@ -865,10 +867,10 @@ function CashbackPanel({
                     type="button"
                     aria-label={`How ${r.title} works`}
                     onClick={() => onInfo(r)}
-                    className="text-muted-foreground hover:text-foreground -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                    className="text-muted-foreground hover:text-foreground -my-1 -ml-1 flex h-8 w-7 shrink-0 items-center justify-center rounded-full"
                     data-cashback-info-open
                   >
-                    <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                    <Info className="h-4 w-4" strokeWidth={2.25} />
                   </button>
                 </span>
                 {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702); 1 hour since MESITA-4717. */}
@@ -886,7 +888,7 @@ function CashbackPanel({
                 <button
                   type="button"
                   onClick={onBecomeVip}
-                  className="text-muted-foreground hover:text-foreground -mt-1 flex min-h-11 basis-full items-center pl-[5.5rem] text-left text-sm font-semibold underline underline-offset-2"
+                  className="text-muted-foreground hover:text-foreground -mt-1 flex min-h-11 basis-full items-center pl-[4.625rem] text-left text-sm font-semibold underline underline-offset-2"
                   data-cashback-become-vip
                 >
                   How to become VIP
@@ -1177,8 +1179,8 @@ function BoneRows({ n }: { n: number }) {
   return (
     <div className={cn(CARD, "divide-border shrink-0 divide-y overflow-hidden")} aria-busy data-offers-bones>
       {Array.from({ length: n }, (_, i) => (
-        <div key={i} className="flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2" aria-hidden>
-          <span className="bg-muted h-12 w-[4.75rem] shrink-0 animate-pulse rounded-xl" />
+        <div key={i} className="flex min-h-16 items-center gap-2.5 px-3 py-2" aria-hidden>
+          <span className="bg-muted h-11 w-16 shrink-0 animate-pulse rounded-xl" />
           <span className="flex flex-1 flex-col gap-1.5">
             <span className="bg-muted h-4 w-32 animate-pulse rounded" />
             <span className="bg-muted h-3 w-44 animate-pulse rounded" />
@@ -1264,7 +1266,7 @@ function PrepaySection({
                 // with the (i); − n + at the right. A blocked row says why,
                 // with a lock, and has no stepper.
                 return (
-                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-[4.5rem] items-center gap-3 px-3.5 py-2", blocked && dim && !linkIg && "opacity-50")}>
+                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-16 items-center gap-2.5 px-3 py-2", blocked && dim && !linkIg && "opacity-50")}>
                     <span
                       className={cn(
                         BADGE,
@@ -1275,8 +1277,8 @@ function PrepaySection({
                       aria-hidden
                       data-offer-bonus
                     >
-                      <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
-                      <span className="mt-1 type-meta leading-none font-bold tracking-wider uppercase">Bonus</span>
+                      <span className="text-base leading-none font-bold tracking-tight">{bonus}</span>
+                      <span className="mt-1 type-meta leading-none font-bold tracking-wide uppercase">Bonus</span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="flex min-w-0 items-center gap-1">
@@ -1286,10 +1288,10 @@ function PrepaySection({
                           aria-label={`How ${p.short} works`}
                           disabled={loading}
                           onClick={() => onInfo(p.key)}
-                          className="text-muted-foreground hover:text-foreground -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                          className="text-muted-foreground hover:text-foreground -my-1 -ml-1 flex h-8 w-7 shrink-0 items-center justify-center rounded-full"
                           data-offer-info-open
                         >
-                          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                          <Info className="h-4 w-4" strokeWidth={2.25} />
                         </button>
                       </span>
                       <span className={cn("text-sm font-semibold tabular-nums", blocked ? "text-muted-foreground" : "text-foreground")}>
