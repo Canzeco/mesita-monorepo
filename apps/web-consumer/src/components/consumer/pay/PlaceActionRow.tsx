@@ -52,7 +52,8 @@ export function PlaceActionRow({
         className="hover:bg-foreground/10 flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3 py-1.5 text-left transition disabled:cursor-default"
         data-loyalty-card
       >
-        <PlacePhoto place={{ photo, name }} className="h-10 w-10" />
+        {/* A CARD'S SHAPE, the + chip's (Pato, 2026-11-24, MESITA-4855). */}
+        <PlacePhoto place={{ photo, name }} className="h-8 w-12 rounded-md" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm leading-tight font-semibold">{name}</span>
           {subtitle ? (
