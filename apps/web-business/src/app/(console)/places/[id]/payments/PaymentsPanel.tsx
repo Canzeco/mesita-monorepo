@@ -796,7 +796,7 @@ export function PaymentsPanel({
       {/* WAITER CODES (MESITA-4871): one per waiter, so the tip has a name. */}
       <div id="waiter-codes" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(HashIcon, "Waiter Codes")}
+          {head(HashIcon, "Visit Checkout - Waiter Codes")}
           <WaiterCodes placeId={placeId} initial={initial.waiters} currency={currency} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
