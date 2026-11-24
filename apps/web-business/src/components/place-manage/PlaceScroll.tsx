@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { ProfileTab } from "@/components/place-manage/ProfileTab";
-import { placeTabFromPathname } from "@/lib/routes";
+import { MONITOR_TABS, placeTabFromPathname } from "@/lib/routes";
 
 // The profile editor stays mounted on every tab. Leaving /profile used to
 // unmount it, and the section cleanup wiped the draft. Off Profile the form
@@ -11,6 +11,7 @@ import { placeTabFromPathname } from "@/lib/routes";
 export function PlaceScroll({ children, staff = false }: { children: React.ReactNode; staff?: boolean }) {
   const tab = placeTabFromPathname(usePathname());
   const onProfile = tab === "profile";
+  const wide = onProfile || (tab !== null && MONITOR_TABS.includes(tab));
   // No overflow here: the window scrolls. An overflow box with no height never
   // scrolls, and the sticky save bars inside stuck to it (MESITA-4922).
   return (
@@ -18,11 +19,10 @@ export function PlaceScroll({ children, staff = false }: { children: React.React
       <div className={onProfile ? undefined : "hidden"} inert={!onProfile}>
         <ProfileTab staff={staff} />
       </div>
-      {/* ONE COLUMN, OFFERS' WIDTH (Pato, 2026-11-23, MESITA-4790: "make
-          organic visibility as wide as the others. the only thing that
-          remains full screen is the profile"): every page but Profile sits
-          in a centred max-w-3xl column. */}
-      <div className={onProfile ? undefined : "mx-auto w-full max-w-3xl"}>{children}</div>
+      {/* Monitor is full width (Pato, 2026-11-24, MESITA-4926: "all monitor
+          events, only configuration is not full width"), as Profile is. The
+          Manage pages sit in Offers' centred column (MESITA-4790). */}
+      <div className={wide ? undefined : "mx-auto w-full max-w-3xl"}>{children}</div>
     </div>
   );
 }

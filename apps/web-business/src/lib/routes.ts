@@ -37,6 +37,9 @@ export const ACCOUNT = "/account";
 export const PLACE_TABS = ["views", "visits", "vouchers", "gifts", "money", "payouts", "credits", "customers", "profile", "premier", "payments", "general", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
+/** The Monitor pages: records, not configuration. Full width (MESITA-4926). */
+export const MONITOR_TABS: readonly PlaceTab[] = ["customers", "views", "visits", "vouchers", "gifts", "money", "payouts"];
+
 /** The tabs that are sections of General, not pages (MESITA-4534). */
 export const GENERAL_SECTIONS: readonly PlaceTab[] = ["reservations", "settings"];
 
