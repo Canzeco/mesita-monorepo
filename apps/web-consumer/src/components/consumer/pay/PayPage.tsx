@@ -92,7 +92,13 @@ export function PayPage({
           </section>
         ) : null}
         <WalletMenu tab={tab} onTab={chooseTab} />
-        <div className={cn("my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5 transition-colors motion-reduce:transition-none", PAY_TAB_FILL[tab])} data-pay-menu-box={tab}>
+        <div className={cn(
+            "my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5",
+            // Under an end tile the box's own corner is straight: one edge.
+            tab === "prepay" && "rounded-tl-none",
+            tab === "pay" && "rounded-tr-none",
+            PAY_TAB_FILL[tab],
+          )} data-pay-menu-box={tab}>
           <div
             role="tabpanel"
             id="pay-panel"
@@ -175,6 +181,19 @@ const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
   pay: { word: "Pay", icon: QrCode, ink: "#635BFF" },
 };
 
+/** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
+ *  connect with bottom box when selected"): the tile's colour runs down the
+ *  8px gap into the box, with a rounded inner corner on each open side. */
+function TileJoin({ fill, left, right }: { fill: string; left: boolean; right: boolean }) {
+  const corner = (at: string) => ({ maskImage: `radial-gradient(circle at ${at} 0, transparent 7.5px, black 8px)` });
+  return (
+    <span className={cn("pointer-events-none absolute inset-x-0 top-full h-2", fill)} aria-hidden>
+      {left ? <span className={cn("absolute top-0 -left-2 h-2 w-2", fill)} style={corner("0")} /> : null}
+      {right ? <span className={cn("absolute top-0 -right-2 h-2 w-2", fill)} style={corner("100%")} /> : null}
+    </span>
+  );
+}
+
 /** THE MENU: three equal tiles, only the chosen one in its colour (look A).
  *  Arrow keys move between them. */
 function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
@@ -208,13 +227,14 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
                 move(i, e.key === "ArrowRight" ? 1 : -1);
               }
             }}
-            className={cn(PAY_TILE, on ? PAY_TAB_FILL[id] : "bg-muted text-foreground hover:bg-foreground/10")}
+            className={cn(PAY_TILE, "relative", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
             data-pay-tab={id}
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: ink }} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>
+            {on ? <TileJoin fill={PAY_TAB_FILL[id]} left={i > 0} right={i < PAY_TABS.length - 1} /> : null}
           </button>
         );
       })}

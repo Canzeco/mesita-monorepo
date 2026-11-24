@@ -53,4 +53,4 @@ export const PAY_TAB_FILL: Record<PayTab, string> = {
   pay: "bg-[#635BFF] text-white",
 };
 /** A tile: a third of the row, 92px. */
-export const PAY_TILE = "flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition active:scale-[0.99]";
+export const PAY_TILE = "flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center";

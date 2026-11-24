@@ -129,7 +129,7 @@ function fold(v: string): string {
     .toLowerCase();
 }
 
-type OfferBox = { top: string; bottom: string; tone: string; key: string };
+type OfferBox = { top: string; bottom: string; bonus?: string; tone: string; key: string };
 
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
@@ -143,10 +143,13 @@ function offerBoxes(p: PayPlace, kind: ListKind): OfferBox[] {
     if (!o) return [];
     return VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => {
       const pay = Number(k.slice("voucher_".length));
+      const pct = voucherPct(o, k);
       return {
         key: k,
         top: `$${pesos.format(pay)}`,
-        bottom: `Get $${pesos.format(Math.round((pay * (100 + voucherPct(o, k))) / 100))}`,
+        bottom: `Get $${pesos.format(Math.round((pay * (100 + pct)) / 100))}`,
+        // The bonus too (Pato, 2026-11-24, MESITA-4839).
+        bonus: pct > 0 ? `+${pct}%` : undefined,
         tone: BOX_TINT.prepay,
       };
     });
@@ -172,16 +175,19 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
   const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
   const name = p.name ?? "A Mesita place";
   const shown = offerBoxes(p, kind);
-  const spoken = [name, distance, ...shown.map((b) => `${b.top} ${b.bottom}`)].filter(Boolean).join(", ");
+  const spoken = [name, distance, ...shown.map((b) => [b.top, b.bottom, b.bonus && `${b.bonus} Bonus`].filter(Boolean).join(" "))].filter(Boolean).join(", ");
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
       aria-label={spoken}
-      className="hover:bg-muted/60 flex w-full flex-col px-3.5 py-2.5 text-left transition"
+      className="group flex w-full flex-col p-2.5 text-left"
       data-pay-pick-place
     >
-      <span className="flex w-full items-start gap-3.5">
+      {/* THE GRID (Pato, 2026-11-24, MESITA-4839: "data in gray box, offers in
+          green boxes"): the place's box, then its offers, on the search box's
+          own edges, 6px apart. */}
+      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-start gap-3 rounded-lg p-2.5 transition-colors">
         <PlacePhoto place={p} className="h-11 w-11" />
         <span className="min-w-0 flex-1 pt-0.5">
           <span className="block truncate text-sm font-semibold">{name}</span>
@@ -197,11 +203,12 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
         // amount before (MESITA-4795).
         // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
         // two boxes are halves, three are thirds; 14px words, shorter boxes.
-        <span className={cn("mt-2 grid w-full gap-1.5", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+        <span className={cn("mt-1.5 grid w-full gap-1.5", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
           {shown.map((b) => (
             <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2 py-1.5", b.tone)}>
               <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
               <span className="mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums">{b.bottom}</span>
+              {b.bonus ? <span className="mt-0.5 block truncate text-xs leading-tight font-semibold text-emerald-700 tabular-nums">{b.bonus}<span className="max-[359px]:hidden"> Bonus</span></span> : null}
             </span>
           ))}
         </span>

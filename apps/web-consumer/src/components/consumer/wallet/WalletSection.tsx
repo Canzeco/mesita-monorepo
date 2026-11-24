@@ -11,7 +11,7 @@ import { CONSUMER_ROUTES, walletPlacePath, walletSendPath } from "@/lib/consumer
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
-import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB } from "@/components/consumer/pay/pay-sections";
 import { GiftClaimSheet } from "./SendCredit";
 import { cn } from "@/lib/utils";
@@ -236,9 +236,9 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* ROWS ON THE MENU'S WHITE PANEL, a hairline between them (MESITA-4838);
-          grey boxes on black before (MESITA-4794). */}
-      <div className="divide-border flex flex-col divide-y">
+      {/* CARDS ON THE MENU'S WHITE PANEL (MESITA-4839), 10px apart; rows
+          with a hairline for one deploy (MESITA-4838). */}
+      <div className="flex flex-col gap-2.5 p-2.5">
         {creditsState === "rows"
           ? cards.map((row) => {
               const gone = row.balance.place === null;
@@ -248,7 +248,7 @@ export function WalletSection({
                   key={row.card.key}
                   name={name}
                   photo={row.card.photo}
-                  amount={gone || row.card.available_cents <= 0 ? null : money(row.card.available_cents, row.card.currency)}
+                  amount={money(Math.max(row.card.available_cents, 0), row.card.currency)}
                   subtitle={gone ? "Ask Mesita support to use it." : null}
                   pending={!gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
                   pendingAt={soonestPendingAt(row.balance.entries)}
@@ -262,8 +262,8 @@ export function WalletSection({
           : null}
         {creditsState === "loading" ? (
           <>
-            <LoyaltyCardBoxSkeleton />
-            <LoyaltyCardBoxSkeleton />
+            <Skeleton className="h-40 w-full rounded-2xl" aria-hidden />
+            <Skeleton className="h-40 w-full rounded-2xl" aria-hidden />
           </>
         ) : null}
         {/* ADD ANOTHER CARD, LAST (Pato, 2026-11-21, MESITA-4573: "in
@@ -272,8 +272,8 @@ export function WalletSection({
             themselves" dialog. With no card it is the tab's one row
             (MESITA-4765, D5). Not while the cards load. */}
         {creditsState !== "loading" ? (
-          <button type="button" onClick={() => setAddOpen(true)} className={PAY_ROW} data-wallet-add-card>
-            <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
+          <button type="button" onClick={() => setAddOpen(true)} className={cn(PAY_ROW, "bg-muted hover:bg-foreground/10 rounded-2xl")} data-wallet-add-card>
+            <span className={cn(PAY_THUMB, "bg-card text-foreground")} aria-hidden>
               <Plus className="h-4 w-4" strokeWidth={2.25} />
             </span>
             <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>Add Loyalty Card</span>
