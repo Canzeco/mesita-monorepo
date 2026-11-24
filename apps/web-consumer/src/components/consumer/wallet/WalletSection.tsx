@@ -12,7 +12,7 @@ import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
 import { LoyaltyCardBoxSkeleton } from "@/components/consumer/pay/PayFrameLoading";
-import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB, SECTION_ROWS } from "@/components/consumer/pay/pay-sections";
+import { PAY_ROW, PAY_ROW_TEXT, PAY_THUMB } from "@/components/consumer/pay/pay-sections";
 import { GiftClaimSheet } from "./SendCredit";
 import { cn } from "@/lib/utils";
 import { useWallet } from "./use-wallet";
@@ -231,14 +231,16 @@ export function WalletSection({
   return (
     <div className="flex flex-col" data-wallet>
       {wallet?.settling ? (
-        <p className="text-muted-foreground px-3 pt-3 text-sm" role="status">
+        <p className="text-background/70 px-1 pb-1.5 text-sm" role="status">
           Confirming a payment…
         </p>
       ) : null}
 
-      {/* ONE BOX OF ROWS (MESITA-4560): a hairline between places. Pay's tab
-          panel is the box (MESITA-4765). */}
-      <div className={SECTION_ROWS}>
+      {/* ONE WHITE BOX PER CARD (Pato, 2026-11-23, MESITA-4794: "divide
+          loyalty cards in white boxes inside the same giant black box"): the
+          black frame shows between them; was one panel with hairlines
+          (MESITA-4560). */}
+      <div className="flex flex-col gap-1.5 [&>*]:bg-card [&>*]:overflow-hidden [&>*]:rounded-xl">
         {creditsState === "rows"
           ? cards.map((row) => {
               const gone = row.balance.place === null;
