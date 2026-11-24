@@ -103,7 +103,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, Clock, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
+import { Lock, Clock, Crown, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { SexFace } from "@/components/consumer/SexFace";
 import {
@@ -196,9 +196,9 @@ const MARK_CLASS =
  *  MESITA-2608 — else THE ONE NO-PHOTO FACE, the same `DefaultAvatar` Me
  *  draws (MESITA-2620, Pato: "use same icon for me and consumer for
  *  anonymous as instagram anonymous"); anonymous or not, never an initial,
- *  never a lucide glyph. No verb badge (MESITA-2604). One mark: Instagram
- *  bottom-left when verified (no VIP crown since MESITA-4709). */
-/** A member's face with its Instagram mark; the place screen's Social tab
+ *  never a lucide glyph. No verb badge (MESITA-2604). One mark: a crown
+ *  bottom-left for a VIP (MESITA-4866). */
+/** A member's face with its VIP crown; the place screen's Social tab
  *  draws the same (MESITA-3417). */
 export function Face({ person }: { person: ActivityPerson }) {
   return (
@@ -218,6 +218,15 @@ export function Face({ person }: { person: ActivityPerson }) {
           data-social-anonymous={person.anonymous ? "" : undefined}
         >
           <DefaultAvatar className="h-full w-full" />
+        </span>
+      )}
+      {/* A VIP WEARS A CROWN (Pato, 2026-11-24, MESITA-4866: "if vip, show a
+          little crown at the bottom left, where instagram used to be").
+          Nothing for Regular. */}
+      {person.guestClass === "vip" && (
+        <span className={cn(MARK_CLASS, "bg-foreground text-background -left-1")} data-social-mark="vip">
+          <Crown className="h-[11px] w-[11px]" strokeWidth={2.5} aria-hidden />
+          <span className="sr-only">VIP</span>
         </span>
       )}
     </span>
