@@ -1,7 +1,7 @@
 {
   "generated": "by `deno task sync-elevenlabs` from supabase/supabase/functions/_shared/reservationist/ — never edit",
-  "spec_hash": "be3ed4bea8c00fe933c2a9ce36dd40927d9c3aa3a033b686aac8e7d40f7a6dae",
-  "knowledge_version": 13,
+  "spec_hash": "ff9d17af049e7fe55e0481c43c9f2d9fc3c6ae9991c2905114496077a49d0856",
+  "knowledge_version": 14,
   "deploy": ".github/workflows/agents-deploy.yml on every merge to main (supabase/scripts/sync-agents.sh)",
   "agents": [
     {
@@ -27,7 +27,7 @@
         "farewell_wrong",
         "end_node"
       ],
-      "knowledge_doc": "a1-kb-v13",
+      "knowledge_doc": "a1-kb-v14",
       "tests": [
         "mesita · a1 · takes a time inside the window alone",
         "mesita · a1 · never agrees to a deposit",
@@ -65,7 +65,7 @@
         "farewell_cancel",
         "end_node"
       ],
-      "knowledge_doc": "a2-kb-v13",
+      "knowledge_doc": "a2-kb-v14",
       "tests": [
         "mesita · a2 · identity first, options once",
         "mesita · a2 · not booked, said once",
@@ -78,7 +78,7 @@
       "key": "a3",
       "name": "eleven-a3 (es-mx) · inbound · guests and restaurants",
       "direction": "the guest calls Mesita",
-      "first_message": "¡Hola! Soy Mesi, el agente de Mesita. ¿En qué le puedo ayudar?",
+      "first_message": "¡Hola! Soy Mesita. ¿En qué le puedo ayudar?",
       "tools": [
         "inbound_identify_place",
         "inbound_identify_guest",
@@ -119,7 +119,7 @@
         "code_info",
         "end_node"
       ],
-      "knowledge_doc": "a3-kb-v13",
+      "knowledge_doc": "a3-kb-v14",
       "tests": [
         "mesita · a3 · guest cancels with one confirmation",
         "mesita · a3 · place cancels by the guest's name",

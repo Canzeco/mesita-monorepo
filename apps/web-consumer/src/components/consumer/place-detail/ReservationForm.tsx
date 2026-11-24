@@ -458,7 +458,7 @@ export function ReservationForm({
                 <span className="bg-reserve h-2 w-2 shrink-0 rounded-full" aria-hidden />
                 <span className="font-semibold">
                   {parked ??
-                    `Mesi calls ${place.name} as soon as it is open${rescheduling ? " to move your table" : ""}`}
+                    `Mesita calls ${place.name} as soon as it is open${rescheduling ? " to move your table" : ""}`}
                 </span>
               </div>
             </dl>
@@ -636,7 +636,7 @@ export function ReservationForm({
                 <p className="type-body mt-3" data-reserve-phone="">
                   {phone ? (
                     <>
-                      <span className="text-muted-foreground">Mesi calls </span>
+                      <span className="text-muted-foreground">Mesita calls </span>
                       <span className="font-semibold tabular-nums">{phone}</span>
                       <span className="text-muted-foreground"> · </span>
                     </>
@@ -700,7 +700,7 @@ export function ReservationForm({
         )}
         {promisesACall && (
           <p className="text-muted-foreground type-body mb-2 text-center">
-            Mesi, our AI agent, will call this place to request the table.
+            Our AI agent will call this place to request the table.
           </p>
         )}
         {plan.pro ? null : step === "table" && existing ? (

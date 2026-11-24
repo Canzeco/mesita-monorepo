@@ -46,11 +46,11 @@ Deno.test("collections are not pipelines; the Chat Agent is a caller, never a so
   for (const notAPipeline of ["favorites", "chat", "search"]) {
     assertEquals(labels.some((l) => l.includes(notAPipeline)), false, notAPipeline);
   }
-  assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "deep")?.callers, ["Chat (Mesi)"]);
+  assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "deep")?.callers, ["Chat (Mesita)"]);
   // The Chat Agent calls Name, Catalog and Deep (MESITA-2339, MESITA-2909)
   // and is none of them; the Map is the Search tab's alone.
   for (const p of DISCOVERY_PIPELINES) {
-    assertEquals(p.callers.includes("Chat (Mesi)"), p.key !== "map", p.key);
+    assertEquals(p.callers.includes("Chat (Mesita)"), p.key !== "map", p.key);
   }
   assertEquals(DISCOVERY_SOURCES.some((s) => /chat|exa|perplexity|provider/i.test(s.label)), false);
 });
@@ -168,7 +168,7 @@ Deno.test("Catalog: Family only, Proximity × Popularity × the Premier factor, 
   assertEquals(catalog.signals, ["proximity", "popularity"]);
   assert(catalog.scoring.startsWith("Proximity × Popularity × s"));
   assert(catalog.rules.includes("Chat reads every ready Mesita place inside a fixed 15 km (Selected only until MESITA-2925; the current-location radius knob retired in MESITA-3086)."));
-  assert(catalog.callers.includes("Chat (Mesi)"));
+  assert(catalog.callers.includes("Chat (Mesita)"));
   for (const p of [catalog, DISCOVERY_PIPELINES.find((x) => x.key === "map")!]) {
     for (const stale of ["scope", "subset", "rail", "Mesita Proximity", "Distance penalty"]) {
       assertEquals(JSON.stringify(p).includes(stale), false, stale);

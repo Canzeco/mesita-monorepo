@@ -41,7 +41,7 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   },
   {
     tab: "reservations",
-    line: "Whether guests can ask for a table at your place. When they do, Mesi, Mesita's agent, calls you with the date, time and party size.",
+    line: "Whether guests can ask for a table at your place. When they do, Mesita's AI agent calls you with the date, time and party size.",
   },
 ];
 

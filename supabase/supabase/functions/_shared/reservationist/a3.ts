@@ -110,7 +110,7 @@ const NEXT_MATCH = llm(
 export const A3: FleetAgent = {
   key: "a3",
   name: "eleven-a3 (es-mx) · inbound · guests and restaurants",
-  firstMessage: `¡Hola! Soy ${AGENT_NAME}, el agente de Mesita. ¿En qué le puedo ayudar?`,
+  firstMessage: `¡Hola! Soy ${AGENT_NAME}. ¿En qué le puedo ayudar?`,
   prompt: PROMPT,
   toolNames: [
     "inbound_identify_place",
@@ -139,7 +139,7 @@ export const A3: FleetAgent = {
         label: "A place is calling",
         position: pos(600, -320),
         prompt: [
-          `Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú eres ${AGENT_NAME}, de Mesita; nunca hables como si fueras el restaurante.`,
+          `Llama un restaurante: el flujo lo reconoció por su número (inbound_identify_place). Tú hablas por ${AGENT_NAME}; nunca hables como si fueras el restaurante.`,
           "Salúdalo por su nombre (place.name), por ejemplo «¡Hola, Gran Central! ¿En qué le puedo ayudar?». Ten presentes sus notas (place.notes) y no preguntes lo que ya dicen.",
           "Si el resultado también trae guest (el número es de un restaurante y de un comensal) y no queda claro, pregunta una sola vez si llama por su restaurante o por una reservación suya.",
           "Luego toma la rama de lo que pidan.",

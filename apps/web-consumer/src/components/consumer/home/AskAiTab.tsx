@@ -122,8 +122,8 @@ export function AskAiTab({ places }: { places: Place[] }) {
       <ComingSoonModal
         open={callSoon}
         onClose={() => setCallSoon(false)}
-        title="Calling Mesi"
-        body="Soon you'll be able to call Mesi and just say what you're in the mood for — he'll talk you to a table. Until then he's right here, in chat."
+        title="Calling Mesita"
+        body="Soon you'll be able to call Mesita and just say what you're in the mood for — it'll talk you to a table. Until then it's right here, in chat."
         icon={Phone}
       />
     </div>

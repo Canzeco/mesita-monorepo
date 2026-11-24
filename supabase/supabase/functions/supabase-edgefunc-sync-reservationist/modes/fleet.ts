@@ -45,7 +45,7 @@ export async function fleet(ctx: WorkspaceCtx): Promise<Response> {
   const agentIdByName = new Map<string, string>();
   for (const a of listedAgents) if (a.agent_id && a.name) agentIdByName.set(a.name, a.agent_id);
 
-  // 1b · Mesi's voice is in the workspace before any agent names it (MESITA-4624).
+  // 1b · Mesita's voice is in the workspace before any agent names it (MESITA-4624).
   const voice = await ensureVoice(key, TTS.voice_id, TTS_VOICE_NAME);
   if (!voice.ok) return json({ ok: false, error: voice.error }, 502);
 
