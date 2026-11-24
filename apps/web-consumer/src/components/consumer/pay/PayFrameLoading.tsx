@@ -20,10 +20,10 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
           <Skeleton className="h-[92px] min-w-0 rounded-2xl" aria-hidden />
           <Skeleton className="h-[92px] min-w-0 rounded-2xl" aria-hidden />
         </div>
-        <div className="bg-muted my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5">
+        <div className="bg-muted -mx-2 mt-2 flex min-h-0 flex-1 flex-col p-1.5">
           <div className="bg-card min-h-0 flex-1 overflow-hidden rounded-xl">
-            <div className="p-2.5">
-              <Skeleton className="h-12 w-full rounded-xl" aria-hidden />
+            <div className="border-border flex h-14 items-center border-b px-4">
+              <Skeleton className="h-4 w-32" aria-hidden />
             </div>
             <div className={SECTION_ROWS}>
               <LoyaltyCardBoxSkeleton />

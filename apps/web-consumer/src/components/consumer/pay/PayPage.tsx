@@ -92,13 +92,11 @@ export function PayPage({
           </section>
         ) : null}
         <WalletMenu tab={tab} onTab={chooseTab} />
-        <div className={cn(
-            "my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5",
-            // Under an end tile the box's own corner is straight: one edge.
-            tab === "prepay" && "rounded-tl-none",
-            tab === "pay" && "rounded-tr-none",
-            PAY_TAB_FILL[tab],
-          )} data-pay-menu-box={tab}>
+        {/* ONE BORDER (Pato, 2026-11-24, MESITA-4842: "i don't like double
+            borders ... must be 100% width ... not green and then white"): the
+            box runs edge to edge (-mx-2 undoes the page's 8px) and down to the
+            bar, and what is inside touches its colour with no white gutter. */}
+        <div className={cn("-mx-2 mt-2 flex min-h-0 flex-1 flex-col p-1.5", PAY_TAB_FILL[tab])} data-pay-menu-box={tab}>
           <div
             role="tabpanel"
             id="pay-panel"
@@ -120,18 +118,16 @@ export function PayPage({
                   )}
                 </KeptScroll>
                 {tab === "pay" ? (
-                  // AT THE BOTTOM, THE SEARCH BOX'S TWIN (Pato, 2026-11-24,
-                  // MESITA-4839): same height, edges and corners. Not listed,
-                  // or the list did not load: the QR works anyway.
-                  <div className="border-border shrink-0 border-t p-2.5">
-                    <PushLink
-                      href={CONSUMER_ROUTES.payCode}
-                      className="border-border bg-card hover:bg-muted flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition"
-                      data-pay-pick-any
-                    >
-                      My place isn&apos;t here
-                    </PushLink>
-                  </div>
+                  // AT THE BOTTOM, THE SEARCH ROW'S TWIN (Pato, 2026-11-24,
+                  // MESITA-4839). Not listed, or the list did not load: the QR
+                  // works anyway.
+                  <PushLink
+                    href={CONSUMER_ROUTES.payCode}
+                    className="border-border bg-card hover:bg-muted flex h-14 shrink-0 items-center justify-center border-t px-4 text-sm font-semibold transition"
+                    data-pay-pick-any
+                  >
+                    My place isn&apos;t here
+                  </PushLink>
                 ) : null}
               </>
             )}
@@ -187,13 +183,13 @@ const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
 
 /** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
  *  connect with bottom box when selected"): the tile's colour runs down the
- *  8px gap into the box, with a rounded inner corner on each open side. */
-function TileJoin({ fill, left, right }: { fill: string; left: boolean; right: boolean }) {
+ *  8px gap into the box, with a rounded inner corner on each side. */
+function TileJoin({ fill }: { fill: string }) {
   const corner = (at: string) => ({ maskImage: `radial-gradient(circle at ${at} 0, transparent 7.5px, black 8px)` });
   return (
     <span className={cn("pointer-events-none absolute inset-x-0 top-full h-2", fill)} aria-hidden>
-      {left ? <span className={cn("absolute top-0 -left-2 h-2 w-2", fill)} style={corner("0")} /> : null}
-      {right ? <span className={cn("absolute top-0 -right-2 h-2 w-2", fill)} style={corner("100%")} /> : null}
+      <span className={cn("absolute top-0 -left-2 h-2 w-2", fill)} style={corner("0")} />
+      <span className={cn("absolute top-0 -right-2 h-2 w-2", fill)} style={corner("100%")} />
     </span>
   );
 }
@@ -240,7 +236,7 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>
-            {on ? <TileJoin fill={PAY_TAB_FILL[id]} left={i > 0} right={i < PAY_TABS.length - 1} /> : null}
+            {on ? <TileJoin fill={PAY_TAB_FILL[id]} /> : null}
           </button>
         );
       })}
