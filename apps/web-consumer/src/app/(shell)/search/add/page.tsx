@@ -32,7 +32,6 @@ function AddPlaceBody() {
     <Screen title="Add a place" scrolls onBack={() => goBack(router)}>
       <AddPlaceSheet
         origin={origin}
-        onClose={() => goBack(router)}
         onPick={(row) => {
           if (predictionOnMesita(row)) {
             const id = row.mesitaSlug || row.mesitaId;

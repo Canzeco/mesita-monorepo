@@ -46,7 +46,13 @@ function useReservationById(id: string): { state: State; reload: () => void } {
           );
         }
       } catch {
-        if (!cancelled) setState({ state: "missing" });
+        // A failed re-read (poll or reload) keeps the row already on screen;
+        // only a first read that fails has nothing to show.
+        if (!cancelled) {
+          setState((s) =>
+            s.state === "found" && s.r.id === id ? s : { state: "missing" },
+          );
+        }
       }
     })();
     return () => {

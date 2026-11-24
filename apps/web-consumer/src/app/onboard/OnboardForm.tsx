@@ -278,7 +278,8 @@ export function OnboardForm({
           </select>
           {yearField?.hint ? (
             <p className="text-muted-foreground type-body mt-3">
-              Nobody sees it. It confirms you&apos;re old enough for Mesita.
+              It confirms you&apos;re old enough for Mesita. On a public profile,
+              guests see your age.
             </p>
           ) : null}
         </div>

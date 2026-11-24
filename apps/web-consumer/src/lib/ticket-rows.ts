@@ -247,19 +247,26 @@ export function walletRows(w: Wallet): Row[] {
           (x) => !usedBonus.has(x) && (e.purchase_id && x.purchase_id ? x.purchase_id === e.purchase_id : x.at === e.at),
         );
         if (bonus) usedBonus.add(bonus);
-        const pending = e.pending || !!bonus?.pending;
+        // A refunded purchase reads Refunded, as its page does (CreditEntry
+        // stateOf), never as money on its way.
+        const refunded =
+          !!e.purchase_id &&
+          b.entries.some((x) => x.kind === "reversal" && !x.payment_id && x.purchase_id === e.purchase_id);
+        const pending = !refunded && (e.pending || !!bonus?.pending);
         out.push({
           key: `b-${b.place_id}-${e.at}-${i}`,
           type: "vouchers",
           kind: "voucher",
-          sign: "+",
+          sign: refunded ? null : "+",
           at: e.at,
           upcoming: false,
           place,
           photo,
-          status: pending
-            ? { label: "Pending", tone: "ink" }
-            : { label: "Available", tone: "green" },
+          status: refunded
+            ? { label: "Refunded", tone: "grey" }
+            : pending
+              ? { label: "Pending", tone: "ink" }
+              : { label: "Available", tone: "green" },
           // STILL LANDING IS BLUE (Pato, 2026-11-21, MESITA-4625).
           landing: pending,
           big: money(e.amount_cents, cur),

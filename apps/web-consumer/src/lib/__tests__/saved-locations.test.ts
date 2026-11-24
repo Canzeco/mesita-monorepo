@@ -12,6 +12,8 @@ import {
   patchSavedLocationInPlace,
   readStoredLocations,
   removeSavedLocation,
+  setSavedLocationsRemote,
+  syncSavedLocations,
   SAVED_LOCATION_FALLBACK,
   SAVED_LOCATIONS_MAX,
   updateSavedLocation,
@@ -189,5 +191,45 @@ describe("a saved pin has no radius (MESITA-2914)", () => {
     addSavedLocation(pin());
     const stored = { ...JSON.parse(JSON.stringify(getSavedLocations()))[0], radiusKm: 5 };
     expect("radiusKm" in readStoredLocations([stored])[0]).toBe(false);
+  });
+});
+
+describe("a sync never drops a change made during its read (MESITA-4903)", () => {
+  afterEach(() => {
+    setSavedLocationsRemote(null);
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    clearSavedLocationsLocal();
+  });
+
+  it("is kept, then yields to the server if its write failed; another account never gets it", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", {
+      localStorage: { getItem: () => "1", setItem() {}, removeItem() {} },
+    });
+    clearSavedLocationsLocal();
+    setSavedLocationsRemote({ upsert() {}, remove() {} });
+    const push = async () => {};
+    await syncSavedLocations(async () => {
+      addSavedLocation(pin());
+      return [];
+    }, push);
+    expect(getSavedLocations()).toHaveLength(1);
+    vi.advanceTimersByTime(60_000);
+    const stale = [...getSavedLocations()];
+    await syncSavedLocations(async () => [], push);
+    expect(getSavedLocations()).toEqual([]);
+    // A removal during the read holds too.
+    await syncSavedLocations(async () => stale, push);
+    await syncSavedLocations(async () => {
+      removeSavedLocation(stale[0].id);
+      return stale;
+    }, push);
+    expect(getSavedLocations()).toEqual([]);
+    await syncSavedLocations(async () => {
+      clearSavedLocationsLocal();
+      return stale;
+    }, push);
+    expect(getSavedLocations()).toEqual([]);
   });
 });

@@ -126,7 +126,11 @@ export function useWallet({ withCards = false }: { withCards?: boolean } = {}): 
         }
       })
       .catch(() => {
-        if (!cancelled) setFailed(true);
+        if (cancelled) return;
+        setFailed(true);
+        // A purchase still confirming is asked about again: one lost read must
+        // not leave "Confirming" on screen for good.
+        if (awaiting) timer = setTimeout(() => setNonce((n) => n + 1), SETTLING_RETRY_MS);
       });
     return () => {
       cancelled = true;

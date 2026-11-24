@@ -538,6 +538,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         );
       } catch (err) {
         if (gen !== viewportGen.current) return;
+        // This view never loaded: the next rest retries, however small the move.
+        lastReloadBoxRef.current = null;
         setFetchError(errMsg(err, "Couldn't load places in this area."));
       } finally {
         if (gen === viewportGen.current) setCatalogLoading(false);
@@ -592,6 +594,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     },
     [loadAt],
   );
+
+  // No map, no first viewport: load the rail from the guest's point instead.
+  const onMapFailed = useCallback(() => {
+    if (lastFetchedCenter.current) return;
+    void loadAt(locationRef.current ?? chosen ?? MONTERREY_CENTER, null);
+  }, [chosen, loadAt]);
 
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: ViewportMeta) => {
@@ -1218,6 +1226,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           places={catalog}
           dots={mapDots}
           userLocation={userLocation}
+          chosenLocation={chosen}
           selectedId={railSelectedId}
           pins={searchPins}
           searching={catalogLoading}
@@ -1227,6 +1236,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onTapPlacePin={handleTapPlacePin}
           onSelectPin={handleSelectPin}
           onFirstViewport={onFirstViewport}
+          onMapFailed={onMapFailed}
           onUserViewport={onUserViewport}
           onCameraMoveStart={clearPendingReload}
         />

@@ -192,16 +192,17 @@ function day(iso: string | null): string {
   });
 }
 
-/** Checkout's return id (`?plan=cs_…`), read once and stripped from the
- *  address so a reload does not confirm twice. */
-function takeSessionId(): string | undefined {
+/** Checkout's return id (`?plan=cs_…`). It stays in the address until a read
+ *  says paid: nothing else ties the payment to the guest (no webhook). */
+function sessionIdInUrl(): string | undefined {
   if (typeof window === "undefined") return undefined;
+  return new URL(window.location.href).searchParams.get("plan") ?? undefined;
+}
+
+function clearSessionId() {
   const url = new URL(window.location.href);
-  const id = url.searchParams.get("plan");
-  if (!id) return undefined;
   url.searchParams.delete("plan");
   window.history.replaceState(window.history.state, "", url.toString());
-  return id;
 }
 
 export function PlanModal({ fallback = false }: { fallback?: boolean }) {
@@ -216,14 +217,16 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   useEffect(() => {
     if (fallback) return;
     let live = true;
-    const sessionId = reload === 0 ? takeSessionId() : undefined;
+    const sessionId = sessionIdInUrl();
     apiGetPlan(getSupabase(), sessionId).then(
       (v) => {
         if (!live) return;
         setView(v);
         setFailed(false);
-        if (v.confirmed === "paid") setNotice("You're on Pro.");
-        else if (v.confirmed === "pending")
+        if (v.confirmed === "paid") {
+          clearSessionId();
+          setNotice("You're on Pro.");
+        } else if (v.confirmed === "pending")
           setNotice(
             "Your payment is still processing. Check back in a minute.",
           );
@@ -300,7 +303,8 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   // What Pro's card ends with, by the guest's plan. An operator's grant
   // (granted) has nothing to buy and nothing to cancel.
   const proAction =
-    plan === "free" ? (
+    // A payment still processing is never bought twice.
+    plan === "free" && view?.confirmed === "pending" ? null : plan === "free" ? (
       <UpgradeAction onUpgrade={upgrade} busy={busy} />
     ) : paidPro && view && !view.cancel_at_period_end ? (
       <p className="text-muted-foreground type-label">

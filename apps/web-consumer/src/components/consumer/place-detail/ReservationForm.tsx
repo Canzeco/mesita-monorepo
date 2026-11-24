@@ -29,6 +29,7 @@ import {
 import { EFError } from "@/lib/api/_invoke";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
+import { toReservationItem } from "@/lib/reservations-adapter";
 import { Panel } from "@/components/shared/Panel";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { PlacePhotoMark } from "@/components/consumer/wallet/PlaceCredit";
@@ -207,7 +208,13 @@ export function ReservationForm({
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice, hours, tz);
+  const time = resolveSlot(
+    date,
+    timeChoice,
+    hours,
+    tz,
+    existing && choice === "reschedule" ? placeDateTime(existing.reserved_at, tz) : null,
+  );
 
   const chosen = dateOptions.find((d) => d.iso === date);
   const dayLabel = chosen
@@ -368,7 +375,7 @@ export function ReservationForm({
       }
       if (e instanceof EFError && e.code === ALREADY_RESERVED_CODE) {
         setError(errMsg(e, "You already have a reservation here. Change or cancel it first."));
-        onBooked(); // re-read the list so the table shows above the form
+        onBooked(); // re-read the list: the table opens as its own step
         return;
       }
       const msg = errMsg(e, "");
@@ -392,7 +399,9 @@ export function ReservationForm({
     : rescheduling
       ? ["when", "party"]
       : ["when", "party", "you"];
-  const at = Math.min(stepAt, steps.length - 1);
+  // A table found mid-flow (a 409 re-read, a restored draft) is answered
+  // first: its step opens wherever the guest was.
+  const at = awaitingChoice ? 0 : Math.min(stepAt, steps.length - 1);
   const step = steps[at];
   const last = at === steps.length - 1;
   useEffect(() => {
@@ -407,6 +416,11 @@ export function ReservationForm({
   // THE DONE SCREEN (MESITA-4671 D5): what was asked for, who is on it, and
   // the way to the table's own page.
   if (done) {
+    // The place is closed: the re-read row is parked until it opens.
+    const parked =
+      existing?.id === doneId && existing?.attempts_state === "scheduled"
+        ? toReservationItem(existing).stateNote
+        : null;
     const rows: Array<[string, React.ReactNode]> = [
       [
         "Place",
@@ -443,7 +457,8 @@ export function ReservationForm({
               <div className="border-border type-body flex items-center gap-2.5 border-t px-4 py-3" aria-live="polite">
                 <span className="bg-reserve h-2 w-2 shrink-0 rounded-full" aria-hidden />
                 <span className="font-semibold">
-                  Mesi is calling {place.name} {rescheduling ? "to move your table" : "now"}
+                  {parked ??
+                    `Mesi is calling ${place.name} ${rescheduling ? "to move your table" : "now"}`}
                 </span>
               </div>
             </dl>
@@ -499,6 +514,7 @@ export function ReservationForm({
   // what they picked since), then go to When.
   const changeIt = () => {
     if (choice === null) chooseReschedule();
+    setError(null);
     setStepAt(at + 1);
   };
   const nextLabel = checking

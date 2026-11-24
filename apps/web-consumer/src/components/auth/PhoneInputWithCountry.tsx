@@ -64,6 +64,7 @@ export function PhoneInputWithCountry({
 
       <input
         type="tel"
+        aria-label="Phone number"
         inputMode="tel"
         value={value}
         onChange={(e) => onChange(e.target.value)}

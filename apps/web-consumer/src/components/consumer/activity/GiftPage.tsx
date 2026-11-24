@@ -45,8 +45,9 @@ import { GiftFaces, giftSentence } from "./GiftTickets";
 import { TakeBack } from "./GiftTakeBack";
 import { PlaceMark, TicketHero, TicketLine, TicketPanel, TicketSkeleton } from "./TicketParts";
 
+// The date is already here: clockTime against its own day is the time alone.
 const when = (iso: string) =>
-  `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
+  `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso, new Date(iso))}`;
 
 const nameOf = (p: GiftPerson | null, none: string) => (p ? (p.you ? "You" : p.name) : none);
 

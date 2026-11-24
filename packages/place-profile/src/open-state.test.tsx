@@ -81,7 +81,9 @@ describe("HoursBox", () => {
     );
     expect(html).toContain("data-today");
     expect(html).toContain("data-hours-today");
-    expect(html).toContain("Open until");
+    // Around the clock: the bare word, never a closing time.
+    expect(html).toContain("Open");
+    expect(html).not.toContain("Open until");
   });
 
   it("prints no status line when the open state is unknown", () => {

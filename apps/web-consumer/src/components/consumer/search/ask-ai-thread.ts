@@ -51,16 +51,22 @@ function greetingText(): string {
 // and no set-state-in-effect. Intentionally NOT localStorage: a full reload
 // starts fresh. The whole thread is kept and resent every turn (Admin
 // Discovery flags a cheaper ingest as Due).
-type StoredThread = { messages: AiMessage[]; related: string[] };
+type StoredThread = { owner: string | null; messages: AiMessage[]; related: string[] };
 
 let threadCache: StoredThread | null = null;
 
-export function getThreadCache(): StoredThread | null {
-  return threadCache;
+/** The kept thread, only for the guest who wrote it: a sign-in is a soft
+ *  navigation, so module memory outlives the account. */
+export function getThreadCache(owner: string | null): StoredThread | null {
+  return threadCache?.owner === owner ? threadCache : null;
 }
 
-export function saveThreadCache(messages: AiMessage[], related: string[]) {
-  threadCache = messages.length > 1 ? { messages, related } : null;
+export function saveThreadCache(
+  owner: string | null,
+  messages: AiMessage[],
+  related: string[],
+) {
+  threadCache = messages.length > 1 ? { owner, messages, related } : null;
 }
 
 export function clearThreadCache() {

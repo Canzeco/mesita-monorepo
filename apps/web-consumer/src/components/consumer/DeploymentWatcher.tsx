@@ -60,7 +60,11 @@ export function DeploymentWatcher() {
 
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
-        if (stale.current) window.location.reload();
+        // Reading the texted code hides the page: keep the code step.
+        const onCodeStep = document.querySelector(
+          'input[autocomplete="one-time-code"]',
+        );
+        if (stale.current && !onCodeStep) window.location.reload();
         return;
       }
       void checkForUpdate();

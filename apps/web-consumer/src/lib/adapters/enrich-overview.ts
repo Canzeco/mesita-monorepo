@@ -76,7 +76,10 @@ export function enrichPlaceOverview(v: Place): Place {
     open_now: v.open_now ?? open?.open_now ?? null,
     opens_at: v.opens_at ?? (open?.opens_at || null),
     // Prefer the computed close time; fall back to the raw closes_at column.
-    closes_at: (open?.closes_at || null) ?? v.closes_at ?? null,
+    // Not when open with no closing time: that is a 24 h place.
+    closes_at: open?.open_now === true
+      ? open.closes_at || null
+      : (open?.closes_at || null) ?? v.closes_at ?? null,
     zone: v.zone ?? zone ?? null,
     last_updated_label: v.last_updated_label ?? freshness ?? null,
     is_enriching: isEnriching,

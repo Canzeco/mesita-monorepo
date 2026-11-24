@@ -33,11 +33,9 @@ const MIN_QUERY = 2;
 const SEARCH_DELAY_MS = 400;
 
 export function AddPlaceSheet({
-  onClose,
   origin,
   onPick,
 }: {
-  onClose: () => void;
   /** Biases Google to where the guest is looking (the map's camera). */
   origin: { lat: number; lng: number };
   /** Create (Google-only row) or open (Mesita row). */
@@ -101,19 +99,12 @@ export function AddPlaceSheet({
     }
   };
 
-  const close = () => {
-    setQuery("");
-    setResults([]);
-    setSearching(false);
-    setError(null);
+  // A pick never goes Back: the Generate dialog floats over this page and a
+  // place opens on top of it.
+  const pick = (row: PlacePrediction) => {
     // A new Google billing session for the next search.
     tokenRef.current = newSessionToken();
-    onClose();
-  };
-
-  const pick = (row: PlacePrediction) => {
     onPick(row);
-    close();
   };
 
   const typing = trimmed.length >= MIN_QUERY;

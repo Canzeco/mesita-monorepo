@@ -34,6 +34,8 @@ export function AddCardModal() {
   const saving = form.phase.kind === "saving";
   const close = () => {
     if (saving) return;
+    // The next open starts from the skeleton, not this one's dead form.
+    form.reset();
     closeAddCardModal();
   };
 

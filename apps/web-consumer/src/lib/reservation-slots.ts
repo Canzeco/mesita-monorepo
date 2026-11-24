@@ -276,15 +276,26 @@ export function isDateSpent(
 /**
  * The slot to actually use for `dateIso`: the guest's pick while it is still
  * offered, otherwise the slot nearest the dinner anchor. Null when the day
- * has nothing to offer.
+ * has nothing to offer. `held` is the table being moved: its own time is kept
+ * even when it is off the grid (the place gave 21:15), so changing only the
+ * party size never moves it.
  */
 export function resolveSlot(
   dateIso: string,
   preferred: string | null,
   hours?: WeeklyHours | null,
   tz?: string | null,
+  held?: { date: string; time: string } | null,
 ): string | null {
   if (!dateIso) return null;
+  if (
+    held &&
+    preferred === held.time &&
+    dateIso === held.date &&
+    !isSlotPast(dateIso, held.time, tz)
+  ) {
+    return held.time;
+  }
   const slots = futureSlots(dateIso, hours, tz);
   if (slots.length === 0) return null;
   if (preferred && slots.some((s) => s.time === preferred)) return preferred;
