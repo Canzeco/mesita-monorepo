@@ -99,14 +99,6 @@ export function PayPage({
             tab === "pay" && "rounded-tr-none",
             PAY_TAB_FILL[tab],
           )} data-pay-menu-box={tab}>
-          {/* WHY PREPAY, A BLACK BOX OVER THE SEARCH BOX (Pato, 2026-11-24,
-              MESITA-4840: "put it in a black box with white letter";
-              "don't mention numbers"). */}
-          {tab === "prepay" ? (
-            <p className="bg-foreground text-background mb-1.5 shrink-0 rounded-xl px-3 py-2.5 text-center text-sm font-semibold text-balance" data-prepay-line>
-              Prepay and get more for your money
-            </p>
-          ) : null}
           <div
             role="tabpanel"
             id="pay-panel"
@@ -239,11 +231,12 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
                 move(i, e.key === "ArrowRight" ? 1 : -1);
               }
             }}
-            className={cn(PAY_TILE, "relative", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
+            className={cn(PAY_TILE, "group relative outline-none", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
             data-pay-tab={id}
           >
-            {/* The exact green, black or purple in the disc; white on the chosen. */}
-            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", on ? cn("bg-white", ink) : PAY_TAB_FILL[id])} aria-hidden>
+            {/* The exact purple, black or green in the disc; white on the chosen. The
+                keyboard's ring is here: on the tile it cut the joined shape. */}
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", on ? cn("bg-white", ink) : PAY_TAB_FILL[id])} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>

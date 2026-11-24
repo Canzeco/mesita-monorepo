@@ -189,7 +189,9 @@ const VISIT_NAME = {
  *  them its offer boxes (MESITA-4748). The row is the one button (D8): the
  *  boxes are a preview, read aloud in the row's label. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
-  const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
+  // PREPAY IS THE PHOTO AND THE NAME (Pato, 2026-11-24, MESITA-4841: "remove
+  // the address, only pp, name and the bonuses"): no distance either.
+  const distance = kind === "pay" && p.distance_m !== null ? distanceText(p.distance_m) : null;
   const name = p.name ?? "A Mesita place";
   const shown = offerBoxes(p, kind);
   const spoken = [name, distance, ...shown.map((b) => [b.top, kind === "prepay" && b.bottom.startsWith("+") ? `${b.bottom} Bonus` : b.bottom, b.bonus].filter(Boolean).join(" "))].filter(Boolean).join(", ");
@@ -204,15 +206,15 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       {/* THE GRID (Pato, 2026-11-24, MESITA-4839: "data in gray box, offers in
           green boxes"): the place's box, then its offers, on the search box's
           own edges, 6px apart. */}
-      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-start gap-3 rounded-lg p-2.5 transition-colors">
+      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-3 rounded-lg p-2.5 transition-colors">
         <PlacePhoto place={p} className="h-11 w-11" />
-        <span className="min-w-0 flex-1 pt-0.5">
-          <span className="block truncate text-sm font-semibold">{name}</span>
-          {p.address ? (
-            <span className={cn("text-muted-foreground mt-0.5 text-sm", shown.length > 0 ? "block truncate" : "line-clamp-2")}>{p.address}</span>
+        <span className="min-w-0 flex-1">
+          <span className={cn("font-semibold", kind === "prepay" ? "line-clamp-2 text-base leading-tight" : "block truncate text-sm")}>{name}</span>
+          {p.address && kind === "pay" ? (
+            <span className={"text-muted-foreground mt-0.5 block truncate text-sm"}>{p.address}</span>
           ) : null}
         </span>
-        {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
+        {distance ? <span className="text-muted-foreground shrink-0 self-start pt-0.5 text-sm tabular-nums">{distance}</span> : null}
       </span>
       {shown.length > 0 ? (
         // ONE ROW OF EQUAL COLUMNS (Pato, 2026-11-24, MESITA-4837: "cleaner,
