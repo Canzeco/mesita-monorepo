@@ -41,6 +41,7 @@ serveJson("visit-web-send-bill", async (req) => {
       p_tip_cents: tip,
       p_key_hash: staff.keyHash,
       p_window_minutes: BILL_ANSWER_MIN,
+      p_waiter_id: staff.waiterId,
     });
     console.log("[visit-web-send-bill]", JSON.stringify({ bill_id: body.bill_id, place_id: staff.placeId, outcome: r.ok === true ? r.outcome : r.code }));
     if (r.ok !== true) {

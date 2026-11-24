@@ -880,23 +880,199 @@ button.verify-reject:disabled {
   }
 }
 
-/* The waiter's tip picks (MESITA-4823). */
-.tip-chips {
+/* ── The waiter types (MESITA-4871): one thing per screen, keys in the page ── */
+.wp {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.wp-head {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 8px;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  min-height: 44px;
 }
 
-.tip-chips button {
+button.wp-back {
+  width: 44px;
+  height: 44px;
   margin: 0;
-  padding: 0;
-  border: 1px solid #d4d4d4;
-  text-decoration: none;
+  border-radius: 12px;
+  background: #f5f5f5;
+  color: #171717;
+  font-size: 24px;
+  line-height: 1;
 }
 
-.tip-chips button[aria-pressed="true"] {
+.wp-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.wp-steps li {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  padding-top: 6px;
+  border: 0;
+  border-top: 4px solid #e5e5e5;
+  color: #a3a3a3;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wp-steps li.wp-on {
   border-color: #171717;
+  color: #171717;
+}
+
+.wp-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0;
+}
+
+.wp-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.wp-amount {
+  margin-top: 8px;
+  color: #171717;
+  font-size: min(64px, 15vw);
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-ghost {
+  color: #c4c4c4;
+}
+
+.wp-line {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-tips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-self: stretch;
+  margin-top: 16px;
+}
+
+.wp-tips button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 60px;
+  margin: 0;
+  border-radius: 16px;
+  background: #f5f5f5;
+  color: #171717;
+  font-size: 13px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-tips button b {
+  font-size: 18px;
+}
+
+.wp-tips button[aria-pressed="true"] {
   background: #171717;
   color: #ffffff;
+}
+
+.wp-code {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 8px repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  align-self: stretch;
+  margin-top: 16px;
+}
+
+.wp-digit {
+  display: grid;
+  place-items: center;
+  height: 52px;
+  border: 1px solid #d4d4d4;
+  border-radius: 12px;
+  color: #171717;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wp-digit:nth-child(n + 5) {
+  grid-row: 1;
+}
+
+.wp-digit:nth-child(5) {
+  grid-column: 6;
+}
+
+.wp-digit:nth-child(6) {
+  grid-column: 7;
+}
+
+.wp-digit:nth-child(7) {
+  grid-column: 8;
+}
+
+.wp-digit:nth-child(8) {
+  grid-column: 9;
+}
+
+.wp-next {
+  border-color: #171717;
+  box-shadow: 0 0 0 1px #171717;
+}
+
+.wp-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: clamp(48px, 9dvh, 68px);
+  gap: 6px;
+}
+
+button.wp-key {
+  height: auto;
+  margin: 0;
+  border-radius: 16px;
+  background: #f5f5f5;
+  color: #171717;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.wp-key:active {
+  background: #d4d4d4;
+}
+
+button.wp-go {
+  flex-shrink: 0;
+  height: 60px;
+  margin-top: 10px;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
 }

@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
+import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, sendBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
-import { BillFields, CodeField, readTip } from "@/components/BillFields";
+import { BillEntry, CodeEntry } from "@/components/BillEntry";
 import { Bones } from "@/components/Bones";
 import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/app/tab/[token]/icons";
 
@@ -36,8 +36,6 @@ export function BillScreen({ billId }: { billId: string }) {
   const [gone, setGone] = useState(false);
   const [misses, setMisses] = useState(0);
   const [editing, setEditing] = useState(false);
-  const [billText, setBillText] = useState("");
-  const [tipText, setTipText] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
@@ -47,7 +45,6 @@ export function BillScreen({ billId }: { billId: string }) {
 
   // Another phone, a closed tab or a new code: the code is typed again.
   const [locked, setLocked] = useState(false);
-  const [code, setCode] = useState("");
   const signIn = useCallback(() => {
     keepBillStaff(billId, null);
     setLocked(true);
@@ -127,43 +124,22 @@ export function BillScreen({ billId }: { billId: string }) {
     }
   }
 
-  async function unlock() {
-    if (busy || code.length !== 6) return;
+  async function unlock(code: string): Promise<boolean> {
+    if (busy) return false;
     setBusy("code");
     setError(null);
     const r = await checkCode(code, { bill_id: billId });
     setBusy(null);
-    if (r === "failed") return setError("Couldn't reach Mesita. Tap again.");
-    if ("refused" in r) return setError(r.error);
+    if (r === "failed" || "refused" in r) {
+      setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
+      return r === "failed";
+    }
     keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token });
-    setCode("");
     setLocked(false);
+    return true;
   }
 
-  if (locked) {
-    return (
-      <main className="proof" data-bill="code">
-        <h1>Open this bill</h1>
-        <form
-          style={{ alignSelf: "stretch" }}
-          onSubmit={(e) => {
-            e.preventDefault();
-            void unlock();
-          }}
-        >
-          <CodeField code={code} onCode={setCode} />
-          {error ? (
-            <p className="proof-status warn" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <button type="submit" style={{ minHeight: 56 }} disabled={busy !== null || code.length !== 6}>
-            {busy ? "Checking…" : "Open"}
-          </button>
-        </form>
-      </main>
-    );
-  }
+  if (locked) return <CodeEntry busy={busy === "code"} error={error} onCode={unlock} />;
   if (gone) {
     return (
       <main className="proof pay-end" data-bill="gone">
@@ -366,11 +342,7 @@ export function BillScreen({ billId }: { billId: string }) {
             <button
               type="button"
               className="quiet"
-              onClick={() => {
-                setBillText(bill.bill_cents ? String(bill.bill_cents / 100) : "");
-                setTipText(bill.tip_cents ? String(bill.tip_cents / 100) : "");
-                setEditing(true);
-              }}
+              onClick={() => setEditing(true)}
             >
               Edit
             </button>
@@ -385,39 +357,30 @@ export function BillScreen({ billId }: { billId: string }) {
   }
 
   // TYPE THE BILL: open, declined, or an edit.
-  const billCents = readAmount(billText);
-  const tipCents = readTip(tipText);
   return (
-    <main className="proof" data-bill="type">
-      {band}
-      {reconnecting}
-      {bill.state === "declined" ? (
-        <p className="proof-status warn" role="status">
-          The guest declined {m(total)}. Fix it and send again.
-        </p>
-      ) : null}
-      <form
-        style={{ alignSelf: "stretch" }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (billCents === null || tipCents === null) return;
-          void run("send", (s) => sendBill(s, { bill_id: billId, version: bill.version, bill_cents: billCents, tip_cents: tipCents })).then((ok) => {
-            if (ok) setEditing(false);
-          });
-        }}
-      >
-        <div className="verify-box">{guest(editing ? "Edit the bill" : "New bill", billCents !== null && tipCents !== null ? billCents + tipCents : null)}</div>
-        <BillFields bill={billText} tip={tipText} onBill={setBillText} onTip={setTipText} />
-        {alert}
-        <button type="submit" style={{ minHeight: 56 }} disabled={busy !== null || billCents === null || tipCents === null}>
-          {busy === "send" ? "Sending…" : "Send bill"}
-        </button>
-        {editing ? (
-          <button type="button" className="quiet" onClick={() => setEditing(false)}>
-            Keep the bill as it is
-          </button>
-        ) : null}
-      </form>
-    </main>
+    <BillEntry
+      key={bill.state === "declined" ? `declined-${bill.version}` : "type"}
+      withCode={false}
+      start={bill.bill_cents ? { bill: bill.bill_cents, tip: bill.tip_cents } : undefined}
+      busy={busy === "send"}
+      error={error}
+      top={
+        <>
+          {band}
+          {reconnecting}
+          {bill.state === "declined" ? (
+            <p className="proof-status warn" role="status">
+              The guest declined {m(total)}. Fix it and send again.
+            </p>
+          ) : null}
+        </>
+      }
+      onSend={async (billCents, tipCents) => {
+        const ok = await run("send", (st) => sendBill(st, { bill_id: billId, version: bill.version, bill_cents: billCents, tip_cents: tipCents }));
+        if (ok) setEditing(false);
+        return ok;
+      }}
+      onLeave={editing ? () => setEditing(false) : undefined}
+    />
   );
 }

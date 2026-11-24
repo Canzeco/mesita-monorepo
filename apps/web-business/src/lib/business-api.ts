@@ -464,8 +464,9 @@ export type PlacePayments = {
   currency: string;
   /** The Loyalty Cards Agreement (MESITA-3589); older servers lack it. */
   contract?: LoyaltyCardsContract;
-  /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
+  /** Whether a waiter has a code (MESITA-4871). */
   code_set: boolean;
+  waiters: PlaceWaiter[];
   /** MESITA-3946: credit guests hold here now; null when the read failed. */
   credits_balance: { available_cents: number; pending_cents: number } | null;
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
@@ -529,6 +530,7 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
       contract: r.data.contract,
       code_set: r.data.code_set === true,
+      waiters: Array.isArray(r.data.waiters) ? r.data.waiters : [],
       credits_balance: r.data.credits_balance
         ? {
             available_cents: Number(r.data.credits_balance.available_cents) || 0,
@@ -656,13 +658,25 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** The waiter code (MESITA-4827): six digits Mesita makes, shown once, typed
- *  by waiters at service.mesita.ai on each bill. */
-export async function setPlaceCode(placeId: string): Promise<Result<string>> {
-  const r = await efInvoke<{ code_set: boolean; code?: string }>("business-web-set-place-code", { place_id: placeId });
+/** One waiter and their tips (MESITA-4871); never the code. */
+export type PlaceWaiter = {
+  id: string;
+  name: string;
+  removed: boolean;
+  tips_24h_cents: number;
+  bills_24h: number;
+  tips_7d_cents: number;
+  bills_7d: number;
+};
+
+/** Add a waiter, replace their 8-digit code or remove them. `code` is answered once. */
+export async function setWaiter(
+  placeId: string,
+  body: { action: "add"; name: string } | { action: "new_code" | "remove"; waiter_id: string },
+): Promise<Result<{ waiter_id: string; name: string; code?: string }>> {
+  const r = await efInvoke<{ waiter_id: string; name: string; code?: string }>("business-web-set-waiter", { place_id: placeId, ...body });
   if (!r.ok) return fail(r);
-  if (!r.data.code) return { ok: false, error: "Couldn't make a code. Try again." };
-  return { ok: true, data: r.data.code };
+  return { ok: true, data: r.data };
 }
 
 // ── Views (MESITA-3206) ──────────────────────────

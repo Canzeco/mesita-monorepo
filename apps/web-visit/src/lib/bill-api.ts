@@ -40,7 +40,7 @@ async function call<T>(name: string, body: Record<string, unknown>, fallback: st
 
 export type Staff = { place_id: string; staff_token: string };
 
-/** The place's 6-digit code; the code alone names the place, and is tried
+/** The waiter's 8-digit code; it names the place and the waiter, and is tried
  *  only with the guest's QR or a bill (MESITA-4833). */
 export const signIn = (code: string, by: { token: string } | { bill_id: string }) =>
   call<{ place: { id: string; name: string | null }; staff_token: string }>("visit-web-sign-in", { code, ...by }, "Couldn't check the code. Try again.");

@@ -10,8 +10,7 @@ export default function VisitHome() {
     <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-16 text-center">
       <p className="text-2xl font-semibold tracking-tight">Mesita Service</p>
       <p className="mt-2 max-w-[32ch] text-sm leading-relaxed opacity-70">
-        Scan a guest&apos;s Mesita QR to send their bill. You type the bill and your restaurant&apos;s 6-digit code.
-
+        Scan a guest&apos;s Mesita QR to send their bill. You type the bill, the tip and your 8-digit waiter code.
       </p>
     </main>
   );

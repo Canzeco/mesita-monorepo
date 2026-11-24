@@ -1,7 +1,6 @@
-// The place code (MESITA-3226; its own table since MESITA-3299): six digits
-// (MESITA-4827; four before) Mesita makes on Business › Offers and waiters type
-// at service.mesita.ai. The code alone names its place (lookup_hash).
-// Only a hash is stored, bound to the place.
+// The place code (MESITA-3226): six digits, only a hash stored, bound to the
+// place. Read by the older charge and tab code only (MESITA-4825 deletes it);
+// a waiter's code is waiter-code.ts (MESITA-4871).
 
 /** A place code: six digits, or null. Spaces a person typed do not count. */
 export function readPlaceCode(v: unknown): string | null {
@@ -17,19 +16,4 @@ export async function hashPlaceCode(placeId: string, code: string): Promise<stri
   const bytes = new TextEncoder().encode(`place-code:${placeId}:${code}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/** The keyed hash that finds a place from its code alone (MESITA-4827). */
-export async function lookupPlaceCode(serviceKey: string, code: string): Promise<string> {
-  const bytes = new TextEncoder().encode(`waiter-code:${serviceKey}:${code}`);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-/** Six digits from the platform CSPRNG, no modulo bias. */
-export function mintPlaceCode(): string {
-  const limit = Math.floor(0x100000000 / 1_000_000) * 1_000_000;
-  let n: number;
-  do n = crypto.getRandomValues(new Uint32Array(1))[0]; while (n >= limit);
-  return String(n % 1_000_000).padStart(6, "0");
 }

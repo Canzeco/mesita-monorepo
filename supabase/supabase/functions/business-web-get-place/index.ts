@@ -42,8 +42,8 @@ serveJson("business-web-get-place", async (req) => {
   const res = await buildPlaceOverview(admin, placeId, { internal: access.role === "superadmin" });
   if (!res.ok) return json({ ok: false, error: res.error }, res.status);
 
-  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).not("lookup_hash", "is", null).maybeSingle();
-  if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
+  const { data: code, error: codeErr } = await admin.from("place_waiters").select("place_id").eq("place_id", placeId).is("removed_at", null).limit(1).maybeSingle();
+  if (codeErr) return json({ ok: false, error: `place_waiters: ${codeErr.message}` }, 500);
 
   const stripe = await stripeStateByPlace(admin, [placeId], boostLivemode());
   const scores = await loadPlaceScores(admin, placeId).catch((err) => {

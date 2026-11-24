@@ -3,7 +3,7 @@
 -- nothing owed closes at Accept, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(63);
+select plan(71);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -121,11 +121,14 @@ select ok(not has_table_privilege('authenticated', 'public.pay_bills', 'select')
 select ok(not has_function_privilege('authenticated', 'public.pay_bill_accept(uuid, uuid, integer, text, integer, timestamptz)', 'execute'), 'guests never call accept');
 
 -- ── The waiter code is tried only with a live QR, and counted (MESITA-4833) ──
-insert into public.place_codes (place_id, code_hash, lookup_hash) values ('00000000-0000-4000-8000-000000014823', repeat('0', 64), repeat('c', 64));
+insert into public.place_waiters (id, place_id, name, lookup_hash) values
+  ('00000000-0000-4000-8000-0000000e4871', '00000000-0000-4000-8000-000000014823', 'Ana', repeat('c', 64)),
+  ('00000000-0000-4000-8000-0000000f4871', '00000000-0000-4000-8000-000000024823', 'Luis', repeat('3', 64));
 insert into t select 'qr', public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('e', 63) || '1');
 select is((public.waiter_code_try(repeat('e', 63) || '9', null, repeat('a', 64), repeat('c', 64))->>'code'), 'code_gone', 'a code is not tried without a live QR');
 select is((public.waiter_code_try(null, gen_random_uuid(), repeat('a', 64), repeat('c', 64))->>'code'), 'code_gone', 'nor with an unknown bill');
 select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), repeat('c', 64))->>'place_id'), '00000000-0000-4000-8000-000000014823', 'the right code names its place');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), repeat('c', 64))->>'waiter_id'), '00000000-0000-4000-8000-0000000e4871', 'and its waiter');
 select is((select count(*)::int from generate_series(1, 5) g where public.waiter_code_try(repeat('e', 63) || '1', null, md5(g::text) || md5(g::text), repeat('d', 64))->>'code' = 'staff_only'), 5, 'five wrong codes are counted');
 select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), repeat('c', 64))->>'code'), 'locked', 'the sixth on one guest is locked, from any address');
 select is((public.waiter_code_try(repeat('7', 64), null, repeat('a', 64), repeat('c', 64))->>'ok'), 'true', 'another guest at the same address is not');
@@ -138,6 +141,23 @@ select '00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-00000001
 select is((public.pay_bill_open(repeat('e', 63) || '1', null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('9', 64))->>'code'), 'too_many', 'a place opens 300 bills an hour at most');
 select ok(not has_function_privilege('authenticated', 'public.waiter_code_try(text, uuid, text, text, timestamptz)', 'execute'), 'guests never try a waiter code');
 select ok(not has_function_privilege('anon', 'public.waiter_code_try(text, uuid, text, text, timestamptz)', 'execute'), 'nor does anyone else');
+
+-- ── The tip has a waiter (MESITA-4871) ──
+insert into public.consumers (id) select id from auth.users where id = '00000000-0000-4000-8000-0000000f4823';
+insert into t select 'qw', public.pay_guest_code_set('00000000-0000-4000-8000-0000000f4823', repeat('6', 64));
+insert into t select 'ow', public.pay_bill_open(repeat('6', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
+insert into t select 'sw', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='ow'), '00000000-0000-4000-8000-000000024823', 0, 10000, 1500, repeat('d', 64), 15, now(), '00000000-0000-4000-8000-0000000f4871');
+insert into t select 'aw', public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='ow'), '00000000-0000-4000-8000-0000000f4823', 1, repeat('6', 63) || '1');
+select is((select v->>'outcome' from t where k='aw'), 'accepted', 'the guest accepts Luis''s bill');
+insert into t select 'cw', public.pay_guest_claim_confirm((select (v->>'attempt_id')::uuid from t where k='aw'), '00000000-0000-4000-8000-000000024823', repeat('d', 64), now());
+insert into t select 'zw', public.pay_guest_close((select (v->>'attempt_id')::uuid from t where k='aw'), now());
+select is((select waiter_name from public.pay_tabs where id = (select tab_id from public.guest_pay_attempts where id = (select (v->>'attempt_id')::uuid from t where k='aw'))), 'Luis', 'the paid visit keeps the waiter');
+select is((select tips_24h_cents::int from public.place_waiter_list('00000000-0000-4000-8000-000000024823', false) where name = 'Luis'), 1500, 'the tip is Luis''s');
+select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014823', false)), 1, 'a place lists only its own waiters');
+update public.place_waiters set removed_at = now(), lookup_hash = null where name in ('Ana', 'Luis') and place_id::text like '%4823';
+select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014823', false)), 0, 'a removed waiter leaves the list');
+select is((select removed from public.place_waiter_list('00000000-0000-4000-8000-000000024823', false) where name = 'Luis'), true, 'unless a tip is still theirs');
+select ok(not has_table_privilege('authenticated', 'public.place_waiters', 'select') and not has_function_privilege('authenticated', 'public.place_waiter_list(uuid, boolean, timestamptz)', 'execute'), 'clients never read waiters');
 
 select * from finish();
 rollback;

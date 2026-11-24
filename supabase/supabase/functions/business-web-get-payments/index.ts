@@ -14,8 +14,9 @@
 //                          Cards Agreement (MESITA-3589), independent of Stripe
 //             account.stage: none|onboarding|in_review|connected|action_needed|
 //                          payouts_paused|restricted (Main §10's Place Stripe)
-//             code_set,    whether the place code is set: the waiter's charge
-//                          (MESITA-3306) needs it, so Payments says so
+//             code_set,    whether a waiter has a code
+//             waiters: [{ id, name, removed, tips_24h_cents, bills_24h,
+//                          tips_7d_cents, bills_7d }]  MESITA-4871
 //             fee: { hold, invoice },
 //             cashback: { welcome_bps, returning_bps, returning_vip_bps, … } }
 //                          MESITA-4698: the owner's two cashback lines and
@@ -104,8 +105,10 @@ serveJson("business-web-get-payments", async (req) => {
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;
-  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).not("lookup_hash", "is", null).maybeSingle();
-  if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
+  // MESITA-4871: one code per waiter, with their tips (never the codes).
+  const { data: waiterRows, error: waiterErr } = await admin.rpc("place_waiter_list", { p_place_id: placeId, p_livemode: paymentsLivemode() });
+  if (waiterErr) return json({ ok: false, error: `place_waiter_list: ${waiterErr.message}` }, 500);
+  const waiters = (waiterRows ?? []) as Array<{ removed: boolean }>;
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")
     .select(FEE_INVOICE_COLUMNS)
@@ -170,7 +173,8 @@ serveJson("business-web-get-payments", async (req) => {
     credit_limit,
     instagram_url,
     contract: { ...contract, text: LOYALTY_CARDS_TERMS_TEXT },
-    code_set: !!code,
+    code_set: waiters.some((w) => !w.removed),
+    waiters,
     credits_balance,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
     cash_due: (dueRows ?? []).map((row) => ({
