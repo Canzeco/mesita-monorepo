@@ -10,14 +10,14 @@ import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payCodePath, placeOffersPath } from "@/lib/consumer-route-contract";
 import { navigateTo, replaceAddress } from "@/lib/navigate";
-import { PlacePhoto, QUIET_BUTTON_CLASS } from "./pay-common";
+import { PlacePhoto } from "./pay-common";
 import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { useOpenBill } from "./use-open-bill";
 import type { GuestBill } from "@/lib/api/pay-bill";
 import { PayHeader } from "./PayHeader";
 import { PayFrameLoading } from "./PayFrameLoading";
-import { PlaceList } from "./PayPick";
+import { bestVoucherBonus, PlaceList } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { PAY_TAB_FILL, PAY_TABS, PAY_TILE, type PayTab, payTabPath, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
@@ -63,6 +63,7 @@ export function PayPage({
   const sorted =
     places &&
     [...places].sort((x, y) => (x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m));
+  const bestBonus = bestVoucherBonus(places ?? []);
   const [walletReady, setWalletReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
   const allReady = walletReady && (places !== null || placesFailed) && bill !== undefined;
@@ -92,41 +93,58 @@ export function PayPage({
           </section>
         ) : null}
         <WalletMenu tab={tab} onTab={chooseTab} />
-        <div className={cn("my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5 transition-colors motion-reduce:transition-none", PAY_TAB_FILL[tab])} data-pay-menu-box={tab}>
+        <div className={cn(
+            "my-2 flex min-h-0 flex-1 flex-col rounded-2xl p-1.5",
+            // Under an end tile the box's own corner is straight: one edge.
+            tab === "prepay" && "rounded-tl-none",
+            tab === "pay" && "rounded-tr-none",
+            PAY_TAB_FILL[tab],
+          )} data-pay-menu-box={tab}>
+          {/* WHY PREPAY, OVER THE SEARCH BOX (Pato, 2026-11-24, MESITA-4839): on
+              the green itself; the number is the best bonus listed. */}
+          {tab === "prepay" ? (
+            <p className="shrink-0 px-2 pt-1 pb-2 text-center text-sm font-semibold text-balance" data-prepay-line>
+              {bestBonus > 0 ? `Pay ahead, get up to ${bestBonus}% more to spend` : "Pay ahead, get more to spend"}
+            </p>
+          ) : null}
           <div
             role="tabpanel"
             id="pay-panel"
             aria-labelledby={`pay-tab-${tab}`}
-            className="bg-card text-foreground min-h-0 flex-1 overflow-hidden rounded-xl"
+            className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl"
           >
             {tab === "cards" ? null : (
-              // Its own scroller per tile, so each keeps its place.
-              <KeptScroll key={tab} className="scrollbar-thin-dark h-full overflow-y-auto overscroll-contain">
-                {tab === "prepay" ? (
-                  <PlaceList
-                    kind="prepay"
-                    {...list}
-                    onPick={(id) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" })}
-                  />
-                ) : (
-                  <>
+              <>
+                {/* Its own scroller per tile, so each keeps its place. */}
+                <KeptScroll key={tab} className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                  {tab === "prepay" ? (
+                    <PlaceList
+                      kind="prepay"
+                      {...list}
+                      onPick={(id) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" })}
+                    />
+                  ) : (
                     <PlaceList kind="pay" {...list} onPick={(id) => navigateTo(router, payCodePath(id), { motion: "drill" })} />
-                    {/* Not listed, or the list did not load: the QR works anyway. */}
-                    <div className="p-2.5">
-                      <PushLink
-                        href={CONSUMER_ROUTES.payCode}
-                        className={cn(QUIET_BUTTON_CLASS, "flex items-center justify-center")}
-                        data-pay-pick-any
-                      >
-                        My place isn&apos;t here
-                      </PushLink>
-                    </div>
-                  </>
-                )}
-              </KeptScroll>
+                  )}
+                </KeptScroll>
+                {tab === "pay" ? (
+                  // AT THE BOTTOM, THE SEARCH BOX'S TWIN (Pato, 2026-11-24,
+                  // MESITA-4839): same height, edges and corners. Not listed,
+                  // or the list did not load: the QR works anyway.
+                  <div className="border-border shrink-0 border-t p-2.5">
+                    <PushLink
+                      href={CONSUMER_ROUTES.payCode}
+                      className="border-border bg-card hover:bg-muted flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition"
+                      data-pay-pick-any
+                    >
+                      My place isn&apos;t here
+                    </PushLink>
+                  </div>
+                ) : null}
+              </>
             )}
             {/* Always mounted, so its read runs with the others. */}
-            <KeptScroll className={cn("scrollbar-thin-dark h-full overflow-y-auto overscroll-contain", tab !== "cards" && "hidden")}>
+            <KeptScroll className={cn("scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-contain", tab !== "cards" && "hidden")}>
               <WalletSection onReady={onWalletReady} giftToken={giftToken} />
             </KeptScroll>
           </div>
@@ -175,6 +193,19 @@ const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
   pay: { word: "Pay", icon: QrCode, ink: "#635BFF" },
 };
 
+/** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
+ *  connect with bottom box when selected"): the tile's colour runs down the
+ *  8px gap into the box, with a rounded inner corner on each open side. */
+function TileJoin({ fill, left, right }: { fill: string; left: boolean; right: boolean }) {
+  const corner = (at: string) => ({ maskImage: `radial-gradient(circle at ${at} 0, transparent 7.5px, black 8px)` });
+  return (
+    <span className={cn("pointer-events-none absolute inset-x-0 top-full h-2", fill)} aria-hidden>
+      {left ? <span className={cn("absolute top-0 -left-2 h-2 w-2", fill)} style={corner("0")} /> : null}
+      {right ? <span className={cn("absolute top-0 -right-2 h-2 w-2", fill)} style={corner("100%")} /> : null}
+    </span>
+  );
+}
+
 /** THE MENU: three equal tiles, only the chosen one in its colour (look A).
  *  Arrow keys move between them. */
 function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
@@ -208,13 +239,14 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
                 move(i, e.key === "ArrowRight" ? 1 : -1);
               }
             }}
-            className={cn(PAY_TILE, on ? PAY_TAB_FILL[id] : "bg-muted text-foreground hover:bg-foreground/10")}
+            className={cn(PAY_TILE, "relative", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
             data-pay-tab={id}
           >
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: ink }} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>
+            {on ? <TileJoin fill={PAY_TAB_FILL[id]} left={i > 0} right={i < PAY_TABS.length - 1} /> : null}
           </button>
         );
       })}

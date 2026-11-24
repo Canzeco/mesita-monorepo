@@ -1,23 +1,23 @@
 "use client";
 
 import { SizedImg } from "@mesita/place-profile";
-import { ChevronRight, Gift } from "lucide-react";
+import { Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
-import { BOX_TINT } from "./pay-flow";
-import { PAY_ROW, PAY_ROW_META, PAY_ROW_TEXT, PAY_THUMB } from "./pay-sections";
 
-// A ROW OF PAY'S LOYALTY CARDS BOX (MESITA-4560). History: a bank-card-sized
-// card with an Offers tile (MESITA-4520), two loose lines (MESITA-4525), a
-// 2x2 grid of boxes (MESITA-4531/4537).
+// A CARD, NOT A ROW (Pato, 2026-11-24, MESITA-4839: "credits must be more
+// visible. that looks like shit. try better"): the place's photo under a dark
+// scrim, its name at the top, the balance large at the bottom, a white Gift
+// button at the top right (MESITA-4838: "each credit card having a quick button to
+// gift"). The whole card opens the Loyalty Card; Gift is its own link over
+// it. A one-line row with a black pill before (MESITA-4573, 4586).
 
 export function PlaceActionRow({
   name,
   photo = null,
   amount,
-  distance = null,
   subtitle,
   pending = null,
   pendingAt = null,
@@ -27,113 +27,67 @@ export function PlaceActionRow({
   onOpen,
 }: {
   name: string;
-  /** The place picture. A missing one leaves the card black with the initial. */
+  /** The place picture. A missing one leaves the card black. */
   photo?: string | null;
-  /** Plain amount. Absent when they hold nothing here. */
-  amount?: string | null;
-  /** "350 m" when the place is located. */
-  distance?: string | null;
+  /** The balance. */
+  amount: string;
+  /** Why the card can't be used; it replaces the balance. */
   subtitle?: string | null;
-  /** "$50.00MX" still landing here: shown in the Wallet's blue box under the row. */
+  /** "$50.00MX" still landing here. */
   pending?: string | null;
-  /** When the soonest of it turns Available (MESITA-4644): the box adds
-   *  "· ready in 1 h 48 min", ticking. */
+  /** When the soonest of it turns Available (MESITA-4644). */
   pendingAt?: string | null;
   placeId?: string;
   disabled?: boolean;
   /** Send this card's credit to a friend; null when there is none to send. */
   giftHref?: string | null;
-  /** The first line's tap: its Loyalty Card page (or the place). */
   onOpen?: () => void;
 }) {
   return (
-    // TWO LINES IN ONE BOX OF ROWS (Pato, 2026-11-21, MESITA-4560: "each
-    // card must be two lines of height. first line … the place card, then
-    // the name, and at the right the amount. then below … the offers of
-    // bonuses available"; /plan-design-review D1-D3): a row of the Loyalty
-    // Cards box, a hairline between places. Line 1 opens the Loyalty Card;
-    // line 2 is the moving offer at full width (Home's OfferButton), opening
-    // the place. No offers: one line. The 2x2 grid of MESITA-4531/4537
-    // before. ONE LINE, NO OFFERS (Pato, 2026-11-21, MESITA-4573: "don't
-    // show offers in loyalty cards … show them but nested, but not there
-    // outside. that must only be the list"): the moving offer line is gone;
-    // the offers live one tap in, on the Loyalty Card page and the place.
-    <div data-wallet-row data-place-id={placeId}>
-      <div className="flex items-center">
+    <div
+      className={cn("bg-foreground relative isolate flex min-h-40 flex-col overflow-hidden rounded-2xl text-white", disabled && "opacity-60 grayscale")}
+      data-wallet-row
+      data-place-id={placeId}
+    >
+      {photo ? <SizedImg src={photo} size="card" alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" /> : null}
+      <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/55" aria-hidden />
       <button
         type="button"
         disabled={disabled}
-        aria-label={
-          disabled
-            ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}`
-            : amount
-              ? `${name}, balance ${amount}`
-              : distance
-                ? `${name}, ${distance} away`
-                : name
-        }
-        onClick={() => {
-          if (!disabled) onOpen?.();
-        }}
-        className={cn(PAY_ROW, giftHref && "h-[4.5rem] pr-2", disabled && "cursor-default opacity-60")}
+        aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}, ${amount} in credits`}
+        onClick={() => onOpen?.()}
+        className="flex flex-1 flex-col items-start justify-between gap-6 p-4 text-left disabled:cursor-default"
         data-loyalty-card
       >
-        <MiniCard photo={photo} name={name} />
-        <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
-          <span className={cn(PAY_ROW_TEXT, "max-w-full truncate leading-tight")}>{name}</span>
-          {/* Under the name beside a Gift button, so a long name fits. */}
-          {giftHref && amount && !subtitle ? (
-            <span className="bg-foreground text-background rounded-lg px-2 py-0.5 text-sm font-semibold tabular-nums" data-loyalty-balance>
-              {amount}
+        <span className={cn("line-clamp-2 max-w-full text-base leading-tight font-semibold", giftHref && "pr-28")}>{name}</span>
+        <span className="block min-w-0 max-w-full">
+          {subtitle ? (
+            <span className="block text-sm font-semibold">{subtitle}</span>
+          ) : (
+            <>
+              <span className="block text-sm leading-tight font-semibold text-white/80">Your credits</span>
+              <span className="mt-1 block text-2xl leading-none font-semibold break-words tabular-nums" data-loyalty-balance>
+                {amount}
+              </span>
+            </>
+          )}
+          {pending && !disabled ? (
+            <span className="mt-2 block text-sm leading-tight font-semibold text-emerald-400 tabular-nums" data-wallet-pending>
+              +{pending} pending <PendingEta at={pendingAt} />
             </span>
           ) : null}
         </span>
-        {subtitle ? (
-          <span className={cn(PAY_ROW_META, "max-w-[45%] shrink-0 truncate")}>{subtitle}</span>
-        ) : giftHref ? null : amount ? (
-          // THE BALANCE IN A BLACK PILL (Pato, 2026-11-21, MESITA-4586: "balance
-          // put it in a black box with white text, just to make it clearer").
-          <span
-            className="bg-foreground text-background shrink-0 rounded-lg px-2 py-1 text-base font-semibold tabular-nums"
-            data-loyalty-balance
-          >
-            {amount}
-          </span>
-        ) : distance ? (
-          <span className={cn(PAY_ROW_META, "shrink-0")}>{distance}</span>
-        ) : null}
-        {/* A › AFTER THE BALANCE (Pato, 2026-11-21, MESITA-4598: "at the right
-            of balance use this icon > to express that you can open that
-            card"). */}
-        {disabled || giftHref ? null : <ChevronRight className="text-muted-foreground -ml-1 h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />}
       </button>
-      {/* A QUICK GIFT ON EACH CARD (Pato, 2026-11-24, MESITA-4838: "each
-          credit card having a quick button to gift"); one Gift in the header
-          before. */}
       {giftHref ? (
         <PushLink
           href={giftHref}
           aria-label={`Send a gift from ${name}`}
-          className="bg-muted text-foreground hover:bg-foreground/15 mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
+          className="absolute top-3 right-3 flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-base font-semibold text-neutral-950 hover:bg-white/90"
           data-card-gift
         >
           <Gift className="h-5 w-5" strokeWidth={2} aria-hidden />
+          Gift
         </PushLink>
-      ) : null}
-      </div>
-      {/* MONEY ON ITS WAY, UNDER THE CARD (MESITA-4594), in the Prepay list's
-          green row (Pato, 2026-11-23, MESITA-4813: "also display the green
-          banners mentioning how much is pending"); it opens the card. */}
-      {pending && !disabled ? (
-        <button type="button" onClick={() => onOpen?.()} className="block w-full px-3 pb-3 text-left" data-loyalty-card-pending>
-          <span
-            className={cn("text-foreground flex min-w-0 items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-sm leading-tight font-semibold tabular-nums", BOX_TINT.prepay)}
-            data-wallet-pending
-          >
-            <span className="truncate">+{pending} pending</span>
-            <PendingEta at={pendingAt} />
-          </span>
-        </button>
       ) : null}
     </div>
   );
@@ -151,20 +105,5 @@ function PendingEta({ at }: { at: string | null }) {
   }, [at]);
   const t = at ? Date.parse(at) : Number.NaN;
   if (!Number.isFinite(t)) return null;
-  return <span className="shrink-0">{t > now ? `Ready in ${untilLabel(t - now)}` : "Ready soon"}</span>;
-}
-
-/** The Loyalty Card's face, small: Pay's one 48x32 thumbnail (MESITA-4578), the place's photo. */
-function MiniCard({ photo, name }: { photo: string | null; name: string }) {
-  return (
-    <span className={cn(PAY_THUMB, "bg-foreground relative ring-1 ring-black/10")} aria-hidden>
-      {photo ? (
-        <SizedImg src={photo} size="thumb" alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-      ) : (
-        <span className="text-background flex h-full w-full items-center justify-center text-sm font-semibold">
-          {name.trim().charAt(0).toUpperCase()}
-        </span>
-      )}
-    </span>
-  );
+  return <span>· {t > now ? `Ready in ${untilLabel(t - now)}` : "Ready soon"}</span>;
 }
