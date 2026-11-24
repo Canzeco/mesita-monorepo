@@ -674,7 +674,7 @@ export type PlaceWaiter = {
   code?: string | null;
 };
 
-/** Add a waiter, replace their 4-digit code or remove them. */
+/** Add a waiter, replace their 6-digit code or remove them. */
 export async function setWaiter(
   placeId: string,
   body: { action: "add"; name: string } | { action: "new_code" | "remove"; waiter_id: string } | { action: "codes_on" | "codes_off" },

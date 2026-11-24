@@ -7,7 +7,7 @@ import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
 import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR: Bill, Tip, then Code
-// (MESITA-4879): their own 4 digits, which name the waiter, then
+// (MESITA-4879): their own 6 digits, which name the waiter, then
 // whose QR it is, and Send bill. Nothing about the phone is kept.
 
 type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
@@ -17,7 +17,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const { token } = use(params);
   const router = useRouter();
   const [typed, setTyped] = useState<Typed | null>(null);
-  const [view, setView] = useState<"type" | "code" | "guest" | "ended">("type");
+  const [view, setView] = useState<"type" | "code" | "guest" | "ended" | "closed">("type");
   const [found, setFound] = useState<Found | null>(null);
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const onTyping = useCallback((bill_cents: number, tip_cents: number, step: "bill" | "tip") => {
     typing.current = { bill_cents, tip_cents, step };
   }, []);
-  const live = view !== "ended";
+  const live = view !== "ended" && view !== "closed";
   useEffect(() => {
     if (!live) return;
     let sent = "";
@@ -63,6 +63,11 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setBusy("code");
     setError(null);
     const fail = (r: "failed" | { error: string }) => {
+      if (r !== "failed" && "code" in r && r.code === "ticket_closed") {
+        setBusy(null);
+        setView("closed");
+        return true;
+      }
       say(r);
       // Only a refused code is typed again.
       return r === "failed" || !("code" in r) || r.code !== "staff_only";
@@ -115,6 +120,16 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setView("ended");
   }
 
+  // THREE WRONG CODES (Pato, MESITA-4898: "terminate the ticket due to many
+  // failed attempts").
+  if (view === "closed") {
+    return (
+      <main className="proof pay-end" data-scan="closed">
+        <h1>Ticket closed</h1>
+        <p className="proof-line">Too many wrong codes. Ask the guest for a new QR and scan it.</p>
+      </main>
+    );
+  }
   if (view === "ended") {
     return (
       <main className="proof pay-end" data-scan="ended">

@@ -1,6 +1,6 @@
 // Supabase Edge Function — business-web-set-waiter
 //
-// MESITA-4871: the waiters of a place, one 4-digit code each, so a bill and
+// MESITA-4871: the waiters of a place, one 6-digit code each, so a bill and
 // its tip have a name. Mesita makes the code and keeps it for the
 // owner's screen (MESITA-4886). The owner and Mesita staff only.
 //
@@ -8,7 +8,7 @@
 //     | { place_id, action: "codes_off" | "codes_on" }  (MESITA-4890: bills with no
 //       code, Discount only; saving Cashback turns codes on again)
 //     | { place_id, action: "new_code" | "remove", waiter_id }
-// Response: { ok: true, waiter_id, name, code?: "1234" }
+// Response: { ok: true, waiter_id, name, code?: "123456" }
 //   400 bad_request · 403 · 404 gone · 409 name_taken | too_many | cashback
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

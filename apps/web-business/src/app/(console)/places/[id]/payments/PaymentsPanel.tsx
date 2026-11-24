@@ -16,7 +16,7 @@
 //                                            Welcome Regular · Returning Regular ·
 //                                            Welcome VIP · Returning VIP (three
 //                                            picks each, Off included)
-//   Waiter Codes       #waiter-codes       · one 4-digit code per waiter; optional at Discount (MESITA-4890)
+//   Waiter Codes       #waiter-codes       · one 6-digit code per waiter; optional at Discount (MESITA-4890)
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -809,7 +809,7 @@ export function PaymentsPanel({
       <div id="waiter-codes" className="scroll-mt-24">
         <Card className={SECTION}>
           {head(HashIcon, "Visit Checkout - Waiter Codes", {
-            line: line("One 4-digit code per waiter. They scan the guest's QR and type their code to send the bill."),
+            line: line("One 6-digit code per waiter. They scan the guest's QR and type their code to send the bill."),
           })}
           <WaiterCodes placeId={placeId} initial={initial.waiters} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} canEdit={canEdit} onError={setError} />
         </Card>

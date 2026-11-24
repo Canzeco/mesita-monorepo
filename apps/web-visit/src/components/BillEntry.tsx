@@ -11,7 +11,7 @@ import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGT
 //
 //   Bill     the bill, before tip
 //   Tip      10 · 15 · 20% · Other; nothing is no tip
-//   Code     the waiter's own 4 digits, then whose QR it is; Send bill
+//   Code     the waiter's own 6 digits, then whose QR it is; Send bill
 //   Confirm  the handshake: this tap and the guest's Pay, in any order
 //   Receipt  what was paid
 //
