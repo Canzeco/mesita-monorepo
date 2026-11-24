@@ -51,5 +51,5 @@ export const PAY_FILL: Record<PayModal, string> = {
   prepay: "bg-[#635BFF] text-white",
   pay: "bg-[#00D66F] text-neutral-950",
 };
-/** A tile: half the row, 8:5 (Pato, MESITA-4852; a square before). */
-export const PAY_TILE = "flex aspect-[8/5] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-1 text-center";
+/** A tile: half the row, 3:2 (Pato, MESITA-4855: "a bit taller"; 8:5 before). */
+export const PAY_TILE = "flex aspect-[3/2] min-w-0 flex-col items-center justify-center gap-3 rounded-2xl p-1 max-[374px]:gap-2 text-center";

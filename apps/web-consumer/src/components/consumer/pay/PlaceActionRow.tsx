@@ -9,8 +9,8 @@ import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
 // THE CARD AT THE LEFT, ITS GIFT BOX AT THE RIGHT (Pato, 2026-11-24,
 // MESITA-4851: "left pp, name, credits two lines, right gift box"; "don't mention gift, just a gift box and an
-// arrow"; "inside the gray box of the place, not two
-// separated boxes"): one grey box, 56px, Add Loyalty Card's height. The card opens the Loyalty Card. The photo
+// arrow"; then "make the box and the gift separate boxes, both with
+// its own >", MESITA-4855): two boxes, 56px, Add Loyalty Card's height. The card opens the Loyalty Card. The photo
 // repeated behind the words before (MESITA-4839..4843).
 
 export function PlaceActionRow({
@@ -43,22 +43,23 @@ export function PlaceActionRow({
   onOpen?: () => void;
 }) {
   return (
-    <div className={cn("bg-muted flex items-center overflow-hidden rounded-xl", disabled && "opacity-60 grayscale")} data-wallet-row data-place-id={placeId}>
+    <div className={cn("flex items-stretch gap-2", disabled && "opacity-60 grayscale")} data-wallet-row data-place-id={placeId}>
       <button
         type="button"
         disabled={disabled}
         aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}, ${amount} in credits`}
         onClick={() => onOpen?.()}
-        className="hover:bg-foreground/10 flex min-h-14 min-w-0 flex-1 items-center gap-3 px-3 py-1.5 text-left transition disabled:cursor-default"
+        className="bg-muted hover:bg-foreground/10 flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl px-3 max-[429px]:gap-2 max-[429px]:px-2 py-1.5 text-left transition disabled:cursor-default"
         data-loyalty-card
       >
-        <PlacePhoto place={{ photo, name }} className="h-10 w-10" />
+        {/* A CARD'S SHAPE, the + chip's (Pato, 2026-11-24, MESITA-4855). */}
+        <PlacePhoto place={{ photo, name }} className="h-8 w-12 rounded-md max-[359px]:hidden" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm leading-tight font-semibold">{name}</span>
           {subtitle ? (
             <span className="text-muted-foreground block text-sm leading-tight">{subtitle}</span>
           ) : (
-            <span className="block truncate text-lg leading-tight font-semibold tabular-nums" data-loyalty-balance>
+            <span className="block text-lg leading-tight font-semibold whitespace-nowrap tabular-nums max-[429px]:text-base max-[359px]:text-sm" data-loyalty-balance>
               {amount}
             </span>
           )}
@@ -68,12 +69,13 @@ export function PlaceActionRow({
             </span>
           ) : null}
         </span>
+        {disabled ? null : <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />}
       </button>
       {giftHref ? (
         <PushLink
           href={giftHref}
           aria-label={`Send a gift from ${name}`}
-          className="bg-foreground text-background hover:bg-foreground/85 relative mx-2 flex h-10 w-16 shrink-0 items-center justify-center gap-1 rounded-lg transition after:absolute after:-inset-y-0.5 after:inset-x-0"
+          className="bg-foreground text-background hover:bg-foreground/85 flex min-h-14 w-[4.5rem] max-[429px]:w-14 shrink-0 items-center justify-center gap-1 rounded-xl transition"
           data-card-gift
         >
           <Gift className="h-5 w-5" strokeWidth={2} aria-hidden />

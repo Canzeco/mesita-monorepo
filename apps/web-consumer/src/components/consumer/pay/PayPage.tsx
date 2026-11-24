@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BadgePercent, ChevronRight, type LucideIcon, QrCode, Wallet as WalletIcon, X } from "lucide-react";
+import { BadgeDollarSign, ChevronRight, type LucideIcon, QrCode, Wallet as WalletIcon, X } from "lucide-react";
 import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payCodePath, placeOffersPath } from "@/lib/consumer-route-contract";
@@ -112,7 +112,7 @@ export function PayPage({
             corners (Pato, MESITA-4848: "i don't like the credits box without
             margin"; edge to edge before). */}
         <section className="bg-foreground my-2 flex min-h-0 flex-1 flex-col rounded-2xl px-1.5 pb-1.5" aria-labelledby="pay-credits" data-pay-credits>
-          <h2 id="pay-credits" className="text-background flex h-12 shrink-0 items-center justify-center gap-2 text-lg font-semibold">
+          <h2 id="pay-credits" className={cn(MARK_WORD, "text-background flex h-12 shrink-0 items-center justify-center gap-2")}>
             <WalletIcon className="h-5 w-5" strokeWidth={2.25} aria-hidden />
             Credits
           </h2>
@@ -216,11 +216,16 @@ const PENDING_ROW =
   "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
-// The discount badge and the QR, the same marks everywhere (MESITA-4844).
+// The money badge (the vouchers' own, Pato MESITA-4855; a percent before) and
+// the QR, the same marks everywhere.
 const TILES: Record<PayModal, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay & Get Bonus", icon: BadgePercent, ink: "bg-white text-indigo-500" },
+  prepay: { word: "Prepay & Get Bonus", icon: BadgeDollarSign, ink: "bg-white text-indigo-500" },
   pay: { word: "Pay Bill", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
+
+/** ONE LETTER SIZE for the three words (Pato, 2026-11-24,
+ *  MESITA-4855: "prepay and pay and credits must be all same size"). */
+const MARK_WORD = "text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg";
 
 /** A tile, always in its own colour (MESITA-4842). */
 function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
@@ -230,7 +235,7 @@ function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
       <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
         <Icon className="h-6 w-6" strokeWidth={2.25} />
       </span>
-      <span className="text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg">{word}</span>
+      <span className={MARK_WORD}>{word}</span>
     </button>
   );
 }
