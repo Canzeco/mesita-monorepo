@@ -622,8 +622,8 @@ export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "paymen
 export const BACK_LINE_LABEL: Record<string, string> = {
   welcome: "Welcome Visit",
   returning: "Returning Visit",
-  welcome_vip: "Welcome Visit (VIP)",
-  returning_vip: "Returning Visit (VIP)",
+  welcome_vip: "VIP Welcome Visit",
+  returning_vip: "VIP Returning Visit",
 };
 
 // ── Sending credit to a friend (MESITA-3292) ────────────────────────────────

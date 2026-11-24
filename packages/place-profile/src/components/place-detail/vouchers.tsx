@@ -718,9 +718,9 @@ export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
       // FOUR TIERS IN PATO'S ORDER (2026-11-23, MESITA-4789), in the guest's
       // words (MESITA-4806); Business keeps Welcome Regular … Returning VIP.
       { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps, mech },
-      { line: "returning", title: "Returning Visit", who: "Every later bill", bps: cashback.returning_bps, mech },
-      { line: "welcome_vip", title: "Welcome Visit (VIP)", who: "First bill, for VIP guests", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
-      { line: "returning_vip", title: "Returning Visit (VIP)", who: "Every later bill, for VIP guests", bps: cashback.returning_vip_bps ?? 0, mech },
+      { line: "returning", title: "Returning Visit", who: "Every bill after your first", bps: cashback.returning_bps, mech },
+      { line: "welcome_vip", title: "VIP Welcome Visit", who: "Your first bill here", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
+      { line: "returning_vip", title: "VIP Returning Visit", who: "Every bill after your first", bps: cashback.returning_vip_bps ?? 0, mech },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }
@@ -735,10 +735,10 @@ export function lockedWhy(row: CashbackLineRow["line"], guest: PlaceCashback["li
   if (!guest) return null;
   const guestVip = guest === "welcome_vip" || guest === "returning_vip";
   const rowVip = row === "welcome_vip" || row === "returning_vip";
-  if (rowVip && !guestVip) return "For VIP guests";
-  if (!rowVip && guestVip) return "For Regular guests";
+  if (rowVip && !guestVip) return "VIP guests only";
+  if (!rowVip && guestVip) return "Regular guests only";
   const guestFirst = guest === "welcome" || guest === "welcome_vip";
-  if ((row === "welcome" || row === "welcome_vip") && !guestFirst) return "First bill only";
+  if ((row === "welcome" || row === "welcome_vip") && !guestFirst) return "Already used";
   return null;
 }
 
@@ -780,8 +780,10 @@ function CashbackPanel({
                 <span className="flex min-w-0 items-center gap-1">
                   <span className={cn("truncate text-base font-semibold", why ? "text-muted-foreground" : "text-foreground")}>{r.title}</span>
                 </span>
-                {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702); 1 hour since MESITA-4717. */}
-                {/* MESITA-4770: a Discount comes off the bill at the table. */}
+                {/* ONE SHORT LINE (Pato, 2026-11-23, MESITA-4812: "write the
+                    descriptions clearer and cleaner"): which bill it is for, or
+                    why it is locked. The name says VIP; when it lands is in How
+                    it works. */}
                 {why ? (
                   // LOCKED, LIKE PREPAY'S VIP VOUCHER (MESITA-4791): a lock and the reason.
                   <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-cashback-why>
@@ -789,7 +791,7 @@ function CashbackPanel({
                     <span className="truncate">{why}</span>
                   </span>
                 ) : (
-                  <span className="text-muted-foreground text-sm">{r.who} · {r.mech === "discount" ? "off the bill" : "lands in 1 hour"}</span>
+                  <span className="text-muted-foreground text-sm">{r.who}</span>
                 )}
               </span>
               {mine ? (
@@ -916,7 +918,7 @@ function TierTable({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashb
             </th>
             <th scope="col" className="pb-1 pl-2 font-semibold">
               Returning Visit
-              <span className="text-muted-foreground block text-xs font-normal">Every later bill</span>
+              <span className="text-muted-foreground block text-xs font-normal">Every bill after</span>
             </th>
           </tr>
         </thead>

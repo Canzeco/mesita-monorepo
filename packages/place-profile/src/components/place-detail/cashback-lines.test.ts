@@ -24,10 +24,10 @@ describe("cashback lines (MESITA-4766)", () => {
   });
 
   it("locks a tier the guest can't get, from the server's line (MESITA-4791)", () => {
-    expect(lockedWhy("welcome_vip", "welcome")).toBe("For VIP guests");
-    expect(lockedWhy("returning", "returning_vip")).toBe("For Regular guests");
-    expect(lockedWhy("welcome", "returning")).toBe("First bill only");
-    expect(lockedWhy("welcome_vip", "returning_vip")).toBe("First bill only");
+    expect(lockedWhy("welcome_vip", "welcome")).toBe("VIP guests only");
+    expect(lockedWhy("returning", "returning_vip")).toBe("Regular guests only");
+    expect(lockedWhy("welcome", "returning")).toBe("Already used");
+    expect(lockedWhy("welcome_vip", "returning_vip")).toBe("Already used");
     expect(lockedWhy("returning", "welcome")).toBeNull();
     expect(lockedWhy("returning_vip", "welcome_vip")).toBeNull();
     expect(lockedWhy("welcome_vip", null)).toBeNull();
