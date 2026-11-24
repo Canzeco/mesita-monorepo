@@ -264,7 +264,7 @@ export function VipClient({
       <SectionCard
         icon={<CrownIcon aria-hidden />}
         title="VIP guests"
-        subtitle="Invited guests stay VIP until you remove it. Instagram guests are VIP while their account has more than 5,000 followers."
+        subtitle="Invited guests stay VIP until you remove it."
       >
         <div className="mt-4">
           {guests === null || guests.length === 0 ? (

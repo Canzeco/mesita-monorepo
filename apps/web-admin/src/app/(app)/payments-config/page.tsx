@@ -38,7 +38,7 @@ const WHO: Record<string, string> = {
   voucher_200: "As many as they like",
   voucher_1000: "As many as they like",
   voucher_5000: "As many as they like",
-  voucher_vip: "Only VIP guests (invited by code, or an Instagram with more than 5,000 followers), one per visit",
+  voucher_vip: "Only VIP guests (invited by code), one per visit",
 };
 
 /** "MX$100", "¥1,000": whole units in the currency's own symbol. */

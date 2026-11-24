@@ -96,10 +96,6 @@ export type PlaceActions = {
      *  reads Regular, so a signed-out or unread guest sees VIP locked. */
     guestClass?: "regular" | "vip";
   };
-  /** "Link Instagram" on a VIP offer for a guest with no verified Instagram
-   *  (MESITA-4659): the host opens Me › Instagram. Absent, that row shows
-   *  the locked line alone. */
-  onLinkInstagram?: () => void;
   /** "How to become VIP" under the Returning VIP line (MESITA-4766): the
    *  host opens Me › Become VIP. The host passes it only for a signed-in
    *  guest it knows is not VIP; absent, no link. */

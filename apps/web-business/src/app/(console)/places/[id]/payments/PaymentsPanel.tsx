@@ -156,7 +156,7 @@ const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: st
     id: "returning-vip",
     name: "Returning VIP",
     line: "Cashback on every later bill of a VIP guest.",
-    note: "VIP guests: invitation code or more than 5,000 Instagram followers.",
+    note: "VIP guests: by invitation code.",
     icon: CrownSimpleIcon,
   },
 ];

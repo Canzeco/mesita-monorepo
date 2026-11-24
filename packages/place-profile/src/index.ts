@@ -62,7 +62,7 @@ export type { PlaceBalance, PlaceCashback, PlaceDetail, PlaceMoney, PlaceScore, 
 export { VOUCHER_KEYS } from "./place-detail";
 export { placeMoneyFrom } from "./place-to-detail";
 export { TestBand, TEST_BAND_TEXT } from "./components/TestBand";
-export { moneyState, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type MoneyState, type MoneyVoucherKey, type VoucherReason } from "./money-state";
+export { moneyState, NOT_YET_SELLABLE, type MoneyState, type MoneyVoucherKey, type VoucherReason } from "./money-state";
 export { MONEY_CODES, type MoneyCode } from "./money-codes";
 export {
   FREE_PLAN,

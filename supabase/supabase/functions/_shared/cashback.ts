@@ -6,8 +6,7 @@
 // paid bill here, VIP or not, Off · 10 · 20 %), else Returning VIP for a VIP
 // (Off · 10 · 20 %) or Returning Regular (Off · 5 · 10 %; MESITA-4762). Who is
 // VIP for money is ONE SQL rule, consumer_is_vip_for_money (an invitation code,
-// or a verified Instagram over 5,000 followers; live counts real followers
-// only); this file asks it and never re-implements it. on the part not paid with credit (never the tip), Pending
+// MESITA-4849); this file asks it and never re-implements it. on the part not paid with credit (never the tip), Pending
 // 1 hour (3 until MESITA-4717), only where Loyalty Cards is On. At most MX$1,000
 // a bill (MESITA-4831) and no once-a-day rule (MESITA-4728): a bill earns once, on every peso paid by card or cash. The SQL trigger pay_tabs_grant_cashback
 // (20261123010000_cashback_mvp) is the one writer; this file reads and

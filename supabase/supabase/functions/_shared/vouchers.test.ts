@@ -123,7 +123,7 @@ Deno.test("vipRefusal: only the VIP class buys the VIP voucher; the 409 names th
   const regular = vipRefusal("voucher_vip", { guest_class: "regular", followers: 2026, synced_at: MIN_AGO(1), verified_at: MIN_AGO(1), emulated: null }, NOW, false);
   assertEquals(regular?.status, 409);
   assertEquals(regular?.code, "not_vip");
-  assertEquals(regular?.error, "The VIP voucher needs an Instagram with more than 5,000 followers.");
+  assertEquals(regular?.error, "The VIP voucher is for guests with an invitation code.");
   assertEquals(regular?.followers, 2026);
   assertEquals(vipRefusal("voucher_vip", null, NOW, false)?.code, "not_vip");
   // Any other voucher passes, whatever the Class.
@@ -147,27 +147,12 @@ Deno.test("vipRefusal: VIP is checked at claim, the count read within the hour (
   assertEquals("is_private" in ({ guest_class: "vip", followers: 6000, synced_at: null, verified_at: null }), false);
 });
 
-Deno.test("vipRefusal: the follower emulator counts in test mode only (MESITA-4662)", () => {
-  // guest_class reads the emulated 10,000; the real count is 300.
-  const emulated = { guest_class: "vip", followers: 300, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(5000), emulated: 10_000 };
-  // Live money ignores the emulator: the real 300 decides, whatever the class says.
-  const live = vipRefusal("voucher_vip", emulated, NOW, false);
-  assertEquals(live?.code, "not_vip");
-  assertEquals(live?.followers, 300);
-  // Test mode: the emulated count is the count, and always fresh (no vip_recheck).
-  assertEquals(vipRefusal("voucher_vip", emulated, NOW, true), null);
-  // Test mode, emulated below the bar: the class says regular, refused naming the emulated count.
-  const low = vipRefusal("voucher_vip", { ...emulated, guest_class: "regular", emulated: 320 }, NOW, true);
-  assertEquals(low?.code, "not_vip");
-  assertEquals(low?.followers, 320);
-  // Live with a real VIP behind an emulated value: the real count still needs the hour.
-  const realVip = { guest_class: "regular", followers: 9000, synced_at: MIN_AGO(5000), verified_at: MIN_AGO(5000), emulated: 320 };
-  assertEquals(vipRefusal("voucher_vip", realVip, NOW, false)?.code, "vip_recheck");
-  assertEquals(vipRefusal("voucher_vip", { ...realVip, synced_at: MIN_AGO(5) }, NOW, false), null);
-  // Live, an emulated value on an unverified Instagram: not VIP.
-  assertEquals(vipRefusal("voucher_vip", { ...realVip, synced_at: MIN_AGO(5), verified_at: null }, NOW, false)?.code, "not_vip");
-  // No emulated value: test mode changes nothing (the hour still applies).
-  assertEquals(vipRefusal("voucher_vip", { ...emulated, followers: 6000, emulated: null }, NOW, true)?.code, "vip_recheck");
+Deno.test("vipRefusal: followers, real or emulated, never make a VIP (MESITA-4849)", () => {
+  const famous = { guest_class: "regular", followers: 900_000, synced_at: MIN_AGO(5), verified_at: MIN_AGO(5), emulated: null };
+  for (const testMode of [false, true]) {
+    assertEquals(vipRefusal("voucher_vip", famous, NOW, testMode)?.code, "not_vip");
+    assertEquals(vipRefusal("voucher_vip", { ...famous, emulated: 10_000 }, NOW, testMode)?.code, "not_vip");
+  }
 });
 
 Deno.test("VIP is one each new visit (MESITA-4640)", () => {

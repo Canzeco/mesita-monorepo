@@ -118,8 +118,8 @@ serveJson("consumer-web-get-profile", async (req) => {
     consumer: {
       ...shown,
       vip_partner: vipPartner,
-      // MESITA-4766: why this guest is VIP — an invitation code, or a
-      // verified Instagram over 5,000 followers; null for a Regular.
+      // MESITA-4766: why this guest is VIP — an invitation code
+      // (MESITA-4849); null for a Regular.
       vip_reason: vipReason(rest as { guest_class?: string | null; vip_invited_at?: string | null }),
       emulator_available: !livemode,
       instagram_badge: instagramBadge(rest as Parameters<typeof instagramBadge>[0], livemode),

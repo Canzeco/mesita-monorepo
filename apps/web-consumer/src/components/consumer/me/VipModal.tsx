@@ -2,13 +2,10 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Crown, PartyPopper, Repeat } from "lucide-react";
-import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
-import { Instagram } from "@/components/shared/instagram-icon";
+import { Crown, PartyPopper, Repeat } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { PushLink } from "@/components/consumer/nav/PushLink";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
+import { apiFetchConsumerProfile, type ConsumerProfile } from "@/lib/api/profile";
 import { apiRedeemVipCode } from "@/lib/api/vip";
 import { signHref } from "@/lib/anonymous";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -26,7 +23,8 @@ import { groupVipCode, isVip, VIP_CODE_LENGTH, vipCodeDigits, vipRedeemUi, type 
 // BECOME VIP (Pato, 2026-11-23, MESITA-4766: "BRING BACK VIP CUSTOMERS ...
 // In order to be VIP, is either invitation code or 5000 followers on
 // instagram"): /me/vip, pushed from Me's "Have an invitation code?" row and
-// the place's Pay tab. Two ways in, Connect Instagram and a code field. A
+// the place's Pay tab. One way in, a code field: codes only until the DM bot proves
+// who owns an Instagram (Pato, 2026-11-24, MESITA-4849). A
 // VIP opening it reads their status and no form. The server decides every
 // outcome (consumer-web-redeem-vip-code); this formats the code and says
 // what came back.
@@ -39,16 +37,12 @@ export function VipFrame({ children }: { children: ReactNode }) {
 
 // WHY, IN ONE CARD (Pato, 2026-11-23, MESITA-4797: "clearer design
 // explaining why VIP"): the Class first, then why, then what VIP gets.
-const FOLLOWERS = VIP_MIN_FOLLOWERS.toLocaleString("en-US");
-
-function ClassCard({ vip, reason }: { vip: boolean; reason: "code" | "instagram" | null | undefined }) {
+function ClassCard({ vip, reason }: { vip: boolean; reason: ConsumerProfile["vip_reason"] }) {
   const why = !vip
-    ? `VIP is for guests with an invitation code or more than ${FOLLOWERS} Instagram followers.`
+    ? "VIP is for guests with an invitation code."
     : reason === "code"
       ? "You joined with an invitation code."
-      : reason === "instagram"
-        ? `Your Instagram has more than ${FOLLOWERS} followers.`
-        : "Mesita made you VIP.";
+      : "Mesita made you VIP.";
   return (
     <div className={cn("flex items-center gap-4 rounded-2xl p-5", vip ? "bg-foreground text-background" : "bg-card border-border border")} data-vip-status={vip ? "vip" : "regular"}>
       <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", vip ? "bg-background text-foreground" : "bg-muted text-foreground")} aria-hidden>
@@ -154,20 +148,7 @@ export function VipModal() {
       <div className="flex flex-col gap-4">
         <ClassCard vip={false} reason={null} />
         <VipPerks />
-        <h2 className="px-0.5 pt-1 text-base font-semibold">Two ways to become VIP</h2>
-        <PushLink
-          href={CONSUMER_ROUTES.mePages.instagram}
-          className="bg-card border-border hover:bg-muted/40 flex items-center gap-3 rounded-2xl border p-4 transition"
-          data-vip-instagram
-        >
-          <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
-            <Instagram className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1 text-sm font-semibold">
-            Connect Instagram with more than {FOLLOWERS} followers
-          </span>
-          <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
-        </PushLink>
+        <h2 className="px-0.5 pt-1 text-base font-semibold">Become VIP</h2>
         <form
           className="bg-card border-border flex flex-col gap-3 rounded-2xl border p-4"
           onSubmit={(e) => {
