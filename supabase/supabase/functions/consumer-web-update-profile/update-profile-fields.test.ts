@@ -243,17 +243,16 @@ Deno.test("removedFieldResponse: appear_anonymous is a 400 field_removed, whatev
 // MESITA-4850: a minor's lock cannot be written around.
 Deno.test("privacyRefusal: a minor cannot open the profile or change the year", async () => {
   const now = new Date("2026-11-24T12:00:00Z");
-  const minor = { birth_year: 2010, social_private: false, instagram_handle: "x", instagram_verified_at: "2026-01-01", instagram_handle_shown: null };
+  const minor = { birth_year: 2010, social_private: false };
   const adult = { ...minor, birth_year: 1990 };
   const code = async (r: Response | null) => r ? (await r.json()).code ?? r.status : null;
   assertEquals(await code(privacyRefusal({ social_level: "public" }, minor, undefined, now)), "minor_private");
-  assertEquals(await code(privacyRefusal({ instagram_handle_shown: true }, minor, undefined, now)), "minor_private");
   assertEquals(await code(privacyRefusal({ birth_year: 1990 }, minor, 1990, now)), "birth_year_locked");
   assertEquals(await code(privacyRefusal({ birth_year: null }, minor, null, now)), "birth_year_locked");
   assertEquals(await code(privacyRefusal({ social_level: "public", birth_year: 2010 }, minor, 2010, now)), "minor_private");
   assertEquals(privacyRefusal({ social_level: "private", birth_year: 2010 }, minor, 2010, now), null);
-  assertEquals(privacyRefusal({ social_level: "instagram" }, adult, undefined, now), null);
-  assertEquals(await code(privacyRefusal({ social_level: "instagram" }, { ...adult, instagram_verified_at: null }, undefined, now)), "instagram_needed");
+  assertEquals(privacyRefusal({ social_level: "public" }, adult, undefined, now), null);
+  assertEquals(await code(privacyRefusal({ social_level: "instagram" }, adult, undefined, now)), 400);
   assertEquals(await code(privacyRefusal({ social_level: "public" }, { ...adult, birth_year: null }, undefined, now)), "birth_year_needed");
   assertEquals(await code(privacyRefusal({ social_level: "open" }, adult, undefined, now)), 400);
 });

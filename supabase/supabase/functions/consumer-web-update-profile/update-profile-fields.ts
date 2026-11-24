@@ -63,10 +63,7 @@ export type UpdateProfileBody = {
   // MESITA-4690: "Public profile" was removed; sending appear_anonymous with
   // any value is refused (REMOVED_FIELD_APPEAR_ANONYMOUS).
   appear_anonymous?: unknown;
-  // MESITA-4659: "Show my handle on Mesita" on Me › Instagram. true shows the
-  // handle to others, false hides it; null (no choice) is not writable here.
-  instagram_handle_shown?: boolean;
-  // MESITA-4850: the privacy level, private | public | instagram.
+  // MESITA-4850: the privacy level, private | public.
   social_level?: unknown;
   // MESITA-4662: the follower emulator on Me › Instagram. A number (test mode
   // only) stands in for the real count in the Class; null is Reset to real.
@@ -304,7 +301,7 @@ export function parseFollowersEmulated(raw: unknown, testMode: boolean): ParseFo
   return { ok: true, followersEmulated: raw };
 }
 
-export type SocialStanding = SocialFacts & { instagram_handle: string | null };
+export type SocialStanding = SocialFacts;
 
 /** MESITA-4850: a minor (by the stored year) cannot leave Private, nor change
  *  the year that keeps them there; `birthYear` undefined = not in this write. */
@@ -324,9 +321,9 @@ export function privacyRefusal(
   }
   const level = body.social_level;
   if (level !== undefined && !isSocialLevel(level)) {
-    return json({ ok: false, error: "social_level must be private, public or instagram" }, 400);
+    return json({ ok: false, error: "social_level must be private or public" }, 400);
   }
-  const opens = (level !== undefined && level !== "private") || body.instagram_handle_shown === true;
+  const opens = (level !== undefined && level !== "private");
   if (!opens) return null;
   // The year this write leaves behind decides, so a first year can open the profile.
   const lock = minor ? "minor" : socialLock(birthYear !== undefined ? birthYear : stored?.birth_year, now);
@@ -335,11 +332,6 @@ export function privacyRefusal(
   }
   if (lock === "no_birth_year") {
     return json({ ok: false, code: "birth_year_needed", error: "Add your year of birth first." }, 409);
-  }
-  if (level === "instagram" || body.instagram_handle_shown === true) {
-    if (!stored?.instagram_handle || !stored.instagram_verified_at) {
-      return json({ ok: false, code: "instagram_needed", error: "Add your Instagram first." }, 409);
-    }
   }
   return null;
 }
@@ -395,16 +387,7 @@ export function buildProfilePatch(
     }
     patch.use_instagram_photo = body.use_instagram_photo;
   }
-  if (body.instagram_handle_shown !== undefined) {
-    if (typeof body.instagram_handle_shown !== "boolean") {
-      return {
-        ok: false,
-        response: json({ ok: false, error: "instagram_handle_shown must be true or false" }, 400),
-      };
-    }
-    patch.instagram_handle_shown = body.instagram_handle_shown;
-  }
-  // Checked by privacyRefusal; the level's two flags move together.
+  // Checked by privacyRefusal; the level's column.
   if (isSocialLevel(body.social_level)) {
     Object.assign(patch, levelPatch(body.social_level));
   }

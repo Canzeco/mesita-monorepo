@@ -1,23 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Eye, Lock, X } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { Instagram } from "@/components/shared/instagram-icon";
 import { IconChip } from "@/components/consumer/me/settings-rows";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
   type SocialLevel,
 } from "@/lib/api/profile";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { navigateTo } from "@/lib/navigate";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { cn, errMsg } from "@/lib/utils";
 
-// PRIVACY (MESITA-4850): Private, Public, Public + Instagram, on Me › Profile.
+// PRIVACY (MESITA-4850): Private or Public (MESITA-4863), on Me › Profile.
 // It never touches browsing, Pay, Prepay or the QR. A guest under 18 is always
 // Private and sees why, with no choice (Pato, 2026-11-24: "minors have their
 // accounts in private automatically and cannot change that configuration").
@@ -32,18 +28,12 @@ const LEVELS: { level: SocialLevel; title: string; sub: string }[] = [
   {
     level: "public",
     title: "Public",
-    sub: "Your activity shows with your first name, age and sex. No photo, no Instagram.",
-  },
-  {
-    level: "instagram",
-    title: "Public + Instagram",
-    sub: "Your photo shows too, and a link to your Instagram. Your Instagram may show your full name.",
+    sub: "Your activity shows with your first name, age and sex. You see everyone's activity.",
   },
 ];
 
 function LevelIcon({ level }: { level: SocialLevel }) {
   const size = "h-[18px] w-[18px]";
-  if (level === "instagram") return <Instagram className={size} />;
   return level === "private" ? <Lock className={size} /> : <Eye className={size} />;
 }
 
@@ -63,7 +53,6 @@ export function PrivacyLevels({
   valueClass: string;
 }) {
   const supabase = useBrowserSupabase();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState<SocialLevel | null>(null);
   const level = profile.social_level;
@@ -76,10 +65,6 @@ export function PrivacyLevels({
     if (saving) return;
     setOpen(false);
     if (next === level) return;
-    if (next === "instagram" && !profile.instagram_handle) {
-      navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });
-      return;
-    }
     setSaving(next);
     apiUpdateConsumerProfile(supabase, { social_level: next })
       .catch((e) => toast.error(errMsg(e, "Couldn't change that.")))
@@ -139,15 +124,13 @@ export function PrivacyLevels({
                 className="hover:bg-muted flex w-full items-start gap-3 px-5 py-4 text-left transition"
                 data-privacy-level={l.level}
               >
-                <IconChip tint={l.level === "instagram" ? "instagram" : "muted"}>
+                <IconChip>
                   <LevelIcon level={l.level} />
                 </IconChip>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">{l.title}</span>
                   <span className="text-muted-foreground type-label block">
-                    {l.level === "instagram" && !profile.instagram_handle
-                      ? `Add your Instagram first. ${l.sub}`
-                      : l.sub}
+                    {l.sub}
                   </span>
                 </span>
                 <Check

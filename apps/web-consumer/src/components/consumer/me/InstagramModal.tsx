@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { AtSign, BadgeCheck, Copy, Crown, Send } from "lucide-react";
+import { BadgeCheck, Copy, Crown, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -11,7 +11,7 @@ import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { InstagramHandleField } from "@/components/consumer/me/InstagramHandleField";
-import { IconChip, ME_BUTTON_CLASS, SettingsGroup, Switch } from "@/components/consumer/me/settings-rows";
+import { IconChip, ME_BUTTON_CLASS, SettingsGroup } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiDisconnectInstagram,
@@ -20,7 +20,6 @@ import {
   apiInstagramDmStatus,
   apiSetInstagram,
   apiStartInstagramDm,
-  apiUpdateConsumerProfile,
   dmVerified,
   type ConsumerProfile,
   type InstagramChannel,
@@ -30,14 +29,21 @@ import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import { SHEET_BODY_CLASS, SHEET_CANCEL_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { goBack } from "@/lib/navigate";
 import { PROFILE_KEY, writeCached } from "@/lib/screen-cache";
+import { instagramVipLine } from "@/lib/vip";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 
-// ME › INSTAGRAM (Pato, 2026-11-24, MESITA-4858): add a handle now, verify it
-// later. A typed handle is Unverified and may be shown; the badge comes only
-// from a one-time code sent by DM from that account. Nothing is looked up: no
-// scrape, no photo, no followers. VIP is a separate yes, asked before the same
-// DM. The server decides every fact here; this draws them.
+// ME › INSTAGRAM IS FOR VIP ONLY (Pato, 2026-11-24, MESITA-4863: "With VIP →
+// connect Instagram only at the VIP unlock, nowhere else"). A guest adds a
+// handle, then one DM from that account proves it and, with their yes, reads
+// the follower count. No guest ever sees it. Opened from a place's locked VIP
+// offer (`from=vip`), a finished check returns there. The server decides.
+
+/** The guest came from a VIP offer: a finished task pops back to it. */
+function cameFromVip(): boolean {
+  return new URLSearchParams(window.location.search).get("from") === "vip";
+}
 
 const DM_POLL_MS = 3_000;
 
@@ -72,6 +78,7 @@ export function InstagramModal() {
   return (
     <MeScreen title="Instagram">
       <div className="flex flex-col gap-4">
+        <p className="text-muted-foreground text-sm">Connect your Instagram to unlock VIP offers.</p>
         {handle && !editing ? (
           <>
             <AccountCard profile={profile} handle={handle} onEdit={() => setEditing(true)} />
@@ -133,7 +140,7 @@ function HandleForm({ current, onDone }: { current: string | null; onDone: () =>
         />
         {current && (
           <p className="text-muted-foreground type-label">
-            A new handle starts hidden and Unverified. @{current} comes off your profile.
+            A new handle starts Unverified. @{current} is removed.
           </p>
         )}
         {failed && (
@@ -181,7 +188,6 @@ function AccountCard({ profile, handle, onEdit }: { profile: ConsumerProfile; ha
           {verified ? "Verified" : "Unverified"}
         </span>
       </div>
-      <ShareRow profile={profile} />
       <div className="grid grid-cols-2 gap-2 px-4 pb-4">
         <button type="button" onClick={onEdit} className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)} data-instagram-change>
           Edit
@@ -200,70 +206,12 @@ function AccountCard({ profile, handle, onEdit }: { profile: ConsumerProfile; ha
   );
 }
 
-// SHOW MY INSTAGRAM: the Public + Instagram level (MESITA-4850), verified or
-// not. Off never opens a Private profile; under 18 there is no choice.
-function ShareRow({ profile }: { profile: ConsumerProfile }) {
-  const supabase = useBrowserSupabase();
-  const [flipped, setFlipped] = useState<boolean | null>(null);
-  const shown = flipped ?? profile.social_level === "instagram";
-
-  if (profile.social_lock) {
-    return (
-      <p className="text-muted-foreground type-label border-border/60 mx-4 mb-3 rounded-xl border p-3" data-instagram-share="locked">
-        {profile.social_lock === "minor"
-          ? "Profiles of guests under 18 are always private, so your Instagram never shows."
-          : "Add your year of birth in Profile to show your Instagram."}
-      </p>
-    );
-  }
-  const flip = () => {
-    if (flipped !== null) return;
-    const next = !shown;
-    setFlipped(next);
-    apiUpdateConsumerProfile(supabase, next ? { social_level: "instagram" } : { instagram_handle_shown: false })
-      .catch((e) => toast.error(errMsg(e, "Couldn't change that.")))
-      .finally(() => setFlipped(null));
-  };
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={shown}
-      disabled={flipped !== null}
-      onClick={flip}
-      className="border-border/60 hover:bg-muted/60 mx-4 mb-3 flex w-[calc(100%-2rem)] items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-60"
-      data-instagram-share={shown ? "on" : "off"}
-    >
-      <IconChip>
-        <AtSign className="h-[18px] w-[18px]" />
-      </IconChip>
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Show my Instagram on my profile</span>
-        <span className="text-muted-foreground type-label block">
-          {shown
-            ? "Guests see your photo and a link to your Instagram."
-            : profile.social_level === "private"
-              ? "Your profile is Private. Turning this on makes it Public, with your photo and Instagram."
-              : "Off. On, guests see your photo and a link to your Instagram."}
-        </span>
-      </span>
-      <Switch on={shown} />
-    </button>
-  );
-}
-
-const VIP_LINE: Record<NonNullable<ConsumerProfile["instagram_vip_status"]>, string> = {
-  eligible: "Your Instagram made you VIP.",
-  not_enough: "VIP by Instagram needs more than 5,000 followers.",
-  not_public: "VIP by Instagram needs a public account.",
-  unconfirmed: "We couldn't confirm VIP automatically: Instagram didn't share everything we need. Your verified badge stays.",
-};
-
 // VERIFY BY ONE DM, with the VIP question first. The choice fetches the code,
 // so the send button is a plain link: the tap copies the code and opens
 // Instagram in one gesture (an await would get the tab blocked on iOS).
 function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: string }) {
   const supabase = useBrowserSupabase();
+  const router = useRouter();
   const reload = useReload();
   const [channel, setChannel] = useState<InstagramChannel | null>(null);
   const [asking, setAsking] = useState(false);
@@ -300,6 +248,7 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
           toast.success(`@${claim.handle} is verified`);
           setClaim(null);
           await reload();
+          if (cameFromVip()) goBack(router, CONSUMER_ROUTES.mePages.vip);
           return;
         }
         if (status.status === "expired" || status.status === "none") {
@@ -321,7 +270,7 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
     };
     // `reload` is rebuilt each render; the poll belongs to the claim.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claim, sent, supabase]);
+  }, [claim, sent, supabase, router]);
 
   async function start(vipCheck: boolean) {
     if (busy) return;
@@ -344,12 +293,12 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
   const canStart = !verified || !vip;
 
   return (
-    <SettingsGroup title={verified ? "Verified" : "Verify account"}>
+    <SettingsGroup title="VIP">
       <div className="flex flex-col gap-3 px-4 pt-1 pb-4" data-instagram-verify>
         <p className="text-muted-foreground text-sm">
           {verified
             ? `Mesita verified that you own @${handle}.`
-            : `Optional. Send a one-time code from @${handle} to Mesita's Instagram bot and get the verified badge.`}
+            : `Send a one-time code from @${handle} to Mesita's Instagram bot. VIP needs a public account with more than 5,000 followers.`}
         </p>
         {status && (
           <div className="flex items-start gap-3" data-instagram-vip={status}>
@@ -357,7 +306,7 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
               <Crown className="h-[18px] w-[18px]" />
             </IconChip>
             <p className="min-w-0 flex-1 text-sm">
-              {VIP_LINE[status]}{" "}
+              {instagramVipLine(profile)}{" "}
               {!vip && (
                 <PushLink href={CONSUMER_ROUTES.mePages.vip} className="font-semibold underline underline-offset-2">
                   Use an invitation code
@@ -412,7 +361,7 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
           <div className="flex flex-col gap-2" data-instagram-vip-question>
             <p className="text-sm font-semibold">Allow Mesita to check your Instagram follower count for VIP?</p>
             <p className="text-muted-foreground type-label">
-              VIP needs a public account with more than 5,000 followers. Your badge doesn&apos;t depend on it.
+              VIP needs a public account with more than 5,000 followers.
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -426,10 +375,10 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => (verified ? setAsking(false) : void start(false))}
+                onClick={() => setAsking(false)}
                 className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
               >
-                {verified ? "Not now" : "No, just verify"}
+                Not now
               </button>
             </div>
           </div>
@@ -443,12 +392,12 @@ function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: str
               className={cn(ME_BUTTON_CLASS, "w-full")}
               data-instagram-verify-start
             >
-              {verified ? "Check VIP eligibility" : "Verify account"}
+              {verified ? "Check VIP again" : "Connect"}
             </Button>
           ) : channel ? (
             !verified && (
               <p className="text-muted-foreground type-label" data-instagram-verify-off>
-                Verification isn&apos;t open yet. You can show your Instagram without it.
+                Connecting isn&apos;t open yet. An invitation code also makes you VIP.
               </p>
             )
           ) : (
@@ -494,8 +443,7 @@ function RemoveDialog({ open, handle, onClose }: { open: boolean; handle: string
       <div className={SHEET_BODY_CLASS}>
         <h2 className={SHEET_TITLE_CLASS}>Remove @{handle}?</h2>
         <p className="text-muted-foreground type-body mt-2 leading-snug">
-          Its link and verified badge come off your profile, and so does VIP if your Instagram gave it. A picture that came from
-          Instagram goes too.
+          Its verification goes, and so does VIP if your Instagram gave it. A picture that came from Instagram goes too.
         </p>
         <div className="mt-4 flex gap-2">
           <button type="button" onClick={onClose} className={SHEET_CANCEL_BUTTON_CLASS}>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Crown, PartyPopper, Repeat } from "lucide-react";
 import { Spinner } from "@/components/shared";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { apiFetchConsumerProfile, type ConsumerProfile } from "@/lib/api/profile";
 import { apiRedeemVipCode } from "@/lib/api/vip";
@@ -39,7 +40,7 @@ export function VipFrame({ children }: { children: ReactNode }) {
 // explaining why VIP"): the Class first, then why, then what VIP gets.
 function ClassCard({ vip, reason }: { vip: boolean; reason: ConsumerProfile["vip_reason"] }) {
   const why = !vip
-    ? "VIP is for guests with an invitation code."
+    ? "VIP is for guests with an invitation code, or a public Instagram with more than 5,000 followers."
     : reason === "code"
       ? "You joined with an invitation code."
       : reason === "instagram"
@@ -87,6 +88,20 @@ function VipPerks() {
         Each place sets its own rates, as Cashback or a Discount on the bill.
       </p>
     </section>
+  );
+}
+
+/** Me › Instagram's door (MESITA-4863): VIP is the only reason for it. */
+function InstagramRow({ handle }: { handle: string | null }) {
+  return (
+    <PushLink
+      href={CONSUMER_ROUTES.mePages.instagram}
+      className="bg-card border-border hover:bg-muted flex min-h-14 items-center justify-between gap-3 rounded-2xl border px-4 text-sm font-semibold transition"
+      data-vip-instagram
+    >
+      <span>Instagram</span>
+      <span className="text-muted-foreground truncate">{handle ? `@${handle}` : "Connect"}</span>
+    </PushLink>
   );
 }
 
@@ -140,6 +155,7 @@ export function VipModal() {
         <div className="flex flex-col gap-4">
           <ClassCard vip reason={profile?.vip_reason} />
           <VipPerks />
+          {profile?.instagram_handle ? <InstagramRow handle={profile.instagram_handle} /> : null}
         </div>
       </VipFrame>
     );
@@ -151,6 +167,7 @@ export function VipModal() {
         <ClassCard vip={false} reason={null} />
         <VipPerks />
         <h2 className="px-0.5 pt-1 text-base font-semibold">Become VIP</h2>
+        <InstagramRow handle={profile?.instagram_handle ?? null} />
         <form
           className="bg-card border-border flex flex-col gap-3 rounded-2xl border p-4"
           onSubmit={(e) => {

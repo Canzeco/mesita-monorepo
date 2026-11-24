@@ -1,9 +1,8 @@
 "use client";
 
 import { SexFace } from "./SexFace";
-import type { ReactNode } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { BadgeCheck, Crown, User } from "lucide-react";
+import { Crown, User } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -188,38 +187,20 @@ export function IdentityCard({
 export const IDENTITY_PILL_CLASS =
   "border-border bg-card text-foreground hover:bg-muted/60 flex h-10 w-full min-w-0 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition";
 
-/** "@handle · ~320 followers" → ["@handle", "~320 followers"]. */
-function splitInstagramLabel(label: string): [string, string | null] {
-  const at = label.indexOf(" · ");
-  return at < 0 ? [label, null] : [label.slice(0, at), label.slice(at + 3)];
-}
-
 export function IdentityModules({
   name,
   avatarUrl,
-  instagram,
   nameHref,
   guestClass,
 }: {
   name: string;
   avatarUrl: string | null;
-  instagram: IdentityInstagram & { href: string };
   nameHref: string;
   /** MESITA-4774: the Class pill right of the name ("VIP Class" or
    *  "Regular Class"), opening Me › VIP. Absent: the name runs full width. */
   guestClass?: { vip: boolean; href: string };
 }) {
-  // THE HANDLE ONLY (Pato, 2026-11-22, MESITA-4651: "don't mention the
-  // number of followers there … only the instagram"): the count lives on Me
-  // › Instagram.
-  const [handle] = splitInstagramLabel(instagram.label);
-  // NAME / INSTAGRAM (Pato, 2026-11-23, MESITA-4709: "completely remove VIP
-  // class and put Free plan not in the header"): the photo, the name full
-  // width (opens Profile), then Instagram full width under it (the handle,
-  // opens Me › Instagram; "No Instagram" when none). No Class and no Plan
-  // pill: the Plan tile on the Me grid opens /me/plan. MESITA-4668 had Class
-  // | Plan in halves between them. Every pill is white with a hairline and
-  // ink text, 40px (MESITA-4657).
+  // The photo, then Name | Class. No Instagram (MESITA-4863).
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
@@ -265,39 +246,25 @@ export function IdentityModules({
             </PushLink>
           ) : null}
         </span>
-        <PushLink
-          href={instagram.href}
-          aria-label={instagram.label.startsWith("@") ? `Instagram: ${instagram.label}` : instagram.label}
-          className={IDENTITY_PILL_CLASS}
-          data-identity-instagram
-        >
-          <InstagramBadge connected={instagram.connected} />
-          {/* No Instagram linked: says so plainly (MESITA-4691). */}
-          <span className="truncate">{instagram.connected ? handle : "No Instagram"}</span>
-        </PushLink>
       </span>
     </div>
   );
 }
 
 /** ANOTHER GUEST'S HEADER, THE ME CARD'S FORMAT (Pato, 2026-11-22,
- *  MESITA-4695: "same format"): the photo, the first name full width, then
- *  the Instagram row the caller decides (a handle, "No Instagram", or the
- *  add-yours box). No Class or Plan since MESITA-4709, as on Me's header.
+ *  MESITA-4695: "same format"): the photo, the first name full width. No Class or Plan since MESITA-4709, as on Me's header.
  *  Nothing here is a link but what the caller passes. */
 export function PersonModules({
   name,
   avatarUrl,
   sex,
   age,
-  instagram,
 }: {
   name: string;
   avatarUrl: string | null;
   /** A Public member's face (MESITA-4854). */
   sex?: string | null;
   age?: number | null;
-  instagram: ReactNode;
 }) {
   const still = "hover:bg-card";
   return (
@@ -318,46 +285,7 @@ export function PersonModules({
           <User className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{name}</span>
         </span>
-        <span className="min-w-0">{instagram}</span>
       </span>
     </div>
-  );
-}
-
-/** The person card's Instagram pill: a handle (a link when it opens
- *  Instagram) or "No Instagram" (MESITA-4695). */
-export function PersonInstagramPill({
-  label,
-  verified = false,
-  href,
-  onOpen,
-}: {
-  label: string;
-  /** Mesita verified this member owns the account (MESITA-4858). */
-  verified?: boolean;
-  href?: string | null;
-  /** Counts the tap (social_open_instagram). */
-  onOpen?: () => void;
-}) {
-  const body = (
-    <>
-      <InstagramBadge connected={label.startsWith("@")} />
-      <span className="truncate">{label}</span>
-      {verified && (
-        <span className="flex shrink-0" title="Mesita verified ownership of this Instagram account">
-          <BadgeCheck className="h-4 w-4" aria-hidden />
-          <span className="sr-only">Mesita verified ownership of this Instagram account</span>
-        </span>
-      )}
-    </>
-  );
-  return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" onClick={onOpen} className={IDENTITY_PILL_CLASS} data-identity-instagram>
-      {body}
-    </a>
-  ) : (
-    <span className={cn(IDENTITY_PILL_CLASS, "hover:bg-card")} data-identity-instagram>
-      {body}
-    </span>
   );
 }

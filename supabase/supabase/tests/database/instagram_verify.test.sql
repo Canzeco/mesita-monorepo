@@ -26,7 +26,7 @@ create function pg_temp.code(p_code text, p_vip boolean, p_age interval default 
 select is(public.consumer_instagram_set_handle('00000000-0000-4000-8000-0000000a4858', 'ana.4858'), false, 'a new handle starts hidden');
 select ok((pg_temp.ana()).instagram_proved_at is null, 'and unverified');
 select is(public.consumer_instagram_set_handle('00000000-0000-4000-8000-0000000a4858', 'ana.4858', true), true, 'it can be shared unverified');
-select is(public.consumer_social_level(pg_temp.ana()), 'instagram', 'a shared unverified handle shows');
+select is(public.consumer_social_level(pg_temp.ana()), 'public', 'and never shows to other guests (MESITA-4863)');
 
 select is(public.consumer_instagram_prove('MESITA-NOCODE', 'ana.4858'), 'unknown', 'an unknown code proves nothing');
 select pg_temp.code('MESITA-AAAAA2', true, '16 minutes');

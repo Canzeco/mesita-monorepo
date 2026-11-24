@@ -48,15 +48,15 @@ export default function PrivacyPage() {
           age of 14.
         </p>
         <p>
-          A profile photo and an Instagram handle are optional. The handle shows
-          on your profile; if you never connect one, nothing else changes.
+          A profile photo and an Instagram handle are optional. Other guests
+          never see your Instagram; we use it only to check whether you qualify
+          for VIP.
         </p>
         <p>
-          When you connect Instagram by sending Mesita&apos;s Instagram
-          account a one-time code, Instagram tells us your
-          username, your follower count and your profile photo, and nothing
-          else. We use the photo as your Mesita picture unless you upload your
-          own or switch that off. Mesita never messages anyone first.
+          When you connect Instagram by sending Mesita&apos;s Instagram account a
+          one-time code, Instagram tells us your username and, if you allow it,
+          your follower count. We don&apos;t take your photo or your follower
+          list. Mesita never messages anyone first.
         </p>
       </LegalSection>
 

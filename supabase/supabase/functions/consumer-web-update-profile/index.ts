@@ -100,7 +100,7 @@ serveJson("consumer-web-update-profile", async (req) => {
   // and a caller may send only one of them (MESITA-1806).
   const existing = await admin
     .from("consumers")
-    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private, instagram_handle, instagram_verified_at, instagram_handle_shown")
+    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
@@ -162,14 +162,6 @@ serveJson("consumer-web-update-profile", async (req) => {
     patch,
     select: CONSUMER_PROFILE_SELECT,
   });
-  // MESITA-4858: another account verified this handle; a typed one never shows.
-  if (!update.ok && update.error.includes("handle_proved_elsewhere")) {
-    return json({
-      ok: false,
-      code: "handle_taken",
-      error: "Another Mesita account verified this Instagram. Verify it to show it.",
-    }, 409);
-  }
   if (!update.ok) {
     return json({ ok: false, error: `consumer_update: ${update.error}` }, 500);
   }

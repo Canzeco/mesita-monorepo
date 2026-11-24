@@ -3,10 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { apiSetInstagram, apiUpdateConsumerProfile } from "@/lib/api/profile";
-import { InstagramHandleField } from "@/components/consumer/me/InstagramHandleField";
-import { Switch } from "@/components/consumer/me/settings-rows";
-import { normalizeInstagramHandle } from "@/lib/instagram-handle";
+import { apiUpdateConsumerProfile } from "@/lib/api/profile";
 import { cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import {
   birthYearOldEnough,
@@ -45,11 +42,8 @@ import {
 // returning half-finished profile prefills what is already stored; one
 // Continue writes whatever is still missing (usually all three at once).
 //
-// INSTAGRAM, ITS OWN SECTION (Pato, 2026-11-24, MESITA-4858: "put instagram as
-// an extra page in the onboarding, not page but section"): after the profile
-// saves, the same screen asks for an optional username, with Skip and a "Show
-// my Instagram on my profile" switch, off by default. The handle is saved
-// Unverified and nothing is looked up; verifying is later, in Me › Instagram.
+// NO INSTAGRAM (Pato, 2026-11-24, MESITA-4863): it only unlocks VIP, from a
+// place's locked VIP offer.
 //
 // PRESERVED FROM EARLIER VERSIONS, all still load-bearing: the FormData-over-
 // state read of the name (autofill populates the input without firing
@@ -100,11 +94,7 @@ export function OnboardForm({
   const [sex, setSex] = useState<ConsumerSex | "">(() =>
     isConsumerSex(initial?.sex) ? initial.sex : "",
   );
-  const [instagram, setInstagram] = useState("");
   const [loading, setLoading] = useState(false);
-  const [show, setShow] = useState(false);
-  // The profile is saved: the Instagram section shows.
-  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const yearField = ONBOARD_FIELDS.find((f) => f.key === "birth_year");
@@ -172,91 +162,10 @@ export function OnboardForm({
         setLoading(false);
         return;
       }
-      setLoading(false);
-      setSaved(true);
+      router.push(safeNextPath(next) ?? CONSUMER_ROUTES.home);
+      router.refresh();
     })();
   };
-
-  function finish() {
-    router.push(safeNextPath(next) ?? CONSUMER_ROUTES.home);
-    router.refresh();
-  }
-
-  const handle = normalizeInstagramHandle(instagram);
-  // Surely an adult by the year alone, the server's own line (social-level):
-  // a younger guest's profile is always private, so there is no choice.
-  const adult = birthYear !== null && new Date().getUTCFullYear() - birthYear >= 19;
-
-  function saveInstagram(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!handle || loading) return;
-    setError(null);
-    setLoading(true);
-    apiSetInstagram(getSupabase(), handle, adult && show)
-      .then(finish)
-      .catch((err) => {
-        setError(`${errMsg(err, "Couldn't save your Instagram.")} You can skip and add it later in Me.`);
-        setLoading(false);
-      });
-  }
-
-  if (saved) {
-    return (
-      <form onSubmit={saveInstagram} className="flex flex-1 flex-col" noValidate data-onboard-instagram>
-        <h1 className="text-3xl leading-tight font-semibold tracking-tight">Add your Instagram</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Optional. It&apos;s saved as Unverified; you can verify it later in Me.
-        </p>
-        <div className="mt-8 flex flex-col gap-4">
-          <InstagramHandleField
-            id="onboard-instagram"
-            value={instagram}
-            onChange={(v) => {
-              setInstagram(v);
-              setError(null);
-            }}
-          />
-          {adult ? (
-            <button
-              type="button"
-              role="switch"
-              aria-checked={show}
-              onClick={() => setShow(!show)}
-              className="border-border bg-card flex w-full items-center gap-3 rounded-xl border p-4 text-left"
-              data-onboard-instagram-show={show ? "on" : "off"}
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">Show my Instagram on my profile</span>
-                <span className="text-muted-foreground type-label block">
-                  Guests see your photo and a link to your Instagram.
-                </span>
-              </span>
-              <Switch on={show} />
-            </button>
-          ) : (
-            <p className="text-muted-foreground type-label">
-              Profiles of guests under 18 are always private, so your Instagram won&apos;t show.
-            </p>
-          )}
-        </div>
-        {error && <p className={cn(ERROR_BOX_CLASS, "mt-5")}>{error}</p>}
-        <div className="mt-auto flex flex-col gap-2 pt-8">
-          <button type="submit" disabled={loading || !handle} className={PRIMARY_BUTTON_CLASS}>
-            {loading ? <Spinner size="sm" className="border-white/40 border-t-white" /> : "Continue"}
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={finish}
-            className="text-muted-foreground hover:text-foreground min-h-11 text-sm font-semibold transition disabled:opacity-60"
-            data-onboard-instagram-skip
-          >
-            Skip
-          </button>
-        </div>
-      </form>
-    );
-  }
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col">

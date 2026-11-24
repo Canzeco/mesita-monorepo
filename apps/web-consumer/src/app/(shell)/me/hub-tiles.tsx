@@ -13,7 +13,6 @@ import {
   Share2,
   type LucideIcon,
 } from "lucide-react";
-import { Instagram } from "@/components/shared/instagram-icon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, type DestShape } from "./profile-sections";
 
@@ -153,12 +152,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Name and photo",
     href: CONSUMER_ROUTES.mePages.profile,
   },
-  {
-    Icon: Instagram,
-    title: "Instagram",
-    summary: "Connect your account",
-    href: CONSUMER_ROUTES.mePages.instagram,
-  },
+  // NO INSTAGRAM (Pato, 2026-11-24, MESITA-4863): it only unlocks VIP; its
+  // doors are a place's locked VIP offer and Class.
   // VIP IS THE THIRD BOX (Pato, 2026-11-23, MESITA-4774: "vip box must be
   // the third box … not 100% wide but 50%"): a cell like the others, opening
   // Me › VIP (status, or the invitation code). A crown, not Plan's gem.

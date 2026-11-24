@@ -7,11 +7,10 @@
 // Body:
 //   { action: "channel" } → { ok, channel: "dm", account, link } | { ok, channel: "off" }
 //     Whether verifying works: the Meta secrets are set (readInstagramDmConfig).
-//   { action: "set", handle, show? } → { ok, handle, shown }
+//   { action: "set", handle } → { ok, handle }
 //     Saves the handle (a username, @username or profile URL) unverified. A
-//     changed handle loses its badge, VIP check and code (DB trigger). `show`
-//     shares it; a guest under 18 or with no birth year, a guest who chose
-//     Private, or a handle another account verified, is saved hidden.
+//     changed handle loses its badge, VIP check and code (DB trigger). It is
+//     never shown to another guest (MESITA-4863): it only unlocks VIP.
 //   { action: "disconnect" } → { ok }  removes it, its link and badge.
 //   { action: "start_dm", vipCheck } → { ok, code, handle, account, link, issuedAt, expiresAt }
 //     A fresh 15-minute, single-use code tied to this guest and this handle.
@@ -25,10 +24,9 @@ import { json, jsonError, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { CLAIM_CODE_TTL_MS, claimIsLive, makeClaimCode, normalizeHandle } from "../_shared/instagram-claim.ts";
 import { dmLink, readInstagramDmConfig } from "../_shared/instagram-dm.ts";
-import { disconnectInstagram, readInstagramStatus, readSocialStanding } from "../_shared/consumer-doc.ts";
-import { socialLock } from "../_shared/social-level.ts";
+import { disconnectInstagram, readInstagramStatus } from "../_shared/consumer-doc.ts";
 
-type Body = { action?: string; handle?: unknown; show?: unknown; vipCheck?: unknown };
+type Body = { action?: string; handle?: unknown; vipCheck?: unknown };
 
 serveJson("consumer-web-claim-instagram", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -53,22 +51,15 @@ serveJson("consumer-web-claim-instagram", async (req) => {
     if (!handle) {
       return json({ ok: false, error: "That isn’t an Instagram username.", code: "invalid_username" }, 400);
     }
-    let show: boolean | null = typeof body.show === "boolean" ? body.show : null;
-    if (show) {
-      const standing = await readSocialStanding(admin, consumerId);
-      if (!standing.ok) return jsonError(standing.error, 500);
-      if (!standing.row || socialLock(standing.row.birth_year) || standing.row.social_private) show = false;
-    }
-    const { data, error } = await admin.rpc("consumer_instagram_set_handle", {
+    const { error } = await admin.rpc("consumer_instagram_set_handle", {
       p_consumer_id: consumerId,
       p_handle: handle,
-      p_show: show,
     });
     if (error) {
       console.error("instagram_set_failed", error.message);
       return jsonError("Couldn’t save your Instagram.", 500);
     }
-    return json({ ok: true, handle, shown: data === true });
+    return json({ ok: true, handle });
   }
 
   if (body.action === "disconnect") {

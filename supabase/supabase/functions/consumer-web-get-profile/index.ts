@@ -13,7 +13,6 @@ import { json, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { isCanonicalConsumerCode, writeConsumer } from "../_shared/consumer-doc.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
-import { instagramBadge } from "../_shared/instagram-badge.ts";
 import { vipReason } from "../_shared/vip-codes.ts";
 import {
   accountDeletedResponse,
@@ -125,7 +124,6 @@ serveJson("consumer-web-get-profile", async (req) => {
       // (MESITA-4849); null for a Regular.
       vip_reason: vipReason(rest as { guest_class?: string | null; vip_invited_at?: string | null }),
       emulator_available: !livemode,
-      instagram_badge: instagramBadge(rest as Parameters<typeof instagramBadge>[0]),
     },
   });
 });

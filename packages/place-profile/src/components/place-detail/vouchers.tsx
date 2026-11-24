@@ -752,9 +752,11 @@ export function youLine(cashback: PlaceCashback | null | undefined): CashbackLin
 function CashbackPanel({
   cashback,
   onBecomeVip,
+  vipNote,
 }: {
   cashback: PlaceCashback;
   onBecomeVip?: () => void;
+  vipNote?: string | null;
 }) {
   const rows = cashbackRows(cashback);
   const you = youLine(cashback);
@@ -794,17 +796,24 @@ function CashbackPanel({
                   You
                 </span>
               ) : null}
-              {/* HOW TO BECOME VIP (MESITA-4766): a quiet link under the VIP
-                  line, only where the host knows the guest is not VIP. */}
+              {/* CONNECT INSTAGRAM TO UNLOCK (MESITA-4863): under the VIP line,
+                  only where the host knows the guest is not VIP. */}
               {r.line === "returning_vip" && onBecomeVip ? (
-                <button
-                  type="button"
-                  onClick={onBecomeVip}
-                  className="text-muted-foreground hover:text-foreground -mt-1 flex min-h-11 basis-full items-center pl-[4.625rem] text-left text-sm font-semibold underline underline-offset-2"
-                  data-cashback-become-vip
-                >
-                  How to become VIP
-                </button>
+                <span className="-mt-1 flex basis-full flex-col items-start pl-[4.625rem]">
+                  {vipNote ? (
+                    <span className="text-muted-foreground text-sm" data-cashback-vip-note>
+                      {vipNote}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={onBecomeVip}
+                    className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-left text-sm font-semibold underline underline-offset-2"
+                    data-cashback-become-vip
+                  >
+                    Connect Instagram to unlock
+                  </button>
+                </span>
               ) : null}
             </li>
           );
@@ -1390,11 +1399,13 @@ function CheckoutSection({
   loading,
   onPay,
   onBecomeVip,
+  vipNote,
 }: {
   cashback: PlaceCashback | null;
   loading: boolean;
   onPay: (() => void) | undefined;
   onBecomeVip?: () => void;
+  vipNote?: string | null;
 }) {
   const rows = cashback ? cashbackRows(cashback) : [];
   return (
@@ -1402,7 +1413,7 @@ function CheckoutSection({
       {loading ? (
         <BoneRows n={2} />
       ) : cashback && rows.length > 0 ? (
-        <CashbackPanel cashback={cashback} onBecomeVip={onBecomeVip} />
+        <CashbackPanel cashback={cashback} onBecomeVip={onBecomeVip} vipNote={vipNote} />
       ) : (
         // No cashback here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
@@ -1582,6 +1593,7 @@ export function VouchersPane({
             loading={loading}
             onPay={actions?.onPay}
             onBecomeVip={actions?.guest?.guestClass === "vip" ? undefined : actions?.onBecomeVip}
+            vipNote={actions?.guest?.vipNote}
           />
         )}
       </div>

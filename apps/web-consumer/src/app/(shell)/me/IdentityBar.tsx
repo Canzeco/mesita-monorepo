@@ -62,16 +62,9 @@ import {
 export function IdentityBar({
   profile,
   loading,
-  instagramLabel,
-  instagramConnected,
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "@handle (~25K followers)", "Connect Instagram", … (MESITA-2606,
-   *  MESITA-2696). */
-  instagramLabel: string;
-  /** False draws the plain glyph (MESITA-2696). */
-  instagramConnected: boolean;
 }) {
   // The first name only (Pato, 2026-11-22, MESITA-4646: "display name, not
   // last name"); the full name when no first name is stored.
@@ -105,12 +98,6 @@ export function IdentityBar({
           <IdentityModules
             name={name}
             avatarUrl={avatarUrl}
-            instagram={{
-              label: instagramLabel,
-              connected: instagramConnected,
-              href: CONSUMER_ROUTES.mePages.instagram,
-              // No followers badge (MESITA-4774): VIP Class replaces it.
-            }}
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}

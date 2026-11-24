@@ -41,7 +41,7 @@ export const IDENTITY_BAR_BODY_CLASS =
  *  sizes"). */
 export function IdentityCardSkeleton() {
   // The header (MESITA-4774): the 72px photo in its ring, then the 40px
-  // pills: Name | Class in halves, then Instagram full width.
+  // pills: Name | Class in halves.
   return (
     <div aria-hidden className="flex w-full min-w-0 flex-col items-center gap-3">
       <div className={IDENTITY_RING_CLASS}>
@@ -52,7 +52,6 @@ export function IdentityCardSkeleton() {
           <Skeleton className="h-10 rounded-full" />
           <Skeleton className="h-10 rounded-full" />
         </span>
-        <Skeleton className="h-10 rounded-full" />
       </span>
     </div>
   );

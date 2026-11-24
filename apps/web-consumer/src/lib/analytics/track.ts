@@ -20,7 +20,6 @@ export type AnalyticsEvent =
   | "home_card_open"
   | "home_card_save"
   // MESITA-2590 — Social's person card "Open Instagram", to measure leakage.
-  | "social_open_instagram"
   // MESITA-4375 — the offer funnel's baseline before Apple Pay / Google Pay:
   // paid ÷ opened, split by saved card; first-time is derived from
   // wallet_purchases at report time.
