@@ -52,7 +52,7 @@
 //
 // WHAT A ROW SAYS OF A PERSON IS THEIR PRIVACY LEVEL (MESITA-4850, over the
 // first name and photo on every row of MESITA-2612/2608/4690): a Public member
-// is their sex's colour with their age in it and "Sofia, 25" (MESITA-4854); a member
+// is their sex's colour with their age in it and "Sofia" (MESITA-4857); a member
 // sharing their Instagram is their photo, first name and @handle, masked for
 // a viewer who does not share theirs. Private members and minors never come.
 //
