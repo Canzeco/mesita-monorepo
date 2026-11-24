@@ -17,7 +17,7 @@ import { useOpenBill } from "./use-open-bill";
 import type { GuestBill } from "@/lib/api/pay-bill";
 import { PayHeader } from "./PayHeader";
 import { PayFrameLoading } from "./PayFrameLoading";
-import { bestVoucherBonus, PlaceList } from "./PayPick";
+import { PlaceList } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { PAY_TAB_FILL, PAY_TABS, PAY_TILE, type PayTab, payTabPath, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
@@ -63,7 +63,6 @@ export function PayPage({
   const sorted =
     places &&
     [...places].sort((x, y) => (x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m));
-  const bestBonus = bestVoucherBonus(places ?? []);
   const [walletReady, setWalletReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
   const allReady = walletReady && (places !== null || placesFailed) && bill !== undefined;
@@ -100,11 +99,12 @@ export function PayPage({
             tab === "pay" && "rounded-tr-none",
             PAY_TAB_FILL[tab],
           )} data-pay-menu-box={tab}>
-          {/* WHY PREPAY, OVER THE SEARCH BOX (Pato, 2026-11-24, MESITA-4839): on
-              the green itself; the number is the best bonus listed. */}
+          {/* WHY PREPAY, A BLACK BOX OVER THE SEARCH BOX (Pato, 2026-11-24,
+              MESITA-4840: "put it in a black box with white letter";
+              "don't mention numbers"). */}
           {tab === "prepay" ? (
-            <p className="shrink-0 px-2 pt-1 pb-2 text-center text-sm font-semibold text-balance" data-prepay-line>
-              {bestBonus > 0 ? `Pay ahead, get up to ${bestBonus}% more to spend` : "Pay ahead, get more to spend"}
+            <p className="bg-foreground text-background mb-1.5 shrink-0 rounded-xl px-3 py-2.5 text-center text-sm font-semibold text-balance" data-prepay-line>
+              Prepay and get more for your money
             </p>
           ) : null}
           <div

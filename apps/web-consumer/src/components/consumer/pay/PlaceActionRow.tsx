@@ -45,18 +45,18 @@ export function PlaceActionRow({
 }) {
   return (
     <div
-      className={cn("bg-foreground relative isolate flex min-h-40 flex-col overflow-hidden rounded-2xl text-white", disabled && "opacity-60 grayscale")}
+      className={cn("bg-foreground relative isolate flex min-h-32 flex-col overflow-hidden rounded-2xl text-white", disabled && "opacity-60 grayscale")}
       data-wallet-row
       data-place-id={placeId}
     >
       {photo ? <SizedImg src={photo} size="card" alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" /> : null}
-      <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/55" aria-hidden />
+      <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/75" aria-hidden />
       <button
         type="button"
         disabled={disabled}
         aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}, ${amount} in credits`}
         onClick={() => onOpen?.()}
-        className="flex flex-1 flex-col items-start justify-between gap-6 p-4 text-left disabled:cursor-default"
+        className="flex flex-1 flex-col items-start justify-between gap-3 p-3.5 text-left disabled:cursor-default"
         data-loyalty-card
       >
         <span className={cn("line-clamp-2 max-w-full text-base leading-tight font-semibold", giftHref && "pr-28")}>{name}</span>
