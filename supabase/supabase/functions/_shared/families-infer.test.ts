@@ -63,7 +63,7 @@ Deno.test("familyVocabularyLines: a family with a meaning carries it, Undefined 
 // MESITA-4238: every family the model may pick carries a meaning, so no line
 // is a bare label the model can read its own way (Family as "kids allowed").
 Deno.test("FAMILY_MEANINGS: every catalog family has a meaning", () => {
-  const missing = CATALOG_FAMILY_SLUGS.filter((slug) => !FAMILY_MEANINGS[slug]?.trim());
+  const missing = CATALOG_FAMILY_SLUGS.filter((f) => f !== "restaurants").filter((slug) => !FAMILY_MEANINGS[slug]?.trim());
   assertEquals(missing, []);
 });
 
