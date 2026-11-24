@@ -3,7 +3,7 @@
 -- nothing owed still takes both taps, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(92);
+select plan(91);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -167,17 +167,12 @@ select ok(not has_function_privilege('anon', 'public.pay_guest_draft_set(text, i
 insert into public.consumers (id) select id from auth.users where id = '00000000-0000-4000-8000-0000000f4823';
 insert into t select 'qw', public.pay_guest_code_set('00000000-0000-4000-8000-0000000f4823', repeat('6', 64));
 insert into t select 'ow', public.pay_bill_open(repeat('6', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
-insert into t select 'sw', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='ow'), '00000000-0000-4000-8000-000000024823', 0, 10000, 1500, repeat('d', 64), 15, now(), '00000000-0000-4000-8000-0000000f4871');
+insert into t select 'sw', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='ow'), '00000000-0000-4000-8000-000000024823', 0, 10000, 1500, repeat('d', 64), 15, now(), '00000000-0000-4000-8000-0000000f4871', 'Luis');
 insert into t select 'aw', public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='ow'), '00000000-0000-4000-8000-0000000f4823', 1, repeat('6', 63) || '1');
 select is((select v->>'outcome' from t where k='aw'), 'accepted', 'the guest accepts Luis''s bill');
 insert into t select 'cw', public.pay_guest_claim_confirm((select (v->>'attempt_id')::uuid from t where k='aw'), '00000000-0000-4000-8000-000000024823', repeat('d', 64), now());
 insert into t select 'zw', public.pay_guest_close((select (v->>'attempt_id')::uuid from t where k='aw'), now());
 select is((select waiter_name from public.pay_tabs where id = (select tab_id from public.guest_pay_attempts where id = (select (v->>'attempt_id')::uuid from t where k='aw'))), 'Luis', 'the paid visit keeps the waiter');
-select is((select tips_24h_cents::int from public.place_waiter_list('00000000-0000-4000-8000-000000024823', false) where name = 'Luis'), 1500, 'the tip is Luis''s');
-select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014823', false)), 1, 'a place lists only its own waiters');
-update public.place_waiters set removed_at = now(), lookup_hash = null, code = null where name in ('Ana', 'Luis') and place_id::text like '%4823';
-select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014823', false)), 0, 'a removed waiter leaves the list');
-select is((select removed from public.place_waiter_list('00000000-0000-4000-8000-000000024823', false) where name = 'Luis'), true, 'unless a tip is still theirs');
 select ok(not has_table_privilege('authenticated', 'public.place_waiters', 'select') and not has_function_privilege('authenticated', 'public.place_waiter_list(uuid, boolean, timestamptz)', 'execute'), 'clients never read waiters');
 
 -- ── A place starts with one Staff code (MESITA-4904) ──
@@ -189,9 +184,12 @@ values ('00000000-0000-4000-8000-000000034823', '00000000-0000-4000-8000-0000000
 select is((select count(*)::int from public.place_waiters where place_id = '00000000-0000-4000-8000-000000034823' and name = 'Staff' and code ~ '^[0-9]{6}$'), 1, 'an owner starts with one Staff code');
 update public.place_managers set role = 'owner' where place_id = '00000000-0000-4000-8000-000000034823';
 select is((select count(*)::int from public.place_waiters where place_id = '00000000-0000-4000-8000-000000034823'), 1, 'and only one');
-update public.place_waiters set removed_at = now(), lookup_hash = null, code = null where place_id = '00000000-0000-4000-8000-000000034823';
-select public.place_staff_code_start('00000000-0000-4000-8000-000000034823');
-select is((select count(*)::int from public.place_waiters where place_id = '00000000-0000-4000-8000-000000034823' and removed_at is null), 0, 'a removed Staff code stays removed');
+select throws_ok($$insert into public.place_waiters (place_id, name, code, lookup_hash) values ('00000000-0000-4000-8000-000000034823', 'Second', '111222', repeat('9', 64))$$, '23505', null, 'a place has one code');
+select public.pay_guest_code_set('00000000-0000-4000-8000-0000000f4823', repeat('5', 64), p_place_id => '00000000-0000-4000-8000-000000034823');
+select is(public.waiter_name_required(repeat('5', 64), null), false, 'no name is asked until the owner turns it on');
+update public.place_waiters set name_required = true where place_id = '00000000-0000-4000-8000-000000034823';
+select is(public.waiter_name_required(repeat('5', 64), null), true, 'and then it is');
+select is(public.waiter_name_required(repeat('4', 64), null), false, 'an unknown QR answers nothing');
 select ok(not has_function_privilege('authenticated', 'public.place_staff_code_start(uuid)', 'execute'), 'clients never make one');
 select is((select count(*)::int from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000034823'), 0, 'it turns no payment on');
 

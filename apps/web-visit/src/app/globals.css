@@ -1007,6 +1007,20 @@ button.wp-back {
   color: #ffffff;
 }
 
+.wp-input {
+  width: 100%;
+  max-width: 352px;
+  height: 52px;
+  margin-top: 16px;
+  padding: 0 16px;
+  border: 1px solid #d4d4d4;
+  border-radius: 12px;
+  background: #fff;
+  color: #171717;
+  font-size: 18px;
+  text-align: center;
+}
+
 .wp-code {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 52px));

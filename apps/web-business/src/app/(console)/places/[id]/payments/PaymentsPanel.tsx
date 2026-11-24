@@ -16,7 +16,7 @@
 //                                            Welcome Regular · Returning Regular ·
 //                                            Welcome VIP · Returning VIP (three
 //                                            picks each, Off included)
-//   Waiter Codes       #waiter-codes       · one 6-digit code per waiter; optional at Discount (MESITA-4890)
+//   Waiter Codes       #waiter-codes       · one 6-digit code; optional at Discount (MESITA-4890)
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -808,14 +808,14 @@ export function PaymentsPanel({
         </Card>
       </div>
 
-      {/* WAITER CODES (MESITA-4871). Configuration only: whose tip it was is on
-          the visit (Pato, MESITA-4890: "just to configure, not to monitor"). */}
+      {/* WAITER CODE, one per place (MESITA-4904). Configuration only: a typed
+          name is on the visit (Pato, MESITA-4890: "just to configure, not to monitor"). */}
       <div id="waiter-codes" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(HashIcon, "Visit Checkout - Waiter Codes", {
-            line: line("Staff scan the guest's QR and type a code to send the bill. One code is enough; add waiters to know whose tip it is."),
+          {head(HashIcon, "Visit Checkout - Waiter Code", {
+            line: line("Staff scan the guest's QR and type this code to send the bill."),
           })}
-          <WaiterCodes placeId={placeId} initial={initial.waiters} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
+          <WaiterCodes placeId={placeId} initialCode={initial.staff_code} initialAskName={initial.name_required} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
 

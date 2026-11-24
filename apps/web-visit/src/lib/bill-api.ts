@@ -28,11 +28,12 @@ export type Bill = {
 };
 export type BillRead = { bill: Bill; place: { id: string; name: string | null }; guest_photo: string | null; guest_name?: string | null; guest_age?: number | null; guest_sex?: "female" | "male" | null };
 
-export type Refused = { refused: true; code: string; error: string };
+export type Refused = { refused: true; code: string; error: string; name_required?: boolean };
 const refused = (data: Record<string, unknown>, fallback: string): Refused => ({
   refused: true,
   code: typeof data.code === "string" ? data.code : "refused",
   error: typeof data.error === "string" ? data.error : fallback,
+  name_required: data.name_required === true || data.code === "name_needed",
 });
 
 async function call<T>(name: string, body: Record<string, unknown>, fallback: string): Promise<T | Refused | "failed"> {
@@ -42,15 +43,16 @@ async function call<T>(name: string, body: Record<string, unknown>, fallback: st
   return refused(data, fallback);
 }
 
-/** `waiter`: the name the code answered, for the receipt; never sent. */
+/** `waiter`: the name typed with the code, for the receipt; never sent. */
 export type Staff = { place_id: string; staff_token: string; waiter?: string | null };
 const keyed = (s: Staff) => ({ place_id: s.place_id, staff_token: s.staff_token });
 
-/** The waiter's 6-digit code; it names the waiter in the QR's place, and is tried
+/** The place's 6-digit code, with the waiter's name where the owner asks for
+ *  one (MESITA-4904: refused `name_needed`, or `name_required` on code_needed). Tried
  *  only with the guest's QR or a bill (MESITA-4833). Null: a Discount place that
  *  turned codes off (MESITA-4890); refused `code_needed` anywhere else. */
-export const signIn = (code: string | null, by: { token: string } | { bill_id: string }) =>
-  call<{ place: { id: string; name: string | null }; waiter?: { name: string } | null; staff_token: string }>("visit-web-sign-in", { ...(code === null ? {} : { code }), ...by }, "Couldn't check the code. Try again.");
+export const signIn = (code: string | null, by: { token: string } | { bill_id: string }, name: string | null = null) =>
+  call<{ place: { id: string; name: string | null }; waiter?: { name: string } | null; staff_token: string }>("visit-web-sign-in", { ...(code === null ? {} : { code }), ...(name ? { name } : {}), ...by }, "Couldn't check the code. Try again.");
 
 // The staff key of one bill, in this tab only: the code is typed once per
 // bill, and nothing about the phone is remembered (MESITA-4827).
