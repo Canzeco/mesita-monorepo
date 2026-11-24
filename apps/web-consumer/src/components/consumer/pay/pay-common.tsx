@@ -113,7 +113,8 @@ export function readGuestQr(tabId: string): string | null {
   }
 }
 
-/** The place's round profile picture, or its first letter. */
+/** The place's profile picture, or its first letter: always a circle (Pato,
+ *  2026-11-24, MESITA-4832: "profile picture must be circular").  */
 export function PlacePhoto({ place, className }: { place: Pick<PayPlace, "photo" | "name">; className: string }) {
   return (
     <span className={cn("bg-muted shrink-0 overflow-hidden rounded-full ring-1 ring-black/5", className)} aria-hidden>
