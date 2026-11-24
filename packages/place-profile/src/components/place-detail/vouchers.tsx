@@ -715,11 +715,12 @@ export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
   const mech = visitMechanismOf({ cashback });
   return (
     [
-      // FOUR TIERS IN PATO'S WORDS AND ORDER (2026-11-23, MESITA-4789).
-      { line: "welcome", title: "Welcome Regular", who: "Your first bill here", bps: cashback.welcome_bps, mech },
-      { line: "returning", title: "Returning Regular", who: "Every later bill", bps: cashback.returning_bps, mech },
-      { line: "welcome_vip", title: "Welcome VIP", who: "First bill, for VIP guests", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
-      { line: "returning_vip", title: "Returning VIP", who: "Every later bill, for VIP guests", bps: cashback.returning_vip_bps ?? 0, mech },
+      // FOUR TIERS IN PATO'S ORDER (2026-11-23, MESITA-4789), in the guest's
+      // words (MESITA-4806); Business keeps Welcome Regular … Returning VIP.
+      { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps, mech },
+      { line: "returning", title: "Returning Visit", who: "Every later bill", bps: cashback.returning_bps, mech },
+      { line: "welcome_vip", title: "Welcome Visit (VIP)", who: "First bill, for VIP guests", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
+      { line: "returning_vip", title: "Returning Visit (VIP)", who: "Every later bill, for VIP guests", bps: cashback.returning_vip_bps ?? 0, mech },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }

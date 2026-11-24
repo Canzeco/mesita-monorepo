@@ -221,10 +221,10 @@ export function GuestPayScreen({
   const discountCents = discountOf(billCents, discountBps);
   const toPayCents = billCents - discountCents;
   const discountLabel =
-    place?.visit_line === "returning_vip" ? "Returning VIP discount"
-    : place?.visit_line === "welcome_vip" ? "Welcome VIP discount"
-    : place?.visit_line === "returning" ? "Returning discount"
-    : "Welcome discount";
+    place?.visit_line === "returning_vip" ? "Returning Visit (VIP) discount"
+    : place?.visit_line === "welcome_vip" ? "Welcome Visit (VIP) discount"
+    : place?.visit_line === "returning" ? "Returning Visit discount"
+    : "Welcome Visit discount";
   const creditOn = useCredit && spendable > 0;
   const creditCents = creditOn ? Math.min(spendable, toPayCents) : 0;
   const leftCents = toPayCents - creditCents;

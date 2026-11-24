@@ -620,10 +620,10 @@ export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "paymen
 /** The lines by a cashback entry's `reason` (MESITA-4766), in Pato's four
  *  tier names since MESITA-4789. */
 export const BACK_LINE_LABEL: Record<string, string> = {
-  welcome: "Welcome Regular",
-  returning: "Returning Regular",
-  welcome_vip: "Welcome VIP",
-  returning_vip: "Returning VIP",
+  welcome: "Welcome Visit",
+  returning: "Returning Visit",
+  welcome_vip: "Welcome Visit (VIP)",
+  returning_vip: "Returning Visit (VIP)",
 };
 
 // ── Sending credit to a friend (MESITA-3292) ────────────────────────────────
