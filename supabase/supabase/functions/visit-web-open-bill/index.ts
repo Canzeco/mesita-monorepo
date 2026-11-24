@@ -1,13 +1,13 @@
 // Supabase Edge Function — visit-web-open-bill
 //
-// MESITA-4823 (waiter-led pay): the waiter scanned the guest's QR (or typed
-// the six digits under it), or starts over a bill that ended. Answers the bill
+// MESITA-4823 (waiter-led pay): the waiter scanned the guest's QR or
+// starts over a bill that ended. Answers the bill
 // session the waiter types into; the QR may rotate after that.
 //
-// Body: { place_id, staff_token, token | code (6 digits) | again_bill_id }
+// Body: { place_id, staff_token, token | again_bill_id }
 // Response: { ok: true, bill_id, outcome: opened | reused }
 //   400 bad_request · 403 staff_code_needed · 404 code_gone ·
-//   409 too_many | not_over | locked
+//   409 too_many | not_over
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
@@ -15,9 +15,8 @@ import { openRequest } from "../_shared/request.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { supabaseStaffStore } from "../_shared/staff.ts";
 import { callTabRpc } from "../_shared/tab.ts";
-import { billRefusal, billStaff, hashPayCode, hashShortCode, readOpenBy, shortCodeLocked } from "../_shared/pay-bill.ts";
+import { billRefusal, billStaff, hashPayCode, readOpenBy } from "../_shared/pay-bill.ts";
 
 serveJson("visit-web-open-bill", async (req) => {
   const ctx = openRequest(req);
@@ -38,11 +37,8 @@ serveJson("visit-web-open-bill", async (req) => {
     if (!place || place.state !== "active") {
       return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
     }
-    if (by.kind === "short" && await shortCodeLocked(admin, staff.placeId, staff.keyHash, Date.now())) {
-      return json({ ok: false, code: "locked", error: "Too many wrong codes. Wait a few minutes." }, 409);
-    }
     const r = await callTabRpc(admin, "pay_bill_open", {
-      p_code_hash: by.kind === "token" ? await hashPayCode(by.token) : by.kind === "short" ? await hashShortCode(env.serviceKey, by.code) : null,
+      p_code_hash: by.kind === "token" ? await hashPayCode(by.token) : null,
       p_again_bill_id: by.kind === "again" ? by.billId : null,
       p_place_id: staff.placeId,
       p_currency: String(place.currency ?? MONEY_CURRENCY).toLowerCase(),
@@ -51,7 +47,6 @@ serveJson("visit-web-open-bill", async (req) => {
     });
     console.log("[visit-web-open-bill]", JSON.stringify({ place_id: staff.placeId, by: by.kind, outcome: r.ok === true ? r.outcome : r.code }));
     if (r.ok !== true) {
-      if (by.kind === "short" && r.code === "code_gone") await supabaseStaffStore(admin).addTry(staff.placeId, "guest", staff.keyHash);
       const refusal = billRefusal(r);
       return json(refusal.body, refusal.status);
     }

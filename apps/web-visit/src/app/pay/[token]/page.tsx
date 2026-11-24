@@ -31,7 +31,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
       setBusy(false);
     };
-    const key = await signIn(code);
+    const key = await signIn(code, { token });
     if (key === "failed" || "refused" in key) return fail(key);
     const staff = { place_id: key.place.id, staff_token: key.staff_token };
     const opened = await openBill(staff, { token });

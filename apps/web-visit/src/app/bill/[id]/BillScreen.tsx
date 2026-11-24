@@ -131,7 +131,7 @@ export function BillScreen({ billId }: { billId: string }) {
     if (busy || code.length !== 6) return;
     setBusy("code");
     setError(null);
-    const r = await checkCode(code);
+    const r = await checkCode(code, { bill_id: billId });
     setBusy(null);
     if (r === "failed") return setError("Couldn't reach Mesita. Tap again.");
     if ("refused" in r) return setError(r.error);
