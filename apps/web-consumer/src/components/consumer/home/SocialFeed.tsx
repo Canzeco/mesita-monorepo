@@ -1414,13 +1414,16 @@ function SocialFeedBody() {
           events in and goes to the top; with none held it reads again.
           NEUTRAL, NOT BLUE (Pato, 2026-11-23, MESITA-4761: "that blue to
           reload is repulsive"): white with a hairline, muted words and a grey
-          pill; new events waiting turn the words ink and the pill black. */}
+          pill; new events waiting turn the words ink and the pill black.
+          DARK (Pato, 2026-11-23, MESITA-4786: "the reload bar must be kind
+          dark"): an ink bar, soft white words, a translucent white pill; new
+          events waiting turn the words white and the pill solid white. */}
       <div
-        className="bg-card border-border sticky top-0 z-10 flex h-11 items-center gap-3 border-b pr-2 pl-5"
+        className="bg-foreground sticky top-0 z-10 flex h-11 items-center gap-3 pr-2 pl-5"
         data-social-new-banner
       >
         <p
-          className={cn("min-w-0 flex-1 truncate text-sm font-semibold", pendingNew === 0 ? "text-muted-foreground" : "text-foreground")}
+          className={cn("min-w-0 flex-1 truncate text-sm font-semibold", pendingNew === 0 ? "text-background/70" : "text-background")}
           aria-live="polite"
         >
           {pendingNew === 0
@@ -1436,7 +1439,7 @@ function SocialFeedBody() {
           }}
           className={cn(
             "focus-visible:ring-ring flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold outline-none focus-visible:ring-2",
-            pendingNew === 0 ? "bg-muted text-foreground hover:bg-border" : "bg-foreground text-background",
+            pendingNew === 0 ? "bg-background/15 text-background hover:bg-background/25" : "bg-background text-foreground",
           )}
         >
           <RotateCw
