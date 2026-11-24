@@ -47,7 +47,6 @@ export function PlaceDetailBody({
   place,
   actions,
   creating,
-  social,
   footer,
 }: {
   place: PlaceDetail;
@@ -56,7 +55,6 @@ export function PlaceDetailBody({
    *  Creating fact leads the facts row, or a refusal says why. */
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
-  social?: React.ReactNode;
   /** The host's More card, last in this column on every tab (MESITA-4508).
    *  Overview's own last card is still Score, above it. */
   footer?: React.ReactNode;
@@ -72,7 +70,6 @@ export function PlaceDetailBody({
       <ProfileSummary
         place={place}
         actions={actions}
-        social={social}
         creating={create != null && create.error == null}
       />
       <div className="flex flex-col gap-3 px-4">

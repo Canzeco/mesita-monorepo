@@ -61,7 +61,6 @@ const OPEN = new Set([
   "consumer-web-get-gift-preview",
   "consumer-web-get-pay-place-name",
   "consumer-web-list-activity",
-  "consumer-web-list-place-likes",
   // Sign and onboarding run while the visitor is still anonymous.
   "consumer-web-signin-phone",
   "consumer-web-get-profile",

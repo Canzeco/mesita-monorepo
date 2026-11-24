@@ -26,7 +26,7 @@ export function PlaceDetailPageBody({
   const scored = usePlaceScore(measured);
   const router = useRouter();
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, ready, actions, sheets, social } =
+  const { place, ready, actions, sheets } =
     useMemberPlaceActions(scored);
   // Back where you came from, or Home on a cold open (lib/navigate.ts).
   const onBack = useCallback(
@@ -48,7 +48,6 @@ export function PlaceDetailPageBody({
         place={place}
         onBack={onBack}
         actions={{ ...actions, onMore: more.onMore }}
-        social={social}
         scrollRef={keep}
         hideMore={!more.onMore}
       />

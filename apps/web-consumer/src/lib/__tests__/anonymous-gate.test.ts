@@ -11,7 +11,7 @@ describe("anonymousGate", () => {
   });
 
   it("an anonymous visitor reads the public places and Social", () => {
-    for (const fn of ["consumer-web-get-place", "consumer-web-list-activity", "consumer-web-list-place-likes", "consumer-web-record-premier-ad"]) {
+    for (const fn of ["consumer-web-get-place", "consumer-web-list-activity", "consumer-web-record-premier-ad"]) {
       expect(anonymousGate("anonymous", fn, {}).kind).toBe("pass");
     }
   });

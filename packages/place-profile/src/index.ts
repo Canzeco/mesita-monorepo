@@ -15,8 +15,6 @@ export {
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";
 export { PlaceCreateFailedPanel } from "./components/place-detail/PlaceCreateFailedPanel";
-export { SocialLine } from "./components/place-detail/social-line";
-export type { SocialFace } from "./components/place-detail/social-line";
 export {
   PlaceTabBar,
   placeTabs,
