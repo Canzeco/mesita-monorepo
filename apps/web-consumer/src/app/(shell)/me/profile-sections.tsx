@@ -142,7 +142,7 @@ export function DestTile({
   href: string;
   /** Opens nothing yet: no link, a Soon pill beside the title. */
   soon?: boolean;
-  /** The box's state on its right edge (MESITA-3885). */
+  /** The box's state (MESITA-3885), its count on the icon (MESITA-4875). */
   state?: TileState;
 }) {
   if (soon) {
@@ -176,13 +176,17 @@ export function DestTile({
     >
       {/* Decorative. The title and summary already say everything, so the
           chip is hidden rather than described. */}
-      <span className={DEST_CHIP} aria-hidden data-dest-chip>
+      <span className={cn(DEST_CHIP, "relative")} aria-hidden data-dest-chip>
         <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
+        {/* ON THE ICON (Pato, 2026-11-24, MESITA-4875: "show the red bubble on
+            top of the icon … to save space for the word"). */}
+        {state?.count ? (
+          <span className="absolute -top-2 -right-2 flex">
+            <CountBubble count={state.count} tone={state.countTone} />
+          </span>
+        ) : null}
       </span>
       <TileText shape={shape} title={title} summary={summary} />
-      {state?.count ? (
-        <CountBubble count={state.count} tone={state.countTone} />
-      ) : null}
     </PushLink>
   );
 }

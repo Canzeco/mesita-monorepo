@@ -104,11 +104,13 @@ const STANDARD: Product[] = [
   // (voucher_1000), Big MX$5,000 +30% (voucher_5000). THE FULL NAME ON
   // EVERY ROW (Pato, 2026-11-23, MESITA-4737: "call them Small Voucher,
   // Medium Voucher, Big Voucher"): `short` reads the same as `name` now.
-  { key: "voucher_200", name: "Small Voucher", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Voucher", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium Voucher", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Voucher", brief: "As many as you like" },
+  // SMALL · MEDIUM · BIG BONUS FOR THE GUEST (Pato, 2026-11-24, MESITA-4875:
+  // "voucher is confusing"); Business keeps Voucher.
+  { key: "voucher_200", name: "Small Bonus", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium Bonus", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
   // MESITA-4764: the place picks each bonus (Small 10 · 20, Medium 20 · 40,
   // Big 40 · 60); this copy is the default, the server's catalog line wins.
-  { key: "voucher_5000", name: "Big Voucher", line: "Pay $5,000.00MX, get $7,000.00MX.", limit: "As many as you like.", bonus: "40% bonus", short: "Big Voucher", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big Bonus", line: "Pay $5,000.00MX, get $7,000.00MX.", limit: "As many as you like.", bonus: "40% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
@@ -697,7 +699,8 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
  *  same size"): cashback and vouchers alike. */
 // SMALLER ON A NARROW PHONE (Pato, 2026-11-23, MESITA-4788: "info gets lost,
 // make items smaller"): 64px, not 76px, so the name and its line keep room.
-const BADGE = "flex min-h-11 w-16 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums";
+// SQUARE (Pato, 2026-11-24, MESITA-4875: "must be squares").
+const BADGE = "flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl tabular-nums";
 
 export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; klass: "Regular Class" | "VIP Class"; who: string; bps: number; mech: VisitMechanism };
 
@@ -756,37 +759,7 @@ function CashbackPanel({ cashback }: { cashback: PlaceCashback }) {
   if (rows.length === 0) return null;
   return (
     <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Visit offers" data-promos="cashback">
-      <ul className="divide-border divide-y" data-cashback-lines>
-        {rows.map((r) => {
-          const mine = you === r.line;
-          const why = lockedWhy(r.line, cashback?.line);
-          return (
-            <li key={r.line} data-cashback={r.line} data-cashback-locked={why ? "" : undefined} className="flex min-h-16 items-center gap-2.5 px-3 py-2">
-              <span className={cn(BADGE, why ? "bg-muted text-muted-foreground" : visitTone(r.mech))} aria-hidden>
-                <span className="text-base leading-none font-bold tracking-tight">{r.bps / 100}%</span>
-                <span className="mt-1 type-meta leading-none font-bold tracking-wide uppercase">{visitWord(r.mech)}</span>
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex min-w-0 items-center gap-1">
-                  <span className={cn("truncate text-base font-semibold", why ? "text-muted-foreground" : "text-foreground")}>{r.title}</span>
-                </span>
-                {/* NAME OVER CLASS (Pato, 2026-11-24, MESITA-4872): "Welcome
-                    Visit / Regular Class". A lock when it is not this guest's;
-                    the Class says why, unless the first visit is already used. */}
-                <span className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm" data-cashback-class>
-                  {why ? <Lock className="text-foreground h-3.5 w-3.5 shrink-0" strokeWidth={2.5} role="img" aria-label={why} /> : null}
-                  <span className="truncate">{why === "Already used" ? `${r.klass} · Already used` : r.klass}</span>
-                </span>
-              </span>
-              {mine ? (
-                <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
-                  You
-                </span>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
+      <TierMatrix rows={rows} guest={you} line={cashback.line} big />
       {/* NO FOOTNOTE (Pato, MESITA-4702: "remove the explanations there,
           that's why we have the i"): the rules live in How it works. */}
     </section>
@@ -858,41 +831,71 @@ function HowItWorks({ title, lead, tab, menu, children }: { title: string; lead:
   );
 }
 
-/** The four tiers as one table (MESITA-4807): which visit across, which
- *  guest down; the guest's own cell in ink, a tier that gives nothing a dash. */
-function TierTable({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
-  const cell = (line: CashbackLineRow["line"]) => {
-    const row = rows.find((o) => o.line === line);
-    const mine = guest === line && row != null;
+/** The four tiers as one matrix (MESITA-4807; the Pay tab's own since
+ *  MESITA-4875, Pato: "maybe matrix is clearer"): which visit across, which
+ *  Class down. The guest's own cell is the offer's colour with "You"; one they
+ *  cannot get wears a lock and why; a tier that gives nothing is a dash. */
+function TierMatrix({
+  rows,
+  guest,
+  line,
+  big,
+}: {
+  rows: CashbackLineRow[];
+  guest: CashbackLineRow["line"] | null;
+  /** The server's line for this guest's next bill; null signed out. */
+  line: PlaceCashback["line"];
+  big?: boolean;
+}) {
+  const cell = (key: CashbackLineRow["line"]) => {
+    const row = rows.find((o) => o.line === key);
+    const mine = guest === key && row != null;
+    const why = row ? lockedWhy(key, line) : null;
     return (
       <td className="py-1 pl-2">
         <span
           className={cn(
-            "flex min-h-11 flex-col items-center justify-center rounded-xl text-base leading-tight font-semibold tabular-nums",
-            mine ? "bg-foreground text-background" : row ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
+            "flex flex-col items-center justify-center gap-0.5 rounded-xl leading-tight font-semibold tabular-nums",
+            big ? "min-h-20 text-2xl" : "min-h-12 text-base",
+            mine ? visitTone(row.mech) : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
           )}
-          data-how-tier={line}
+          data-how-tier={key}
+          data-cashback-mine={mine ? "" : undefined}
         >
           {row ? `${row.bps / 100}%` : "—"}
-          {mine ? <span className="text-xs">You</span> : null}
+          {mine ? (
+            <span className="text-xs">You</span>
+          ) : why ? (
+            <span className="flex items-center gap-1 text-xs">
+              <Lock className="h-3 w-3 shrink-0" strokeWidth={2.5} role="img" aria-label={why} />
+              {why === "Already used" ? "Used" : null}
+            </span>
+          ) : null}
         </span>
       </td>
     );
   };
+  const visits = [
+    { title: "Welcome Visit", who: "Your first bill here" },
+    { title: "Returning Visit", who: "Every bill after" },
+  ];
   return (
-    <Box title={`${visitWord(rows[0].mech)} you get`} data-how-offers="">
+    <div className={big ? "p-3" : undefined} data-cashback-lines>
       <table className="w-full table-fixed">
+        <colgroup>
+          <col className="w-[26%]" />
+          <col />
+          <col />
+        </colgroup>
         <thead>
           <tr className="text-foreground text-sm font-semibold">
-            <td />
-            <th scope="col" className="pb-1 pl-2 font-semibold">
-              Welcome Visit
-              <span className="text-muted-foreground block text-xs font-normal">Your first bill here</span>
-            </th>
-            <th scope="col" className="pb-1 pl-2 font-semibold">
-              Returning Visit
-              <span className="text-muted-foreground block text-xs font-normal">Every bill after</span>
-            </th>
+            <td className="text-muted-foreground align-bottom pb-1 text-left text-xs font-semibold">{visitWord(rows[0].mech)}</td>
+            {visits.map((v) => (
+              <th key={v.title} scope="col" className="pb-1 pl-2 font-semibold">
+                {v.title}
+                <span className="text-muted-foreground block text-xs font-normal">{v.who}</span>
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -908,7 +911,7 @@ function TierTable({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashb
           </tr>
         </tbody>
       </table>
-    </Box>
+    </div>
   );
 }
 
@@ -1022,7 +1025,11 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
       <Box title={`Example: a $${EXAMPLE_BILL} bill`}>
         <StepList steps={steps} />
       </Box>
-      {here ? <TierTable rows={rows} guest={guest} /> : null}
+      {here ? (
+        <Box title={`${visitWord(rows[0].mech)} you get`} data-how-offers="">
+          <TierMatrix rows={rows} guest={guest} line={guest} />
+        </Box>
+      ) : null}
       <GoodToKnow facts={facts} />
     </HowItWorks>
   );
@@ -1257,8 +1264,8 @@ function PrepaySection({
                       aria-hidden
                       data-offer-bonus
                     >
-                      <span className="text-base leading-none font-bold tracking-tight">{bonus}</span>
-                      <span className="mt-1 type-meta leading-none font-bold tracking-wide uppercase">Bonus</span>
+                      {/* Just "+10%": the name says Bonus (MESITA-4875). */}
+                      <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="flex min-w-0 items-center gap-1">
