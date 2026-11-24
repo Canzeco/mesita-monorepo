@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
+  isPlaceDeleted,
   isPlaceEnriched,
   isPlaceEnriching,
   isPlaceListed,
@@ -71,4 +72,9 @@ Deno.test("profile ready: only content_state ready is a usable profile", () => {
   assertEquals(isPlaceProfileReady("generating"), false);
   assertEquals(isPlaceProfileReady("failed"), false);
   assertEquals(isPlaceProfileReady(null), false);
+});
+
+Deno.test("deleted: only archived; a paused place may be enabled again (MESITA-4909)", () => {
+  assertEquals(isPlaceDeleted("archived"), true);
+  for (const s of ["paused", "active", null]) assertEquals(isPlaceDeleted(s), false);
 });

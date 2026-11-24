@@ -54,6 +54,12 @@ export function isPlaceListed(state: unknown): boolean {
   return typeof state === "string" && LISTED_STATES.includes(state);
 }
 
+/** Delete wrote `archived` (admin-web-delete-place): terminal, so Enable refuses
+ *  it (MESITA-4909). */
+export function isPlaceDeleted(state: unknown): boolean {
+  return state === "archived";
+}
+
 /**
  * Requested is guest demand for Enricher — never a projects.state
  * label.
