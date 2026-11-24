@@ -10,7 +10,7 @@ import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Sta
 // (MESITA-4879): their own 8 digits, which name the place and the waiter, then
 // whose QR it is, and Send bill. Nothing about the phone is kept.
 
-type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null };
+type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
 type Typed = { bill: number; tip: number };
 
 export default function ScanPage({ params }: { params: Promise<{ token: string }> }) {
@@ -22,7 +22,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // THE GUEST WATCHES IT BEING TYPED (MESITA-4887): every 300 ms when it
+  // THE GUEST WATCHES IT BEING TYPED (MESITA-4887): every 250 ms when it
   // changed, every five while it did not, one call at a time.
   const typing = useRef<Typing>({ bill_cents: 0, tip_cents: 0, step: "bill" });
   const onTyping = useCallback((bill_cents: number, tip_cents: number, step: "bill" | "tip") => {
@@ -45,7 +45,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       });
     };
     tick();
-    const id = setInterval(tick, 300);
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, [live, token]);
 
@@ -58,7 +58,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setBusy(null);
   };
 
-  async function enter(code: string): Promise<boolean> {
+  async function enter(code: string | null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
@@ -68,6 +68,11 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       return r === "failed" || !("code" in r) || r.code !== "staff_only";
     };
     const key = await signIn(code, { token });
+    if (code === null && key !== "failed" && "refused" in key && key.code === "code_needed") {
+      setBusy(null);
+      setView("code");
+      return false;
+    }
     if (key === "failed" || "refused" in key) return fail(key);
     const staff: Staff = { place_id: key.place.id, staff_token: key.staff_token, waiter: key.waiter?.name ?? null };
     const opened = await openBill(staff, { token });
@@ -81,7 +86,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       return true;
     }
     // A rescan finds the same bill, maybe already sent: send over its version.
-    setFound({ billId: opened.bill_id, staff, version: now.bill.version, currency: now.bill.currency, name: now.guest_name ?? null, photo: now.guest_photo });
+    setFound({ billId: opened.bill_id, staff, version: now.bill.version, currency: now.bill.currency, name: now.guest_name ?? null, photo: now.guest_photo, age: now.guest_age ?? null, sex: now.guest_sex ?? null });
     setView("guest");
     return true;
   }
@@ -123,6 +128,8 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       <GuestCheck
         name={found.name}
         photo={found.photo}
+        age={found.age}
+        sex={found.sex}
         total={moneyLabel(typed.bill + typed.tip, found.currency)}
         busy={busy === "code" ? null : busy}
         error={error}
@@ -151,12 +158,13 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       atTip={typed !== null}
       sendLabel="Next"
       onTyping={onTyping}
-      busy={false}
-      error={null}
+      busy={busy === "code"}
+      error={error}
       onSend={(bill, tip) => {
         setTyped({ bill, tip });
         typing.current = { bill_cents: bill, tip_cents: tip, step: "code" };
-        setView("code");
+        // A place with codes off goes straight to the guest (MESITA-4890).
+        void enter(null);
       }}
     />
   );

@@ -115,6 +115,9 @@ serveJson("business-web-get-payments", async (req) => {
     if (codesErr) return json({ ok: false, error: `place_waiters: ${codesErr.message}` }, 500);
     for (const r of (codeRows ?? []) as Array<{ id: string; code: string | null }>) codes.set(r.id, r.code);
   }
+  const { data: noCodeRow, error: noCodeErr } = await admin.from("place_waiters").select("id").eq("place_id", placeId).eq("no_code", true).is("removed_at", null).maybeSingle();
+  if (noCodeErr) return json({ ok: false, error: `place_waiters: ${noCodeErr.message}` }, 500);
+  const noCode = noCodeRow !== null;
   const waiters = ((waiterRows ?? []) as Array<{ id: string; removed: boolean }>).map((w) => ({ ...w, code: codes.get(w.id) ?? null }));
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")
@@ -183,6 +186,7 @@ serveJson("business-web-get-payments", async (req) => {
     contract: { ...contract, text: LOYALTY_CARDS_TERMS_TEXT },
     code_set: waiters.some((w) => !w.removed),
     waiters,
+    no_code: noCode,
     credits_balance,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
     cash_due: (dueRows ?? []).map((row) => ({

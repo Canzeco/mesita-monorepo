@@ -8,9 +8,12 @@
 // A try needs the guest's live QR, or a bill (MESITA-4833): the code alone can't
 // be guessed from outside a table. waiter_code_try counts the wrong ones.
 //
-// Body: { code: 8 digits, token | bill_id }
+// Without `code` (MESITA-4890): a Discount place that turned codes off, named by
+// the page the guest opened their QR on, answers the same token.
+//
+// Body: { code?: 8 digits, token | bill_id }
 // Response: { ok: true, place: { id, name }, waiter: { name }, staff_token }
-//   400 bad_request · 403 staff_only (a wrong code) · 404 code_gone (the QR) ·
+//   400 bad_request · 403 staff_only (a wrong code) | code_needed · 404 code_gone (the QR) ·
 //   409 locked (+retry_after_s; five wrong codes on one guest, or thirty from
 //   one address, in ten minutes)
 
@@ -30,15 +33,28 @@ serveJson("visit-web-sign-in", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const code = readWaiterCode(bodyRes.body.code);
-  if (!code) return json({ ok: false, code: "bad_request", error: "Type the 8-digit code" }, 400);
+  const without = bodyRes.body.code === undefined;
+  if (!code && !without) return json({ ok: false, code: "bad_request", error: "Type the 8-digit code" }, 400);
   const by = readSignInBy(bodyRes.body);
   if (!by) return json({ ok: false, code: "bad_request", error: "Scan the guest's QR again" }, 400);
 
   try {
     const nowMs = Date.now();
+    const tokenHash = by.kind === "token" ? await hashPayCode(by.token) : null;
+    const billId = by.kind === "bill" ? by.billId : null;
+    if (!code) {
+      const { data, error } = await admin.rpc("waiter_no_code", { p_token_hash: tokenHash, p_bill_id: billId });
+      if (error) throw new Error(`waiter_no_code: ${error.message}`);
+      const row = typeof data === "string" ? await readWaiter(admin, data) : null;
+      if (!row) return json({ ok: false, code: "code_needed", error: "Type your 8-digit code" }, 403);
+      const at = await readVoucherPlace(admin, row.placeId);
+      if (!at.ok) throw new Error(at.error);
+      console.log("[visit-web-sign-in]", JSON.stringify({ outcome: "no_code", place_id: row.placeId }));
+      return json({ ok: true, place: { id: row.placeId, name: at.place?.name ?? null }, waiter: null, staff_token: await mintWaiterToken(env.serviceKey, row, nowMs) });
+    }
     const r = await callTabRpc(admin, "waiter_code_try", {
-      p_token_hash: by.kind === "token" ? await hashPayCode(by.token) : null,
-      p_bill_id: by.kind === "bill" ? by.billId : null,
+      p_token_hash: tokenHash,
+      p_bill_id: billId,
       p_addr_hash: await staffTryKey(env.serviceKey, clientAddress(req.headers)),
       p_lookup_hash: await lookupWaiterCode(env.serviceKey, code),
     });

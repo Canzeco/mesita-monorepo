@@ -7,7 +7,7 @@
 // Body: { bill_id, place_id, staff_token }
 // Response: { ok: true, bill: { id, state, version, currency, bill_cents, tip_cents,
 //             discount_cents, credit_cents, outside_bill_cents, outside_cents,
-//             expires_at, test_mode, waiter_ready, took_cents }, place: { id, name }, guest_photo, guest_name }
+//             expires_at, test_mode, waiter_ready, took_cents }, place: { id, name }, guest_photo, guest_name, guest_age, guest_sex }
 //   403 staff_code_needed · 404 gone
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -34,10 +34,10 @@ serveJson("visit-web-get-bill", async (req) => {
     const [attempt, placeRes, guest] = await Promise.all([
       readBillAttempt(admin, bill),
       readVoucherPlace(admin, bill.place_id),
-      admin.from("consumers").select("avatar_url, first_name").eq("id", bill.consumer_id).maybeSingle(),
+      admin.from("consumers").select("avatar_url, first_name, birth_year, sex").eq("id", bill.consumer_id).maybeSingle(),
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
-    const g = guest.data as { avatar_url: string | null; first_name: string | null } | null;
+    const g = guest.data as { avatar_url: string | null; first_name: string | null; birth_year: number | null; sex: string | null } | null;
     const photo = g?.avatar_url ?? null;
     return json({
       ok: true,
@@ -45,6 +45,9 @@ serveJson("visit-web-get-bill", async (req) => {
       place: { id: bill.place_id, name: placeRes.place?.name ?? null },
       guest_photo: typeof photo === "string" && photo.startsWith("https://") ? photo : null,
       guest_name: g?.first_name?.trim() || null,
+      // MESITA-4890: "Is this your guest?" reads them; the year stays here.
+      guest_age: g?.birth_year ? new Date().getUTCFullYear() - g.birth_year : null,
+      guest_sex: g?.sex === "female" || g?.sex === "male" ? g.sex : null,
     });
   } catch (err) {
     return failWithRequestId("visit-web-get-bill", "Couldn't read the bill. Try again.", err);

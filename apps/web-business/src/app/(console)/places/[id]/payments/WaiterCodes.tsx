@@ -3,13 +3,15 @@
 // Waiter Codes (MESITA-4871, Pato: "add a section to add waiter codes … different
 // codes for different waiters in order to appropriately direct the tip"). One
 // 8-digit code per waiter, made by Mesita, always shown to the owner (Pato,
-// MESITA-4886: "it's not a nuclear code. show it"). A bill
-// carries the waiter whose code sent it, so the table says whose tips are whose.
+// MESITA-4886: "it's not a nuclear code. show it"). No tips here (MESITA-4890).
+// CODES ARE OPTIONAL AT DISCOUNT (Pato, MESITA-4890: "enable the mode of no
+// password, only for discounts … display a red warning"); saving Cashback turns
+// them on again, on the server.
 // Instant, not under Save changes: these are actions. The server refuses editors.
 
 import { useState } from "react";
-import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { setWaiter, type PlaceWaiter } from "@/lib/business-api";
+import { Switch } from "@/components/ui/config";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
@@ -19,17 +21,22 @@ const CELL = "px-3 py-2.5 whitespace-nowrap first:pl-5 last:pr-5 sm:first:pl-6 s
 export function WaiterCodes({
   placeId,
   initial,
-  currency,
+  initialNoCode,
+  mechanism,
   canEdit,
   onError,
 }: {
   placeId: string;
   initial: PlaceWaiter[];
-  currency: string;
+  initialNoCode: boolean;
+  /** What Visit Checkout shows: Cashback needs codes (MESITA-4890). */
+  mechanism: "discount" | "cashback";
   canEdit: boolean;
   onError: (error: string | null) => void;
 }) {
-  const [waiters, setWaiters] = useState(initial);
+  // A removed waiter was listed for their tips only, which are on the visits now.
+  const [waiters, setWaiters] = useState(() => initial.filter((w) => !w.removed));
+  const [noCode, setNoCode] = useState(initialNoCode);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -48,6 +55,12 @@ export function WaiterCodes({
     return r.data;
   }
 
+  const off = noCode && mechanism === "discount";
+  async function toggle() {
+    if (!off && !window.confirm("Turn waiter codes off? Anyone who scans a guest's QR could send and confirm bills in your name.")) return;
+    if (await run("codes", { action: off ? "codes_on" : "codes_off" })) setNoCode(!off);
+  }
+
   async function add() {
     const r = await run("add", { action: "add", name });
     if (!r) return;
@@ -62,29 +75,38 @@ export function WaiterCodes({
   async function remove(w: PlaceWaiter) {
     if (!window.confirm(`Remove ${w.name}? Their code stops working now.`)) return;
     if (!(await run(w.id, { action: "remove", waiter_id: w.id }))) return;
-    setWaiters((ws) => (w.bills_7d > 0 ? ws.map((x) => (x.id === w.id ? { ...x, removed: true, code: null } : x)) : ws.filter((x) => x.id !== w.id)));
+    setWaiters((ws) => ws.filter((x) => x.id !== w.id));
   }
-
-  const tips = (cents: number, bills: number) =>
-    bills > 0 ? (
-      <>
-        <span className="font-semibold">{moneyLabel(cents, currency)}</span> <span className="text-muted-foreground">· {bills}</span>
-      </>
-    ) : (
-      <span className="text-muted-foreground">—</span>
-    );
 
   return (
     <div className="text-sm" data-waiter-codes>
-      {waiters.length > 0 ? (
+      {canEdit ? (
+        <div className="border-border flex items-center justify-between gap-4 border-t px-5 py-3.5 sm:px-6" data-place-state="waiter_codes_required">
+          <span>
+            <span className="block text-base font-medium">Ask for a waiter code</span>
+            <span className="text-muted-foreground block">{mechanism === "cashback" ? "Cashback always needs a code." : "You can turn it off at Discount only."}</span>
+          </span>
+          <Switch
+            on={!off}
+            pending={busy !== null || mechanism === "cashback"}
+            label={`Ask for a waiter code: ${off ? "off" : "on"}`}
+            onClick={() => void toggle()}
+          />
+        </div>
+      ) : null}
+      {off ? (
+        <p className="border-border border-t bg-red-50 px-5 py-3 font-semibold text-red-700 sm:px-6" role="alert" data-no-code-warning>
+          Warning: without codes, anyone who scans a guest&apos;s QR can send and confirm bills in your name, even the guest. Only bills
+          opened from your place&apos;s page on Mesita work without a code.
+        </p>
+      ) : null}
+      {!off && waiters.length > 0 ? (
         <div className="border-border overflow-x-auto border-t [scrollbar-width:thin]">
           <table className="w-full border-collapse">
             <thead>
               <tr className="text-muted-foreground border-border border-b text-xs">
                 <th scope="col" className={cn(CELL, "text-left font-semibold")}>Waiter</th>
                 {canEdit ? <th scope="col" className={cn(CELL, "text-left font-semibold")}>Code</th> : null}
-                <th scope="col" className={cn(CELL, "text-right font-semibold")}>Tips, 24 hours · bills</th>
-                <th scope="col" className={cn(CELL, "text-right font-semibold")}>Tips, 7 days · bills</th>
                 {canEdit ? <th scope="col" className={CELL} aria-label="Actions" /> : null}
               </tr>
             </thead>
@@ -100,8 +122,6 @@ export function WaiterCodes({
                       {w.code ? `${w.code.slice(0, 4)} ${w.code.slice(4)}` : <span className="text-muted-foreground text-sm font-normal tracking-normal">{w.removed ? "—" : "Tap New code"}</span>}
                     </td>
                   ) : null}
-                  <td className={cn(CELL, "text-right tabular-nums")}>{tips(w.tips_24h_cents, w.bills_24h)}</td>
-                  <td className={cn(CELL, "text-right tabular-nums")}>{tips(w.tips_7d_cents, w.bills_7d)}</td>
                   {canEdit ? (
                     <td className={CELL}>
                       {w.removed ? null : (
@@ -129,10 +149,10 @@ export function WaiterCodes({
           </table>
         </div>
       ) : null}
-      {waiters.every((w) => w.removed) ? (
+      {!off && waiters.length === 0 ? (
         <p className="text-muted-foreground border-border border-t px-5 py-3 sm:px-6">No waiter codes yet. Without one, nobody can send bills.</p>
       ) : null}
-      {canEdit ? (
+      {canEdit && !off ? (
         <form
           className="border-border flex items-center gap-3 border-t px-5 py-3 sm:px-6"
           onSubmit={(e) => {
