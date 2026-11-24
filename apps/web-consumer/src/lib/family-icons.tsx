@@ -1,69 +1,80 @@
-// The consumer app's family marks: monochrome line icons, never emoji
-// (Pato, MESITA-2478: "emojis uses color and that takes attention"). The
-// app is ink on white; an emoji was the only color besides photos.
+// The guest's family marks: coloured duotone icons, never emoji (Pato,
+// 2026-11-23, MESITA-4782: "keep icons with colors but from another source,
+// not emojies … looks like AI slop"). Phosphor's duotone set draws most of
+// them; the few it lacks are drawn below on the same 24px grid, 1.5px
+// stroke and 20% fill, so they sit beside Phosphor's.
 //
-// CONSUMER ONLY. The family list and its emoji (lib/place-families.ts) are
-// unchanged, and admin keeps showing the emoji. This file maps a key to the
-// icon the guest sees: Home's column, Search's chips, and the Google card
-// with no photo. Icons draw in `currentColor`; callers pick the stroke
-// (1.75, the chosen row 2.25 — BottomNav's pair).
+// CONSUMER ONLY. The family list and its emoji (lib/place-families.ts) stay
+// the data admin and business show. Home's strip and menu, Search's chips
+// and Search's families sheet draw `FamilyMark`: the icon in its family's
+// colour, white on the chosen ink circle.
 
-import { createElement, type ComponentType, type SVGProps } from "react";
+import type { CSSProperties, ReactNode, SVGProps } from "react";
 import {
-  Beef,
-  Beer,
-  CakeSlice,
+  BeerStein,
+  Bread,
+  BowlSteam,
+  Cake,
+  Champagne,
   Coffee,
-  Croissant,
-  Dices,
-  Drumstick,
-  EggFried,
-  Fish,
-  Gamepad2,
+  CookingPot,
+  Cow,
+  DiceFive,
+  EggCrack,
+  FishSimple,
+  Flag,
+  ForkKnife,
+  GameController,
   Hamburger,
-  HandPlatter,
   Heart,
+  Leaf,
+  Lightning,
+  MapPin,
   Moon,
-  Music,
+  MusicNotes,
   Pizza,
-  Salad,
   Shrimp,
-  Soup,
+  Smiley,
+  Sparkle,
   Star,
-  Users,
-  Utensils,
-  UtensilsCrossed,
-  Zap,
-} from "lucide-react";
+} from "@phosphor-icons/react/ssr";
 
-export type LineIcon = ComponentType<{
-  className?: string;
-  strokeWidth?: number;
-  "aria-hidden"?: boolean;
-}>;
+type IconProps = { size?: number; color?: string; className?: string };
+export type FamilyIconComponent = (props: IconProps) => ReactNode;
 
-/** Lucide has no mark for these families, so each is drawn in lucide's own
- *  24px grid, stroke and caps and sits beside the others (MESITA-2953). */
-function drawnIcon(name: string, paths: readonly string[]) {
-  function DrawnIcon({
-    className,
-    strokeWidth = 2,
-    ...rest
-  }: SVGProps<SVGSVGElement>) {
+/** Phosphor's duotone weight, the one every family wears. */
+function phosphor(Icon: typeof Star): FamilyIconComponent {
+  function PhosphorMark({ size, color, className }: IconProps) {
+    return <Icon size={size} color={color} weight="duotone" className={className} />;
+  }
+  PhosphorMark.displayName = `Phosphor(${Icon.displayName ?? "Icon"})`;
+  return PhosphorMark;
+}
+
+/** Phosphor has no mark for these families, so each is drawn on its grid:
+ *  the outline at 1.5px and its body (`fills`) at Phosphor's 20% duotone. */
+function drawnIcon(
+  name: string,
+  paths: readonly string[],
+  fills: readonly string[] = [],
+): FamilyIconComponent {
+  function DrawnIcon({ size = 24, color = "currentColor", className }: IconProps & SVGProps<SVGSVGElement>) {
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        width={24}
-        height={24}
+        width={size}
+        height={size}
         viewBox="0 0 24 24"
         fill="none"
-        stroke="currentColor"
-        strokeWidth={strokeWidth}
+        stroke={color}
+        strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         className={className}
-        {...rest}
       >
+        {fills.map((d) => (
+          <path key={`f${d}`} d={d} fill={color} fillOpacity={0.2} stroke="none" />
+        ))}
         {paths.map((d) => (
           <path key={d} d={d} />
         ))}
@@ -75,19 +86,11 @@ function drawnIcon(name: string, paths: readonly string[]) {
 }
 
 /** A folded shell and its filling. */
-export const Taco = drawnIcon("Taco", [
-  "M2 18a10 10 0 0 1 20 0Z",
-  "M6 12c1-1.5 2-.5 3-1.5s2 .5 3-1 2 .5 3-1 2 .5 3 1",
-]);
-
-/** The flag of Mexico: three bands and the eagle's round emblem in the
- *  middle one, Mexican's 🇲🇽. Not a chili (Pato, MESITA-3108). */
-const MexicanFlag = drawnIcon("MexicanFlag", [
-  "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
-  "M9 5v14",
-  "M15 5v14",
-  "M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0",
-]);
+export const Taco = drawnIcon(
+  "Taco",
+  ["M2 18a10 10 0 0 1 20 0Z", "M6 12c1-1.5 2-.5 3-1.5s2 .5 3-1 2 .5 3-1 2 .5 3 1"],
+  ["M2 18a10 10 0 0 1 20 0Z"],
+);
 
 /** Spaghetti wound on a fork over its bowl: Italian's 🍝. */
 const Pasta = drawnIcon("Pasta", [
@@ -97,12 +100,16 @@ const Pasta = drawnIcon("Pasta", [
   "M8.5 9.5c0-.8 1.6-1.5 3.5-1.5s3.5.7 3.5 1.5-1.6 1.5-3.5 1.5-3.5-.7-3.5-1.5Z",
   "M9 11c-.6 1.2.4 2.8-.2 4",
   "M15 11c.6 1.2-.4 2.8.2 4",
+], [
+  "M4 15h16c0 3.3-3.6 6-8 6s-8-2.7-8-6Z",
 ]);
 
 /** A rice triangle in its nori band: Japanese. */
 const Onigiri = drawnIcon("Onigiri", [
   "M10.3 4.6 3.8 15.9C2.6 18 4 20.5 6.4 20.5h11.2c2.4 0 3.8-2.5 2.6-4.6L13.7 4.6a2 2 0 0 0-3.4 0Z",
   "M9 20.5V15h6v5.5",
+], [
+  "M10.3 4.6 3.8 15.9C2.6 18 4 20.5 6.4 20.5h11.2c2.4 0 3.8-2.5 2.6-4.6L13.7 4.6a2 2 0 0 0-3.4 0Z",
 ]);
 
 /** The folded takeout pail and its wire handle: Chinese's 🥡. */
@@ -112,13 +119,8 @@ const TakeoutBox = drawnIcon("TakeoutBox", [
   "M8 5.5 10 10",
   "M16 5.5 14 10",
   "M8.5 5.5C8.5 3.5 10 2 12 2s3.5 1.5 3.5 3.5",
-]);
-
-/** A bowl and its chopsticks: Asian. */
-const NoodleBowl = drawnIcon("NoodleBowl", [
-  "M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z",
-  "M13 9.5 20 3",
-  "M10 9.5 15.5 2.5",
+], [
+  "M5.5 10h13L17 21H7Z",
 ]);
 
 /** Three chunks on a skewer: Arabic. */
@@ -130,11 +132,15 @@ const Kebab = drawnIcon("Kebab", [
   "M10.8 17.4 6.6 13.2 4.2 15.6 8.4 19.8Z",
   "M15.3 12.9 11.1 8.7 8.7 11.1 12.9 15.3Z",
   "M19.8 8.4 15.6 4.2 13.2 6.6 17.4 10.8Z",
+], [
+  "M10.8 17.4 6.6 13.2 4.2 15.6 8.4 19.8Z",
 ]);
 
 /** European's 🥨: one rope, its ends crossed onto the belly. */
 const Pretzel = drawnIcon("Pretzel", [
   "M15.5 18 12 12.5C10.5 10 10 5 7 5 4.5 5 3 7 3 10c0 5.5 4 10.5 9 10.5s9-5 9-10.5c0-3-1.5-5-4-5-3 0-3.5 5-5 7.5L8.5 18",
+], [
+  "M12 20.5c5 0 9-5 9-10.5 0-3-1.5-5-4-5-3 0-3.5 5-5 7.5C10.5 10 10 5 7 5 4.5 5 3 7 3 10c0 5.5 4 10.5 9 10.5Z",
 ]);
 
 /** A carton of fries: American's 🍟. */
@@ -145,6 +151,8 @@ const Fries = drawnIcon("Fries", [
   "M10.5 12V3",
   "M13.5 12V3",
   "M16 11.5 17 4",
+], [
+  "M5.5 10.5 7 21h10l1.5-10.5c-4 2.5-9 2.5-13 0Z",
 ]);
 
 /** A hanging mirror ball and a glint: Club's 🪩. */
@@ -158,74 +166,92 @@ const DiscoBall = drawnIcon("DiscoBall", [
   "M12 6c2 2 3.2 4.7 3.2 7.5S14 19 12 21",
   "M19.5 2.5v3",
   "M18 4h3",
+], [
+  "M12 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15Z",
 ]);
 
-/** A family with no icon of its own. */
-export const FALLBACK_FAMILY_ICON: LineIcon = Utensils;
+/** Lucide's drumstick on this grid: Wings' 🍗. */
+const Drumstick = drawnIcon(
+  "Drumstick",
+  [
+    "M15.4 15.63a7.875 6 135 1 1 6.23-6.23 4.5 3.43 135 0 0-6.23 6.23",
+    "m8.29 12.71-2.6 2.6a2.5 2.5 0 1 0-1.65 4.65A2.5 2.5 0 1 0 8.7 18.3l2.59-2.59",
+  ],
+  ["M15.4 15.63a7.875 6 135 1 1 6.23-6.23 4.5 3.43 135 0 0-6.23 6.23"],
+);
 
-/** Every row and chip key the guest sees → its line icon. All (Search's
- *  chip, MESITA-2502; Home's row, MESITA-2516), Home's Social and Saved by
- *  their chip keys; families by their family key. Each mark names the thing
- *  a guest goes there for, as its emoji does (MESITA-2953: a grape for
- *  Italian, a flag for American, wind for Hookah and a TV for Sports did
- *  not). */
-export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
-  // Top (MESITA-2534) wears a star (Pato, MESITA-2557: fire "feels like
-  // trending"); before that fire, a trending-up arrow, a grid of everything.
-  all: Star,
-  social: Users,
-  saved: Heart,
-  coffee: Coffee,
-  breakfast: EggFried,
-  bakery: Croissant,
-  sweet: CakeSlice,
-  healthy: Salad,
-  quick_bite: Zap,
-  tacos: Taco,
-  burgers: Hamburger,
-  pizza: Pizza,
-  chicken: Drumstick,
-  sushi: Fish,
-  mexican: MexicanFlag,
-  steak: Beef,
-  seafood: Shrimp,
-  italian: Pasta,
-  japanese: Onigiri,
-  chinese: TakeoutBox,
-  asian: NoodleBowl,
-  indian: Soup,
-  arabic: Kebab,
-  european: Pretzel,
-  american: Fries,
-  dinner: UtensilsCrossed,
-  fancy: HandPlatter,
-  drinks: Beer,
-  fun: Gamepad2,
-  casino: Dices,
-  night_out: Moon,
-  nightclub: DiscoBall,
-  music: Music,
+type Mark = { icon: FamilyIconComponent; color: string };
+
+/** Every row and chip key the guest sees → its icon and colour. Each mark
+ *  names the thing a guest goes there for, as its emoji does; the colours
+ *  are the food's own (coffee brown, salad green, chili red), deep enough
+ *  to read on white. */
+export const FAMILY_MARKS: Readonly<Record<string, Mark>> = {
+  // The specials.
+  saved: { icon: phosphor(Heart), color: "#E11D48" },
+  social: { icon: phosphor(Smiley), color: "#F59E0B" },
+  near: { icon: phosphor(MapPin), color: "#2563EB" },
+  nearby: { icon: phosphor(MapPin), color: "#2563EB" },
+  all: { icon: phosphor(Star), color: "#EAB308" },
+  // The thirty families.
+  dinner: { icon: phosphor(ForkKnife), color: "#475569" },
+  coffee: { icon: phosphor(Coffee), color: "#92400E" },
+  drinks: { icon: phosphor(BeerStein), color: "#D97706" },
+  quick_bite: { icon: phosphor(Lightning), color: "#EAB308" },
+  breakfast: { icon: phosphor(EggCrack), color: "#F59E0B" },
+  mexican: { icon: phosphor(Flag), color: "#15803D" },
+  tacos: { icon: Taco, color: "#EA580C" },
+  seafood: { icon: phosphor(Shrimp), color: "#F97316" },
+  asian: { icon: phosphor(BowlSteam), color: "#DC2626" },
+  european: { icon: Pretzel, color: "#B45309" },
+  fancy: { icon: phosphor(Champagne), color: "#9333EA" },
+  steak: { icon: phosphor(Cow), color: "#B91C1C" },
+  japanese: { icon: Onigiri, color: "#0F766E" },
+  american: { icon: Fries, color: "#DC2626" },
+  healthy: { icon: phosphor(Leaf), color: "#16A34A" },
+  italian: { icon: Pasta, color: "#CA8A04" },
+  sushi: { icon: phosphor(FishSimple), color: "#0284C7" },
+  pizza: { icon: phosphor(Pizza), color: "#EA580C" },
+  burgers: { icon: phosphor(Hamburger), color: "#A16207" },
+  arabic: { icon: Kebab, color: "#C2410C" },
+  chinese: { icon: TakeoutBox, color: "#DC2626" },
+  indian: { icon: phosphor(CookingPot), color: "#D97706" },
+  chicken: { icon: Drumstick, color: "#C2410C" },
+  sweet: { icon: phosphor(Cake), color: "#DB2777" },
+  night_out: { icon: phosphor(Moon), color: "#4F46E5" },
+  bakery: { icon: phosphor(Bread), color: "#B45309" },
+  nightclub: { icon: DiscoBall, color: "#7C3AED" },
+  music: { icon: phosphor(MusicNotes), color: "#DB2777" },
+  fun: { icon: phosphor(GameController), color: "#0891B2" },
+  casino: { icon: phosphor(DiceFive), color: "#059669" },
 };
 
-/** The icon for a row, chip or family key; Utensils when it has none. */
-export function familyIcon(key: string): LineIcon {
-  return FAMILY_ICONS[key] ?? FALLBACK_FAMILY_ICON;
+/** A key with no mark of its own. */
+export const FALLBACK_FAMILY_MARK: Mark = { icon: phosphor(Sparkle), color: "#64748B" };
+
+/** The mark for a row, chip or family key; a grey sparkle when it has none. */
+export function familyMark(key: string): Mark {
+  return FAMILY_MARKS[key] ?? FALLBACK_FAMILY_MARK;
 }
 
-/** Draws the icon for `name` (a row, chip or family key). One stable
- *  component, so a caller never creates one during render. */
-export function FamilyIcon({
+/** Draws `name`'s icon in its colour, or white on the chosen ink circle.
+ *  One stable component per mark, so a caller never creates one in render. */
+export function FamilyMark({
   name,
+  on = false,
+  size = 22,
   className,
-  strokeWidth = 1.75,
 }: {
   name: string;
+  on?: boolean;
+  size?: number;
   className?: string;
-  strokeWidth?: number;
 }) {
-  return createElement(familyIcon(name), {
-    className,
-    strokeWidth,
-    "aria-hidden": true,
-  });
+  const { icon: Icon, color } = familyMark(name);
+  const style: CSSProperties = { display: "block" };
+  return (
+    <span aria-hidden className={className} style={style}>
+      <Icon size={size} color={on ? "#FFFFFF" : color} />
+    </span>
+  );
 }

@@ -6,13 +6,14 @@ import {
   type FamilyKey,
 } from "@/lib/place-families";
 import type { MapSpecial } from "@/lib/map-filters-engine";
+import { FamilyMark } from "@/lib/family-icons";
 import { cn } from "@/lib/utils";
 
 // SEARCH'S MENU (Pato, MESITA-4469: "modal in search must be similar as
 // modal in home" and "not multiselector"). Home's Categories modal: the
 // same floating card, the same circles, one pick. A tap chooses that one
 // family, or Popular, and closes. There is no draft and no Show places.
-// The circles are Home's (CatalogRails): 44px, the name under the emoji,
+// The circles are Home's (CatalogRails): 44px, the name under the icon,
 // the chosen circle ink.
 
 const TILE =
@@ -24,12 +25,13 @@ const CIRCLE_ON = "bg-foreground border border-transparent";
 const NAME = "relative w-full truncate text-center";
 
 function Circle({
-  emoji,
+  mark,
   label,
   on,
   onPick,
 }: {
-  emoji: string;
+  /** The row or family key whose coloured icon it wears (MESITA-4782). */
+  mark: string;
   label: string;
   on: boolean;
   onPick: () => void;
@@ -42,7 +44,7 @@ function Circle({
       className={TILE}
     >
       <span aria-hidden className={cn(CIRCLE, on ? CIRCLE_ON : CIRCLE_OFF)}>
-        {emoji}
+        <FamilyMark name={mark} on={on} />
       </span>
       <span
         className={cn(
@@ -93,7 +95,7 @@ export function FamilyFilterSheet({
         <>
           {canSave ? (
             <Circle
-              emoji="❤️"
+              mark="saved"
               label="Saved"
               on={special === "saved"}
               onPick={() => {
@@ -103,7 +105,7 @@ export function FamilyFilterSheet({
             />
           ) : null}
           <Circle
-            emoji="📍"
+            mark="nearby"
             label="Nearby"
             on={special === "nearby"}
             onPick={() => {
@@ -112,7 +114,7 @@ export function FamilyFilterSheet({
             }}
           />
           <Circle
-            emoji="⭐"
+            mark="all"
             label="Popular"
             on={special === null && applied.length === 0}
             onPick={() => pick([])}
@@ -123,7 +125,7 @@ export function FamilyFilterSheet({
       {FILTERABLE_PLACE_FAMILIES.map((family) => (
         <Circle
           key={family.key}
-          emoji={family.emoji}
+          mark={family.key}
           label={family.label}
           on={selected === family.key}
           onPick={() => pick([family.key])}
