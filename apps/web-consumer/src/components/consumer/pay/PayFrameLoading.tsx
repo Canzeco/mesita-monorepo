@@ -25,6 +25,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
             <div className="flex flex-col gap-2 p-2">
               <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
               <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+              <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
             </div>
           </div>
         </div>
