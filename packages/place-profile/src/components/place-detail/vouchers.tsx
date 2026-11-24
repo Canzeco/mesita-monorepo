@@ -540,7 +540,8 @@ function ReceiptRow({ label, value, green }: { label: string; value: ReactNode; 
 /** − n + (MESITA-4647): one voucher's count in the basket. */
 function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number; max: number; disabled: boolean; onChange: (n: number) => void }) {
   const btn =
-    "border-border text-foreground hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition disabled:opacity-30";
+    // Solid black (Pato, 2026-11-24, MESITA-4923: "make the - and + buttons black").
+    "bg-foreground text-paper flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition hover:opacity-85 disabled:opacity-25";
   return (
     <div className="flex shrink-0 items-center gap-0.5" data-offer-stepper>
       <button type="button" aria-label={`Remove one ${name}`} disabled={disabled || n <= 0} onClick={() => onChange(n - 1)} className={btn} data-offer-minus>
@@ -548,12 +549,12 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
       </button>
       {/* THE COUNT READS FIRST (Pato, 2026-11-22, MESITA-4672: "make the
           number of amount between - and + more visible"): 18px bold in a
-          fixed circle so it never jumps; picked (> 0) is an ink circle with
-          white digits, 0 stays plain and muted. */}
+          fixed circle so it never jumps; picked (> 0) is black ink, 0 muted.
+          No circle since the buttons are black ones (MESITA-4923). */}
       <span
         className={cn(
           "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base leading-none font-bold tabular-nums",
-          n > 0 ? "bg-foreground text-paper" : "text-muted-foreground",
+          n > 0 ? "text-foreground" : "text-muted-foreground",
         )}
         aria-live="polite"
         data-offer-qty
@@ -1478,6 +1479,7 @@ export function VouchersPane({
   // The guest's own picks; until the first tap, an asked voucher counts as one.
   const [picked, setPicked] = useState<Basket | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
+  const [full, setFull] = useState(false);
   const paying = useRef(false);
   const [payingNow, setPayingNow] = useState(false);
   const opened = useRef(new Set<MoneyVoucherKey>());
@@ -1538,6 +1540,7 @@ export function VouchersPane({
     setPayingNow(true);
     try {
       const out = await actions?.onBuyVoucher?.(sent, co.signedOut ? null : card?.id ?? null);
+      if (out === "full") setFull(true);
       if (out !== "paid" && out !== "processing") return;
       setReceipt({
         outcome: out,
@@ -1603,7 +1606,56 @@ export function VouchersPane({
           />
         )}
       </div>
+      {full ? <PlaceFull name={place.name} onClose={() => setFull(false)} /> : null}
     </div>
+  );
+}
+
+/** THE PLACE IS FULL (Pato, 2026-11-24, MESITA-4923: "a more prettier
+ *  notification when the place is full and has issued enough credit"): a
+ *  centred white window, not a red toast. The limit counts this basket, so a
+ *  smaller one may still fit; the basket stays. */
+function PlaceFull({ name, onClose }: { name: string; onClose: () => void }) {
+  const button = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    button.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  const host = document.getElementById("mesita-app-card");
+  return createPortal(
+    <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-6")} onClick={onClose} data-place-full>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="place-full-title"
+        aria-describedby="place-full-line"
+        className="bg-card flex w-full max-w-sm cursor-auto flex-col items-center gap-2 rounded-2xl p-6 text-center shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-[#635BFF]/10 text-[#635BFF]">
+          <Ticket className="h-8 w-8" strokeWidth={2.25} aria-hidden />
+        </span>
+        <h2 id="place-full-title" className="text-foreground text-xl font-bold">
+          Full for now
+        </h2>
+        <p id="place-full-line" className="text-muted-foreground text-base leading-snug">
+          {name} can&apos;t give out this much credit right now. You weren&apos;t charged. Try fewer bonuses, or come back later.
+        </p>
+        <button
+          ref={button}
+          type="button"
+          onClick={onClose}
+          className="bg-foreground text-paper mt-4 flex h-12 w-full items-center justify-center rounded-full text-base font-semibold"
+        >
+          Got it
+        </button>
+      </div>
+    </div>,
+    host ?? document.body,
   );
 }
 

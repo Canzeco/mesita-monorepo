@@ -11,8 +11,8 @@ describe("buyRefusalAction", () => {
   it("lists the cards again when the chosen card is gone", () => {
     expect(buyRefusalAction("card_not_found")).toEqual({ kind: "reload_cards", line: BUY_REFUSAL.card_not_found });
   });
-  it("says the cap line and keeps the offer on place_cap", () => {
-    expect(buyRefusalAction("place_cap")).toEqual({ kind: "say", line: BUY_REFUSAL.place_cap, reload: false });
+  it("opens the full window on place_cap", () => {
+    expect(buyRefusalAction("place_cap")).toEqual({ kind: "full", line: BUY_REFUSAL.place_cap });
   });
   it("says the line and reloads the offer otherwise; an unknown code reads failed", () => {
     expect(buyRefusalAction("paused")).toEqual({ kind: "say", line: BUY_REFUSAL.paused, reload: true });
