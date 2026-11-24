@@ -11,6 +11,7 @@ import {
   type VoucherBasketItem,
   type VoucherBuyOutcome,
 } from "@mesita/place-profile";
+import { useHydrated } from "@/components/consumer/console-layout";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
 import { apiSyncInstagram } from "@/lib/api/profile";
@@ -33,13 +34,15 @@ import type { PlaceDetail } from "@/lib/place-detail";
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
  *  part with the time the next of it lands (MESITA-4714: "+$X lands at
  *  <time>"). The server's cents, formatted, never added. Null when no
- *  balance was read (signed out). */
-function creditHere(place: PlaceDetail): { label: string; ready: string; pending: string | null } | null {
+ *  balance was read (signed out). `clock` is false in the server's HTML and
+ *  while hydrating (MESITA-4805): the server would write the time in its own
+ *  timezone and React refuses the mismatch (error 418). */
+function creditHere(place: PlaceDetail, clock: boolean): { label: string; ready: string; pending: string | null } | null {
   const balance = place.money?.balance;
   if (!balance) return null;
   const currency = place.money?.currency ?? "mxn";
   const ready = money(balance.spendable_cents, currency);
-  const at = balance.next_ready_at ? readyClock(balance.next_ready_at) : "";
+  const at = clock && balance.next_ready_at ? readyClock(balance.next_ready_at) : "";
   const pending = balance.pending_cents > 0
     ? `+${money(balance.pending_cents, currency)} ${at ? `lands at ${at}` : "lands soon"}`
     : null;
@@ -149,7 +152,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
     [router, fromPay, fromWallet, fetched.id],
   );
   const place: PlaceDetail = vouchers.money ? { ...fetched, money: vouchers.money } : fetched;
-  const credit = creditHere(place);
+  const credit = creditHere(place, useHydrated());
 
   // A VIP basket re-reads the follower count first when the last read is over
   // an hour old (MESITA-4659): one Instagram sync, then the buy. `slow_down`
