@@ -18,7 +18,7 @@ import { Nav } from "@/components/landing/nav";
 // promise.
 
 /** The day this draft was written. Shown verbatim in the banner on both pages. */
-export const DRAFT_DATE = "September 15, 2026";
+export const DRAFT_DATE = "November 24, 2026";
 
 /** Where a reader takes a question about either page. */
 export const LEGAL_SUPPORT_EMAIL = "support@mesita.ai";

@@ -10,9 +10,9 @@ import {
 //
 // Each paragraph maps to something the code does: the profile fields the
 // consumer profile actually carries, the browser/OS location prompt discovery
-// asks for, what the reservation agent tells a place, and the in-app delete.
-// The MVP takes no payments and records no visits (MESITA-2092), so cards,
-// Stripe and tickets are not on this page. The one thing this
+// asks for, what the reservation agent tells a place, what a place and other
+// guests see (social-level.ts, monitor.ts, visit-web-get-bill), payments
+// through Stripe, and the in-app delete (delete-history-free.ts). The one thing this
 // page deliberately does NOT state is how long anything is kept — no retention
 // period has been decided, and a drafted number would be a promise nobody can
 // keep. Do not add one here; decide it, then write it.
@@ -20,7 +20,7 @@ import {
 export const metadata: Metadata = {
   title: "Privacy policy",
   description:
-    "Plain-language draft of what Mesita collects and why — phone sign-in, profile details, device location, what a booking shares with the place, and how to get your data or delete your account.",
+    "Plain-language draft of what Mesita collects and why — phone sign-in, profile details, device location, payments, what places and other guests see, and how to get your data or delete your account.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -42,21 +42,63 @@ export default function PrivacyPage() {
 
       <LegalSection heading="What you tell us about yourself">
         <p>
-          When you set up your account we ask for your first name, your date of
+          When you set up your account we ask for your first name, your year of
           birth and your sex. Your last name is asked later, the first time you
-          book a table. The date of birth is what we check against the minimum
+          book a table. The year of birth is what we check against the minimum
           age of 14.
         </p>
         <p>
-          A profile photo and an Instagram handle are optional. Other guests
-          never see your Instagram; we use it only to check whether you qualify
-          for VIP.
+          A profile photo and an Instagram handle are optional. Instagram is not
+          part of signing up: we use it only to check whether you qualify for
+          VIP, which you can also get with an invitation code. Other guests
+          never see your Instagram.
         </p>
         <p>
           When you connect Instagram by sending Mesita&apos;s Instagram account a
           one-time code, Instagram tells us your username and, if you allow it,
           your follower count. We don&apos;t take your photo or your follower
           list. Mesita never messages anyone first.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="What other guests see">
+        <p>
+          If your profile is Public, other guests can see in Social that you
+          viewed, liked or shared a place, with your first name, age and sex. If
+          it is Private, they see none of it and you see none of theirs. You
+          choose in the app, in your profile.
+        </p>
+        <p>
+          Anyone who is not surely 18 by their year of birth, or gave none, is
+          always Private and cannot change it.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="What a place sees">
+        <p>
+          The people who run a place see the guests who viewed, liked, shared,
+          visited, paid or hold credit there: your first name, your photo, whether you
+          are VIP, what you did and what you spent there. They can
+          see that your Instagram is verified, never the handle. The Public and Private
+          choice is about other guests, not about the place.
+        </p>
+        <p>
+          When you pay at the table, the waiter&apos;s screen shows your first
+          name, photo, age and sex, so they can check you are their guest, and
+          the bill you share.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Payments">
+        <p>
+          Cards are handled by Stripe; Mesita never stores your card number. A
+          card you save is kept by Stripe, and paying a place ahead shares it
+          with that place&apos;s Stripe account to make the charge.
+        </p>
+        <p>
+          We keep a record of what you bought, spent, earned, sent as a gift and
+          were refunded at each place, because that record is your credit. If
+          you send a gift, the person who takes it sees your first name and photo.
         </p>
       </LegalSection>
 
@@ -71,7 +113,8 @@ export default function PrivacyPage() {
         <p>
           We use the position to answer the request you just made — what is
           around you, what is close to a search. We do not follow you in the
-          background.
+          background. A location you save in the app is stored with your account
+          until you remove it.
         </p>
       </LegalSection>
 
@@ -89,7 +132,8 @@ export default function PrivacyPage() {
           of making the app work, and what reaches each of them is limited to
           what it does: our hosting and database provider runs the accounts and
           the app&apos;s data, a messaging provider delivers your sign-in code,
-          a voice provider carries the reservation agent&apos;s phone calls, and
+          a voice provider carries the reservation agent&apos;s phone calls, AI
+          providers answer what you ask Mesi, Stripe handles payments, and
           public places data is what the catalog of restaurants, cafés and bars
           is built from.
         </p>
@@ -109,8 +153,15 @@ export default function PrivacyPage() {
         </p>
         <p>
           Deleting the account is in the app, in Settings, with your data. You
-          type DELETE to confirm and the account is deleted; the same address
-          above is the way to do it if you can no longer sign in.
+          type DELETE to confirm; the same address above is the way to do it if
+          you can no longer sign in.
+        </p>
+        <p>
+          If you ever booked a table, the account is closed rather than erased:
+          your phone number and Instagram are removed and nobody can sign in to
+          it, but the booking records and the rest of the profile row stay.
+          Records of payments stay too, without your account on them when it was
+          erased.
         </p>
       </LegalSection>
 
