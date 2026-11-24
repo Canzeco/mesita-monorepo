@@ -43,7 +43,7 @@ export type VipRedeemUi =
   | { kind: "error"; text: string }
   | { kind: "sign_in"; text: string };
 
-export const VIP_JOINED_TEXT = "You're VIP. From your second bill at a place, you get its Returning VIP Back.";
+export const VIP_JOINED_TEXT = "You're VIP. You get each place's VIP rate, from your first bill there.";
 
 export function vipRedeemUi(result: RedeemVipResult, afterFailedTry = false): VipRedeemUi {
   switch (result.kind) {

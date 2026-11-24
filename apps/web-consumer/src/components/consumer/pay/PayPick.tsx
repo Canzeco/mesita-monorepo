@@ -351,10 +351,10 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
     const v = on(o.returning_vip_pct);
     if (w !== null && w === r && r === wv && wv === v) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
     return [
-      ...(w !== null ? [{ key: "welcome", top: "Welcome Regular", bottom: `${w}% ${word}`, tone: visitTint }] : []),
-      ...(r !== null ? [{ key: "returning", top: "Returning Regular", bottom: `${r}% ${word}`, tone: visitTint }] : []),
-      ...(wv !== null ? [{ key: "welcome_vip", top: "Welcome VIP", bottom: `${wv}% ${word}`, tone: visitTint }] : []),
-      ...(v !== null ? [{ key: "returning_vip", top: "Returning VIP", bottom: `${v}% ${word}`, tone: visitTint }] : []),
+      ...(w !== null ? [{ key: "welcome", top: "Welcome Visit", bottom: `${w}% ${word}`, tone: visitTint }] : []),
+      ...(r !== null ? [{ key: "returning", top: "Returning Visit", bottom: `${r}% ${word}`, tone: visitTint }] : []),
+      ...(wv !== null ? [{ key: "welcome_vip", top: "Welcome Visit (VIP)", bottom: `${wv}% ${word}`, tone: visitTint }] : []),
+      ...(v !== null ? [{ key: "returning_vip", top: "Returning Visit (VIP)", bottom: `${v}% ${word}`, tone: visitTint }] : []),
     ];
   }
   // Explore Offers: one box per kind, Prepay · Pay, in offerSlides' words.
@@ -420,7 +420,8 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
       ) : shown.length > 0 ? (
         // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
         // two boxes are halves, three are thirds; 14px words, shorter boxes.
-        <span className={cn("mt-2 grid w-full gap-2", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+        // The visit tiers are always halves: "Welcome Visit (VIP)" needs it (MESITA-4806).
+        <span className={cn("mt-2 grid w-full gap-2", shown.length < 3 || boxes === "cashback" ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
           {shown.map((b) => (
             <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2.5 py-1.5", b.tone)}>
               <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
