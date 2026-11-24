@@ -112,8 +112,10 @@ export function PayPage({
             corners (Pato, MESITA-4848: "i don't like the credits box without
             margin"; edge to edge before). */}
         <section className="bg-foreground my-2 flex min-h-0 flex-1 flex-col rounded-2xl px-1.5 pb-1.5" aria-labelledby="pay-credits" data-pay-credits>
-          <h2 id="pay-credits" className="text-background flex h-12 shrink-0 items-center justify-center gap-2 text-lg font-semibold">
-            <WalletIcon className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          <h2 id="pay-credits" className={cn(MARK_WORD, "text-background flex h-16 shrink-0 items-center justify-center gap-3")}>
+            <span className={cn(MARK_DISC, "bg-white text-foreground")} aria-hidden>
+              <WalletIcon className="h-6 w-6" strokeWidth={2.25} />
+            </span>
             Credits
           </h2>
           <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl">
@@ -223,15 +225,20 @@ const TILES: Record<PayModal, { word: string; icon: LucideIcon; ink: string }> =
   pay: { word: "Pay Bill", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
+/** ONE SIZE for the three marks and their words (Pato, 2026-11-24,
+ *  MESITA-4855: "prepay and pay and credits must be all same size"). */
+const MARK_DISC = "flex h-12 w-12 shrink-0 items-center justify-center rounded-full";
+const MARK_WORD = "text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg";
+
 /** A tile, always in its own colour (MESITA-4842). */
 function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
   const { word, icon: Icon, ink } = TILES[id];
   return (
     <button type="button" onClick={onClick} className={cn(PAY_TILE, PAY_FILL[id])} data-pay-tile={id}>
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
+      <span className={cn(MARK_DISC, ink)} aria-hidden>
         <Icon className="h-6 w-6" strokeWidth={2.25} />
       </span>
-      <span className="text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg">{word}</span>
+      <span className={MARK_WORD}>{word}</span>
     </button>
   );
 }
