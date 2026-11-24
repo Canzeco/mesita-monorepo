@@ -310,7 +310,7 @@ const TILE =
   "flex aspect-[8/5] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition active:scale-[0.99]";
 const TILE_WORDS = "flex max-w-full min-w-0 flex-col items-center";
 /** The small line under a tile's name (MESITA-4830). */
-const TILE_LINE = "max-w-full truncate text-xs leading-4 font-medium";
+const TILE_LINE = "max-w-full truncate text-xs leading-4";
 /** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
  *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
  *  size (18px before). */
