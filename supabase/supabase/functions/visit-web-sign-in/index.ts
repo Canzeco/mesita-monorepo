@@ -16,8 +16,8 @@
 //   400 bad_request · 403 staff_only (a wrong code) | code_needed ·
 //   409 ticket_closed (the third wrong code on this QR or bill, MESITA-4898) |
 //       place_needed (the QR was opened on no place) · 404 code_gone (the QR) ·
-//   409 locked (+retry_after_s; five wrong codes on one guest, or thirty from
-//   one address, in ten minutes)
+//   409 locked (+retry_after_s; per guest or per address, for ten minutes or a
+//   day, waiter_code_try)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
@@ -62,7 +62,13 @@ serveJson("visit-web-sign-in", async (req) => {
     });
     if (r.ok !== true) {
       console.log("[visit-web-sign-in]", JSON.stringify({ outcome: r.code }));
-      if (r.code === "locked") return json({ ok: false, code: "locked", error: "Too many wrong codes. Wait a few minutes.", retry_after_s: r.retry_after_s }, 409);
+      if (r.code === "locked") {
+        // A day's lock can have hours left: say them, never "a few minutes".
+        const wait = Number(r.retry_after_s) || 0;
+        const hours = Math.ceil(wait / 3600);
+        const when = wait <= 600 ? "Wait a few minutes." : wait <= 3600 ? "Try again in an hour." : `Try again in ${hours} hours.`;
+        return json({ ok: false, code: "locked", error: `Too many wrong codes. ${when}`, retry_after_s: r.retry_after_s }, 409);
+      }
       if (r.code === "place_needed") return json({ ok: false, code: "place_needed", error: "Ask the guest to open Pay on your place, then scan again." }, 409);
       if (r.code === "code_gone") return json({ ok: false, code: "code_gone", error: "That QR expired. Scan the guest's QR again." }, 404);
       if (r.code === "ticket_closed") return json({ ok: false, code: "ticket_closed", error: "Too many wrong codes. This ticket is closed." }, 409);
