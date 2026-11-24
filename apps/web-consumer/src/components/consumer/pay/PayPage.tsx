@@ -27,7 +27,7 @@ import { WalletSection } from "@/components/consumer/wallet/WalletSection";
 //
 //   Mesita ................................ [Tickets]
 //   Pending Tickets                  only with an open bill (MESITA-4625)
-//   [ Prepay ] [ Credits ] [ Pay ]   a tablist; only the chosen one has colour
+//   [ Prepay ] [ Credits ] [ Pay ]   a tablist; the chosen one joins its box
 //   +-----------------------------+
 //   | the chosen tile's list      |  one box in that colour, to the bar,
 //   +-----------------------------+  scrolling inside
@@ -194,7 +194,9 @@ function TileJoin({ fill }: { fill: string }) {
   );
 }
 
-/** THE MENU: three equal tiles, only the chosen one in its colour (look A).
+/** THE MENU: three equal tiles, each always in its own colour (Pato,
+ *  2026-11-24, MESITA-4842: "credits always black, pay always green, purple
+ *  always purple"); the chosen one is joined to the box.
  *  Arrow keys move between them. */
 function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -227,12 +229,12 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
                 move(i, e.key === "ArrowRight" ? 1 : -1);
               }
             }}
-            className={cn(PAY_TILE, "group relative outline-none", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
+            className={cn(PAY_TILE, "group relative outline-none", PAY_TAB_FILL[id], on && "rounded-b-none")}
             data-pay-tab={id}
           >
-            {/* The exact purple, black or green in the disc; white on the chosen. The
+            {/* The
                 keyboard's ring is here: on the tile it cut the joined shape. */}
-            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", on ? cn("bg-white", ink) : PAY_TAB_FILL[id])} aria-hidden>
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-offset-2 ring-offset-transparent group-focus-visible:ring-2 group-focus-visible:ring-current", "bg-white", ink)} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>

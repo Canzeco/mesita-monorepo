@@ -205,15 +205,15 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       {/* THE GRID (Pato, 2026-11-24, MESITA-4839: "data in gray box, offers in
           green boxes"): the place's box, then its offers, edge to edge with a
           2px line between (MESITA-4842). */}
-      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-3 px-3.5 py-2.5 transition-colors">
-        <PlacePhoto place={p} className="h-11 w-11" />
+      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-2.5 px-3.5 py-1.5 transition-colors">
+        <PlacePhoto place={p} className={kind === "prepay" ? "h-7 w-7" : "h-9 w-9"} />
         <span className="min-w-0 flex-1">
-          <span className={cn("font-semibold", kind === "prepay" ? "line-clamp-2 text-base leading-tight" : "block truncate text-sm")}>{name}</span>
+          <span className={cn("font-semibold", kind === "prepay" ? "line-clamp-2 text-base leading-tight" : "block truncate text-sm leading-tight")}>{name}</span>
           {p.address && kind === "pay" ? (
-            <span className={"text-muted-foreground mt-0.5 block truncate text-sm"}>{p.address}</span>
+            <span className={"text-muted-foreground block truncate text-sm leading-tight"}>{p.address}</span>
           ) : null}
         </span>
-        {distance ? <span className="text-muted-foreground shrink-0 self-start pt-0.5 text-sm tabular-nums">{distance}</span> : null}
+        {distance ? <span className="text-muted-foreground shrink-0 self-start text-sm leading-tight tabular-nums">{distance}</span> : null}
       </span>
       {shown.length > 0 ? (
         // ONE ROW OF EQUAL COLUMNS (Pato, 2026-11-24, MESITA-4837: "cleaner,
@@ -246,7 +246,7 @@ function RowsSkeleton() {
       {[0, 1, 2].map((i) => (
         <div key={i} className="px-3.5 py-2.5">
           <div className="flex items-start gap-3.5">
-            <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
             <div className="flex-1 pt-1">
               <Skeleton className="h-4 w-40" />
               <Skeleton className="mt-2 h-3 w-24" />
