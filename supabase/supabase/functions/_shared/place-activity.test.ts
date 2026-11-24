@@ -281,11 +281,11 @@ Deno.test("an anonymous feed carries the day, never the minute", () => {
 Deno.test("a Public member is their first name, age and sex; a named one carries no age (MESITA-4854)", () => {
   const year = new Date().getUTCFullYear() - 25;
   const open = toPerson(row({ anonymous: true, first_name: null, birth_year: year, sex: "other" }), "z");
-  assertEquals([open.name, open.sex, open.age], ["Guest, 25", "other", 25]);
+  assertEquals([open.name, open.sex, open.age], ["Guest", "other", 25]);
   assertEquals(toPerson(row({ first_name: "Sofia", birth_year: year, sex: "female" }), "z").age, null);
   const named = toPerson(row({ anonymous: true, first_name: "Sofia", birth_year: year, sex: "female" }), "z");
-  assertEquals([named.name, named.age, named.handle], ["Sofia, 25", 25, null]);
-  assertEquals(anonymousPerson(row({ anonymous: true, first_name: "Sofia", birth_year: year, sex: "female" })).name, "Woman, 25");
+  assertEquals([named.name, named.age, named.handle], ["Sofia", 25, null]);
+  assertEquals(anonymousPerson(row({ anonymous: true, first_name: "Sofia", birth_year: year, sex: "female" })).name, "Guest");
   const minor = toPerson(row({ anonymous: true, first_name: null, birth_year: year + 10, sex: "male" }), "z");
   assertEquals([minor.name, minor.sex, minor.age], ["Guest", null, null]);
 });

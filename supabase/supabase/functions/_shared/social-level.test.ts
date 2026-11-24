@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { levelPatch, shownAge, shownSex, socialBlocked, socialLabel, socialLevel, socialLock } from "./social-level.ts";
+import { levelPatch, shownAge, shownSex, socialBlocked, socialLevel, socialLock } from "./social-level.ts";
 
 const NOW = new Date("2026-11-24T12:00:00Z");
 const open = { social_private: false, instagram_verified_at: "2026-01-01", instagram_handle_shown: true };
@@ -23,12 +23,8 @@ Deno.test("an adult's level", () => {
 Deno.test("a minor's age and sex are never shown", () => {
   assertEquals(shownAge(2008, NOW), null);
   assertEquals(shownSex(2008, "female", NOW), null);
-  assertEquals(socialLabel(2010, "female", NOW), "Guest");
   assertEquals(shownSex(2008, "other", NOW), null);
   assertEquals([shownSex(1990, "other", NOW), shownSex(1990, "x", NOW)], ["other", null]);
-  assertEquals(socialLabel(2001, "female", NOW), "Woman, 25");
-  assertEquals(socialLabel(1998, "male", NOW), "Man, 28");
-  assertEquals(socialLabel(1995, null, NOW), "Guest, 31");
 });
 
 Deno.test("a private member, a minor or one with no year sees nobody (MESITA-4854)", () => {

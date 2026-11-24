@@ -58,13 +58,9 @@ export function shownAge(birthYear: number | null | undefined, now: Date = new D
   return now.getUTCFullYear() - birthYear;
 }
 
-/** Who a Public member is in words: "Woman, 25". */
-export function socialLabel(birthYear: number | null | undefined, sex: string | null | undefined, now: Date = new Date()): string {
-  const age = shownAge(birthYear, now);
-  if (age === null) return "Guest";
-  const who = sex === "female" ? "Woman" : sex === "male" ? "Man" : "Guest";
-  return `${who}, ${age}`;
-}
+/** A member with no name to show. The words never say age or sex: the face
+ *  does (Pato, 2026-11-24, MESITA-4857: "redundant, the image already displays"). */
+export const GUEST_NAME = "Guest";
 
 export type ShownSex = "female" | "male" | "other";
 

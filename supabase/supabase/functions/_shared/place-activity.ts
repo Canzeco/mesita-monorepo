@@ -17,7 +17,7 @@
 // place profile's line.
 
 import { isUuid } from "./place-id.ts";
-import { shownAge, type ShownSex, shownSex, type SocialFacts, socialLabel, socialLevel } from "./social-level.ts";
+import { GUEST_NAME, shownAge, type ShownSex, shownSex, type SocialFacts, socialLevel } from "./social-level.ts";
 
 export const ACTIVITY_KINDS = ["saved", "viewed"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
@@ -147,7 +147,7 @@ export type ActivityRow = {
   instagram?: boolean | null;
   /** MESITA-4714: set by withInstagramBadges before the rows are shaped. */
   instagram_badge?: boolean;
-  /** The feed and the person card (MESITA-4850), for socialLabel only: the
+  /** The feed and the person card (MESITA-4850), for the age and sex of the face: the
    *  year never leaves the server. Absent elsewhere. */
   birth_year?: number | null;
   sex?: string | null;
@@ -163,13 +163,14 @@ export function toPerson(
   canSeeHandles = true,
 ): ActivityPerson {
   const isYou = row.consumer_id === viewerId;
-  // A Public member is their first name and age (MESITA-4854: "Sofia, 25"),
+  // A Public member is their first name ("Sofia"; age and sex are the face,
+  // MESITA-4857),
   // a named one their first name; with no name, age and sex in words. A
   // Public row is the one SQL marks anonymous with a birth year.
   const age = row.anonymous === true ? shownAge(row.birth_year) : null;
   const given = row.first_name?.trim();
-  const first = (given && age !== null ? `${given}, ${age}` : given) ||
-    (row.birth_year != null ? socialLabel(row.birth_year, row.sex) : MEMBER_FALLBACK_NAME);
+  const first = given ||
+    (row.birth_year != null ? GUEST_NAME : MEMBER_FALLBACK_NAME);
   const sex = shownSex(row.birth_year, row.sex);
   if (row.anonymous === true) {
     // No handle, no followers; the face and the name show (MESITA-2608,
@@ -296,7 +297,7 @@ export function socialLine(
  *  followers, no plan; never "you". */
 export function anonymousPerson(row: ActivityRow): ActivityPerson {
   return {
-    name: socialLabel(row.birth_year, row.sex),
+    name: GUEST_NAME,
     sex: shownSex(row.birth_year, row.sex),
     age: shownAge(row.birth_year),
     avatarUrl: null,

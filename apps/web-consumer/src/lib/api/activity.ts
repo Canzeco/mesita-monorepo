@@ -8,8 +8,8 @@ import type { Place } from "./places";
 export type ActivityKind = "saved" | "viewed";
 
 /** A member as Social shows them (MESITA-4850): first name, photo and @handle
- *  when they share their Instagram; else their first name, age and sex
- *  ("Sofia, 25"), no photo, no handle (`anonymous`). */
+ *  when they share their Instagram; else their first name ("Sofia") with
+ *  their age and sex in the face, no photo, no handle (`anonymous`). */
 export type ActivityPerson = {
   name: string;
   /** Adults only; null is undisclosed. Optional (older EF payloads). */
