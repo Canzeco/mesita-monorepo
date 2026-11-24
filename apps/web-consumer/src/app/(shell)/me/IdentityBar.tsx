@@ -2,6 +2,7 @@
 
 import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityModules } from "@/components/consumer/IdentityCard";
+import { useAvatarUpload } from "@/lib/use-avatar-upload";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
   IDENTITY_BAR_BODY_CLASS,
@@ -66,6 +67,7 @@ export function IdentityBar({
   profile: ConsumerProfile | null;
   loading: boolean;
 }) {
+  const addPhoto = useAvatarUpload();
   // The first name only (Pato, 2026-11-22, MESITA-4646: "display name, not
   // last name"); the full name when no first name is stored.
   const name =
@@ -98,6 +100,7 @@ export function IdentityBar({
           <IdentityModules
             name={name}
             avatarUrl={avatarUrl}
+            addPhoto={profile ? addPhoto : undefined}
             // The name box opens Me › Profile, where the name is edited
             // (MESITA-2596).
             nameHref={CONSUMER_ROUTES.mePages.profile}
