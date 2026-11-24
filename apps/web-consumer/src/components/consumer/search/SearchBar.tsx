@@ -6,9 +6,9 @@ import { Search, X } from "lucide-react";
 import { HEADER_ICON, HEADER_ICON_STROKE, HEADER_TEXT } from "./header-classes";
 
 // The Search map's query field — the one search bar in the app, the left
-// part of SearchHeader's long bar, before Ask AI and locate (MESITA-2999).
+// part of SearchHeader's bar, before Ask AI (MESITA-4799).
 // Query field only: the Filters sheet picks the family (MESITA-2875). The
-// pill (BAR in header-classes.ts) is SearchHeader's; this is its content.
+// pill (SEARCH_BAR in header-classes.ts) is SearchHeader's; this is its content.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
@@ -32,7 +32,7 @@ export function SearchBar({
   placeholder = "Search places…",
   inputRef,
 }: SearchBarProps) {
-  // Fills what Ask AI and locate leave in the bar (MESITA-2999).
+  // Fills what Ask AI leaves in the bar (MESITA-4799).
   return (
     <div className="flex h-full min-w-0 flex-1 items-center">
       <Search

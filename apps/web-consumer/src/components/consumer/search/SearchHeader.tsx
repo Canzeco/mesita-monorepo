@@ -4,14 +4,13 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   (⌖) [ ⚲ Search places…   ] (✨ Ask AI)      three separate 40px controls
-//   [▦ Menu] [⭐ Popular] (○ Coffee) …          32px chips, floating
+//   (⌖) [ ⚲ Search places…   │ ✨ AI ]      two 40px controls
+//   [▦ Menu] [⭐ Popular] (○ Coffee) …      32px chips, floating
 //
-// THREE SEPARATE CONTROLS (Pato, MESITA-3009: "location at the left,
-// searchbar, ask ai at the right, all separated"; MESITA-2999's one long
-// bar held Ask AI and locate): the locate disc, the query bar, the white
-// Ask AI pill with sparkles (opens a popup over Search; MESITA-4480,
-// MESITA-3010). One token set for every control lives in header-classes.ts. NO ADD
+// AI IS THE BAR'S RIGHT END (Pato, 2026-11-23, MESITA-4799: "put the askai
+// button joined to the searchbar"; a separate pill since MESITA-3009): the
+// locate disc, then one pill holding the query and AI, which opens a popup
+// over Search (MESITA-4480). One token set: header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
@@ -32,12 +31,10 @@
 // server-side `familyKeys`. The Minimum Popularity stays the operator's,
 // Admin › Discovery › Area.
 //
-// A WHITE TOP HEADER, FLOATING CHIPS (Pato, MESITA-3019: "make a top header
-// for the searchbar … location searchbar and ask ai with white background,
-// then the filters and categories actually floating"; MESITA-2996 had no
-// band at all). Row one is a white band with a hairline under it; the chip
-// row under it is transparent, lets taps through to the map, and each chip
-// is a white pill with a shadow (header-classes.ts).
+// NO BAND (Pato, 2026-11-23, MESITA-4799: "make the searchbar background
+// transparent"; MESITA-3019's white band is gone): both rows float on the
+// map, let taps through between controls, and every control is a white pill
+// with a shadow (header-classes.ts).
 // The chips are shorter than the bar (MESITA-2996; reverses MESITA-2445).
 // `children` (the bar's results, the load error) COVER the chip row and run
 // on over the map (MESITA-2417); while the bar queries the chip row is not
@@ -59,15 +56,14 @@ import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { FamilyMark } from "@/lib/family-icons";
 import { cn } from "@/lib/utils";
 import {
-  BAR,
+  BAR_ACTION,
   CHIP,
   CHIP_OFF,
   CHIP_ON,
   CHIP_SPECIAL,
-  HEADER_BAND,
   HEADER_ICON,
   HEADER_ICON_STROKE,
-  HEADER_PILL,
+  SEARCH_BAR,
 } from "./header-classes";
 
 // A chip's mark is its family's Fluent Flat picture, the same one Home's
@@ -83,7 +79,7 @@ export function SearchHeader({
 }: {
   /** The locate disc, left of the bar on row one. */
   locate: ReactNode;
-  /** The query field; the bar takes what the two controls leave. */
+  /** The query field; the bar takes what locate and AI leave. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -105,33 +101,27 @@ export function SearchHeader({
       className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
     >
-      {/* Row one, three separate controls (Pato, MESITA-3009: "location at
-          the left, searchbar, ask ai at the right, all separated"). */}
-      <div
-        className={cn(
-          HEADER_BAND,
-          "pointer-events-auto flex min-w-0 items-center gap-3 p-3",
-        )}
-        data-search-header-band
-      >
+      {/* Row one: locate, then the bar with AI joined at its right end
+          (MESITA-4799). No bottom padding: the chip row's pt-1 + py-2 is the
+          12px under it (MESITA-3012). */}
+      <div className="flex min-w-0 items-center gap-3 px-3 pt-3 [&>*]:pointer-events-auto">
         {locate}
-        <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
-        {/* The pill is the sparkle and the short word "AI" (Pato,
-            MESITA-4496: "rename ask ai button to just ai to save space for
-            search bar"). The accessible name stays Ask AI. MESITA-4007 had
-            the full words beside the icon; MESITA-3991 was a mark-only disc.
-            It opens a popup titled Ask AI (MESITA-4480). */}
-        <button
-          type="button"
-          onClick={() => setAskOpen(true)}
-          className={HEADER_PILL}
-          data-search-ask-ai
-          aria-haspopup="dialog"
-          aria-label="Ask AI"
-        >
-          <AiSparkle className={HEADER_ICON} />
-          <span>AI</span>
-        </button>
+        <div className={cn(SEARCH_BAR, "flex-1")}>
+          {bar}
+          {/* The sparkle and the short word "AI" (Pato, MESITA-4496). The
+              accessible name stays Ask AI. Opens the popup (MESITA-4480). */}
+          <button
+            type="button"
+            onClick={() => setAskOpen(true)}
+            className={BAR_ACTION}
+            data-search-ask-ai
+            aria-haspopup="dialog"
+            aria-label="Ask AI"
+          >
+            <AiSparkle className={HEADER_ICON} />
+            <span>AI</span>
+          </button>
+        </div>
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
