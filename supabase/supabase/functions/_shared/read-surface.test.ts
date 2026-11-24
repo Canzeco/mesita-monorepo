@@ -135,7 +135,6 @@ function assertRatchet(table: string, found: string[], allowlist: string[]) {
 const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/agent-tools.ts", // remaps by hand (fromPlaceIdRow) — MESITA-1718 seed
   "_shared/config-section-reservations.ts", // Needs attention: error checked, columns name no place_id (MESITA-4142)
-  "_shared/delete-history-free.ts", // head-only count by consumer_id: no place_id to remap
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation)
   // The guest's own ticket for the app's cancel / update / confirm doors,
   // error checked; columns name place_id directly (MESITA-2981).

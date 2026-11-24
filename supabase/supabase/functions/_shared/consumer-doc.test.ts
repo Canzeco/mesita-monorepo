@@ -233,6 +233,7 @@ function recordingAdmin(row: Record<string, unknown>) {
         updates.push(value);
         return { eq: () => Promise.resolve({ data: null, error: null }) };
       },
+      delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
     }),
     auth: { admin: { updateUserById: () => Promise.resolve({ error: null }) } },
   } as unknown as SupabaseClient;
@@ -253,7 +254,6 @@ Deno.test("tombstoneDeletedConsumer: account deletion clears the sharing choice"
   const { admin, updates } = recordingAdmin({});
   const res = await tombstoneDeletedConsumer(admin, "consumer-1");
   assert(res.ok);
-  assertEquals(updates.length, 1);
   assertEquals("instagram_handle_shown" in updates[0], true);
   assertEquals(updates[0].instagram_handle_shown, null);
 });

@@ -157,11 +157,10 @@ export default function PrivacyPage() {
           you can no longer sign in.
         </p>
         <p>
-          If you ever booked a table, the account is closed rather than erased:
-          your phone number and Instagram are removed and nobody can sign in to
-          it, but the booking records and the rest of the profile row stay.
-          Records of payments stay too, without your account on them when it was
-          erased.
+          If you never booked, paid or held credit, the account is erased. If
+          you did, it is closed: your name, phone number, photo, year of birth,
+          sex, Instagram and saved locations are removed and nobody can sign in
+          to it, but the records of those bookings and payments stay.
         </p>
       </LegalSection>
 

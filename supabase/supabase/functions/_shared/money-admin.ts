@@ -16,6 +16,7 @@
 // written by the same RPCs the Connect receiver calls, with the cumulative
 // amount, so the receiver's later delivery of the same refund is a no-op.
 
+import { TOMBSTONE_EMAIL_DOMAIN } from "./tombstone-email.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./stripe.ts";
 import { errorMessage } from "./errors.ts";
@@ -27,6 +28,8 @@ import { purchasesByPaymentIntent, spreadGone } from "./purchase-pi.ts";
 export function maskGuest(name: string | null | undefined, email: string | null | undefined): string {
   const n = (name ?? "").trim();
   if (n) return n;
+  // A closed account has no name; its stand-in email is nobody's (MESITA-4921).
+  if ((email ?? "").endsWith(TOMBSTONE_EMAIL_DOMAIN)) return "Deleted guest";
   const local = (email ?? "").split("@")[0].trim();
   if (!local) return "Guest";
   return `${local.slice(0, 2)}•••`;
