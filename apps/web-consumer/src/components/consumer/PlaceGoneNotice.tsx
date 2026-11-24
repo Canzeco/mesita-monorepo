@@ -8,11 +8,9 @@ import { toast } from "@/lib/toast";
 
 // Explains the place-detail bounce.
 //
-// The four place-detail routes (place / saved-place × page / intercepted
-// modal) all resolve the place server-side and `redirect()` home when
-// consumer-web-get-place 404s. That fallback is right — the app has no error
-// boundary and a hard 500 on a dead id is worse — but on its own it is
-// SILENT: the guest taps a place and simply lands back on Home with no idea
+// The place routes resolve the place server-side and `redirect()` home when
+// consumer-web-get-place 404s, and only then (MESITA-4917: any other failure
+// is the place's error screen). On its own that redirect is SILENT: the guest taps a place and simply lands back on Home with no idea
 // why. Reported as "a mistake is occurring, I cannot observe the place".
 //
 // A dead id is routine, not exotic: favorites live in localStorage

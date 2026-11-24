@@ -219,12 +219,18 @@ function setLocal(placeId: string, saved: boolean): boolean {
 // The surgical counterpart to clearSavedPlacesLocal(): used when a specific id
 // turns out to be dead server-side (consumer-web-get-place 404s on it), so the
 // tile that pointed at it stops existing instead of bouncing the guest again.
+// A tile links by slug when it has one, so the dead address may be either.
 // Both stores are keyed by place id — the set drives the row, the preview map
 // drives its thumbnail/name — so forgetting means clearing both.
-export function forgetSavedPlace(placeId: string): void {
+export function forgetSavedPlace(idOrSlug: string): void {
   // Local only: the place row is gone, and its activity went with it.
-  setLocal(placeId, false);
-  removeSavedPlacePreview(placeId);
+  const ids = new Set([idOrSlug]);
+  for (const [id, p] of readPreviewStorage<{ id: string; slug?: string }>())
+    if (p.slug === idOrSlug) ids.add(id);
+  for (const id of ids) {
+    removeSavedPlacePreview(id);
+    setLocal(id, false);
+  }
 }
 
 // Wipe the localStorage-backed saved set + previews and reset the in-memory
@@ -333,6 +339,18 @@ export function upsertSavedPlacePreview<T extends { id: string }>(
   const map = readPreviewStorage<T>();
   map.set(place.id, place);
   writePreviewStorage(map);
+}
+
+/** The card of a place saved with no card in hand (the profile's heart,
+ *  MESITA-4917), read after the save: Saved draws it when it lands. Dropped
+ *  when the place was unsaved meanwhile. */
+export function addSavedPlaceCard<T extends { id: string }>(place: T): void {
+  ensureHydrated();
+  if (!cache.has(place.id)) return;
+  upsertSavedPlacePreview(place);
+  // A new reference: the lists read the cards only when the set changes.
+  cache = new Set(cache);
+  emit();
 }
 
 export function removeSavedPlacePreview(placeId: string): void {

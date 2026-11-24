@@ -11,7 +11,8 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // favorite, an old bookmark) goes Home and says so (<PlaceGoneNotice />).
 
 /** One read per request: the page and its link-preview tags
- *  (generateMetadata, MESITA-4334) share it. Null for no place. */
+ *  (generateMetadata, MESITA-4334) share it. Null for no place (a 404); a
+ *  failed read throws to the route's error.tsx (MESITA-4917). */
 export const readPlaceOnce = cache(async (id: string) =>
   toCanonicalPlaceHrefOrNull(id)
     ? apiFetchPlaceDetail(await createServerSupabase(), id)
