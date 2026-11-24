@@ -95,6 +95,8 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meProfile: () => <ProfileLoading />,
   meInstagram: () => <InstagramLoading />,
   meVip: () => <VipLoading />,
+  meVipCode: () => <VipLoading />,
+  meVipAgency: () => <VipLoading />,
   mePlan: () => <PlanLoading />,
   meGift: () => <GiftLoading />,
   meNotifications: () => <NotificationsLoading />,

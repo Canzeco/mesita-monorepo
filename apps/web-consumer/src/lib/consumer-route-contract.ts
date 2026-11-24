@@ -156,6 +156,9 @@ export const CONSUMER_ROUTES = {
     // either invitation code or 5000 followers on instagram"). Codes only
     // since MESITA-4849: one code field.
     vip: "/me/vip",
+    // Class's subpages (MESITA-4864); Instagram's is mePages.instagram.
+    vipCode: "/me/vip/code",
+    vipAgency: "/me/vip/agency",
     // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
@@ -619,9 +622,11 @@ export const ROUTE_MAP = {
   // Sign holds Me's slot while the visitor is anonymous (MESITA-4246).
   sign: row("/sign", "me", "tab", null),
   meProfile: row("/me/profile", "me", "page", "me"),
-  meInstagram: row("/me/instagram", "me", "page", "me"),
+  meInstagram: row("/me/instagram", "me", "page", "meVip"),
   // Become VIP (MESITA-4766), pushed from Me's VIP row and the place's Pay tab.
   meVip: row("/me/vip", "me", "page", "me"),
+  meVipCode: row("/me/vip/code", "me", "page", "meVip"),
+  meVipAgency: row("/me/vip/agency", "me", "page", "meVip"),
   // Opened from Settings since the Me cell went Soon (MESITA-3855).
   mePlan: row("/me/plan", "me", "page", "meSettings"),
   meGift: row("/me/gift", "me", "page", "me"),

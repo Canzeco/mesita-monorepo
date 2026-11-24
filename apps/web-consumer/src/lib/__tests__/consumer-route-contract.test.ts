@@ -168,6 +168,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         profile: "/me/profile",
         instagram: "/me/instagram",
         vip: "/me/vip",
+        vipCode: "/me/vip/code",
+        vipAgency: "/me/vip/agency",
         plan: "/me/plan",
         gift: "/me/gift",
         // Activity's chips as Me's pages (MESITA-3855).

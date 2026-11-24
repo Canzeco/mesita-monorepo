@@ -1,6 +1,6 @@
 import { VipModal } from "@/components/consumer/me/VipModal";
 
-// /me/vip — Become VIP (MESITA-4766): an invitation code (the only way since MESITA-4849).
+// /me/vip — Class: the status and its ways to VIP (MESITA-4864).
 export const dynamic = "force-dynamic";
 
 export default function Page() {
