@@ -66,7 +66,7 @@ function outcomeSentence(outcome: string | null): string {
     case "change_proposed":
       return "asked to change your table.";
     case "unreachable":
-      return "didn't answer when Mesi called.";
+      return "didn't answer when Mesita called.";
     case "unresolved":
       return "didn't confirm your table yet.";
     default:

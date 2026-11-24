@@ -133,7 +133,7 @@ export default function PrivacyPage() {
           what it does: our hosting and database provider runs the accounts and
           the app&apos;s data, a messaging provider delivers your sign-in code,
           a voice provider carries the reservation agent&apos;s phone calls, AI
-          providers answer what you ask Mesi, Stripe handles payments, and
+          providers answer what you ask Mesita, Stripe handles payments, and
           public places data is what the catalog of restaurants, cafés and bars
           is built from.
         </p>

@@ -18,12 +18,12 @@ export type Solution = {
 export const GUEST_SOLUTIONS: Solution[] = [
   {
     name: "Global Discovery",
-    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place five ways: type its name, browse what is near or popular in 25 one-word families, read the map, ask Mesi in your own words, or see what people nearby are looking at.",
+    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place five ways: type its name, browse what is near or popular in 25 one-word families, read the map, ask Mesita in your own words, or see what people nearby are looking at.",
     ways: ["Name", "Catalog", "Map", "Deep", "Social"],
   },
   {
     name: "Reservations Agent",
-    body: "Ask for a table and Mesi, Mesita's agent, makes the call. He phones the place with your date, time and party size, and comes back with a confirmation or alternatives.",
+    body: "Ask for a table and Mesita makes the call. Its agent phones the place with your date, time and party size, and comes back with a confirmation or alternatives.",
   },
   {
     name: "Discounted Prepayments",
@@ -47,7 +47,7 @@ export const PLACE_SOLUTIONS: Solution[] = [
   },
   {
     name: "Reservations",
-    body: "Whether guests can ask for a table at your place. When they do, Mesi, Mesita's agent, calls you with the date, time and party size.",
+    body: "Whether guests can ask for a table at your place. When they do, Mesita's AI agent calls you with the date, time and party size.",
   },
   {
     name: "Smart Menu",

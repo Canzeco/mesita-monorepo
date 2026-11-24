@@ -16,7 +16,7 @@ import { Sparkles } from "lucide-react";
 // so they belong in the same row. See AskAiPanel's `onCall`.
 //
 // What is left is identity: the concierge has a name and a face, and a thread
-// with neither reads like a form. Mesi is the persona; Chat is the mode.
+// with neither reads like a form. Mesita is the name (MESITA-4927); Chat is the mode.
 export function MemoModeHeader() {
   return (
     <div className="bg-background/90 shrink-0 px-3 py-2.5 backdrop-blur-xl">
@@ -25,9 +25,9 @@ export function MemoModeHeader() {
           <Sparkles className="size-[18px]" strokeWidth={2.2} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm leading-tight font-semibold">Mesi</p>
+          <p className="text-sm leading-tight font-semibold">Mesita</p>
           <p className="text-muted-foreground type-body leading-tight">
-            Your Mesita concierge
+            Your AI agent
           </p>
         </div>
       </div>

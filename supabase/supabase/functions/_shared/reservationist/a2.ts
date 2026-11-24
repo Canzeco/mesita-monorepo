@@ -20,7 +20,7 @@ const PROMPT = [
 ].join("\n\n");
 
 const TALK = [
-  `La llamada ya está conectada con el comensal y el motivo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola! Soy ${AGENT_NAME}, el agente de Mesita. ¿Hablo con {{guest_name}}?» Nada antes de esa frase, y no vuelvas a preguntarlo si ya contestaron. Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
+  `La llamada ya está conectada con el comensal y el motivo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola! Le llamo de ${AGENT_NAME}. ¿Hablo con {{guest_name}}?» Nada antes de esa frase, y no vuelvas a preguntarlo si ya contestaron. Hasta que lo confirme no digas el restaurante, la fecha, la hora ni que hay una reservación.`,
   `Confirmado, según {{call_context}}:`,
   `- "confirmation": {{venue_name}} confirmó la mesa para {{party_size}} el {{reservation_date}} a las {{reservation_time}}. Díselo una vez y espera. No registres nada hasta que acepte esa mesa o nombre otra fecha u hora.`,
   `- "counter_offer": {{venue_name}} no pudo el {{reservation_date}} a las {{reservation_time}} y ofreció: {{venue_alternatives}}. Preséntalas tal cual.`,
@@ -61,14 +61,14 @@ export const A2: FleetAgent = {
         label: "Not the guest",
         position: pos(680, 400),
         prompt:
-          `No contestó el comensal. No reveles nada: ni el restaurante, ni la fecha, ni la hora, ni que hay una reservación. Di solo que eres ${AGENT_NAME}, de Mesita, que buscabas a {{guest_name}} y que puede revisar la app de Mesita. No tomes recado. Despídete y cuelga con end_call.`,
+          `No contestó el comensal. No reveles nada: ni el restaurante, ni la fecha, ni la hora, ni que hay una reservación. Di solo que llamas de ${AGENT_NAME}, que buscabas a {{guest_name}} y que puede revisar la app de Mesita. No tomes recado. Despídete y cuelga con end_call.`,
         edgeOrder: ["e_tp_end"],
       }),
       voicemail: talkNode({
         label: "Voicemail message",
         position: pos(640, 600),
         prompt:
-          `Es un buzón de voz: deja un recado de una frase — que habla ${AGENT_NAME}, de Mesita, por su reservación y que puede revisarla en la app de Mesita — y cuelga con end_call. No des más datos.`,
+          `Es un buzón de voz: deja un recado de una frase — que llamas de ${AGENT_NAME} por su reservación y que puede revisarla en la app de Mesita — y cuelga con end_call. No des más datos.`,
         edgeOrder: ["e_vm_end"],
       }),
       do_confirm: toolNode(tool("a2_confirm_reservation"), pos(980, -180), ["e_dc_farewell"]),

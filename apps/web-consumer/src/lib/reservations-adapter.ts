@@ -79,8 +79,8 @@ function noteFor(
           ? formatReservationWhen(row.next_attempt_at, row.place?.timezone)
           : "";
         return when
-          ? `Mesi will call the place when it opens — next try ${when}.`
-          : "Mesi will call the place when it opens — you'll see the answer here.";
+          ? `Mesita will call the place when it opens — next try ${when}.`
+          : "Mesita will call the place when it opens — you'll see the answer here.";
       }
       if (row.attempts_state === "exhausted") {
         return "The place didn't answer Mesita's calls. Try again or pick another time.";

@@ -147,7 +147,7 @@ export async function upsertTool(
 }
 
 /**
- * Make sure the workspace has the agents' voice (MESITA-4624). Mesi's voice is a
+ * Make sure the workspace has the agents' voice (MESITA-4624). The agents' voice is a
  * shared library voice: an agent PATCH naming it fails `voice_not_found` until
  * it is added to the workspace. Present → nothing; missing → find it in the
  * shared library by name and add it (the voice keeps its id).

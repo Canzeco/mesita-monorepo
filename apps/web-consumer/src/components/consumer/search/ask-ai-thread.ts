@@ -12,9 +12,9 @@ export type AiMessage = {
 };
 
 // In-code fallback when ask-memo bootstrap / turn metadata has no greeting.
-// Docs › Discovery §D: Mesi is Spanish-first — keep equal to the live memo_config.greeting (MESITA-4620 migration).
+// Docs › Discovery §D: Mesita is Spanish-first — keep equal to the live memo_config.greeting (MESITA-4927 migration).
 const FALLBACK_GREETING =
-  "Hola, soy Mesi, el agente de Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.";
+  "Hola, soy Mesita. Dime qué se te antoja — prueba “rooftop date tonight” o “tacos al pastor”.";
 
 const AI_ERROR =
   "Hmm, my line dropped for a second — give it another try in a moment.";

@@ -57,7 +57,7 @@ export async function inspect(ctx: WorkspaceCtx): Promise<Response> {
       knowledge: kb.length === 1 && kb[0].name === kbDocName(spec.key),
       end_call: !!builtIn.end_call,
       workflow: Object.values(wf?.edges ?? {}).some((e) => e.source === "start_node"),
-      // Mesi's voice is live (MESITA-4620): the prompt hash never covered TTS.
+      // Mesita's voice is live (MESITA-4620): the prompt hash never covered TTS.
       voice: liveSettings.voice_id === TTS.voice_id,
     };
     agents.push({

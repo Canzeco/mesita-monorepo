@@ -44,7 +44,7 @@ const PROMPT = [
 ].join("\n\n");
 
 const BOOK = [
-  `La llamada ya está conectada con el restaurante y tu encargo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola, buenas! Soy ${AGENT_NAME}, el agente de Mesita. Le llamo por una reservación a nombre de {{guest_name}}.» Nada antes de esa frase. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas.`,
+  `La llamada ya está conectada con el restaurante y tu encargo ya está decidido ({{call_context}}): no lo preguntes ni lo anuncies. Lo primero que dices, en cuanto contesten, es exactamente: «¡Hola, buenas! Le llamo de ${AGENT_NAME} por una reservación a nombre de {{guest_name}}.» Nada antes de esa frase. Si quien contesta no toma reservaciones o es un conmutador, pide con cortesía que te pasen con quien sí; acepta esperas cortas.`,
   `Según {{call_context}}:`,
   `- "booking": pide una mesa para {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}. Si el comensal eligió dónde sentarse («{{seating}}») o sus notas ({{special_requests}}) piden un área o algo concreto (terraza, interior, barra, una silla para bebé), pídelo en esa misma frase: nunca digas que no hay preferencia si piden algo.`,
   `- "modification": el restaurante ya tiene una mesa a nombre de {{guest_name}} el {{modification_of_date}} a las {{modification_of_time}}. No pidas mesa nueva: pide moverla a {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}. Si no pueden, pide que cancelen la anterior y toma la rama de no hay lugar.`,
