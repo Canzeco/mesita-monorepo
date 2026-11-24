@@ -1568,14 +1568,14 @@ export function VouchersPane({
   return (
     // THE MENU EDGE TO EDGE, THEN ONE TAB'S BOXES ON WHITE (MESITA-4727),
     // its bar at the bottom (MESITA-4710).
-    <div className="-mx-4 -mt-4 flex flex-1 shrink-0 flex-col pb-4" data-promos-page>
+    <div className="-mx-4 flex flex-1 shrink-0 flex-col pb-4" data-promos-page>
       <OffersTabs tab={tab} onTab={switchTab} locked={locked} picked={count} barRef={barRef} />
       <div
         role="tabpanel"
         id={`offers-panel-${tab}`}
         aria-labelledby={`offers-tab-${tab}`}
         // ONE GAP (Pato, 2026-11-23, MESITA-4787: "keep same margins"): the
-        // switch's own pb-3 is the 12px to the list, as the balance's mb-3 is
+        // switch's own pb-3 is the 12px to the list, as the host's pt-3 is
         // to the switch and gap-3 is between the boxes; no pt-4 on top.
         className="flex flex-1 shrink-0 flex-col gap-3 px-4"
         data-offers-panel={tab}
