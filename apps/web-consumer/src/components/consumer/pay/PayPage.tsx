@@ -112,8 +112,9 @@ export function PayPage({
           >
             {tab === "cards" ? null : (
               <>
-                {/* Its own scroller per tile, so each keeps its place. */}
-                <KeptScroll key={tab} className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {/* Its own scroller per tile, so each keeps its place. No bar over the
+                    table (Pato, 2026-11-24, MESITA-4845). */}
+                <KeptScroll key={tab} className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">
                   {tab === "prepay" ? (
                     <PlaceList
                       kind="prepay"
@@ -139,7 +140,7 @@ export function PayPage({
               </>
             )}
             {/* Always mounted, so its read runs with the others. */}
-            <KeptScroll className={cn("scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-contain", tab !== "cards" && "hidden")}>
+            <KeptScroll className={cn("scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain", tab !== "cards" && "hidden")}>
               <WalletSection onReady={onWalletReady} giftToken={giftToken} />
             </KeptScroll>
           </div>
