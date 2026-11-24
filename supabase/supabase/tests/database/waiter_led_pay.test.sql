@@ -3,7 +3,7 @@
 -- nothing owed closes at Accept, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(54);
+select plan(63);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -33,13 +33,11 @@ create temp table t (k text primary key, v jsonb);
 grant all on t to public;
 
 -- ── The code ──
-select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('a', 64), repeat('1', 64))->>'ok'), 'true', 'a code is set');
-select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('b', 64), repeat('1', 64))->>'code'), 'collision', 'live six digits are one guest''s');
+select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('a', 64))->>'ok'), 'true', 'a code is set');
 select is((public.pay_bill_open(repeat('e', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64))->>'code'), 'code_gone', 'an unknown code opens nothing');
 insert into t select 'open', public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64));
 select is((select v->>'outcome' from t where k = 'open'), 'opened', 'the QR opens a bill session');
-select is((public.pay_bill_open(repeat('1', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64))->>'outcome'), 'reused', 'the six digits reach the same session');
-select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('2', 64), repeat('3', 64))->>'ok'), 'true', 'the code rotates');
+select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('2', 64))->>'ok'), 'true', 'the code rotates');
 select is((public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64))->>'ok'), 'true', 'the previous QR works for five minutes');
 select is((public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64), now() + interval '301 seconds')->>'code'), 'code_gone', 'and then it does not');
 
@@ -95,7 +93,7 @@ values ('00000000-0000-4000-8000-0000000e4823', '00000000-0000-4000-8000-0000000
         20000, 'mxn', 'open', 'acct_test_4823', 'voucher_200', 2000, 1000, 'cs_test_4823');
 do $$ begin perform wallet_credit_purchase('00000000-0000-4000-8000-0000000e4823', 'pi_test_4823', now() - interval '1 minute'); end $$;
 select is((public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64))->>'code'), 'code_gone', 'after Not my bill the old QR opens nothing');
-select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('7', 64), repeat('8', 64))->>'ok'), 'true', 'a new QR');
+select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('7', 64))->>'ok'), 'true', 'a new QR');
 insert into t select 'o3', public.pay_bill_open(repeat('7', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
 -- Credits cover the bill but there is a tip: it waits for Received.
 insert into t select 's3', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o3'), '00000000-0000-4000-8000-000000024823', 0, 10000, 1000, repeat('d', 64));
@@ -121,6 +119,25 @@ select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o5'), '00000000-0000-4000-8000-0000000a4823', 2, repeat('a', 63) || '4')->>'outcome'), 'accepted', 'and then accepted');
 select ok(not has_table_privilege('authenticated', 'public.pay_bills', 'select'), 'guests never read pay_bills');
 select ok(not has_function_privilege('authenticated', 'public.pay_bill_accept(uuid, uuid, integer, text, integer, timestamptz)', 'execute'), 'guests never call accept');
+
+-- ── The waiter code is tried only with a live QR, and counted (MESITA-4833) ──
+insert into public.place_codes (place_id, code_hash, lookup_hash) values ('00000000-0000-4000-8000-000000014823', repeat('0', 64), repeat('c', 64));
+insert into t select 'qr', public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('e', 63) || '1');
+select is((public.waiter_code_try(repeat('e', 63) || '9', null, repeat('a', 64), repeat('c', 64))->>'code'), 'code_gone', 'a code is not tried without a live QR');
+select is((public.waiter_code_try(null, gen_random_uuid(), repeat('a', 64), repeat('c', 64))->>'code'), 'code_gone', 'nor with an unknown bill');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), repeat('c', 64))->>'place_id'), '00000000-0000-4000-8000-000000014823', 'the right code names its place');
+select is((select count(*)::int from generate_series(1, 5) g where public.waiter_code_try(repeat('e', 63) || '1', null, md5(g::text) || md5(g::text), repeat('d', 64))->>'code' = 'staff_only'), 5, 'five wrong codes are counted');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), repeat('c', 64))->>'code'), 'locked', 'the sixth on one guest is locked, from any address');
+select is((public.waiter_code_try(repeat('7', 64), null, repeat('a', 64), repeat('c', 64))->>'ok'), 'true', 'another guest at the same address is not');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), repeat('c', 64), now() + interval '9 minutes 59 seconds')->>'code'), 'locked', 'for ten minutes');
+insert into public.place_charge_tries (place_id, kind, addr_hash) select null, 'staff', repeat('f', 64) from generate_series(1, 30);
+select is((public.waiter_code_try(repeat('7', 64), null, repeat('f', 64), repeat('c', 64))->>'code'), 'locked', 'thirty wrong codes lock an address');
+-- ── 300 bills an hour per place, whatever the key ──
+insert into public.pay_bills (consumer_id, place_id, livemode, currency, status, staff_key_hash, expires_at)
+select '00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', true, 'mxn', 'cancelled', repeat('0', 64), now() from generate_series(1, 300);
+select is((public.pay_bill_open(repeat('e', 63) || '1', null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('9', 64))->>'code'), 'too_many', 'a place opens 300 bills an hour at most');
+select ok(not has_function_privilege('authenticated', 'public.waiter_code_try(text, uuid, text, text, timestamptz)', 'execute'), 'guests never try a waiter code');
+select ok(not has_function_privilege('anon', 'public.waiter_code_try(text, uuid, text, text, timestamptz)', 'execute'), 'nor does anyone else');
 
 select * from finish();
 rollback;

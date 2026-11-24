@@ -40,9 +40,10 @@ async function call<T>(name: string, body: Record<string, unknown>, fallback: st
 
 export type Staff = { place_id: string; staff_token: string };
 
-/** The place's 6-digit code; the code alone names the place. */
-export const signIn = (code: string) =>
-  call<{ place: { id: string; name: string | null }; staff_token: string }>("visit-web-sign-in", { code }, "Couldn't check the code. Try again.");
+/** The place's 6-digit code; the code alone names the place, and is tried
+ *  only with the guest's QR or a bill (MESITA-4833). */
+export const signIn = (code: string, by: { token: string } | { bill_id: string }) =>
+  call<{ place: { id: string; name: string | null }; staff_token: string }>("visit-web-sign-in", { code, ...by }, "Couldn't check the code. Try again.");
 
 // The staff key of one bill, in this tab only: the code is typed once per
 // bill, and nothing about the phone is remembered (MESITA-4827).

@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { billState, type BillRow, mintShortCode, readCents, readOpenBy, staffBillView } from "./pay-bill.ts";
+import { billState, type BillRow, readCents, readOpenBy, readSignInBy, staffBillView } from "./pay-bill.ts";
 
 const NOW = Date.parse("2026-11-24T12:00:00Z");
 const later = "2026-11-24T12:10:00Z";
@@ -33,9 +33,11 @@ Deno.test("the waiter reads no credits before the guest accepts", () => {
 });
 
 Deno.test("what opens a bill", () => {
-  assertEquals(readOpenBy({ code: "012345" }), { kind: "short", code: "012345" });
-  assertEquals(readOpenBy({ code: "12345" }), null);
-  assertEquals(readOpenBy({ token: "nope", code: "012345" }), null);
-  assertEquals(/^\d{6}$/.test(mintShortCode()), true);
+  const id = "00000000-0000-4000-8000-0000000a4833";
+  assertEquals(readOpenBy({ code: "012345" }), null);
+  assertEquals(readOpenBy({ token: "nope" }), null);
+  assertEquals(readOpenBy({ again_bill_id: id }), { kind: "again", billId: id });
+  assertEquals(readSignInBy({ code: "012345" }), null);
+  assertEquals(readSignInBy({ bill_id: id }), { kind: "bill", billId: id });
   assertEquals([readCents(0, 1), readCents(0, 0), readCents(1.5, 1), readCents("5", 1)], [null, 0, null, null]);
 });

@@ -1,11 +1,11 @@
-// Waiter-led pay (MESITA-4823). The guest shows one general QR (and six
-// digits under it); the waiter scans it on service.mesita.ai, types the bill and
+// Waiter-led pay (MESITA-4823). The guest shows one general QR;
+// the waiter scans it on service.mesita.ai, types the bill and
 // the tip and sends; the guest accepts or declines; the rest is paid outside
 // Mesita; the waiter's Received spends the credits and grants the cashback.
 //
 //   consumer-web-get-pay-code  pay_guest_code_set   the QR, and the guest's poll
 //   consumer-web-answer-bill   pay_bill_accept | pay_bill_decline | cancel
-//   visit-web-sign-in          staffAccess          the waiter code, once per phone per 12 h
+//   visit-web-sign-in          waiter_code_try      the waiter code, typed on each bill
 //   visit-web-open-bill        pay_bill_open        the scan
 //   visit-web-send-bill        pay_bill_send        the bill, or an edit
 //   visit-web-get-bill         reads                the waiter's poll
@@ -22,7 +22,6 @@ import { isUuid } from "./place-id.ts";
 import { isProofToken, mintProofToken, payCodeUrl } from "./proof.ts";
 import { type AttemptRow, readAttemptById } from "./guest-attempt.ts";
 import { readStaffToken, staffDeviceHash, supabaseStaffStore, tabStaffJti } from "./staff.ts";
-import { PAIR_TRY_LIMIT, TRY_WINDOW_SEC } from "./charge.ts";
 
 /** Minutes the guest has to answer, then the minutes they have to pay. */
 export const BILL_ANSWER_MIN = 15;
@@ -119,30 +118,25 @@ async function sha256Hex(text: string): Promise<string> {
 }
 
 export const hashPayCode = (token: string) => sha256Hex(`pay-code:${token}`);
-/** Keyed, so a million guesses against a leaked hash need the key too. */
-export const hashShortCode = (serviceKey: string, code: string) => sha256Hex(`pay-short:${serviceKey}:${code}`);
-
-/** Six digits without modulo bias. */
-export function mintShortCode(): string {
-  const limit = Math.floor(0x100000000 / 1_000_000) * 1_000_000;
-  let n: number;
-  do n = crypto.getRandomValues(new Uint32Array(1))[0]; while (n >= limit);
-  return String(n % 1_000_000).padStart(6, "0");
-}
 
 export function mintPayCode() {
   const token = mintProofToken();
-  return { token, short: mintShortCode(), url: payCodeUrl(token) };
+  return { token, url: payCodeUrl(token) };
 }
 
 // ── Reading what arrives ────────────────────────────────────────────────────
 
-export type OpenBy = { kind: "token"; token: string } | { kind: "short"; code: string } | { kind: "again"; billId: string };
+export type OpenBy = { kind: "token"; token: string } | { kind: "again"; billId: string };
 
 export function readOpenBy(b: Record<string, unknown>): OpenBy | null {
   if (b.again_bill_id !== undefined) return isUuid(b.again_bill_id) ? { kind: "again", billId: b.again_bill_id } : null;
-  if (b.token !== undefined) return isProofToken(b.token) ? { kind: "token", token: b.token } : null;
-  return typeof b.code === "string" && /^\d{6}$/.test(b.code) ? { kind: "short", code: b.code } : null;
+  return isProofToken(b.token) ? { kind: "token", token: b.token } : null;
+}
+
+/** What a waiter code is typed on: the guest's QR, or a bill (MESITA-4833). */
+export function readSignInBy(b: Record<string, unknown>): { kind: "token"; token: string } | { kind: "bill"; billId: string } | null {
+  if (b.bill_id !== undefined) return isUuid(b.bill_id) ? { kind: "bill", billId: b.bill_id } : null;
+  return isProofToken(b.token) ? { kind: "token", token: b.token } : null;
 }
 
 export function readCents(v: unknown, min: number): number | null {
@@ -164,13 +158,6 @@ export async function billStaff(
   const keys = await supabaseStaffStore(admin).keys(placeId);
   const jti = tabStaffJti(token, await readStaffToken(serviceKey, placeId, token, keys, nowMs));
   return jti ? { placeId, keyHash: await staffDeviceHash(jti) } : null;
-}
-
-/** Wrong six-digit codes: five per phone in ten minutes, on the tries table
- *  the waiter code's locks use. */
-export async function shortCodeLocked(admin: SupabaseClient, placeId: string, keyHash: string, nowMs: number): Promise<boolean> {
-  const since = new Date(nowMs - TRY_WINDOW_SEC * 1000).toISOString();
-  return (await supabaseStaffStore(admin).tries(placeId, "guest", keyHash, since, PAIR_TRY_LIMIT)).length >= PAIR_TRY_LIMIT;
 }
 
 // ── The database ────────────────────────────────────────────────────────────
