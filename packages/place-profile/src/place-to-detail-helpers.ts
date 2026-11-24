@@ -90,6 +90,12 @@ function parseMinutes(t: unknown): number | null {
   return min >= 0 && min <= 1440 ? min : null;
 }
 
+/** A whole day: Google's open-24-hours is stored 00:00–23:59. */
+function isAllDay(r: HourRange): boolean {
+  const c = parseMinutes(r.close);
+  return parseMinutes(r.open) === 0 && (c === 0 || (c != null && c >= 1439));
+}
+
 /** The place's own numeric range, or "" — the chip falls back to price_level. */
 export function derivePriceRange(row: Row): string {
   const raw = str(row.price_range);
@@ -140,6 +146,11 @@ export function computeOpenState(
     nowMin = hr * 60 + mn;
   } catch {
     return fallback;
+  }
+
+  // Open around the clock, every day: there is no closing time to print.
+  if (WEEK_KEYS.every((k) => arr<HourRange>(h[k]).some(isAllDay))) {
+    return { open_now: true, opens_at: "", closes_at: "" };
   }
 
   const todayKey = WEEK_KEYS[dayIdx];

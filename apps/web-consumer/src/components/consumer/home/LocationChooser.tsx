@@ -139,6 +139,9 @@ export function LocationChooser({
     // Opening the map for a new or unconfirmed pin: if it is confirmed,
     // the guest chose by pin.
     if (next && next.mode !== "edit") noteChoice("pin");
+    // Opening the map drops a pending "Use my location": its fix must not
+    // close the pin step.
+    if (next) setWantFix(false);
     if (controlled) onPickerChange(next);
     else setOwnPicker(next);
   };
@@ -190,9 +193,12 @@ export function LocationChooser({
     onDone();
   };
 
-  // The fix the guest asked for landed: Current location is chosen already.
+  // The fix the guest asked for landed: Current location is the choice now.
   useOnUserFix(() => {
-    if (wantFix) done();
+    if (!wantFix) return;
+    noteChoice(null);
+    setActiveLocation(null);
+    done();
   });
 
   const locatingHere = coords === null && locating;
@@ -341,11 +347,12 @@ export function LocationChooser({
    *  fix is the choice, a failure says why). */
   const chooseHere = () => {
     noteChoice(null);
-    setActiveLocation(null);
     if (coords !== null) {
+      setActiveLocation(null);
       done();
       return;
     }
+    // A chosen saved location stays until the fix lands.
     setWantFix(true);
     locate();
   };

@@ -379,7 +379,7 @@ export function CatalogRails() {
   // show another guest's chips; the guest is part of the key.
   const guest = useServerProfile()?.id ?? "anon";
   const requestKey = `${guest}|${mode}`;
-  const errorTag = `${requestKey}#${retry}`;
+  const errorTag = `${requestKey}|${hereKey}#${retry}`;
   // The mode's kept answer, painted the moment its chip is tapped (H3).
   const pool = useSyncExternalStore(
     subscribeModePools,
@@ -411,6 +411,7 @@ export function CatalogRails() {
         noteHomeSeen(next.order.slice(0, next.pageSize ?? next.places.length));
         // A new config drops every mode's list and seed (DX-b).
         acceptRank(guest, mode, rec, next, next.updatedAt);
+        setFetchError(null);
       } catch (err) {
         if (cancelled) return;
         // The EF's code and requestId join this failure to its
@@ -474,6 +475,9 @@ export function CatalogRails() {
   const asked = pool?.asked ?? 0;
   const order = pool?.order;
   const hasMore = order !== undefined && asked < order.length;
+  // The ranked list is on screen. Social, Saved and an error unmount the
+  // sentinel, so the observer rebinds when the list comes back.
+  const listing = tab === "places" && chip !== SAVED_CHIP && !noPoint && !failed;
   useEffect(() => {
     const el = sentinel.current;
     if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined")
@@ -549,7 +553,7 @@ export function CatalogRails() {
       if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [asked, order, requestKey, fillRetry]);
+  }, [asked, order, requestKey, fillRetry, listing]);
 
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({

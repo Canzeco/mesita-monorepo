@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import type { Place } from "@/lib/api/places";
 import type { PlacePrediction } from "@/lib/api/place-search";
 import type { MemoAnswer, MemoTurn } from "@/lib/api/memo";
+import { useServerProfile } from "@/lib/identity-context";
 import { cn } from "@/lib/utils";
 import type { AddState } from "./add-state";
 import { MemoAnswerText } from "./MemoAnswerText";
@@ -54,23 +55,24 @@ export function AskAiPanel({
    */
   onCall?: () => void;
 }) {
+  const owner = useServerProfile()?.id ?? null;
   // Lazy init from the session cache (populated by a previous mount this
   // session). Null on a fresh load / SSR → greeting, so hydration matches.
   const [messages, setMessages] = useState<AiMessage[]>(
-    () => getThreadCache()?.messages ?? greetingThread(),
+    () => getThreadCache(owner)?.messages ?? greetingThread(),
   );
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [related, setRelated] = useState<string[]>(
-    () => getThreadCache()?.related ?? [],
+    () => getThreadCache(owner)?.related ?? [],
   );
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Persist to the session cache on every change (writes a module var, not
   // state — no set-state-in-effect). A lone greeting resets the cache to fresh.
   useEffect(() => {
-    saveThreadCache(messages, related);
-  }, [messages, related]);
+    saveThreadCache(owner, messages, related);
+  }, [owner, messages, related]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -223,6 +225,7 @@ export function AskAiPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask anything…"
+            aria-label="Ask Memo"
             className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-sm outline-none"
           />
           {/* CALL SITS HERE, not in a header (Pato, 2026-09-01). Voice and text

@@ -70,6 +70,12 @@ export type PinPickerState = {
   formattedAddress: string | null;
   /** The pin the last answer (or terminal failure) described. */
   answeredAt: LatLng | null;
+  /** The pin the last unsettled failure was about: not asked again here, the
+   *  saved entry's backfill does. */
+  failedAt: LatLng | null;
+  /** What Google last named the pin, kept while a typed name freezes
+   *  `suggestedName`, so clearing the field hands back the pin's own name. */
+  pinName: string | null;
   /** The newest request; an answer for any other is dropped. */
   seq: number;
   /** Requests spent this session. */
@@ -101,6 +107,8 @@ export function initialPinPickerState(seed: {
     formattedAddress: seed.formattedAddress ?? null,
     // An edited entry opens already named at its own pin.
     answeredAt: named ? seed.center : null,
+    failedAt: null,
+    pinName: seed.suggestedName ?? null,
     seq: 0,
     calls: 0,
     inFlight: false,
@@ -137,6 +145,8 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
         inFlight: false,
         failed: false,
         answeredAt: a.at,
+        failedAt: null,
+        pinName: a.answer.suggestedName,
         formattedAddress: a.answer.formattedAddress,
         suggestedName,
         nameValue: s.nameEdited || s.nameFocused ? s.nameValue : (suggestedName ?? ""),
@@ -152,6 +162,8 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
         inFlight: false,
         failed: true,
         answeredAt: settled ? a.at : s.answeredAt,
+        failedAt: settled ? null : a.at,
+        pinName: null,
         formattedAddress: null,
         suggestedName: s.nameEdited ? s.suggestedName : null,
         nameValue: s.nameEdited || s.nameFocused ? s.nameValue : "",
@@ -166,7 +178,9 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
         nameValue: s.nameEdited ? s.nameValue : (s.suggestedName ?? ""),
       };
     case "name_input":
-      return { ...s, nameValue: a.value, nameEdited: a.value.trim() !== "" };
+      return a.value.trim() !== ""
+        ? { ...s, nameValue: a.value, nameEdited: true }
+        : { ...s, nameValue: a.value, nameEdited: false, suggestedName: s.pinName };
   }
 }
 
@@ -174,7 +188,7 @@ export function pinPickerReducer(s: PinPickerState, a: PinPickerAction): PinPick
  *  can still pay for one. */
 export function lookupNeeded(s: PinPickerState): boolean {
   return s.center !== null && !s.inFlight && s.calls < PIN_LOOKUP_BUDGET &&
-    !samePinSpot(s.center, s.answeredAt);
+    !samePinSpot(s.center, s.answeredAt) && !samePinSpot(s.center, s.failedAt);
 }
 
 /** The muted line under the map. */

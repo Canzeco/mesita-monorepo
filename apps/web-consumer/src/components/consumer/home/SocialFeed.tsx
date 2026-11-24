@@ -134,7 +134,7 @@ import {
 } from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
-import { useViewer } from "@/lib/identity-context";
+import { useServerProfile, useViewer } from "@/lib/identity-context";
 import { openSignGate } from "@/lib/anonymous";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
@@ -434,6 +434,16 @@ const cardKey = (e: CardEvent) => `${e.placeId}|${e.kind}|${e.at}`;
  *  behind what it repaints. */
 let lastFeed: (ActivityFeedPage & { fromKey: string }) | null = null;
 const MEMORY_CARDS = 20;
+/** Whose feed is held: a sign-in or sign-out is a soft navigation, so module
+ *  memory would carry one guest's feed into the next account. */
+let memoryOwner: string | null = null;
+function claimMemory(guest: string) {
+  if (memoryOwner === guest) return;
+  memoryOwner = guest;
+  lastFeed = null;
+  historyMemory.clear();
+  cardMemory.clear();
+}
 const historyMemory = new Map<string, MemberHistory>();
 const cardMemory = new Map<
   string,
@@ -460,11 +470,16 @@ function cardMemoryOf(key: string) {
 type MemberHistory = {
   person: ActivityPerson | null;
   items: MemberHistoryItem[];
+  /** The read failed: nothing here says who or what the member is. */
+  failed?: boolean;
 };
 
 /** The member behind the open card and their history (MESITA-2609); null
- *  while it loads. A failed read shows the row's person and no history. */
-function useMemberHistory(event: CardEvent | null): MemberHistory | null {
+ *  while it loads. A failed read says so and can be retried. */
+function useMemberHistory(
+  event: CardEvent | null,
+  attempt: number,
+): MemberHistory | null {
   const supabase = useBrowserSupabase();
   const key = event ? cardKey(event) : null;
   const [loaded, setLoaded] = useState<{
@@ -487,14 +502,14 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
         // A remembered history stays on screen; only a first read that
         // fails shows none.
         if (!cancelled && !historyMemory.has(key)) {
-          setLoaded({ key, history: { person: null, items: [] } });
+          setLoaded({ key, history: { person: null, items: [], failed: true } });
         }
       });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, key]);
+  }, [supabase, key, attempt]);
   if (!key) return null;
   return loaded && loaded.key === key
     ? loaded.history
@@ -528,7 +543,8 @@ function PersonCard({
   onTab: (tab: HistoryTab) => void;
   onClose: () => void;
 }) {
-  const history = useMemberHistory(event);
+  const [attempt, setAttempt] = useState(0);
+  const history = useMemberHistory(event, attempt);
   const scrollRef = useRef<HTMLDivElement>(null);
   const key = event ? cardKey(event) : null;
   const ready = history != null;
@@ -610,6 +626,20 @@ function PersonCard({
               sex={person.sex}
               age={person.age}
             />
+          ) : history?.failed ? (
+            <div
+              className="text-muted-foreground flex flex-col items-center gap-3 py-10 text-center text-sm"
+              data-social-person-failed
+            >
+              <p>Couldn&apos;t load this profile</p>
+              <button
+                type="button"
+                onClick={() => setAttempt((n) => n + 1)}
+                className="text-foreground border-border hover:bg-muted/60 inline-flex h-9 items-center rounded-full border px-3.5 text-xs font-semibold"
+              >
+                Try again
+              </button>
+            </div>
           ) : history ? (
             // A link to a member who is gone (deleted, or the event is).
             <p
@@ -636,18 +666,20 @@ function PersonCard({
             by a line, like in instagram"): the way Instagram's profile
             rules off the header from the grid. The line spans the card and
             is there in every state, tiles, skeleton or a tab's empty line. */}
-        <div
-          className="border-border mt-4 border-t"
-          data-social-history-divider
-        >
-          <HistoryList
-            key={key}
-            memoryKey={key}
-            items={history ? history.items : null}
-            tab={tab}
-            onTab={onTab}
-          />
-        </div>
+        {history?.failed ? null : (
+          <div
+            className="border-border mt-4 border-t"
+            data-social-history-divider
+          >
+            <HistoryList
+              key={key}
+              memoryKey={key}
+              items={history ? history.items : null}
+              tab={tab}
+              onTab={onTab}
+            />
+          </div>
+        )}
         <div className="px-5 pb-5"></div>
       </div>
     </div>
@@ -659,6 +691,8 @@ export function PersonProfile() {
   const router = useRouter();
   const params = useSearchParams();
   const event = params ? cardEventOf(params) : null;
+  const guest = useServerProfile()?.id ?? "anon";
+  useState(() => claimMemory(guest));
   const tab: HistoryTab = params?.get("grid") === "saved" ? "saved" : "viewed";
   if (!event) {
     return (
@@ -992,7 +1026,12 @@ export function mergeNewestPage(
   if (!held || !last || !page.next) return page;
   const newestHeld = held.items[0];
   if (!newestHeld || newestHeld.at < last.at) return page;
-  const older = held.items.filter((it) => it.at < last.at);
+  // A signed-out visitor's times are coarsened to the day, so a held row can
+  // tie the page's last one without being on it.
+  const onPage = new Set(page.items.map(eventKey));
+  const older = held.items.filter(
+    (it) => it.at < last.at || (it.at === last.at && !onPage.has(eventKey(it))),
+  );
   return older.length > 0
     ? { items: [...page.items, ...older], next: held.next }
     : page;
@@ -1055,6 +1094,9 @@ function SocialFeedBody() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const origin = useActiveLocation();
+  const guest = useServerProfile()?.id ?? "anon";
+  // Before the first read of `lastFeed` below.
+  useState(() => claimMemory(guest));
   const from = origin ?? coords;
   const fromKey = from
     ? `${from.lat.toFixed(2)},${from.lng.toFixed(2)}`

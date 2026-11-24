@@ -104,6 +104,13 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const sentMessage = `We just texted you a ${OTP_LENGTH}-digit code.`;
 
   const startVerification = async () => {
+    // Back to the same number inside its cooldown: the code sent still works.
+    if (cooldown > 0 && cooldownPhone === e164) {
+      setError(null);
+      setStep("code");
+      setInfo(sentMessage);
+      return;
+    }
     if (await sendCode()) {
       setStep("code");
       setInfo(sentMessage);

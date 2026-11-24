@@ -6,7 +6,7 @@
 // profile), used while the store is empty so a hard load renders real data
 // in its HTML too.
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   fetchCached,
   readCachedEntry,
@@ -41,15 +41,20 @@ export function useCachedQuery<T>(
   const [nonce, setNonce] = useState(0);
 
   const at = entry?.at ?? null;
+  // An invalidated key reads again while its reader is mounted. A failed read
+  // leaves it missing, so it never loops.
+  const missing = at == null;
+  const askedNonce = useRef(0);
   useEffect(() => {
     if (!key) return;
-    const fresh = at != null && Date.now() - at < ttl && nonce === 0;
+    // reload() forces one read; the answer landing must not force another.
+    const forced = askedNonce.current !== nonce;
+    askedNonce.current = nonce;
+    const fresh = at != null && Date.now() - at < ttl && !forced;
     if (fresh) return;
     let cancelled = false;
     fetchCached(key, fetch).then(
-      () => {
-        if (!cancelled) setFailed(null);
-      },
+      () => setFailed((f) => (f?.key === key ? null : f)),
       (e: unknown) => {
         if (cancelled) return;
         const message = e instanceof Error ? e.message : String(e);
@@ -63,7 +68,7 @@ export function useCachedQuery<T>(
     };
     // `fetch` is a fresh closure every render; the key names the read.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, nonce]);
+  }, [key, nonce, missing]);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
   const data = entry?.value ?? seed;

@@ -10,9 +10,11 @@ import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAnswerBill, apiGetPayCode, type BillTyping, billNeedsGuest, type GuestBill, type PayCode } from "@/lib/api/pay-bill";
-import { money, payPlaceCashbackBps, payPlaceDiscountBps } from "@/lib/api/wallet";
+import { apiListVisits } from "@/lib/api/tab";
+import { money, payPlaceCashbackBps, payPlaceDiscountBps, WALLET_CACHE_KEY } from "@/lib/api/wallet";
 import { payBillPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
+import { fetchCached, invalidateCached } from "@/lib/screen-cache";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { cn } from "@/lib/utils";
@@ -102,6 +104,15 @@ function keptCode(): PayCode | null {
   }
 }
 
+/** A QR the server ended is never shown again, even with no signal. */
+function dropKeptCode() {
+  try {
+    window.sessionStorage.removeItem(CODE_KEY);
+  } catch {
+    // Private mode: nothing was kept.
+  }
+}
+
 export function PayCodeScreen({ from }: { from: string | null }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
@@ -144,6 +155,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       setMisses(0);
       setTyping(t);
       setClosed(ended);
+      if (ended) dropKeptCode();
       typingNow.current = t !== null;
       if (!t) setQrOver(false);
       setNow(Date.now());
@@ -158,12 +170,16 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       if (shown?.state === "paid" && shown.attempt_id) {
         if (!opened.current) {
           opened.current = true;
+          // Tickets and Me read these: this visit and its credits are new.
+          invalidateCached(WALLET_CACHE_KEY);
+          invalidateCached("activity-visits");
+          void fetchCached("activity-visits", () => apiListVisits(getSupabase())).catch(() => {});
           navigateTo(router, payBillPath(shown.attempt_id), { replace: true });
         }
       }
       setBill(shown);
     },
-    [router],
+    [router, getSupabase],
   );
 
   const refresh = useCallback(async () => {
@@ -267,6 +283,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         following.current = null;
         setBill(null);
         setCode(null);
+        dropKeptCode();
         await mint();
       } else await refresh();
     } catch (e) {
@@ -331,11 +348,12 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     );
   }
 
-  // WRITE BILL: the waiter scanned and is typing.
-  const writing = !rescan && (!bill || bill.state === "open") && !qrOver && (typing !== null || bill?.state === "open");
+  // WRITE BILL: the waiter scanned and is typing. An open bill nobody types on
+  // was left: the QR again, never $0.00.
+  const writing = !rescan && (!bill || bill.state === "open") && !qrOver && typing !== null;
   if (writing) {
     const shown = (c: number) => money(c, here?.currency ?? "mxn");
-    const t = typing ?? { bill_cents: 0, tip_cents: 0, step: "code" as const };
+    const t = typing;
     const row = (label: string, cents: number, on: boolean, empty: string) => (
       <div className={cn("flex items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-all duration-300", on ? "border-[#00D66F] bg-[#00D66F]/10" : "border-border")} data-write-bill-row={label}>
         <dt className={cn("text-base font-semibold", !on && "text-muted-foreground")}>{label}</dt>

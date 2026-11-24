@@ -29,6 +29,7 @@ import {
   isDefinitiveRefusal,
 } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
+import { readLastCard as readDefaultCard } from "@/lib/guest-pay-draft";
 import { isApplePhone, walletInBrowser } from "@/lib/pay-wallet";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardModal } from "@/lib/added-card";
@@ -476,10 +477,13 @@ export function usePlaceVouchers(
         pay_method === "card" ||
         ((pay_method === "apple_pay" || pay_method === "google_pay") && !walletInBrowser(pay_method, isApplePhone()));
       setPayCards({ state: "ready", cards: list, cardFirst });
+      // The default picked on Payment methods, else the last card paid with.
+      const chosen = readDefaultCard();
+      const remembered = list.some((c) => c.id === chosen) ? chosen : readLastCard(userKey.current);
       setPayCardId((prev) =>
         prev && list.some((c) => c.id === prev)
           ? prev
-          : pickPayCard(list, readLastCard(userKey.current)),
+          : pickPayCard(list, remembered),
       );
     } catch (err) {
       if (mine !== cardsRequest.current) return;

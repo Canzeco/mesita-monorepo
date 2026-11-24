@@ -23,6 +23,8 @@ const entries = new Map<string, Entry>();
 const inflight = new Map<string, Promise<unknown>>();
 const listeners = new Set<() => void>();
 let version = 0;
+/** Bumped by clearScreenCache: a read from before it is dropped, not re-asked. */
+let epoch = 0;
 
 const onClient = () => typeof window !== "undefined";
 
@@ -53,9 +55,11 @@ export function readCached<T>(key: string): T | null {
   return readCachedEntry<T>(key)?.value ?? null;
 }
 
-/** Keep `value` under `key` and tell every reader. */
+/** Keep `value` under `key` and tell every reader. A read already out is
+ *  older than this, so its answer is not kept. */
 export function writeCached<T>(key: string, value: T, now = Date.now()): void {
   if (!onClient()) return;
+  inflight.delete(key);
   entries.set(key, { at: now, value });
   emit();
 }
@@ -68,7 +72,9 @@ export function seedCached<T>(key: string, value: T, now = Date.now()): void {
   entries.set(key, { at: now, value });
 }
 
+/** Forget `key`; a read already out is from before, so it is asked again. */
 export function invalidateCached(key: string): void {
+  inflight.delete(key);
   if (!entries.delete(key)) return;
   emit();
 }
@@ -76,6 +82,7 @@ export function invalidateCached(key: string): void {
 /** Forget everything (account change). Silent: it runs during the shell's
  *  first render, when no reader is mounted yet. */
 export function clearScreenCache(): void {
+  epoch += 1;
   entries.clear();
   inflight.clear();
 }
@@ -87,9 +94,13 @@ export function fetchCached<T>(
 ): Promise<T> {
   const running = inflight.get(key) as Promise<T> | undefined;
   if (running) return running;
-  const request = fetch()
+  const born = epoch;
+  const request: Promise<T> = fetch()
     .then((value) => {
       if (inflight.get(key) === request) writeCached(key, value);
+      // Invalidated while out: the newer answer, shared if one is running.
+      else if (born === epoch && !entries.has(key))
+        return fetchCached(key, fetch);
       return value;
     })
     .finally(() => {

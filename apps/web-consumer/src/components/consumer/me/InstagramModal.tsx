@@ -276,6 +276,7 @@ function VerifyCard({ profile, handle, onEdit }: { profile: ConsumerProfile; han
             <button
               type="button"
               onClick={() => {
+                setSent(true);
                 navigator.clipboard.writeText(claim.code).then(
                   () => toast("Code copied"),
                   () => toast("Couldn't copy. Type it in instead."),

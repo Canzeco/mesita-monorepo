@@ -16,7 +16,7 @@
 //   Taquería Orinoco ›                    the place, a link to it
 //   Wed, Nov 11 · 22:34                   when; the Test chip
 //
-//   Receipt           Bill · Tip · Total
+//   Receipt           Bill · Discount · Tip · Total
 //   Paid with         one line per method: its bill + tip and its amount; a
 //                     state only when it is not simply Paid ("Didn't go
 //                     through" is ink, never red); a paid part opens its receipt
@@ -73,7 +73,8 @@ function day(iso: string): string {
     day: "numeric",
   });
 }
-const when = (iso: string) => `${day(iso)} · ${clockTime(iso)}`;
+// The date is already here: clockTime against its own day is the time alone.
+const when = (iso: string) => `${day(iso)} · ${clockTime(iso, new Date(iso))}`;
 
 export function VisitSummary({ tabId }: { tabId: string }) {
   const getSupabase = useLazyBrowserSupabase();
@@ -168,7 +169,7 @@ function CopyVisitId({ id }: { id: string }) {
   );
 }
 
-const PART_NAME: Record<string, string> = { card: "Card", outside: "Cash" };
+const PART_NAME: Record<string, string> = { card: "Card", outside: "Cash or card" };
 
 // ─── The statement ──────────────────────────────────────────────────────────
 
@@ -183,7 +184,8 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
   const card = tab.card_bill_cents + tab.card_tip_cents;
   const tip = tab.cash_tip_cents + tab.card_tip_cents;
   const chosen = tab.credit_cents + cash + card;
-  const total = chosen > 0 ? chosen : (tab.bill_cents ?? 0);
+  const off = tab.discount_cents ?? 0;
+  const total = chosen > 0 ? chosen : (tab.bill_cents ?? 0) - off;
 
   // The newest part of each kind decides its method's state.
   const latest = (kind: string) => tab.parts.filter((p) => p.part === kind).at(-1);
@@ -251,8 +253,8 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
       <TicketLine
         key="cash"
         icon={<Banknote className="h-4 w-4" />}
-        label="Cash"
-        sub={`${m(tab.cash_bill_cents)} bill + ${m(tab.cash_tip_cents)} tip · given to the waiter`}
+        label="Cash or card"
+        sub={`${m(tab.cash_bill_cents)} bill + ${m(tab.cash_tip_cents)} tip · paid to the waiter`}
         value={m(cash)}
         state={s}
         tone={tone}
@@ -268,7 +270,7 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
   if (tab.billed_at)
     events.push([
       tab.billed_at,
-      guestTab ? "You typed the bill" : tab.waiter_name ? `Billed by ${tab.waiter_name}` : "Billed by the waiter",
+      tab.waiter_name ? `Billed by ${tab.waiter_name}` : guestTab ? "Billed" : "Billed by the waiter",
       tab.bill_cents != null ? m(tab.bill_cents) : undefined,
     ]);
   if (tab.paying_at) events.push([tab.paying_at, "You chose how to pay", chosen > 0 ? m(chosen) : undefined]);
@@ -290,7 +292,9 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
 
   // Nothing was paid and the bill is closed: no payment lines.
   const unpaid = !paid && !open;
-  const typedBy = guestTab ? "You" : (tab.waiter_name ?? "The waiter");
+  // A waiter-led bill closes as origin "guest" too (MESITA-4824), and with no
+  // waiter code it has no name: then nobody is said to have typed it.
+  const typedBy = tab.waiter_name ?? (guestTab ? null : "The waiter");
 
   const photo =
     readCached<{ visits: GuestVisit[] }>("activity-visits")?.visits.find((v) => v.place.id === tab.place.id)?.place
@@ -319,12 +323,13 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
           {tab.bill_cents != null ? (
             <TicketPanel title={unpaid ? "The bill" : "Receipt"}>
               <TicketLine label="Bill" value={m(tab.bill_cents)} />
+              {off > 0 ? <TicketLine label="Discount" value={`−${m(off)}`} /> : null}
               <TicketLine
                 label="Tip"
                 sub={suggested > 0 && suggested !== tip ? `The waiter suggested ${m(suggested)}` : null}
                 value={tip > 0 ? m(tip) : chosen > 0 ? "No tip" : suggested > 0 ? `${m(suggested)} suggested` : "—"}
               />
-              <TicketLine label="Total" value={m(tab.bill_cents + tip)} strong />
+              <TicketLine label="Total" value={m(tab.bill_cents - off + tip)} strong />
             </TicketPanel>
           ) : null}
           {!unpaid ? (
@@ -349,7 +354,7 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
       ) : null}
 
       <TicketPanel title="Details">
-        {tab.bill_cents != null ? <TicketLine label="Bill typed by" value={typedBy} /> : null}
+        {tab.bill_cents != null && typedBy ? <TicketLine label="Bill typed by" value={typedBy} /> : null}
         {tab.waiter_name ? <TicketLine label="Waiter" value={tab.waiter_name} /> : null}
         {tab.ticket ? <TicketLine label="Ticket" value={`#${tab.ticket}`} /> : null}
         <TicketLine

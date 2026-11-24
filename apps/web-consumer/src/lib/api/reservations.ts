@@ -6,11 +6,13 @@ import { invalidateCached } from "@/lib/screen-cache";
 export const RESERVATIONS_KEY = "reservations";
 export const NOTIFICATIONS_KEY = "notifications";
 
-/** A reservation write: once it lands, Me's lists read again. */
+/** A reservation write: once it lands, Me's lists and Home's badges read again. */
 function afterWrite<T>(write: Promise<T>): Promise<T> {
   return write.then((result) => {
     invalidateCached(RESERVATIONS_KEY);
     invalidateCached(NOTIFICATIONS_KEY);
+    // Home's badges: LIVE_RESERVATIONS_KEY, whose module imports this one.
+    invalidateCached("live-reservations");
     return result;
   });
 }

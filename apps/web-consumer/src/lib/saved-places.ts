@@ -30,8 +30,20 @@ export function setSavedPlacesRemote(fn: SavedRemote | null): void {
   remote = fn;
 }
 
+// WHAT THIS BROWSER JUST WROTE (MESITA-4903): a server list read while a change
+// was in flight may predate it, so a sync lays these over its snapshot. Only
+// changes sent since shortly before the read began count: an older one that
+// failed still yields to the server.
+const WRITE_SETTLE_MS = 10_000;
+const recent = new Map<string, { saved: boolean; at: number }>();
+// Bumped when the account changes: a sync begun before it is dropped.
+let epoch = 0;
+
 function writeThrough(placeId: string, saved: boolean) {
-  if (remote && UUID_RE.test(placeId)) remote(placeId, saved);
+  if (!remote || !UUID_RE.test(placeId)) return;
+  recent.delete(placeId); // keep insertion order = newest last
+  recent.set(placeId, { saved, at: Date.now() });
+  remote(placeId, saved);
 }
 
 type Listener = () => void;
@@ -234,6 +246,8 @@ export function clearSavedPlacesLocal(): void {
       /* private mode — nothing to clear */
     }
   }
+  recent.clear();
+  epoch += 1;
   cache = new Set();
   hydrated = true;
   emit();
@@ -250,12 +264,15 @@ export async function syncSavedPlaces<T extends { id: string }>(
   push: (placeId: string) => Promise<unknown>,
 ): Promise<void> {
   if (typeof window === "undefined") return;
+  const begun = epoch;
+  const since = Date.now() - WRITE_SETTLE_MS;
   let server: { ids: string[]; places: T[] };
   try {
     server = await read();
   } catch {
     return;
   }
+  if (begun !== epoch) return;
   ensureHydrated();
   let firstSync = false;
   try {
@@ -268,12 +285,15 @@ export async function syncSavedPlaces<T extends { id: string }>(
   if (firstSync) {
     for (const id of cache) {
       if (!UUID_RE.test(id) || onServer.has(id)) continue;
+      // Unsaved while the pushes ran: never push it back.
+      if (!cache.has(id)) continue;
       try {
         await push(id);
         pushed.push(id);
       } catch {
         /* the place may be gone; it drops out below */
       }
+      if (begun !== epoch) return;
     }
     try {
       window.localStorage.setItem(SYNCED_KEY, "1");
@@ -294,6 +314,11 @@ export async function syncSavedPlaces<T extends { id: string }>(
   // Insertion order is oldest first (savedPlaceList reverses it).
   const next = new Set<string>([...server.ids].reverse());
   for (const id of pushed) next.add(id);
+  for (const [id, w] of recent) {
+    if (w.at < since) continue;
+    next.delete(id);
+    if (w.saved) next.add(id);
+  }
   for (const id of cache) if (!UUID_RE.test(id)) next.add(id);
   cache = next;
   hydrated = true;

@@ -86,8 +86,9 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { useCachedQuery } from "@/lib/use-cached-query";
 
+// The date is already here: clockTime against its own day is the time alone.
 const when = (iso: string) =>
-  `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso)}`;
+  `${new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} · ${clockTime(iso, new Date(iso))}`;
 
 const BOUGHT = new Set(["prepay", "voucher"]);
 
@@ -280,7 +281,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
       <TicketPage data-credit-entry>
         <TicketHero
           marks={<PlaceMark photo={b.place?.photo} kind={badgeOf(e)} />}
-          headline={out ? `−${m(amount)}` : bought || e.kind === "bonus" || e.kind === "gift_in" ? `+${m(amount)}` : m(amount)}
+          headline={out ? `−${m(amount)}` : (bought && !refund) || e.kind === "bonus" || e.kind === "gift_in" ? `+${m(amount)}` : m(amount)}
           state={state}
           tone={tone}
           place={place}
