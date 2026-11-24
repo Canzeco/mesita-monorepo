@@ -656,11 +656,10 @@ export function CatalogRails() {
             isSpecial(c.key) && CAT_SQUARE,
           )}
         >
-          {/* COLOURED ICONS, NEVER EMOJI (Pato, 2026-11-23, MESITA-4782:
-              "keep icons with colors but from another source, not
-              emojies"): each chip wears its family's Phosphor mark, white
-              on the chosen ink circle. Social stays a happy face
-              (MESITA-4768). */}
+          {/* FLUENT FLAT, NOT THE PHONE'S EMOJI (Pato, 2026-11-23,
+              MESITA-4782: "colors encode information"; chose "A · Fluent
+              Flat"): each chip wears its family's picture from our files.
+              Social stays a happy face (MESITA-4768). */}
           <FamilyMark name={c.key} on={on} />
         </span>
         <span

@@ -71,8 +71,8 @@ import {
   HEADER_PILL,
 } from "./header-classes";
 
-// A chip's mark is its family's coloured icon, the same one Home's strip
-// wears (MESITA-4782; emoji since MESITA-3760); Popular is the star.
+// A chip's mark is its family's Fluent Flat picture, the same one Home's
+// strip wears (MESITA-4782; the phone's emoji since MESITA-3760).
 const CHIP_MARK = "shrink-0";
 
 

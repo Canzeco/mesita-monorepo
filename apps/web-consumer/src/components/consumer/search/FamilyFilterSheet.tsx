@@ -30,7 +30,7 @@ function Circle({
   on,
   onPick,
 }: {
-  /** The row or family key whose coloured icon it wears (MESITA-4782). */
+  /** The row or family key whose picture it wears (MESITA-4782). */
   mark: string;
   label: string;
   on: boolean;
