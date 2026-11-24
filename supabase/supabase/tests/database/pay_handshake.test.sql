@@ -44,7 +44,8 @@ begin
   perform public.pay_guest_code_set(g, h);
   o := public.pay_bill_open(h, null, p_place, 'mxn', false, repeat('d', 64));
   perform public.pay_bill_send((o->>'bill_id')::uuid, p_place, 0, p_bill, p_tip, repeat('d', 64), 15, now(),
-    (select id from public.place_waiters where place_id = p_place));
+    (select id from public.place_waiters where place_id = p_place),
+    (select name from public.place_waiters where place_id = p_place));
   select * into b from public.pay_bills where id = (o->>'bill_id')::uuid;
   return b;
 end $$;

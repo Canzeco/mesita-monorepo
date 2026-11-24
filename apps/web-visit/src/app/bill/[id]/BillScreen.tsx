@@ -133,11 +133,13 @@ export function BillScreen({ billId }: { billId: string }) {
     }
   }
 
-  async function unlock(code: string | null): Promise<boolean> {
+  const [askName, setAskName] = useState(false);
+  async function unlock(code: string | null, name: string | null = null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
-    const r = await checkCode(code, { bill_id: billId });
+    const r = await checkCode(code, { bill_id: billId }, name);
+    if (r !== "failed" && "refused" in r && r.name_required) setAskName(true);
     setBusy(null);
     if (r !== "failed" && "refused" in r && r.code === "ticket_closed") {
       setGone(true);
@@ -164,7 +166,7 @@ export function BillScreen({ billId }: { billId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked]);
 
-  if (locked) return <CodeEntry label="Open bill" busy={busy === "code"} error={error} onCode={unlock} />;
+  if (locked) return <CodeEntry label="Open bill" askName={askName} busy={busy === "code"} error={error} onCode={unlock} />;
   if (gone) {
     return (
       <main className="proof pay-end" data-bill="gone">

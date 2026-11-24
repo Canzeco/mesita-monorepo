@@ -24,7 +24,7 @@ import { isUuid } from "./place-id.ts";
 import { isProofToken, mintProofToken, payCodeUrl } from "./proof.ts";
 import { type AttemptRow, readAttemptById } from "./guest-attempt.ts";
 import { staffDeviceHash } from "./staff.ts";
-import { checkWaiterToken, readWaiter, waiterOfToken } from "./waiter-code.ts";
+import { checkWaiterToken, readWaiter, WAITER_TOKEN_MAX, waiterOfToken } from "./waiter-code.ts";
 
 /** Minutes the guest has to answer, then the minutes they have to pay. */
 export const BILL_ANSWER_MIN = 15;
@@ -162,14 +162,14 @@ export async function billStaff(
   serviceKey: string,
   body: Record<string, unknown>,
   nowMs: number,
-): Promise<{ placeId: string; keyHash: string; waiterId: string } | null> {
+): Promise<{ placeId: string; keyHash: string; waiterId: string; waiterName: string | null } | null> {
   const { place_id: placeId, staff_token: token } = body;
-  if (!isUuid(placeId) || typeof token !== "string" || token.length > 128) return null;
+  if (!isUuid(placeId) || typeof token !== "string" || token.length > WAITER_TOKEN_MAX) return null;
   const waiterId = waiterOfToken(token);
   const waiter = waiterId ? await readWaiter(admin, waiterId) : null;
   if (!waiter || waiter.placeId !== placeId) return null;
-  const jti = await checkWaiterToken(serviceKey, waiter, token, nowMs);
-  return jti ? { placeId, keyHash: await staffDeviceHash(jti), waiterId: waiter.id } : null;
+  const key = await checkWaiterToken(serviceKey, waiter, token, nowMs);
+  return key ? { placeId, keyHash: await staffDeviceHash(key.jti), waiterId: waiter.id, waiterName: key.name } : null;
 }
 
 // ── The database ────────────────────────────────────────────────────────────
