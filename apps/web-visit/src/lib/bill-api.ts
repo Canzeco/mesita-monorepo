@@ -47,7 +47,7 @@ export const signIn = (place_id: string, place_code?: string) =>
     "Couldn't sign in. Try again.",
   );
 
-export const openBill = (staff: Staff, by: { token: string } | { code: string } | { again_bill_id: string }) =>
+export const openBill = (staff: Staff, by: { token: string } | { again_bill_id: string }) =>
   call<{ bill_id: string }>("visit-web-open-bill", { ...staff, ...by }, "Couldn't open the bill. Try again.");
 
 export const sendBill = (staff: Staff, args: { bill_id: string; version: number; bill_cents: number; tip_cents: number }) =>

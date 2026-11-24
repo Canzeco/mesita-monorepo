@@ -33,7 +33,7 @@ export type GuestBill = {
   } | null;
 };
 
-export type PayCode = { url: string; short: string; expires_at: string };
+export type PayCode = { url: string; expires_at: string };
 
 export async function apiGetPayCode(
   client: SupabaseClient,
