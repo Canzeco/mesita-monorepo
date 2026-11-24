@@ -41,7 +41,9 @@ export {
 export {
   BASKET_MAX,
   basketItems,
+  cashbackRows,
   readyClock,
+  TierMatrix,
   VouchersPane,
   type OffersTab,
   voucherOffers,

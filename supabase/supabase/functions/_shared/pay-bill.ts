@@ -13,8 +13,8 @@
 //
 // pay_bills is the proposal only. Once accepted, guest_pay_attempts is the
 // truth (guest-attempt.ts), and billState derives the state from it.
-// The waiter never reads who the guest is, nor their balance: a photo, and the
-// credits used only once the guest accepted.
+// The waiter reads the guest's photo and first name (MESITA-4878), never their
+// balance: the credits used only once the guest accepted.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";

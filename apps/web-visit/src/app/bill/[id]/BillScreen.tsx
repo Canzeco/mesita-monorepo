@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, sendBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
-import { BillEntry, CodeEntry } from "@/components/BillEntry";
+import { BillEntry, CodeEntry, WaiterSteps } from "@/components/BillEntry";
 import { Bones } from "@/components/Bones";
 import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/app/tab/[token]/icons";
 
 // THE WAITER'S BILL (MESITA-4823), by its state:
+//
+// Steps 2 to 4 of the waiter's four (BillEntry; MESITA-4878):
 //
 //   open       Bill and Tip, Send bill
 //   sent       waiting for the guest: Edit, Cancel
@@ -21,8 +23,6 @@ import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/
 // The tip is never picked for the guest: None until the waiter asks. The
 // waiter never reads the guest's name or balance. Every peso is the server's.
 
-/** From MX$5,000 Received asks once more (MESITA-4831): it has no undo. */
-const BIG_BILL_CENTS = 500_000;
 const DONE: BillState[] = ["paid", "cancelled", "expired"];
 /** Every 2 s while it moves, 5 s after 30 s still, 10 s after 3 min. */
 function nextDelay(stillMs: number): number {
@@ -134,12 +134,12 @@ export function BillScreen({ billId }: { billId: string }) {
       setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
       return r === "failed";
     }
-    keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token });
+    keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token, waiter: r.waiter?.name ?? null });
     setLocked(false);
     return true;
   }
 
-  if (locked) return <CodeEntry busy={busy === "code"} error={error} onCode={unlock} />;
+  if (locked) return <CodeEntry label="Open bill" busy={busy === "code"} error={error} onCode={unlock} />;
   if (gone) {
     return (
       <main className="proof pay-end" data-bill="gone">
@@ -157,7 +157,8 @@ export function BillScreen({ billId }: { billId: string }) {
     );
   }
 
-  const { bill, place, guest_photo: photo } = read;
+  const { bill, place, guest_photo: photo, guest_name: guestName } = read;
+  const waiter = staff()?.waiter ?? null;
   const m = (c: number) => moneyLabel(c, bill.currency);
   const placeName = place.name ?? "A Mesita place";
   const total = (bill.bill_cents ?? 0) + bill.tip_cents;
@@ -180,7 +181,7 @@ export function BillScreen({ billId }: { billId: string }) {
       </span>
       <span className="pay-guest-text">
         <span className="pay-guest-title">{title}</span>
-        <span className="pay-guest-place">{placeName}</span>
+        <span className="pay-guest-place">{[guestName, placeName].filter(Boolean).join(" · ")}</span>
       </span>
       {amount !== null ? <p className="verify-amount">{m(amount)}</p> : null}
     </div>
@@ -198,21 +199,34 @@ export function BillScreen({ billId }: { billId: string }) {
   // PAID.
   if (bill.state === "paid") {
     const collected = bill.outside_cents ?? 0;
+    const lines: [string, string][] = [["Bill", m(bill.bill_cents ?? 0)]];
+    if (bill.discount_cents > 0) lines.push(["Discount", `−${m(bill.discount_cents)}`]);
+    if (bill.credit_cents > 0) lines.push(["Credits", `−${m(bill.credit_cents)}`]);
+    lines.push(["Tip", bill.tip_cents > 0 ? m(bill.tip_cents) : "None"]);
+    if (waiter) lines.push(["Waiter", waiter]);
+    // STEP 4, RECEIPT.
     return (
-      <main className="tab-paid" data-bill="paid">
+      <main className="proof verify" data-bill="paid">
         {band}
-        <span className="tab-paid-tick" aria-hidden>
-          ✓
-        </span>
-        <p className="tab-paid-title" role="status">
-          Paid
-        </p>
-        <p className="tab-paid-amount">{m(total - bill.discount_cents)}</p>
-        {bill.credit_cents > 0 ? <p className="tab-paid-line">{m(bill.credit_cents)} with credits</p> : null}
-        <p className="tab-paid-line">{collected > 0 ? `${m(collected)} cash or card` : "Nothing to collect"}</p>
-        <p className="tab-paid-line">{placeName}</p>
+        <WaiterSteps at={4} />
+        <section className="wp-paid" role="status">
+          <span className="wp-paid-title">✓ Paid</span>
+          <span className="wp-paid-amount">{collected > 0 ? m(collected) : "Nothing to collect"}</span>
+          {collected > 0 ? <span>Cash or card</span> : null}
+        </section>
+        <section className="verify-box" aria-label="Receipt">
+          {guest("Receipt", null)}
+          <ul className="pay-lines">
+            {lines.map(([label, value]) => (
+              <li key={label}>
+                <span className="pay-line-label">{label}</span>
+                <span className="pay-line-value">{value}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
         {/* Friends who split: each shows their own QR. */}
-        <p className="tab-paid-line">Another guest? Scan their QR.</p>
+        <p className="proof-line">Another guest? Scan their QR.</p>
       </main>
     );
   }
@@ -278,6 +292,7 @@ export function BillScreen({ billId }: { billId: string }) {
     ].filter((l) => l.on);
     return (
       <main className="proof verify" data-bill="collect">
+        <WaiterSteps at={3} />
         {band}
         {reconnecting}
         <p className="proof-line" role="status">
@@ -302,7 +317,7 @@ export function BillScreen({ billId }: { billId: string }) {
             <button type="button" className="verify-reject" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
               Cancel
             </button>
-            <button type="button" className="verify-sign" disabled={busy !== null} onClick={() => (total >= BIG_BILL_CENTS ? setChecking(true) : receive())}>
+            <button type="button" className="verify-sign" disabled={busy !== null} onClick={() => setChecking(true)}>
               {busy === "received" || bill.state === "confirming" ? "Confirming…" : "Received"}
             </button>
           </div>
@@ -316,6 +331,7 @@ export function BillScreen({ billId }: { billId: string }) {
   if (bill.state === "sent" && !editing) {
     return (
       <main className="proof verify" data-bill="sent">
+        <WaiterSteps at={3} />
         {band}
         {reconnecting}
         <section className="verify-box" aria-label="The bill">
@@ -360,7 +376,6 @@ export function BillScreen({ billId }: { billId: string }) {
   return (
     <BillEntry
       key={bill.state === "declined" ? `declined-${bill.version}` : "type"}
-      withCode={false}
       start={bill.bill_cents ? { bill: bill.bill_cents, tip: bill.tip_cents } : undefined}
       busy={busy === "send"}
       error={error}
@@ -375,11 +390,11 @@ export function BillScreen({ billId }: { billId: string }) {
           ) : null}
         </>
       }
-      onSend={async (billCents, tipCents) => {
-        const ok = await run("send", (st) => sendBill(st, { bill_id: billId, version: bill.version, bill_cents: billCents, tip_cents: tipCents }));
-        if (ok) setEditing(false);
-        return ok;
-      }}
+      onSend={(billCents, tipCents) =>
+        void run("send", (st) => sendBill(st, { bill_id: billId, version: bill.version, bill_cents: billCents, tip_cents: tipCents })).then((ok) => {
+          if (ok) setEditing(false);
+        })
+      }
       onLeave={editing ? () => setEditing(false) : undefined}
     />
   );
