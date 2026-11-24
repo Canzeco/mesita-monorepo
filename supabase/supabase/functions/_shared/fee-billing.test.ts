@@ -23,7 +23,10 @@ Deno.test("the schedule: MX$500 or weekly, Stripe's MX$10 minimum, seven days to
 });
 
 Deno.test("the invoice is sent (never charged automatically) and sweeps no stray items", () => {
-  const p = feeInvoiceParams({ rowId: "inv-1", placeId: "pl-1", customer: "cus_1" });
+  const p = feeInvoiceParams({ rowId: "inv-1", placeId: "pl-1", customer: "cus_1", currency: "mxn" });
+  // Mesita's account defaults to USD, and an empty invoice must not advance (MESITA-4924).
+  assertEquals(p.currency, "mxn");
+  assertEquals(p.auto_advance, false);
   assertEquals(p.collection_method, "send_invoice");
   assertEquals(p.pending_invoice_items_behavior, "exclude");
   assertEquals((p.metadata as Record<string, string>).fee_invoice_id, "inv-1");
@@ -67,7 +70,7 @@ Deno.test("issueFeeInvoice: every Stripe call keyed by the draft's id, finalized
   const status = await issueFeeInvoice(fakeAdmin(rpcs), stripe, { id: "inv-1", place_id: "pl-1", amount_cents: 2_500, currency: "mxn" }, "cus_1");
   assertEquals(status, "open");
   assertEquals(calls.map((c) => c.path), ["invoices", "invoiceitems", "invoices/in_1/finalize"]);
-  assertEquals(calls.map((c) => c.key), ["place-fee-invoice:inv-1", "place-fee-item:inv-1", "place-fee-finalize:inv-1"]);
+  assertEquals(calls.map((c) => c.key), ["place-fee-invoice-v2:inv-1", "place-fee-item-v2:inv-1", "place-fee-finalize-v2:inv-1"]);
   // On Mesita's own account, never the place's.
   assertEquals(calls.every((c) => c.account === undefined), true);
   assertEquals(rpcs[0].name, "place_fee_invoice_set");
