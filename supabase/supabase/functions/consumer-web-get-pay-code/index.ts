@@ -3,7 +3,8 @@
 // MESITA-4823 (waiter-led pay, _shared/pay-bill.ts): the guest's one QR and
 // the guest's poll. `mint: true` makes a new QR token (the
 // screen asks when it opens and before they expire); a poll never mints.
-// `bill_id` is the bill the screen already shows; without it the answer is the
+// `bill_id` is the bill the screen already shows; without it, or once it ended
+// unpaid and a newer one was sent, the answer is the
 // newest bill that is not over.
 //
 // Body: { mint?: boolean, bill_id?: uuid }
@@ -24,7 +25,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { readWalletPlaces } from "../_shared/wallet.ts";
 import { callTabRpc } from "../_shared/tab.ts";
-import { guestBillView, hashPayCode, mintPayCode, readBill, readBillAttempt, readGuestActiveBill, readTyping } from "../_shared/pay-bill.ts";
+import { billState, guestBillView, hashPayCode, mintPayCode, readBill, readBillAttempt, readGuestActiveBill, readTyping } from "../_shared/pay-bill.ts";
 
 serveJson("consumer-web-get-pay-code", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
@@ -48,6 +49,12 @@ serveJson("consumer-web-get-pay-code", async (req) => {
     if (isUuid(billId)) {
       const bill = await readBill(admin, billId);
       if (bill && bill.consumer_id === user.id) found = { bill, attempt: await readBillAttempt(admin, bill) };
+    }
+    // A bill that ended unpaid gives way to the one the waiter sent after it
+    // ("Send again" opens a new row, MESITA-4905). Never to one still open.
+    if (found && ["cancelled", "expired", "declined"].includes(billState(found.bill, found.attempt, nowMs))) {
+      const next = await readGuestActiveBill(admin, user.id, paymentsLivemode(), nowMs);
+      if (next && billState(next.bill, next.attempt, nowMs) !== "open") found = next;
     }
     found ??= await readGuestActiveBill(admin, user.id, paymentsLivemode(), nowMs);
     let bill = null;

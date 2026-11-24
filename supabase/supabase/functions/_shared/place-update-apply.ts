@@ -14,6 +14,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json } from "./http.ts";
+import { anonymousReviews } from "./anonymous-reviews.ts";
 import { PLACE_PROFILE_COLUMNS } from "./place-columns.ts";
 import { type ProfilePatch, writePlace } from "./place-doc.ts";
 import { fetchPlaceFamilies } from "./categories.ts";
@@ -257,6 +258,9 @@ export async function applyPlaceUpdate(
       actor,
     },
   });
+
+  // As business-web-get-place answers them: no reviewer name or photo (MESITA-4905).
+  if ("google_reviews" in place) place.google_reviews = anonymousReviews(place.google_reviews);
 
   return json({ ok: true, place, familyStored });
 }
