@@ -426,18 +426,20 @@ export function PayPage({
           page's grey switch (MESITA-4737), then the chosen tab's rows in one
           white bordered box. ALL WHITE (MESITA-4574): the box sits on the
           page's own white. */}
+      {/* THE THIRD BOX (Pato, 2026-11-23, MESITA-4785: "three boxes. prepay
+          pay and then the third box contains nearby offers and the other"):
+          one white card with a hairline and a soft shadow (MESITA-4780's
+          floating look), the black-pill switch at its top, a hairline, then
+          the chosen tab's rows inside the same card. */}
       <div className="mt-2 flex flex-1 flex-col pb-8" data-pay-cards>
-        {/* ITS OWN FLOATING BOX (Pato, 2026-11-23, MESITA-4780: "put nearby
-            offers & loyalty card in its own floating box, even if double
-            margins"): white, a hairline and a soft shadow, the switch inside. */}
-        <div className="border-border bg-card rounded-2xl border p-1.5 shadow-md" data-pay-tabs-box>
+        <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-md" data-pay-menu-box>
+        <div className="border-border border-b p-1.5" data-pay-tabs-box>
           <PayTabs tab={tab} onTab={chooseTab} />
         </div>
         <div
           role="tabpanel"
           id={`pay-panel-${tab}`}
           aria-labelledby={`pay-tab-${tab}`}
-          className={SECTION_CARD}
           data-pay-panel={tab}
         >
           {/* Both stay mounted, so each read runs and the page paints whole
@@ -458,6 +460,7 @@ export function PayPage({
           <div hidden={tab !== "cards"}>
             <WalletSection onReady={onWalletReady} giftToken={giftToken} />
           </div>
+        </div>
         </div>
       </div>
       <PayPickSheet open={pickerOpen} onClose={closePicker} onPick={choosePlace} />

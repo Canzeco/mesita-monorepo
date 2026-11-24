@@ -3,7 +3,7 @@ import { GuestPayLoading } from "./GuestPayScreen";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
 import { WalletHeaderActions } from "./TicketsShortcut";
-import { PAY_ROW, PAY_THUMB, SECTION_CARD, SECTION_ROWS } from "./pay-sections";
+import { PAY_ROW, PAY_THUMB, SECTION_ROWS } from "./pay-sections";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -26,11 +26,13 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
           <Skeleton className="aspect-[8/5] min-w-0 rounded-2xl" aria-hidden />
           <Skeleton className="aspect-[8/5] min-w-0 rounded-2xl" aria-hidden />
         </div>
-        {/* MESITA-4780: the Nearby Offers | Loyalty Cards box, then one box
-            of rows (Send Gift moved to the header). */}
+        {/* MESITA-4785: the third box, the switch on top and its rows below
+            in the same card. */}
         <div className="mt-2 flex flex-1 flex-col pb-8">
-          <Skeleton className="h-[54px] w-full rounded-2xl" aria-hidden />
-          <section className={SECTION_CARD}>
+          <section className="border-border bg-card overflow-hidden rounded-2xl border shadow-md">
+            <div className="border-border border-b p-1.5">
+              <Skeleton className="h-10 w-full rounded-xl" aria-hidden />
+            </div>
             <div className={SECTION_ROWS}>
               <LoyaltyCardBoxSkeleton />
               <LoyaltyCardBoxSkeleton />
