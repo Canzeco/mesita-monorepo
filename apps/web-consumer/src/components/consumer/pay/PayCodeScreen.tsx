@@ -128,6 +128,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const typingNow = useRef(false);
   const alive = useRef(true);
   const reads = useRef(0);
+  // The receipt is opened once: a second replace starts it over (MESITA-4891).
+  const opened = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -151,7 +153,10 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         setArmedAt(Date.now() + REARM_MS);
       }
       if (shown?.state === "paid" && shown.attempt_id) {
-        navigateTo(router, payBillPath(shown.attempt_id), { replace: true });
+        if (!opened.current) {
+          opened.current = true;
+          navigateTo(router, payBillPath(shown.attempt_id), { replace: true });
+        }
       }
       setBill(shown);
     },
@@ -219,12 +224,13 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     let timer: ReturnType<typeof setTimeout>;
     const loop = async () => {
       const started = Date.now();
+      if (opened.current) return;
       if (document.visibilityState === "visible") await refresh();
-      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? (Date.now() - changedAt.current < 30_000 ? LIVE_MS : FAST_MS) : typingNow.current ? Math.max(TYPING_MS - (Date.now() - started), 0) : LIVE_MS);
+      if (alive.current && !opened.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? (Date.now() - changedAt.current < 30_000 ? LIVE_MS : FAST_MS) : typingNow.current ? Math.max(TYPING_MS - (Date.now() - started), 0) : LIVE_MS);
     };
     timer = setTimeout(() => void loop(), LIVE_MS);
     const onVisible = () => {
-      if (document.visibilityState === "visible") void refresh();
+      if (document.visibilityState === "visible" && !opened.current) void refresh();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -520,14 +526,18 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   // CONFIRMING, or paid and on its way to the receipt.
   if (bill.state === "confirming" || bill.state === "paid") {
     return frame(
-      "Confirming…",
+      bill.state === "paid" ? "Paid" : "Confirming…",
       <PaySection className="flex flex-col items-center p-4 text-center">
         <Loader2 className="h-10 w-10 animate-spin motion-reduce:animate-none" aria-hidden />
         <h2 className="mt-2 text-xl font-semibold" role="status">
-          Confirming…
+          {bill.state === "paid" ? "Paid. Opening your receipt…" : "Confirming…"}
         </h2>
       </PaySection>,
-      null,
+      bill.state === "paid" && bill.attempt_id ? (
+        <button type="button" className={QUIET_BUTTON_CLASS} onClick={() => navigateTo(router, payBillPath(bill.attempt_id ?? ""), { replace: true })}>
+          See receipt
+        </button>
+      ) : null,
       3,
     );
   }
@@ -587,7 +597,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   return frame(
     "Pay",
     <>
-      {ticket("You pay your waiter, cash or card")}
+      {ticket("Pay your waiter, cash or card")}
       {handshake}
       {changedLine}
       <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums">
@@ -608,10 +618,10 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         className="min-h-12 w-full rounded-2xl bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]"
         disabled={busy !== null || now < armedAt}
         onClick={() => void answer("accept")}
-        aria-label={nothingOwed ? `Pay with ${m(q.credit_cents)} of credits` : `Pay ${m(q.outside_cents)} here`}
+        aria-label={nothingOwed ? `Use ${m(q.credit_cents)} of my credits` : `I paid ${m(q.outside_cents)} to my waiter`}
         data-bill-accept
       >
-        {busy === "accept" ? <Spinner size="sm" label="Paying" /> : `Pay ${big}`}
+        {busy === "accept" ? <Spinner size="sm" label="Confirming" /> : nothingOwed ? "Use my credits" : `I paid ${big}`}
       </Button>
     </div>,
     3,

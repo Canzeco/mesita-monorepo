@@ -14,7 +14,7 @@ import { UserIcon } from "@/app/tab/[token]/icons";
 // The waiter's Receive and Receipt, and Bill and Tip again on an edit (MESITA-4879):
 //
 //   open       Bill and Tip, Send bill
-//   sent       Receive $X, Edit, Cancel; once tapped, waiting for the guest, Undo
+//   sent       I received $X, Edit, Cancel; once tapped, waiting for the guest, Undo
 //   declined   the same boxes, "The guest declined"
 //   accepted   the guest already paid on their phone: Receive $X closes it
 //   paid       the green screen, Next guest
@@ -331,7 +331,7 @@ export function BillScreen({ billId }: { billId: string }) {
         {alert}
         <div className="wp-space" />
         <p className={`wp-line wp-center${waiting ? " hs-warn" : ""}`}>
-          {waiting ? `Not done yet. Don't let ${guest} leave until they tap Pay.` : `Open until ${clockTime(bill.expires_at)}`}
+          {waiting ? `Not done yet. Don't let ${guest} leave until they tap I paid.` : `Open until ${clockTime(bill.expires_at)}`}
         </p>
         {cancelRow ??
           (waiting ? (
@@ -351,7 +351,7 @@ export function BillScreen({ billId }: { billId: string }) {
                 disabled={busy !== null || ready || now < armedAt}
                 onClick={() => void run("receive", (s) => receiveBill(s, billId, bill.version))}
               >
-                {busy === "receive" || bill.state === "confirming" ? "Confirming…" : due > 0 ? `Receive ${m(due)}` : "Confirm"}
+                {busy === "receive" || bill.state === "confirming" ? "Confirming…" : due > 0 ? `I received ${m(due)}` : "Confirm"}
               </button>
               <div className={guestReady ? "" : "wp-actions wp-half"}>
                 <button type="button" className="wp-no" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
