@@ -37,7 +37,8 @@ function readPersisted(): MapFilters {
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
           )
         : [],
-      special: parsed.special === "saved" || parsed.special === "nearby" ? parsed.special : null,
+      // No Saved on Search since MESITA-4786: a stored "saved" reads as none.
+      special: parsed.special === "nearby" ? parsed.special : null,
     };
   } catch {
     return MAP_FILTER_DEFAULTS;
