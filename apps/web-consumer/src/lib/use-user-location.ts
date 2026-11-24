@@ -97,6 +97,9 @@ let coordsState: Coords | null = readLastFix();
 let locatingState = false;
 let errorState: LocationError | null = null;
 let asked = false;
+// An ask has ended with no fix. It stays true through a later ask, so what
+// stands in for the fix (MESITA-4558) does not flicker while one runs.
+let failedOnce = false;
 let inflight: Promise<Coords | null> | null = null;
 // Which ask is the newest (MESITA-2617): only it may report a failure.
 let generation = 0;
@@ -157,6 +160,7 @@ function watchPermission() {
  *  Only the newest ask may end "locating" or report the reason. */
 function deviceGaveNothing(reason: LocationError, gen: number) {
   if (gen !== generation) return;
+  failedOnce = true;
   errorState = reason;
   locatingState = false;
   emit();
@@ -180,6 +184,7 @@ export function locationSnapshot(): {
 export function requestUserLocation(): Promise<Coords | null> {
   asked = true;
   if (typeof navigator === "undefined" || !navigator.geolocation) {
+    failedOnce = true;
     errorState = "unsupported";
     emit();
     return Promise.resolve(null);
@@ -282,6 +287,16 @@ export function useUserLocationSettled(): boolean {
   return useSyncExternalStore(
     subscribe,
     () => locationSnapshot().settled,
+    serverFalse,
+  );
+}
+
+/** True while the device has no fix and an ask has already failed. Never
+ *  starts an ask itself. */
+export function useNoDeviceFix(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => failedOnce && coordsState === null,
     serverFalse,
   );
 }
