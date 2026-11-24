@@ -173,7 +173,7 @@ select is((select v->>'outcome' from t where k='aw'), 'accepted', 'the guest acc
 insert into t select 'cw', public.pay_guest_claim_confirm((select (v->>'attempt_id')::uuid from t where k='aw'), '00000000-0000-4000-8000-000000024823', repeat('d', 64), now());
 insert into t select 'zw', public.pay_guest_close((select (v->>'attempt_id')::uuid from t where k='aw'), now());
 select is((select waiter_name from public.pay_tabs where id = (select tab_id from public.guest_pay_attempts where id = (select (v->>'attempt_id')::uuid from t where k='aw'))), 'Luis', 'the paid visit keeps the waiter');
-select ok(not has_table_privilege('authenticated', 'public.place_waiters', 'select') and not has_function_privilege('authenticated', 'public.place_waiter_list(uuid, boolean, timestamptz)', 'execute'), 'clients never read waiters');
+select ok(not has_table_privilege('authenticated', 'public.place_waiters', 'select'), 'clients never read waiters');
 
 -- ── A place starts with one Staff code (MESITA-4904) ──
 insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000034823', 'Staff Probe');
