@@ -1,5 +1,5 @@
 import { assertEquals, assertMatch } from "jsr:@std/assert@1";
-import { formatVipCode, hashVipCode, newVipCode, readRedeemVipCodeBody, readSaveVipCodeBody, redeemAnswer, vipReason } from "./vip-codes.ts";
+import { formatVipCode, hashVipCode, newVipCode, readAllPages, readRedeemVipCodeBody, readSaveVipCodeBody, redeemAnswer, vipReason } from "./vip-codes.ts";
 
 // MESITA-3540: the EF stores sha256 of the twelve digits and the SQL redeem
 // recomputes it with encode(sha256(convert_to(code, 'UTF8')), 'hex'). A
@@ -73,4 +73,17 @@ Deno.test("why a guest is VIP: a code first, else Instagram, else none", () => {
   assertEquals(vipReason({ vip_invited_at: null, guest_class: "vip" }), "instagram");
   assertEquals(vipReason({ guest_class: "regular" }), null);
   assertEquals(vipReason({}), null);
+});
+
+Deno.test("readAllPages: reads past one page, and a failed page is never a short list (MESITA-4912)", async () => {
+  const all = [1, 2, 3, 4, 5];
+  const read = (from: number, to: number) => Promise.resolve({ data: all.slice(from, to + 1), error: null });
+  assertEquals(await readAllPages(read, 2), all);
+  let failed = false;
+  try {
+    await readAllPages((from) => Promise.resolve(from === 0 ? { data: [1, 2], error: null } : { data: null, error: { message: "down" } }), 2);
+  } catch {
+    failed = true;
+  }
+  assertEquals(failed, true);
 });
