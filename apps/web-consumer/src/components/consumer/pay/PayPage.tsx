@@ -69,8 +69,15 @@ export function PayPage({
   const [shown, setShown] = useState(false);
   if (allReady && !shown) setShown(true);
 
+  // TEN ROWS TO SEE IT FULL (Pato, 2026-11-24, MESITA-4844: "for the moment,
+  // display the same place 10 times"). Test mode only: a live place ends it.
+  // Remove once he has seen it.
+  const filled =
+    sorted && sorted.length > 0 && sorted.length < 10 && sorted.every((p) => p.test_mode)
+      ? Array.from({ length: 10 }, (_, i) => sorted[i % sorted.length])
+      : sorted;
   const list = {
-    places: sorted,
+    places: filled,
     failed: placesFailed,
     loc,
     onUseLocation: askLocation,
@@ -123,7 +130,7 @@ export function PayPage({
                   // works anyway.
                   <PushLink
                     href={CONSUMER_ROUTES.payCode}
-                    className="border-border bg-card hover:bg-muted flex h-14 shrink-0 items-center justify-center border-t px-4 text-sm font-semibold transition"
+                    className="bg-card hover:bg-muted flex h-14 shrink-0 items-center justify-center border-t-[6px] border-[#00D66F] px-4 text-sm font-semibold transition"
                     data-pay-pick-any
                   >
                     My place isn&apos;t here

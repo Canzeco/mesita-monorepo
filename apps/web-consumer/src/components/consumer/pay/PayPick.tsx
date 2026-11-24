@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, QrCode } from "lucide-react";
+import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -10,7 +10,6 @@ import { voucherPct } from "@mesita/place-profile/lib/offers";
 import { money, payPlaceCashbackBps, payPlaceDiscountBps, payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { PlacePhoto } from "./pay-common";
-import { BOX_TINT } from "./pay-flow";
 import { distanceText, type Loc } from "./pay-location";
 
 // THE WALLET'S TWO PLACE LISTS (MESITA-4838, Pato: "if i select prepay, then
@@ -53,8 +52,9 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex flex-col" data-pay-list={kind}>
-      {/* The whole row is the field: no box of its own (MESITA-4842). */}
-      <div className="border-border bg-card sticky top-0 z-10 flex h-14 items-center border-b pr-1 pl-4" data-pay-pick-search>
+      {/* The whole row is the field (MESITA-4842), closed by the box's own line
+          (Pato, MESITA-4844: "purple line, searchbar, purple line"). */}
+      <div className={cn("bg-card sticky top-0 z-20 flex h-14 items-center border-b-[6px] pr-1 pl-4", kind === "prepay" ? "border-[#635BFF]" : "border-[#00D66F]")} data-pay-pick-search>
         <SearchBar
           query={query}
           showClear={query.length > 0}
@@ -110,10 +110,24 @@ export function PlaceList({
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
       ) : (
-        <div className="flex flex-col" data-pay-places>
-          {shown.map((p) => (
-            <PlaceRow key={p.place_id} p={p} onPick={onPick} kind={kind} />
-          ))}
+        // A PLACE TABLE (Pato, 2026-11-24, MESITA-4844: "this looks like three
+        // different buttons ... it must look like place selector"): one row
+        // per place, one tap; plain columns, no boxes.
+        <div data-pay-places>
+          <div className={cn(ROW_GRID[kind], "border-border bg-muted text-muted-foreground sticky top-14 z-10 h-9 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
+            <span>Place</span>
+            {HEADS[kind].map((h) => (
+              <span key={h} className="text-right tabular-nums">
+                {h}
+              </span>
+            ))}
+            <span />
+          </div>
+          <div className="divide-border border-border divide-y border-b">
+            {shown.map((p, i) => (
+              <PlaceRow key={`${p.place_id}:${i}`} p={p} onPick={onPick} kind={kind} />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -128,136 +142,76 @@ function fold(v: string): string {
     .toLowerCase();
 }
 
-type OfferBox = { top: string; bottom: string; bonus?: string; tone: string; key: string };
-
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
-const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
-/** THE BOXES UNDER A PLACE. Prepay: each voucher it sells, what you pay over
- *  its bonus. Pay (MESITA-4837): the guest's credits here, then what their
- *  own next bill gets and as which visit. */
-function offerBoxes(p: PayPlace, kind: ListKind): OfferBox[] {
-  if (kind === "prepay") {
-    const o = p.offers;
-    if (!o) return [];
-    return VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => {
-      const pay = Number(k.slice("voucher_".length));
-      const pct = voucherPct(o, k);
-      return {
-        key: k,
-        // THE BONUS, NOT THE TOTAL (Pato, 2026-11-24, MESITA-4840: "for $200,
-        // get +10% bonus ... the bonuses is clearer"): Offers says what you get.
-        top: `$${pesos.format(pay)}`,
-        bottom: pct > 0 ? `+${pct}%` : "No bonus",
-        tone: BOX_TINT.prepay,
-      };
-    });
-  }
-  const discount = payPlaceDiscountBps(p);
-  const cashback = payPlaceCashbackBps(p);
-  const bps = discount || cashback;
-  // GREY CREDITS, MORE SAID (Pato, 2026-11-24, MESITA-4839: "display maybe
-  // more info here ... current credit in gray, not green"): always two boxes.
-  return [
-    {
-      key: "credits",
-      top: "Your credits",
-      bottom: p.available_cents > 0 ? money(p.available_cents, p.currency) : "None yet",
-      bonus: p.pending_cents > 0 ? `+${money(p.pending_cents, p.currency)} pending` : p.available_cents > 0 ? "Used first" : "Prepay to get some",
-      tone: "bg-muted",
-    },
-    {
-      key: "offer",
-      top: "On this bill",
-      bottom: bps > 0 ? `${bps / 100}% ${discount > 0 ? "Discount" : "Cashback"}` : "No offer",
-      bonus: bps > 0 ? VISIT_NAME[p.visit_line ?? "welcome"] : "Pay as usual",
-      tone: discount > 0 ? BOX_TINT.discount : cashback > 0 ? BOX_TINT.cashback : "bg-muted",
-    },
-  ];
-}
+/** The table's columns: the place, what it gives, the ›. */
+const HEADS: Record<ListKind, string[]> = { prepay: ["$200", "$1,000", "$5,000"], pay: ["Your credits", "This bill"] };
+const ROW_GRID: Record<ListKind, string> = {
+  prepay: "grid w-full grid-cols-[minmax(0,1fr)_2.75rem_2.75rem_2.75rem_1rem] items-center gap-1.5 px-3.5",
+  pay: "grid w-full grid-cols-[minmax(0,1fr)_6.75rem_4rem_1rem] items-center gap-1.5 px-3.5",
+};
 
-/** The guest's own tier here, as Offers names it. */
-const VISIT_NAME = {
-  welcome: "Welcome Visit",
-  returning: "Returning Visit",
-  welcome_vip: "VIP Welcome Visit",
-  returning_vip: "VIP Returning Visit",
-} as const;
-
-/** A place: photo, name, the address on one line and the distance; under
- *  them its offer boxes (MESITA-4748). The row is the one button (D8): the
- *  boxes are a preview, read aloud in the row's label. */
+/** A place, one row, the one button. Prepay: the bonus of each voucher it
+ *  sells (– where it sells none). Pay: the guest's credits here and what their
+ *  own next bill gets. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
-  // PREPAY IS THE PHOTO AND THE NAME (Pato, 2026-11-24, MESITA-4841: "remove
-  // the address, only pp, name and the bonuses"): no distance either.
-  const distance = kind === "pay" && p.distance_m !== null ? distanceText(p.distance_m) : null;
   const name = p.name ?? "A Mesita place";
-  const shown = offerBoxes(p, kind);
-  const spoken = [name, distance, ...shown.map((b) => [b.top, kind === "prepay" && b.bottom.startsWith("+") ? `${b.bottom} Bonus` : b.bottom, b.bonus].filter(Boolean).join(" "))].filter(Boolean).join(", ");
+  const distance = kind === "pay" && p.distance_m !== null ? distanceText(p.distance_m) : null;
+  const discount = payPlaceDiscountBps(p);
+  const bps = discount || payPlaceCashbackBps(p);
+  const offer = bps > 0 ? (discount > 0 ? "Discount" : "Cashback") : null;
+  const bonuses = VOUCHERS_SHOWN.map((k) => (p.offers?.sell.includes(k) ? voucherPct(p.offers, k) : null));
+  const credits = p.available_cents > 0 ? money(p.available_cents, p.currency) : null;
+  const spoken =
+    kind === "prepay"
+      ? [name, ...bonuses.map((pct, i) => (pct === null ? null : `${HEADS.prepay[i]}, +${pct}% bonus`))]
+      : [name, distance, credits ? `${credits} in credits` : null, offer ? `${bps / 100}% ${offer} on this bill` : null];
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={spoken}
-      className={cn("group flex w-full flex-col border-b-2 text-left", kind === "prepay" ? "border-[#635BFF]" : "border-[#00D66F]")}
+      aria-label={spoken.filter(Boolean).join(", ")}
+      className={cn(ROW_GRID[kind], "hover:bg-muted/60 min-h-14 py-2 text-left transition-colors")}
       data-pay-pick-place
     >
-      {/* THE GRID (Pato, 2026-11-24, MESITA-4839: "data in gray box, offers in
-          green boxes"): the place's box, then its offers, edge to edge with a
-          2px line between (MESITA-4842), and a line in the tile's colour under
-          each place (Pato: "lines separating the boxes of each place"). */}
-      <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-center gap-2.5 px-3.5 py-1.5 transition-colors">
-        <PlacePhoto place={p} className={kind === "prepay" ? "h-7 w-7" : "h-9 w-9"} />
-        <span className="min-w-0 flex-1">
-          <span className={cn("font-semibold", kind === "prepay" ? "line-clamp-2 text-base leading-tight" : "block truncate text-sm leading-tight")}>{name}</span>
-          {p.address && kind === "pay" ? (
-            <span className={"text-muted-foreground block truncate text-sm leading-tight"}>{p.address}</span>
-          ) : null}
+      <span className="flex min-w-0 items-center gap-2.5">
+        <PlacePhoto place={p} className="h-9 w-9 max-[359px]:hidden" />
+        <span className="min-w-0">
+          <span className="line-clamp-2 text-sm leading-tight font-semibold">{name}</span>
+          {distance ? <span className="text-muted-foreground mt-0.5 block text-xs leading-tight tabular-nums">{distance}</span> : null}
         </span>
-        {distance ? <span className="text-muted-foreground shrink-0 self-start text-sm leading-tight tabular-nums">{distance}</span> : null}
       </span>
-      {shown.length > 0 ? (
-        // ONE ROW OF EQUAL COLUMNS (Pato, 2026-11-24, MESITA-4837: "cleaner,
-        // in three columns same row"): Prepay's vouchers too; a row per
-        // amount before (MESITA-4795).
-        // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
-        // two boxes are halves, three are thirds; 14px words, shorter boxes.
-        <span className={cn("mt-0.5 grid w-full gap-0.5", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
-          {shown.map((b) => (
-            <span key={b.key} className={cn("text-foreground min-w-0 px-3.5 py-2 max-[429px]:px-2", b.tone)}>
-              <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{kind === "prepay" ? <span className="max-[359px]:hidden">For </span> : null}
-                {b.top}
-              </span>
-              <span className={cn("mt-0.5 block truncate leading-tight font-semibold tabular-nums", kind === "prepay" ? "text-sm text-indigo-700" : "text-xs")}>
-                {b.bottom}
-                {kind === "prepay" && b.bottom.startsWith("+") ? <span className="max-[359px]:hidden"> Bonus</span> : null}
-              </span>
-              {b.bonus ? <span className="text-foreground/70 mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums">{b.bonus}</span> : null}
-            </span>
-          ))}
-        </span>
-      ) : null}
+      {kind === "prepay" ? (
+        bonuses.map((pct, i) => (
+          <span key={VOUCHERS_SHOWN[i]} className={cn("text-right text-sm font-semibold tabular-nums", pct ? "text-indigo-700" : "text-muted-foreground")}>
+            {pct ? `+${pct}%` : "–"}
+          </span>
+        ))
+      ) : (
+        <>
+          <span className={cn("text-right text-sm leading-tight font-semibold tabular-nums", credits ? "text-foreground" : "text-muted-foreground")}>
+            {credits ?? "–"}
+            {p.pending_cents > 0 ? <span className="text-muted-foreground block text-xs">+{money(p.pending_cents, p.currency)}</span> : null}
+          </span>
+          <span className={cn("text-right text-sm leading-tight font-semibold tabular-nums", offer ? "text-emerald-700" : "text-muted-foreground")}>
+            {offer ? `${bps / 100}%` : "–"}
+            {offer ? <span className="block text-xs">{offer}</span> : null}
+          </span>
+        </>
+      )}
+      <ChevronRight className="text-muted-foreground h-4 w-4 justify-self-end" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }
 
 function RowsSkeleton() {
   return (
-    <div className="border-border divide-border divide-y border-y" aria-busy>
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="px-3.5 py-2.5">
-          <div className="flex items-start gap-3.5">
-            <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
-            <div className="flex-1 pt-1">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="mt-2 h-3 w-24" />
-            </div>
-            <Skeleton className="mt-1 h-3 w-10" />
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <Skeleton className="h-[42px] min-w-0 rounded-lg" />
-            <Skeleton className="h-[42px] min-w-0 rounded-lg" />
-          </div>
+    <div className="border-border divide-border divide-y border-b" aria-busy>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex h-14 items-center gap-2.5 px-3.5">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="ml-auto h-4 w-28" />
         </div>
       ))}
     </div>
