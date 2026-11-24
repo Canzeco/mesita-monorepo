@@ -939,6 +939,28 @@ function TierTable({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashb
   );
 }
 
+/** The steps in full sentences (Pato, 2026-11-24, MESITA-4828: "write the how
+ *  it works clearer, even if more text"): a number, a bold line, what happens. */
+function NumberedSteps({ steps }: { steps: { title: string; text: string }[] }) {
+  return (
+    <Box title="Step by step">
+      <ol className="flex flex-col gap-3" data-how-steps>
+        {steps.map((x, i) => (
+          <li key={x.title} className="flex items-start gap-3">
+            <span className="bg-foreground text-background flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold tabular-nums" aria-hidden>
+              {i + 1}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground block text-base leading-7 font-semibold">{x.title}</span>
+              <span className="text-muted-foreground block text-sm leading-snug">{x.text}</span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </Box>
+  );
+}
+
 /** The bill the worked example uses, in whole pesos. */
 const EXAMPLE_BILL = 500;
 
@@ -954,18 +976,21 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
   const gives = (EXAMPLE_BILL * shown.bps) / 10000;
   const steps: Step[] = discount
     ? [
-        { Icon: QrCode, title: "Your bill", amount: `$${EXAMPLE_BILL}`, line: "Type it in Pay Bill" },
+        { Icon: QrCode, title: "Your bill", amount: `$${EXAMPLE_BILL}`, line: "Your waiter sends it" },
         { Icon: Wallet, title: "Discount", amount: `−$${gives}`, line: `${rate} off`, green: true },
-        { Icon: Utensils, title: "You pay", amount: `$${EXAMPLE_BILL - gives}`, line: "The waiter confirms it" },
+        { Icon: Utensils, title: "You pay", amount: `$${EXAMPLE_BILL - gives}`, line: "Plus your tip" },
       ]
     : [
-        { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: "With Pay Bill, here" },
+        { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: "At this place" },
         { Icon: Clock, title: "Wait", amount: "1 hour", line: "Nothing to do" },
         { Icon: Wallet, title: "You get", amount: `$${gives}`, line: `${rate} back as credit`, green: true },
       ];
   // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day).
   const facts: Fact[] = discount
-    ? [{ Icon: Utensils, text: "The discount is on the bill, never on the tip." }]
+    ? [
+        { Icon: Utensils, text: "The discount is on the bill, never on the tip." },
+        { Icon: Wallet, text: "If you have credits here, they are used first. Credits never pay the tip." },
+      ]
     : [
         { Icon: Utensils, text: "Use your cashback to pay any bill at this place." },
         { Icon: InfinityIcon, text: "It never expires." },
@@ -977,10 +1002,23 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
       title={discount ? "How your discount works" : "How cashback works"}
       lead={
         discount
-          ? "Pay your bill with Mesita and it costs less right away."
+          ? "When you pay your bill here with Mesita, the discount comes off before you pay."
           : "Pay your bill with Mesita and part of it comes back to you as credit for your next visit here."
       }
     >
+      <NumberedSteps
+        steps={[
+          { title: "Show your QR", text: "When you want the bill, open Pay Bill and show your QR to your waiter." },
+          {
+            title: "Check the bill",
+            text: `Your waiter types the bill and the tip. You see them on your phone${discount ? ", with the discount already taken off," : ""} and tap Accept.`,
+          },
+          { title: "Pay at the place", text: "Pay your waiter in cash or on the place's card terminal. Mesita doesn't charge your card." },
+          discount
+            ? { title: "Done", text: "Your waiter confirms the payment and you get your receipt." }
+            : { title: "Get your cashback", text: "Your waiter confirms the payment. One hour later the cashback is in your Wallet, as credit for this place." },
+        ]}
+      />
       <Box title={`Example: a $${EXAMPLE_BILL} bill`}>
         <StepList steps={steps} />
       </Box>
@@ -996,22 +1034,20 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
   const rule = (k: MoneyVoucherKey) =>
     k === "voucher_welcome" ? "Once per guest at this place." : k === "voucher_vip" ? "One per visit." : null;
   const facts: Fact[] = [
-    { Icon: Utensils, text: "Spend it on any bill here." },
-    { Icon: Gift, text: "Or send it to a friend." },
-    { Icon: InfinityIcon, text: "It never expires." },
-    ...(products.some((p) => rule(p.key) === null) ? [{ Icon: Repeat, text: "Buy as many as you like." }] : []),
+    { Icon: Utensils, text: "Your credit pays any bill at this place. It can't be used at other places, and it never pays the tip." },
+    { Icon: Gift, text: "You can send your credit to a friend as a gift." },
+    { Icon: InfinityIcon, text: "Your credit never expires." },
+    ...(products.some((p) => rule(p.key) === null) ? [{ Icon: Repeat, text: "You can buy as many as you like." }] : []),
   ];
   return (
-    <HowItWorks tab="prepay" title="How prepaying works" lead="Pay now for a future visit here and get more credit than you pay.">
-      <Box>
-        <StepList
-          steps={[
-            { Icon: CreditCard, title: "Pay", line: "Here, in one tap" },
-            { Icon: Clock, title: "Wait 3 hours", short: "3 hours", line: "Nothing to do" },
-            { Icon: Wallet, title: "Receive it all", short: "Receive", line: "Credit and bonus together", green: true },
-          ]}
-        />
-      </Box>
+    <HowItWorks tab="prepay" title="How prepaying works" lead="You buy a voucher today and get more credit than you paid, to spend at this place on your next visits.">
+      <NumberedSteps
+        steps={[
+          { title: "Pick a voucher and pay", text: "Choose one or more with the + button and pay with your card." },
+          { title: "Wait 3 hours", text: "What you paid and your bonus arrive together, as credit in your Wallet. You don't have to do anything." },
+          { title: "Spend it here", text: "When you want the bill, open Pay Bill and show your QR to your waiter. Your credit is used first and you pay only what is left." },
+        ]}
+      />
       {loading ? null : (
         <OfferFacts
           rows={products.map((p) => {
@@ -1278,12 +1314,20 @@ function PrepaySection({
           it says "Select an offer", disabled: an empty basket charges
           nothing. The purple Go to Pay Bill moved to Checkout (MESITA-4710). */}
       {(() => {
-        // ONLY ONCE SOMETHING IS PICKED (Pato, 2026-11-23, MESITA-4763: "it is
-        // repulsive if I haven't even selected an offer and you are already
-        // displaying count at the bottom … don't do that"): an empty basket
-        // draws no bar; the first voucher picked brings it. Supersedes
-        // MESITA-4659's "always there".
-        if (count === 0) return null;
+        // NO COUNT UNTIL SOMETHING IS PICKED (Pato, 2026-11-23, MESITA-4763),
+        // BUT THE BLACK BUTTON STAYS (Pato, 2026-11-24, MESITA-4828: "keep the
+        // black button at the bottom but say select an offer"): an empty
+        // basket draws the button alone, where a voucher can be bought.
+        if (count === 0) {
+          if (loading || !co.live || !products.some((p) => buyable(p.key))) return null;
+          return (
+            <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
+              <button type="button" disabled className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold" data-offer-select>
+                Select an offer
+              </button>
+            </div>
+          );
+        }
         const sum = totals ?? { price: 0, bonus: 0 };
         const amount = (cents: number) => whole(pesos(cents, currency));
         const payDisabled = count === 0 || locked || totals === null || (co.payCards !== undefined && co.payCards.state !== "ready");
@@ -1348,7 +1392,7 @@ function PrepaySection({
                 className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
                 data-offer-pay
               >
-                {count === 0 ? "Select an offer" : locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
+                {locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
               </button>
             )}
           </div>
