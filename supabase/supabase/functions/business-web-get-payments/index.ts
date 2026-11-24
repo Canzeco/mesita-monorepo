@@ -16,7 +16,7 @@
 //                          payouts_paused|restricted (Main §10's Place Stripe)
 //             code_set,    whether a waiter has a code
 //             waiters: [{ id, name, removed, tips_24h_cents, bills_24h,
-//                          tips_7d_cents, bills_7d }]  MESITA-4871
+//                          tips_7d_cents, bills_7d, code }]  MESITA-4871
 //             fee: { hold, invoice },
 //             cashback: { welcome_bps, returning_bps, returning_vip_bps, … } }
 //                          MESITA-4698: the owner's two cashback lines and
@@ -105,10 +105,17 @@ serveJson("business-web-get-payments", async (req) => {
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;
-  // MESITA-4871: one code per waiter, with their tips (never the codes).
+  // MESITA-4871: one code per waiter, with their tips; the codes themselves only
+  // for who manages the place (MESITA-4886).
   const { data: waiterRows, error: waiterErr } = await admin.rpc("place_waiter_list", { p_place_id: placeId, p_livemode: paymentsLivemode() });
   if (waiterErr) return json({ ok: false, error: `place_waiter_list: ${waiterErr.message}` }, 500);
-  const waiters = (waiterRows ?? []) as Array<{ removed: boolean }>;
+  const codes = new Map<string, string | null>();
+  if (canManage(access.role)) {
+    const { data: codeRows, error: codesErr } = await admin.from("place_waiters").select("id, code").eq("place_id", placeId).is("removed_at", null);
+    if (codesErr) return json({ ok: false, error: `place_waiters: ${codesErr.message}` }, 500);
+    for (const r of (codeRows ?? []) as Array<{ id: string; code: string | null }>) codes.set(r.id, r.code);
+  }
+  const waiters = ((waiterRows ?? []) as Array<{ id: string; removed: boolean }>).map((w) => ({ ...w, code: codes.get(w.id) ?? null }));
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")
     .select(FEE_INVOICE_COLUMNS)

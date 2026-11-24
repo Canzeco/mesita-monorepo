@@ -658,7 +658,8 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** One waiter and their tips (MESITA-4871); never the code. */
+/** One waiter, their tips (MESITA-4871) and their code (MESITA-4886; null for
+ *  an editor, a removed waiter, or a code made before it was kept). */
 export type PlaceWaiter = {
   id: string;
   name: string;
@@ -667,9 +668,10 @@ export type PlaceWaiter = {
   bills_24h: number;
   tips_7d_cents: number;
   bills_7d: number;
+  code?: string | null;
 };
 
-/** Add a waiter, replace their 8-digit code or remove them. `code` is answered once. */
+/** Add a waiter, replace their 8-digit code or remove them. */
 export async function setWaiter(
   placeId: string,
   body: { action: "add"; name: string } | { action: "new_code" | "remove"; waiter_id: string },

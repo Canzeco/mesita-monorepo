@@ -1119,27 +1119,177 @@ button.wp-no {
   color: #171717;
 }
 
-.wp-paid {
+/* The ticket (MESITA-4886): the guest's own, on the waiter's screen. */
+.tk {
+  flex-shrink: 0;
+  margin-top: 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 24px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.tk-top {
+  padding: 16px 20px 20px;
+  background: #171717;
+  color: #ffffff;
+}
+
+.tk-top p {
+  color: inherit;
+}
+
+.tk-green {
+  background: #15803d;
+}
+
+.tk-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tk-photo {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+.tk-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tk-names {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  align-self: stretch;
-  gap: 2px;
-  margin-top: 12px;
-  padding: 18px 12px;
-  border-radius: 16px;
-  background: #15803d;
-  color: #ffffff;
+  min-width: 0;
+}
+
+.tk-names > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tk-names b {
+  font-size: 17px;
+}
+
+.tk-names span,
+.tk-words {
+  font-size: 15px;
+  opacity: 0.75;
+}
+
+.tk-words {
+  margin-top: 16px;
+}
+
+.tk-amount {
+  margin-top: 2px;
+  font-size: min(48px, 12vw);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.wp-paid-title {
-  font-size: 18px;
+.tk-lines {
+  margin: 0;
+  padding: 4px 20px;
+  border: 0;
+}
+
+.tk-lines li {
+  min-height: 48px;
+  color: #525252;
+  font-variant-numeric: tabular-nums;
+}
+
+.tk-lines li:last-child {
+  border: 0;
+}
+
+.tk-lines b {
+  color: #171717;
   font-weight: 600;
 }
 
-.wp-paid-amount {
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1.15;
+.tk-good,
+.tk-lines .tk-good,
+.tk-lines .tk-good b {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.tk-dots {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.tk-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  animation: tk-dot 1s ease-in-out infinite;
+}
+
+.tk-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.tk-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes tk-dot {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tk-dots i {
+    animation: none;
+  }
+}
+
+.wp-space {
+  flex: 1;
+}
+
+.wp-center {
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.wp-actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.wp-actions.wp-half {
+  grid-template-columns: 1fr 1fr;
+}
+
+.wp-actions button {
+  height: 60px;
+  margin: 0;
+  font-size: 17px;
+}
+
+button.wp-yes {
+  background: #00d66f;
+  color: #0a0a0a;
 }

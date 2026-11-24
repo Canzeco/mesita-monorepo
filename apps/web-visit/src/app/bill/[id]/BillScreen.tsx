@@ -7,7 +7,7 @@ import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, sendBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
 import { BillEntry, CodeEntry, WaiterSteps } from "@/components/BillEntry";
 import { Bones } from "@/components/Bones";
-import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/app/tab/[token]/icons";
+import { UserIcon } from "@/app/tab/[token]/icons";
 
 // THE WAITER'S BILL (MESITA-4823), by its state:
 //
@@ -173,19 +173,49 @@ export function BillScreen({ billId }: { billId: string }) {
       {error}
     </p>
   ) : null;
-  const guest = (title: string, amount: number | null) => (
-    <div className="pay-guest">
-      <span className="pay-guest-photo" aria-hidden>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        {photo ? <img src={photo} alt="" /> : <UserIcon className="pay-icon" />}
-      </span>
-      <span className="pay-guest-text">
-        <span className="pay-guest-title">{title}</span>
-        <span className="pay-guest-place">{[guestName, placeName].filter(Boolean).join(" · ")}</span>
-      </span>
-      {amount !== null ? <p className="verify-amount">{m(amount)}</p> : null}
-    </div>
+  // ONE TICKET (Pato, 2026-11-24, MESITA-4886: "better design in those"), the
+  // guest's own: a solid top with who and how much, its lines under it.
+  const ticket = (tone: "ink" | "green", words: React.ReactNode, amount: string, lines: { label: string; value: string; good?: boolean }[]) => (
+    <section className="tk">
+      <div className={`tk-top${tone === "green" ? " tk-green" : ""}`}>
+        <div className="tk-who">
+          <span className="tk-photo" aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {photo ? <img src={photo} alt="" /> : <UserIcon className="pay-icon" />}
+          </span>
+          <span className="tk-names">
+            <b>{guestName ?? "Guest"}</b>
+            <span>{placeName}</span>
+          </span>
+        </div>
+        <p className="tk-words" role="status">
+          {words}
+        </p>
+        <p className="tk-amount">{amount}</p>
+      </div>
+      <ul className="tk-lines">
+        {lines.map((l) => (
+          <li key={l.label} className={l.good ? "tk-good" : undefined}>
+            <span>{l.label}</span>
+            <b>{l.value}</b>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
+  const dots = (
+    <span className="tk-dots" aria-hidden>
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+  const billLine = { label: "Bill", value: m(bill.bill_cents ?? 0) };
+  const tipLine = { label: "Tip", value: bill.tip_cents > 0 ? m(bill.tip_cents) : "None" };
+  const offLines = [
+    ...(bill.discount_cents > 0 ? [{ label: "Discount", value: `−${m(bill.discount_cents)}`, good: true }] : []),
+    ...(bill.credit_cents > 0 ? [{ label: "Paid with credits", value: `−${m(bill.credit_cents)}`, good: true }] : []),
+  ];
   const sendAgain = () =>
     run("again", async (s) => {
       const r = await openBill(s, { again_bill_id: billId });
@@ -199,34 +229,19 @@ export function BillScreen({ billId }: { billId: string }) {
   // PAID.
   if (bill.state === "paid") {
     const collected = bill.outside_cents ?? 0;
-    const lines: [string, string][] = [["Bill", m(bill.bill_cents ?? 0)]];
-    if (bill.discount_cents > 0) lines.push(["Discount", `−${m(bill.discount_cents)}`]);
-    if (bill.credit_cents > 0) lines.push(["Credits", `−${m(bill.credit_cents)}`]);
-    lines.push(["Tip", bill.tip_cents > 0 ? m(bill.tip_cents) : "None"]);
-    if (waiter) lines.push(["Waiter", waiter]);
     // RECEIPT.
     return (
-      <main className="proof verify" data-bill="paid">
-        {band}
+      <main className="wp" data-bill="paid">
         <WaiterSteps at={5} />
-        <section className="wp-paid" role="status">
-          <span className="wp-paid-title">✓ Paid</span>
-          <span className="wp-paid-amount">{collected > 0 ? m(collected) : "Nothing to collect"}</span>
-          {collected > 0 ? <span>Cash or card</span> : null}
-        </section>
-        <section className="verify-box" aria-label="Receipt">
-          {guest("Receipt", null)}
-          <ul className="pay-lines">
-            {lines.map(([label, value]) => (
-              <li key={label}>
-                <span className="pay-line-label">{label}</span>
-                <span className="pay-line-value">{value}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {band}
+        {ticket("green", collected > 0 ? "✓ Paid · Cash or card" : "✓ Paid with credits", m(collected > 0 ? collected : bill.credit_cents), [
+          billLine,
+          ...offLines,
+          tipLine,
+          ...(waiter ? [{ label: "Waiter", value: waiter }] : []),
+        ])}
         {/* Friends who split: each shows their own QR. */}
-        <p className="proof-line">Another guest? Scan their QR.</p>
+        <p className="wp-line wp-center">Another guest? Scan their QR.</p>
       </main>
     );
   }
@@ -283,50 +298,28 @@ export function BillScreen({ billId }: { billId: string }) {
   // COLLECT.
   if (bill.state === "accepted" || bill.state === "confirming") {
     const due = bill.outside_cents ?? 0;
-    const lines = [
-      { key: "bill", icon: <CoinsIcon className="pay-icon" />, label: "Bill", value: m(bill.bill_cents ?? 0), on: true },
-      { key: "discount", icon: <CoinsIcon className="pay-icon" />, label: "Discount", value: `−${m(bill.discount_cents)}`, on: bill.discount_cents > 0, good: true },
-      { key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Paid with credits", value: `−${m(bill.credit_cents)}`, on: bill.credit_cents > 0, good: true },
-      { key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: "Tip", value: m(bill.tip_cents), on: bill.tip_cents > 0 },
-      { key: "collect", icon: <BanknoteIcon className="pay-icon" />, label: "Collect, cash or card", value: m(due), on: true },
-    ].filter((l) => l.on);
+    // HOW THE GUEST PAYS (Pato, MESITA-4879: "probably he is using credits so
+    // just subtracting from what you expect"). Their credits show only once they
+    // accept: a bill is never a way to read a balance.
     return (
-      <main className="proof verify" data-bill="collect">
+      <main className="wp" data-bill="collect">
         <WaiterSteps at={4} />
         {band}
         {reconnecting}
-        <p className="proof-line" role="status">
-          The guest accepted
-        </p>
-        {/* HOW THE GUEST PAYS (Pato, MESITA-4879: "probably he is using
-            credits so just subtracting from what you expect"). Their credits
-            show only once they accept: a bill is never a way to read a balance. */}
-        <p className="proof-amount">Collect {m(due)}</p>
-        <p className="proof-line">{bill.credit_cents > 0 ? `${m(bill.credit_cents)} is paid with Mesita credits` : "Cash or card"}</p>
-        <section className="verify-box" aria-label="How the guest pays">
-          {guest("Bill and tip", total)}
-          <ul className="pay-lines">
-            {lines.map((l) => (
-              <li key={l.key} className={l.good ? "pay-line-good" : undefined}>
-                {l.icon}
-                <span className="pay-line-label">{l.label}</span>
-                <span className="pay-line-value">{l.value}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+        {ticket("ink", due > 0 ? "Accepted · Collect, cash or card" : "Accepted · Nothing to collect", m(due), [billLine, ...offLines, tipLine])}
         {alert}
+        <div className="wp-space" />
+        <p className="wp-line wp-center">Open until {clockTime(bill.expires_at)}</p>
         {cancelRow ?? checkRow ?? (
-          <div className="verify-actions" style={{ alignSelf: "stretch", marginTop: 12 }}>
-            <button type="button" className="verify-reject" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
+          <div className="wp-actions">
+            <button type="button" className="wp-no" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
               Cancel
             </button>
-            <button type="button" className="verify-sign" disabled={busy !== null} onClick={() => setChecking(true)}>
+            <button type="button" className="wp-go wp-yes" disabled={busy !== null || bill.state === "confirming"} onClick={() => setChecking(true)}>
               {busy === "received" || bill.state === "confirming" ? "Confirming…" : "Received"}
             </button>
           </div>
         )}
-        <p className="proof-line proof-clock">Open until {clockTime(bill.expires_at)}</p>
       </main>
     );
   }
@@ -334,44 +327,24 @@ export function BillScreen({ billId }: { billId: string }) {
   // WAITING FOR THE GUEST.
   if (bill.state === "sent" && !editing) {
     return (
-      <main className="proof verify" data-bill="sent">
+      <main className="wp" data-bill="sent">
         <WaiterSteps at={4} />
         {band}
         {reconnecting}
-        <section className="verify-box" aria-label="The bill">
-          {guest("Waiting for the guest", total)}
-          <ul className="pay-lines">
-            <li>
-              <CoinsIcon className="pay-icon" />
-              <span className="pay-line-label">Bill</span>
-              <span className="pay-line-value">{m(bill.bill_cents ?? 0)}</span>
-            </li>
-            <li>
-              <HandCoinsIcon className="pay-icon" />
-              <span className="pay-line-label">Tip</span>
-              <span className="pay-line-value">{bill.tip_cents > 0 ? m(bill.tip_cents) : "None"}</span>
-            </li>
-          </ul>
-        </section>
-        <p className="proof-line" role="status">
-          Ask the guest to accept on their phone.
-        </p>
+        {ticket("ink", <>Waiting for {guestName ?? "the guest"} to accept {dots}</>, m(total), [billLine, tipLine])}
         {alert}
+        <div className="wp-space" />
+        <p className="wp-line wp-center">Ask them to accept on their phone · until {clockTime(bill.expires_at)}</p>
         {cancelRow ?? (
-          <div className="yes-no" style={{ alignSelf: "stretch", marginTop: 12 }}>
-            <button
-              type="button"
-              className="quiet"
-              onClick={() => setEditing(true)}
-            >
-              Edit
-            </button>
-            <button type="button" className="quiet" onClick={() => setCancelling(true)}>
+          <div className="wp-actions wp-half">
+            <button type="button" className="wp-no" onClick={() => setCancelling(true)}>
               Cancel
+            </button>
+            <button type="button" className="wp-no" onClick={() => setEditing(true)}>
+              Edit
             </button>
           </div>
         )}
-        <p className="proof-line proof-clock">Open until {clockTime(bill.expires_at)}</p>
       </main>
     );
   }
