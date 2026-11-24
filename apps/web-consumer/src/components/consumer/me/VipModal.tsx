@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Gem } from "lucide-react";
+import { ChevronRight, Crown, PartyPopper, Repeat } from "lucide-react";
 import { VIP_MIN_FOLLOWERS } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { Spinner } from "@/components/shared";
@@ -21,7 +21,7 @@ import { toast } from "@/lib/toast";
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
-import { groupVipCode, isVip, VIP_CODE_LENGTH, vipCodeDigits, vipRedeemUi, vipTitle, type VipRedeemUi } from "@/lib/vip";
+import { groupVipCode, isVip, VIP_CODE_LENGTH, vipCodeDigits, vipRedeemUi, type VipRedeemUi } from "@/lib/vip";
 
 // BECOME VIP (Pato, 2026-11-23, MESITA-4766: "BRING BACK VIP CUSTOMERS ...
 // In order to be VIP, is either invitation code or 5000 followers on
@@ -35,6 +35,63 @@ const HERE = CONSUMER_ROUTES.mePages.vip;
 
 export function VipFrame({ children }: { children: ReactNode }) {
   return <MeScreen title="Class">{children}</MeScreen>;
+}
+
+// WHY, IN ONE CARD (Pato, 2026-11-23, MESITA-4797: "clearer design
+// explaining why VIP"): the Class first, then why, then what VIP gets.
+const FOLLOWERS = VIP_MIN_FOLLOWERS.toLocaleString("en-US");
+
+function ClassCard({ vip, reason }: { vip: boolean; reason: "code" | "instagram" | null | undefined }) {
+  const why = !vip
+    ? `VIP is for guests with an invitation code or more than ${FOLLOWERS} Instagram followers.`
+    : reason === "code"
+      ? "You joined with an invitation code."
+      : reason === "instagram"
+        ? `Your Instagram has more than ${FOLLOWERS} followers.`
+        : "Mesita made you VIP.";
+  return (
+    <div className={cn("flex items-center gap-4 rounded-2xl p-5", vip ? "bg-foreground text-background" : "bg-card border-border border")} data-vip-status={vip ? "vip" : "regular"}>
+      <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", vip ? "bg-background text-foreground" : "bg-muted text-foreground")} aria-hidden>
+        <Crown className="h-7 w-7" strokeWidth={2} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={cn("block text-sm font-semibold", vip ? "text-background/70" : "text-muted-foreground")}>Your Class</span>
+        <span className="block text-2xl leading-tight font-semibold">{vip ? "VIP" : "Regular"}</span>
+        <span className={cn("mt-1 block text-sm", vip ? "text-background/80" : "text-muted-foreground")} data-vip-why>
+          {why}
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/** What VIP gets (MESITA-4789's two VIP tiers), in the guest's words. */
+function VipPerks() {
+  const rows = [
+    { Icon: PartyPopper, title: "Welcome VIP", line: "A higher rate on your first bill at a place." },
+    { Icon: Repeat, title: "Returning VIP", line: "A higher rate on every bill after that." },
+  ];
+  return (
+    <section className="bg-card border-border overflow-hidden rounded-2xl border" aria-label="What VIP gets" data-vip-perks>
+      <h2 className="border-border border-b px-4 py-3 text-base font-semibold">What VIP gets</h2>
+      <ul className="divide-border divide-y">
+        {rows.map(({ Icon, title, line }) => (
+          <li key={title} className="flex items-center gap-3 px-4 py-3">
+            <span className="bg-muted text-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
+              <Icon className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-semibold">{title}</span>
+              <span className="text-muted-foreground block text-sm">{line}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground border-border border-t px-4 py-3 text-sm">
+        Each place sets its own rates, as Cashback or a Discount on the bill.
+      </p>
+    </section>
+  );
 }
 
 export function VipModal() {
@@ -84,14 +141,9 @@ export function VipModal() {
   if (vip) {
     return (
       <VipFrame>
-        <div className="bg-card border-border flex items-center gap-3 rounded-2xl border p-4" data-vip-status>
-          <span className="bg-foreground text-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-hidden>
-            <Gem className="h-5 w-5" strokeWidth={2.25} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold">{vipTitle(profile?.vip_reason ?? null)}</span>
-            <span className="text-muted-foreground block text-sm">Higher Back on return visits at places that offer it.</span>
-          </span>
+        <div className="flex flex-col gap-4">
+          <ClassCard vip reason={profile?.vip_reason} />
+          <VipPerks />
         </div>
       </VipFrame>
     );
@@ -99,10 +151,10 @@ export function VipModal() {
 
   return (
     <VipFrame>
-      <div className="flex flex-col gap-5">
-        <p className="text-muted-foreground px-0.5 text-sm">
-          VIP guests get a higher Cashback or Discount from their second bill at places that offer it. Two ways in:
-        </p>
+      <div className="flex flex-col gap-4">
+        <ClassCard vip={false} reason={null} />
+        <VipPerks />
+        <h2 className="px-0.5 pt-1 text-base font-semibold">Two ways to become VIP</h2>
         <PushLink
           href={CONSUMER_ROUTES.mePages.instagram}
           className="bg-card border-border hover:bg-muted/40 flex items-center gap-3 rounded-2xl border p-4 transition"
@@ -112,7 +164,7 @@ export function VipModal() {
             <Instagram className="h-5 w-5" />
           </span>
           <span className="min-w-0 flex-1 text-sm font-semibold">
-            Connect Instagram with more than {VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers
+            Connect Instagram with more than {FOLLOWERS} followers
           </span>
           <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
         </PushLink>
