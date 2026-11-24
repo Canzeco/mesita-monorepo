@@ -6,11 +6,12 @@ import { LocateFixed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
-import { CHIP_DISC, HEADER_ICON, HEADER_ICON_STROKE } from "./header-classes";
+import { MAP_DISC, HEADER_ICON_STROKE } from "./header-classes";
 
-// The map's location control: a 32px floating disc LEFT OF MENU on the
-// chip row (Pato, 2026-11-23, MESITA-4800: "put it at the left of menu";
-// left of the bar since MESITA-3009). It wears the "my location" target and
+// The map's location control: a 48px floating disc at the map's BOTTOM RIGHT,
+// over the cards, where Google Maps keeps it and a thumb reaches (Pato,
+// 2026-11-23, MESITA-4811: "think of 5 different designs and pick the best";
+// left of Menu for an hour, MESITA-4800). It wears the "my location" target and
 // nothing else, ink on white (MESITA-3004 took off MESITA-3000/3003's blue
 // tint), always ink, located or not (Pato, MESITA-3010: "location instead of
 // blue use black"; MESITA-2454 turned it the map's blue once a fix was held). No
@@ -54,13 +55,13 @@ export function SearchLocateButton({
               : "Use my location"
       }
       className={cn(
-        CHIP_DISC,
+        MAP_DISC,
         "disabled:hover:bg-card disabled:opacity-60",
       )}
     >
       <LocateFixed
         className={cn(
-          HEADER_ICON,
+          "h-5 w-5 shrink-0",
           locating && "animate-pulse",
           blocked && "text-destructive",
         )}

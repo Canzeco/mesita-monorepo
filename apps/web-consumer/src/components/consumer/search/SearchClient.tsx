@@ -134,6 +134,7 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   RAIL_LEAD_PAGES,
+  SIGHT_BOTTOM_CSS,
   railPageWidth,
   RAIL_PAGE_SIZE,
   SearchRailOverlay,
@@ -1154,17 +1155,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       >
         {/* Search's header, floating on the map's top edge with no band (Pato,
           MESITA-2996, was MESITA-2409/2413's white band): one bar —
-          query · Ask AI (MESITA-4799) — then locate and the family chips; the
+          query · Ask AI (MESITA-4799) — then the family chips; the
           bar's results and the load error cover the chips. */}
         <SearchHeader
-          locate={
-            <SearchLocateButton
-              located={location !== null}
-              locating={locating}
-              error={locationError}
-              onClick={recentreOnGuest}
-            />
-          }
           chipsHidden={querying}
           bar={
             <SearchBar
@@ -1230,6 +1223,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onUserViewport={onUserViewport}
           onCameraMoveStart={clearPendingReload}
         />
+        {/* LOCATE, 12px over the card row's top, 12px in (MESITA-4811). Hidden,
+            not unmounted, while searching: it would toast a refused location
+            again on every remount. */}
+        <div
+          className={cn("absolute right-3 z-20", searchMode && "hidden")}
+          style={{ bottom: `calc((1 - ${SIGHT_BOTTOM_CSS}) * 100% + 0.75rem)` }}
+          data-search-locate
+        >
+          <SearchLocateButton
+            located={location !== null}
+            locating={locating}
+            error={locationError}
+            onClick={recentreOnGuest}
+          />
+        </div>
         {/* THE CAROUSEL FLOATS OVER THE MAP (Pato, MESITA-2670: "remove the
             coordinates box and the background; the carousel must be floating
             over the map, and the metadata must not be shown"). The band under
