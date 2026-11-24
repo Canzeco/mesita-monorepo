@@ -160,6 +160,13 @@ function bonusShade(pct: number): string {
   return "bg-[#E6E4FF] text-indigo-950";
 }
 
+/** Pay's green the same way (Pato, 2026-11-24, MESITA-4862). */
+function offerShade(pct: number): string {
+  if (pct >= 20) return "bg-[#00D66F] text-neutral-950";
+  if (pct >= 10) return "bg-[#85EDB6] text-neutral-950";
+  return "bg-[#D3F8E2] text-neutral-950";
+}
+
 /** A place, one row, the one button. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
   return kind === "prepay" ? <PrepayRow p={p} onPick={onPick} /> : <PayRow p={p} onPick={onPick} />;
@@ -200,8 +207,8 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 }
 
 /** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo,
- *  the name over its address, a grey box with what this guest's next bill gets
- *  and a black Pay box. No credits: the Wallet's box has them. */
+ *  the name over its address, a green circle with what this guest's next bill gets
+ *  (− off it, + cashback; MESITA-4862) and a black Pay box. No credits: the Wallet's box has them. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p);
@@ -220,11 +227,11 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
         <span className="line-clamp-2 text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
         {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight max-[429px]:text-xs">{p.address}</span> : null}
       </span>
-      <span className="flex shrink-0 gap-1.5" aria-hidden>
+      <span className="flex shrink-0 gap-2" aria-hidden>
         {bps > 0 ? (
-          <span className="bg-muted flex h-12 w-[72px] flex-col items-center justify-center rounded-xl leading-tight max-[374px]:w-16">
-            <span className="text-base leading-tight font-semibold tabular-nums">{bps / 100}%</span>
-            <span className="text-muted-foreground text-xs leading-tight">{word}</span>
+          <span className={cn("flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold tabular-nums", offerShade(bps / 100))}>
+            {discount > 0 ? "−" : "+"}
+            {bps / 100}%
           </span>
         ) : null}
         <span className="bg-foreground text-background flex h-12 w-[58px] items-center justify-center rounded-xl text-base font-semibold max-[374px]:w-12 max-[374px]:text-sm">
@@ -242,7 +249,7 @@ function RowsSkeleton({ kind }: { kind: ListKind }) {
         <div key={i} className={cn("flex items-center px-3.5", kind === "pay" ? "h-[72px] gap-3" : "h-14 gap-2.5")}>
           <Skeleton className={cn("shrink-0 rounded-full", kind === "pay" ? "h-12 w-12" : "h-9 w-9")} />
           <Skeleton className="h-4 w-32" />
-          <Skeleton className={cn("ml-auto", kind === "pay" ? "h-12 w-32 rounded-xl" : "h-4 w-28")} />
+          <Skeleton className={cn("ml-auto", kind === "pay" ? "h-12 w-28 rounded-xl" : "h-4 w-28")} />
         </div>
       ))}
     </div>
