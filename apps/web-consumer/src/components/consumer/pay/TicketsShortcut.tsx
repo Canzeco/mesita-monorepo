@@ -100,8 +100,10 @@ export function GiftShortcut() {
 export function WalletHeaderActions() {
   return (
     // THE SAME WIDTH (Pato, 2026-11-23, MESITA-4783: "gift and tickets must
-    // be the same length"): two equal columns, each word centred.
-    <div className="grid w-full grid-cols-2 items-center gap-2">
+    // be the same length"): two equal columns, each word centred. 16px APART
+    // (Pato, 2026-11-24, MESITA-4834: "gift and tickets are just too
+    // together"), 8px before.
+    <div className="ml-auto grid w-full max-w-60 grid-cols-2 items-center gap-4">
       <GiftShortcut />
       <TicketsShortcut icon />
     </div>
