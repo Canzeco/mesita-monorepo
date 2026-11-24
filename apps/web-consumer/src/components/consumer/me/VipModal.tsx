@@ -42,7 +42,9 @@ function ClassCard({ vip, reason }: { vip: boolean; reason: ConsumerProfile["vip
     ? "VIP is for guests with an invitation code."
     : reason === "code"
       ? "You joined with an invitation code."
-      : "Mesita made you VIP.";
+      : reason === "instagram"
+        ? "Your verified Instagram made you VIP."
+        : "Mesita made you VIP.";
   return (
     <div className={cn("flex items-center gap-4 rounded-2xl p-5", vip ? "bg-foreground text-background" : "bg-card border-border border")} data-vip-status={vip ? "vip" : "regular"}>
       <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", vip ? "bg-background text-foreground" : "bg-muted text-foreground")} aria-hidden>

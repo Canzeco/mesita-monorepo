@@ -1,6 +1,7 @@
-// MESITA-4849 — money: VIP is by invitation code only until the Instagram DM
-// bot proves who owns an account. The latest migration that sets guest_class,
-// and the latest that defines consumer_is_vip_for_money, read no Instagram.
+// MESITA-4858 — money: VIP is an invitation code, or a DM-proved Instagram
+// whose check said eligible. The latest migration that sets guest_class,
+// and the latest that defines consumer_is_vip_for_money, never read a typed
+// handle, a stored count or an emulated one.
 import { assert } from "jsr:@std/assert@1";
 
 const dir = new URL("../../migrations/", import.meta.url);
@@ -20,8 +21,9 @@ for (
     ["consumer_is_vip_for_money", latest(/create or replace function public\.consumer_is_vip_for_money/i, "$function$;")],
   ]
 ) {
-  Deno.test(`${name} reads the invitation only, never Instagram`, () => {
+  Deno.test(`${name} reads the invitation or a proved, eligible Instagram`, () => {
     assert(/vip_invited_at/.test(body));
-    assert(!/instagram/i.test(body));
+    assert(/instagram_proved_at is not null and (c\.)?instagram_vip_status = 'eligible'/.test(body));
+    assert(!/followers|instagram_verified_at|instagram_handle/i.test(body));
   });
 }

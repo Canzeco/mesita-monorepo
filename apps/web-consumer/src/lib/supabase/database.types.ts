@@ -310,21 +310,27 @@ export type Database = {
           code: string
           consumer_id: string
           created_at: string
-          handle: string | null
+          failed_reason: string | null
+          handle: string
+          vip_check: boolean
         }
         Insert: {
           checked_at?: string | null
           code: string
           consumer_id: string
           created_at?: string
-          handle?: string | null
+          failed_reason?: string | null
+          handle: string
+          vip_check?: boolean
         }
         Update: {
           checked_at?: string | null
           code?: string
           consumer_id?: string
           created_at?: string
-          handle?: string | null
+          failed_reason?: string | null
+          handle?: string
+          vip_check?: boolean
         }
         Relationships: [
           {
@@ -395,6 +401,8 @@ export type Database = {
           instagram_sync_day: string | null
           instagram_synced_at: string | null
           instagram_verified_at: string | null
+          instagram_vip_checked_at: string | null
+          instagram_vip_status: string | null
           last_name: string | null
           pay_method: string | null
           phone: string | null
@@ -438,6 +446,8 @@ export type Database = {
           instagram_sync_day?: string | null
           instagram_synced_at?: string | null
           instagram_verified_at?: string | null
+          instagram_vip_checked_at?: string | null
+          instagram_vip_status?: string | null
           last_name?: string | null
           pay_method?: string | null
           phone?: string | null
@@ -481,6 +491,8 @@ export type Database = {
           instagram_sync_day?: string | null
           instagram_synced_at?: string | null
           instagram_verified_at?: string | null
+          instagram_vip_checked_at?: string | null
+          instagram_vip_status?: string | null
           last_name?: string | null
           pay_method?: string | null
           phone?: string | null
@@ -3958,6 +3970,8 @@ export type Database = {
           instagram_sync_day: string | null
           instagram_synced_at: string | null
           instagram_verified_at: string | null
+          instagram_vip_checked_at: string | null
+          instagram_vip_status: string | null
           last_name: string | null
           pay_method: string | null
           phone: string | null
@@ -4021,6 +4035,8 @@ export type Database = {
           instagram_sync_day: string | null
           instagram_synced_at: string | null
           instagram_verified_at: string | null
+          instagram_vip_checked_at: string | null
+          instagram_vip_status: string | null
           last_name: string | null
           pay_method: string | null
           phone: string | null
@@ -4123,33 +4139,18 @@ export type Database = {
         Returns: boolean
       }
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
-      consumer_instagram_claim_scrape: {
+      consumer_instagram_prove: {
         Args: {
-          p_consumer_id: string
-          p_cooldown_s: number
-          p_daily_max: number
-          p_kind: string
-        }
-        Returns: Json
-      }
-      consumer_instagram_sync: {
-        Args: {
-          p_consumer_id: string
-          p_followers: number
+          p_code: string
+          p_followers?: number
           p_handle: string
           p_private?: boolean
         }
+        Returns: string
+      }
+      consumer_instagram_set_handle: {
+        Args: { p_consumer_id: string; p_handle: string; p_show?: boolean }
         Returns: boolean
-      }
-      consumer_instagram_verify: {
-        Args: {
-          p_consumer_id: string
-          p_followers: number
-          p_handle: string
-          p_private?: boolean
-          p_proved?: boolean
-        }
-        Returns: undefined
       }
       consumer_is_vip_for_money: {
         Args: { p_consumer: string; p_livemode: boolean }

@@ -32,12 +32,12 @@ const LEVELS: { level: SocialLevel; title: string; sub: string }[] = [
   {
     level: "public",
     title: "Public",
-    sub: "Your activity shows with your first name, age and sex. You see everyone's activity, but not their Instagram.",
+    sub: "Your activity shows with your first name, age and sex. No photo, no Instagram.",
   },
   {
     level: "instagram",
     title: "Public + Instagram",
-    sub: "Your photo shows too, and your @handle shows to guests who share theirs. You see their Instagram. Your Instagram may show your full name.",
+    sub: "Your photo shows too, and a link to your Instagram. Your Instagram may show your full name.",
   },
 ];
 
@@ -76,7 +76,7 @@ export function PrivacyLevels({
     if (saving) return;
     setOpen(false);
     if (next === level) return;
-    if (next === "instagram" && !profile.instagram_proved_at) {
+    if (next === "instagram" && !profile.instagram_handle) {
       navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });
       return;
     }
@@ -145,8 +145,8 @@ export function PrivacyLevels({
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">{l.title}</span>
                   <span className="text-muted-foreground type-label block">
-                    {l.level === "instagram" && !profile.instagram_proved_at
-                      ? `${profile.instagram_handle ? "Prove your Instagram is yours first." : "Connect your Instagram first."} ${l.sub}`
+                    {l.level === "instagram" && !profile.instagram_handle
+                      ? `Add your Instagram first. ${l.sub}`
                       : l.sub}
                   </span>
                 </span>

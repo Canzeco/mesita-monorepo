@@ -1,1118 +1,236 @@
 "use client";
 
-import { useConsumerProfile } from "@/lib/use-consumer-profile";
-
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  type FormEvent,
-  type ReactNode,
-} from "react";
-import {
-  ArrowLeftRight,
-  BadgeCheck,
-  AtSign,
-  Copy,
-  Eye,
-  ImageIcon,
-  RefreshCw,
-  Send,
-  Unlink,
-} from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { AtSign, BadgeCheck, Copy, Crown, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
-import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import {
-  IconChip,
-  ME_BUTTON_CLASS,
-  SettingsGroup,
-  Switch,
-} from "@/components/consumer/me/settings-rows";
+import { PushLink } from "@/components/consumer/nav/PushLink";
+import { InstagramHandleField } from "@/components/consumer/me/InstagramHandleField";
+import { IconChip, ME_BUTTON_CLASS, SettingsGroup, Switch } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiCheckInstagramProof,
   apiDisconnectInstagram,
+  apiFetchConsumerProfile,
   apiInstagramChannel,
   apiInstagramDmStatus,
-  apiLookupInstagram,
+  apiSetInstagram,
   apiStartInstagramDm,
-  apiStartInstagramProof,
-  apiSyncInstagram,
   apiUpdateConsumerProfile,
   dmVerified,
+  type ConsumerProfile,
   type InstagramChannel,
   type InstagramDmClaim,
-  type InstagramLookup,
 } from "@/lib/api/profile";
-import {
-  followersLabel,
-  updatedAgo,
-} from "@/lib/consumer-identity";
-import { EFError } from "@/lib/api/_invoke";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
-import {
-  INPUT_CLASS,
-  SHEET_BODY_CLASS,
-  SHEET_CANCEL_BUTTON_CLASS,
-  SHEET_TITLE_CLASS,
-} from "@/lib/ui-classes";
+import { SHEET_BODY_CLASS, SHEET_CANCEL_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
+import { PROFILE_KEY, writeCached } from "@/lib/screen-cache";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 
-// Instagram connect page (MESITA-936). Why connect is back (MESITA-4342,
-// after MESITA-2983 cut it): see others' Instagram. Connected: the account
-// with Sync (half) | Change | Disconnect in one row, then Why connect as a
-// box with the guest's standing (MESITA-4350).
-//
-// IT GRANTS NOTHING (Pato, MESITA-2040: "instagram is just 1000 followers").
-// A connected handle is an identity fact; crossing the bar makes the account
-// VERIFIED. The bar lives in `INSTAGRAM_REACH_FOLLOWERS`; this page no
-// longer names it (MESITA-2983).
-//
-// CONNECTING IS PROOF (MESITA-2461). The guest gets a one-time code, puts it
-// in their Instagram bio, and the server reads it there before it stores the
-// handle — with the follower count IT scraped. This page used to send a
-// fixed 5,000 and an 8-digit "code" nobody checked, so anyone could show up
-// in Social as @someone_famous.
-//
-// BY MESSAGE, ALWAYS SHOWN (MESITA-2575, MESITA-2602; Pato: "not yet the
-// actual backend functionality but keep that UI already designed"). The page
-// always draws the message flow: one tap sends your code to Mesita's
-// Instagram, and the page waits while Meta tells the server who sent it. The
-// server says whether that channel is live; until it is (the Meta secrets,
-// MESITA-2579) no code is asked for, and the card connects a typed username
-// through an Apify scrape (MESITA-3039, ConnectLookup), trusted for testing.
-// The bio code is back, inside the account card, as the proof sharing needs
-// (MESITA-4856, Pato: "Yes, require proof").
-//
-// NO STEPS FOR A DEAD BUTTON (Pato, MESITA-3001: "this is confusing"). The
-// off card used to number three instructions over a greyed "Soon" button,
-// telling the guest to do what they could not. The steps show only when the
-// button works.
+// ME › INSTAGRAM (Pato, 2026-11-24, MESITA-4858): add a handle now, verify it
+// later. A typed handle is Unverified and may be shown; the badge comes only
+// from a one-time code sent by DM from that account. Nothing is looked up: no
+// scrape, no photo, no followers. VIP is a separate yes, asked before the same
+// DM. The server decides every fact here; this draws them.
 
-/** How often the page asks whether the message landed, and for how long. */
 const DM_POLL_MS = 3_000;
-const DM_POLL_FOR_MS = 10 * 60_000;
 
-/** The page's success landing: a full reload re-seeds the identity. */
-function landConnected() {
-  window.location.assign(
-    new URL(`${CONSUMER_ROUTES.me}?instagram=success`, window.location.origin),
-  );
+const QUIET_BUTTON_CLASS =
+  "bg-muted text-foreground hover:bg-muted/70 flex items-center justify-center gap-2 transition disabled:pointer-events-none disabled:opacity-60";
+
+/** Reads the saved row, so every screen sees it, and the shell's identity. */
+function useReload() {
+  const supabase = useBrowserSupabase();
+  const router = useRouter();
+  return async () => {
+    const { consumer } = await apiFetchConsumerProfile(supabase);
+    writeCached(PROFILE_KEY, consumer);
+    router.refresh();
+  };
 }
-
-/** Where a Sync or Change account lands (MESITA-3060): back on this page,
- *  reloaded so the header, the card and the photo show the saved values. The
- *  query only labels the guest's own toast, then is stripped. */
-export function landHere(r: InstagramLookup) {
-  const url = new URL(window.location.pathname, window.location.origin);
-  if (r.result === "synced") {
-    url.searchParams.set("instagram", "synced");
-    url.searchParams.set("to", String(r.profile.followerCount));
-    if (r.previousFollowers != null) {
-      url.searchParams.set("from", String(r.previousFollowers));
-    }
-  } else {
-    url.searchParams.set("instagram", "connected");
-    url.searchParams.set("handle", r.profile.username);
-  }
-  url.searchParams.set("photo", r.photo);
-  window.location.assign(url);
-}
-
-/** The toast a landing asked for, or null. */
-function landingToast(params: URLSearchParams): string | null {
-  const kind = params.get("instagram");
-  const photo = params.get("photo");
-  let text: string;
-  if (kind === "synced") {
-    const to = followersLabel(Number(params.get("to")));
-    const fromRaw = params.get("from");
-    const from = fromRaw == null ? null : followersLabel(Number(fromRaw));
-    text =
-      from == null || from === to
-        ? `Synced · ${to}`
-        : `Synced · ${from.replace(/ followers$/, "")} → ${to}`;
-  } else if (kind === "connected") {
-    text = `Connected @${params.get("handle") ?? ""}`;
-  } else {
-    return null;
-  }
-  if (photo === "updated") text += " · photo updated";
-  return text;
-}
-
-/** The landing's toast, once (a ref guards StrictMode's second run), then
- *  the query is stripped so a reload does not repeat it. Me › Instagram and
- *  Me › Class (its Sync, MESITA-4659) both land with one. */
-export function useLandingToast() {
-  const toasted = useRef(false);
-  useEffect(() => {
-    if (toasted.current) return;
-    toasted.current = true;
-    const text = landingToast(new URLSearchParams(window.location.search));
-    if (!text) return;
-    toast.success(text);
-    window.history.replaceState(null, "", window.location.pathname);
-  }, []);
-}
-
-/** One line per refusal, for the card and for Change account (MESITA-3060). */
-export function syncErrorCopy(err: unknown, handle: string | null): string {
-  if (!(err instanceof EFError) || (err.code == null && err.status == null)) {
-    return "We couldn’t confirm the sync. Reload to see the latest.";
-  }
-  const body = (err.body ?? {}) as Record<string, unknown>;
-  switch (err.code) {
-    case "slow_down":
-      return "Give it a minute and try again.";
-    case "daily_limit": {
-      const limit = typeof body.limit === "number" ? `${body.limit} ` : "";
-      const at =
-        typeof body.resetsAt === "string"
-          ? new Date(body.resetsAt).toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            })
-          : null;
-      return `You’ve used today’s ${limit}Instagram lookups. Try again ${
-        at ? `after ${at}` : "tomorrow"
-      }.`;
-    }
-    case "profile_not_found":
-      return `We couldn’t find @${handle ?? ""} on Instagram anymore. Change account to connect the new one.`;
-    case "scrape":
-      return "Instagram isn’t answering right now. Try again later.";
-    case "unavailable":
-      return "Syncing isn’t available right now. Try again later.";
-    case "sync_write_failed":
-      return "Couldn’t save the sync. Try again later.";
-    default:
-      return errMsg(err, "Couldn’t sync — try again.");
-  }
-}
-
-/** A clock that ticks each minute, and nothing on the server: the card's
- *  "Updated …" renders client-only (no hydration mismatch). */
-const minuteClock = {
-  subscribe(cb: () => void) {
-    const id = window.setInterval(cb, 60_000);
-    return () => window.clearInterval(id);
-  },
-  now: () => Math.floor(Date.now() / 60_000) * 60_000,
-  server: () => null,
-};
 
 export function InstagramModal() {
-  const supabase = useBrowserSupabase();
-  const identity = useConsumerIdentity();
-  const connected = identity.igConnected;
-  // ONE ACTION AT A TIME (MESITA-3060). Sync, Change account and Disconnect
-  // all derive `disabled` from this; it replaced the `switching` boolean.
-  // A connected guest sees the account card, not the connect form, until
-  // they choose Change account (decision: Pato, 2026-08-22).
-  const [action, setAction] = useState<
-    "idle" | "syncing" | "changing" | "disconnecting"
-  >("idle");
-  const [changeBusy, setChangeBusy] = useState(false);
-  const showForm = !connected || action === "changing";
-  // Which way connecting works today; null while it is being read.
-  const [channel, setChannel] = useState<InstagramChannel | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    apiInstagramChannel(supabase)
-      .then((c) => {
-        if (!cancelled) setChannel(c);
-      })
-      .catch(() => {
-        if (!cancelled) setChannel({ channel: "bio" });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
+  const { data: profile, error } = useConsumerProfile();
+  const [editing, setEditing] = useState(false);
 
-  useLandingToast();
-
+  if (!profile) {
+    return error ? (
+      <MeScreen title="Instagram">
+        <p className="text-muted-foreground py-10 text-center text-sm">Couldn&apos;t load your Instagram. Try again later.</p>
+      </MeScreen>
+    ) : (
+      <InstagramPlaceholder />
+    );
+  }
+  const handle = profile.instagram_handle;
   return (
     <MeScreen title="Instagram">
-
       <div className="flex flex-col gap-4">
-        {connected && (
-          <ConnectedAccount
-            busy={action !== "idle" || changeBusy}
-            syncing={action === "syncing"}
-            onSyncing={(on) => setAction(on ? "syncing" : "idle")}
-            onChange={() => setAction("changing")}
-            disconnectOpen={action === "disconnecting"}
-            onDisconnect={() => setAction("disconnecting")}
-            onDisconnectClose={() => setAction("idle")}
-          />
+        {handle && !editing ? (
+          <>
+            <AccountCard profile={profile} handle={handle} onEdit={() => setEditing(true)} />
+            <VerifyCard key={`${handle}:${profile.instagram_proved_at ?? ""}`} profile={profile} handle={handle} />
+          </>
+        ) : (
+          <HandleForm current={handle} onDone={() => setEditing(false)} />
         )}
-
-        {/* The two reasons to connect (MESITA-4342). Before connecting,
-              above the Connect card; after, under the account, each row
-              showing where the guest stands. */}
-        <WhyConnect />
-
-        {/* While it is read, the card's own silhouette, not a spinner:
-              the card that lands is ~330px tall to the spinner's 64px, so
-              Photo's row below jumped (Pato, MESITA-2701). */}
-        {showForm && channel === null && <ConnectCardSkeleton />}
-
-        {showForm &&
-          channel !== null &&
-          (channel.channel === "dm" ? (
-            <ConnectByMessage />
-          ) : (
-            <ConnectLookup
-              changing={connected}
-              oldHandle={identity.igHandle}
-              onBusyChange={setChangeBusy}
-              onCancel={connected ? () => setAction("idle") : undefined}
-            />
-          ))}
       </div>
     </MeScreen>
   );
 }
 
-
-/** A quiet grey button in the Me pages' 44px shape (the photo question). */
-const QUIET_BUTTON_CLASS =
-  "bg-muted text-foreground hover:bg-muted/70 flex items-center justify-center gap-2 transition disabled:pointer-events-none disabled:opacity-60";
-
-/** The account card's grey buttons (Sync, Change, Disconnect): one 56px
- *  height so the stacked quarter buttons and the wide Sync line up. */
-const ROW_BUTTON_CLASS =
-  "bg-muted text-foreground hover:bg-muted/70 flex h-14 min-w-0 items-center justify-center rounded-xl text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-60";
-
-// WHY CONNECT (Pato, MESITA-4342; it undoes MESITA-2983's cut). TWO PERKS,
-// NUMBERED (Pato, 2026-11-22, MESITA-4659): each a row with an icon, a bold
-// title and one line. (1) Activity: a server rule, not copy — others' full
-// handles show only to a guest whose own Instagram is verified and who
-// shows their own handle (every profile is public since MESITA-4690; place-activity
-// seesHandles), so a short second line says so. It was one black box
-// (MESITA-4350); the Story box went with Stories (MESITA-4641).
-// WHY CONNECT, CLEARER (Pato, 2026-11-22, MESITA-4693: "why connect must be
-// clearer"): each perk says what you get and where you stand. The activity
-// rule is the server's (place-activity seesHandles): others' handles show to
-// a guest whose own Instagram is connected. NO VIP PERK (Pato, 2026-11-22,
-// MESITA-4709: "no more VIP"): the "Become VIP" row left; one perk stays.
-// TWO PERKS AGAIN (Pato, 2026-11-23, MESITA-4723: "See other people · story
-// rewards"): Story rewards went with Instagram Stories (MESITA-4766), and the
-// VIP row with follower VIP (MESITA-4849: codes only). One perk.
-
-export function WhyConnect({ live = true }: { live?: boolean }) {
+export function InstagramPlaceholder() {
   return (
-    <section className="flex flex-col gap-3" aria-label="Why connect your Instagram">
-      <h2 className="px-0.5 text-base font-semibold tracking-tight">Why connect your Instagram</h2>
-      <ul className="bg-card border-border divide-border divide-y overflow-hidden rounded-2xl border">
-        <li className="flex items-start gap-3 px-4 py-3.5" data-why-connect="see">
-          <IconChip tint="instagram">
-            <Eye className="h-[18px] w-[18px]" />
-          </IconChip>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold">See other people&apos;s Instagram</span>
-            <span className="text-muted-foreground type-label block">
-              On Social, tap anyone to see their @handle. Only guests who share theirs see others&apos;.
-            </span>
-          </span>
-          {live ? <SeeStatus /> : null}
-        </li>
-      </ul>
-    </section>
+    <MeScreen title="Instagram">
+      <div className="bg-muted h-56 animate-pulse rounded-2xl" aria-hidden />
+      <p role="status" className="sr-only">
+        Loading Instagram
+      </p>
+    </MeScreen>
   );
 }
 
-const STATUS_CHIP = "bg-muted text-foreground shrink-0 self-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap tabular-nums";
-
-function SeeStatus() {
-  // On only while the guest shares theirs (MESITA-4850): the server's rule.
-  const sharing = useConsumerProfile().data?.social_level === "instagram";
-  return (
-    <span className={cn(STATUS_CHIP, sharing && "bg-green-100 text-green-800")} data-why-connect-status="see">
-      {sharing ? "On" : "Off"}
-    </span>
-  );
-}
-
-/** A connected guest's account card under its eyebrow (MESITA-3060): the
- *  account row, then Sync | Change account and one live line. It reads the
- *  identity context and the layout's row, both seeded server-side, so the
- *  route's fallback draws it too (`pending`: inert, same heights). */
-export function ConnectedAccount({
-  pending = false,
-  busy = false,
-  syncing = false,
-  onSyncing,
-  onChange,
-  disconnectOpen = false,
-  onDisconnect,
-  onDisconnectClose,
-}: {
-  pending?: boolean;
-  busy?: boolean;
-  syncing?: boolean;
-  onSyncing?: (on: boolean) => void;
-  onChange?: () => void;
-  disconnectOpen?: boolean;
-  onDisconnect?: () => void;
-  onDisconnectClose?: () => void;
-}) {
+function HandleForm({ current, onDone }: { current: string | null; onDone: () => void }) {
   const supabase = useBrowserSupabase();
-  const { igHandle: handle } = useConsumerIdentity();
-  const [message, setMessage] = useState<{
-    text: string;
-    reload: boolean;
-  } | null>(null);
-  // After a refused or failed sync, Sync rests for the server's
-  // retryAfterSeconds (else 60 s): set in the handler, cleared by a timer.
-  const [resting, setResting] = useState(false);
-  // The photo question shows in place of Sync | Change (MESITA-4349).
-  const [asking, setAsking] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const reload = useReload();
+  const [raw, setRaw] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const handle = normalizeInstagramHandle(raw);
 
-  async function answer(useIt: boolean) {
-    setSaving(true);
-    const ok = await savePhotoChoice(supabase, useIt);
-    setSaving(false);
-    if (!ok) return;
-    setAsking(false);
-    void sync();
-  }
-
-  async function sync() {
-    if (pending || busy || resting) return;
-    setMessage(null);
-    onSyncing?.(true);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!handle || busy) return;
+    setBusy(true);
+    setFailed(null);
     try {
-      landHere(await apiSyncInstagram(supabase));
+      await apiSetInstagram(supabase, handle);
+      await reload();
+      onDone();
     } catch (err) {
-      if (
-        err instanceof EFError &&
-        (err.code === "changed" || err.code === "not_connected")
-      ) {
-        window.location.reload();
-        return;
-      }
-      const unknown =
-        !(err instanceof EFError) || (err.code == null && err.status == null);
-      setMessage({ text: syncErrorCopy(err, handle), reload: unknown });
-      const body =
-        err instanceof EFError
-          ? ((err.body ?? {}) as Record<string, unknown>)
-          : {};
-      const retry =
-        typeof body.retryAfterSeconds === "number"
-          ? body.retryAfterSeconds
-          : 60;
-      setResting(true);
-      window.setTimeout(() => setResting(false), Math.min(retry, 3600) * 1000);
-      onSyncing?.(false);
+      setFailed(errMsg(err, "Couldn't save. Try again."));
+    } finally {
+      setBusy(false);
     }
   }
 
-  // THE ACCOUNT, THEN THREE BUTTONS IN ONE ROW (Pato, MESITA-4350: "the
-  // disconnect instagram must be on the three buttons above … sync must be
-  // bigger"): Sync takes half the row, Change and Disconnect a quarter each
-  // with the icon over the label. The bottom red link (MESITA-4342) went.
   return (
-    <SettingsGroup>
-      <CurrentConnectionRow pending={pending} />
-      <ShareRow pending={pending} />
-      <FollowerEmulatorBox pending={pending} />
-      {asking ? (
-        <div className="px-4 pt-1 pb-4">
-          <PhotoQuestion onAnswer={(y) => void answer(y)} busy={saving} />
-        </div>
-      ) : (
-      <div className="grid grid-cols-4 gap-2 px-4 pt-1 pb-4">
-        <button
-          type="button"
-          onClick={() => {
-            if (!pending && !busy && !resting) setAsking(true);
+    <SettingsGroup title={current ? "Change your Instagram" : "Add your Instagram"}>
+      <form onSubmit={(e) => void save(e)} className="flex flex-col gap-3 px-4 pt-1 pb-4" noValidate data-instagram-form>
+        <InstagramHandleField
+          id="me-instagram"
+          value={raw}
+          onChange={(v) => {
+            setRaw(v);
+            setFailed(null);
           }}
-          disabled={pending || busy || resting}
-          className={cn(ROW_BUTTON_CLASS, "col-span-2 gap-2")}
-          data-instagram-sync
-        >
-          <RefreshCw
-            className={cn("h-4 w-4", syncing && "animate-spin")}
-            aria-hidden
-          />
-          {syncing ? "Syncing…" : "Sync"}
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange?.()}
-          disabled={pending || busy}
-          className={cn(ROW_BUTTON_CLASS, "flex-col gap-1 text-xs")}
-          data-instagram-change
-        >
-          <ArrowLeftRight className="h-4 w-4" aria-hidden />
-          Change
-        </button>
-        <button
-          type="button"
-          onClick={() => onDisconnect?.()}
-          disabled={pending || busy}
-          className={cn(
-            ROW_BUTTON_CLASS,
-            "text-destructive flex-col gap-1 text-xs",
-          )}
-          data-instagram-disconnect
-        >
-          <Unlink className="h-4 w-4" aria-hidden />
-          Disconnect
-        </button>
-      </div>
-      )}
-      {syncing && (
-        <p className="text-muted-foreground type-label border-border/60 border-t px-4 py-3">
-          Reading your Instagram. This can take up to a minute.
-        </p>
-      )}
-      <div aria-live="polite">
-        {!syncing && message && (
-          <p
-            className="text-destructive type-label border-border/60 border-t px-4 py-3"
-            data-instagram-sync-error
-          >
-            {message.text}{" "}
-            {message.reload && (
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="underline underline-offset-2"
-              >
-                Reload
-              </button>
-            )}
+        />
+        {current && (
+          <p className="text-muted-foreground type-label">
+            A new handle starts hidden and Unverified. @{current} comes off your profile.
           </p>
         )}
-      </div>
-      <DisconnectDialog
-        open={disconnectOpen}
-        handle={handle}
-        onClose={() => onDisconnectClose?.()}
-      />
+        {failed && (
+          <p role="alert" className="text-destructive type-label">
+            {failed}
+          </p>
+        )}
+        <Button type="submit" disabled={!handle || busy} className={cn(ME_BUTTON_CLASS, "w-full")}>
+          {busy ? "Saving…" : "Save"}
+        </Button>
+        {current && (
+          <button type="button" onClick={onDone} disabled={busy} className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS, "w-full")}>
+            Cancel
+          </button>
+        )}
+        <p className="text-muted-foreground type-label text-center">We never ask for your Instagram password.</p>
+      </form>
     </SettingsGroup>
   );
 }
 
-// ONE TAP, NO HANDLE (Pato, MESITA-2992: "i don't even think you need to
-// type your instagram … have an already built button in the app to just send
-// a message directly … in one click and avoid the step 1"; it reverses
-// MESITA-2599's handle-first field). The code is one-time, expires and is
-// bound to this account on the server, and the bot reads who sent it from
-// Meta, so nothing is typed. It is fetched when the card opens, so the button
-// is a plain link: the tap copies the code and opens the DM in one gesture
-// (an await before opening would get the new tab blocked on iOS). Drawn only
-// while the channel is live: the code is asked for on open.
-function ConnectByMessage() {
-  const supabase = useBrowserSupabase();
-  const [claim, setClaim] = useState<InstagramDmClaim | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-  // Polling starts on the tap, stops after DM_POLL_FOR_MS; "Check again"
-  // restarts it.
-  const [waitingSince, setWaitingSince] = useState<number | null>(null);
-  const [gaveUp, setGaveUp] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // The photo question comes before the code goes out (MESITA-4349): the
-  // webhook reads the answer when the message lands.
-  const [answered, setAnswered] = useState(false);
-  const [savingChoice, setSavingChoice] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiStartInstagramDm(supabase)
-      .then((c) => {
-        if (!cancelled) setClaim(c);
-      })
-      .catch(() => {
-        if (!cancelled) setLoadFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, attempt]);
-
-  useEffect(() => {
-    if (!claim || waitingSince === null) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const status = await apiInstagramDmStatus(supabase);
-        if (cancelled) return;
-        if (dmVerified(status, claim.issuedAt)) {
-          landConnected();
-          return;
-        }
-      } catch {
-        /* a failed poll is retried on the next tick */
-      }
-      if (cancelled) return;
-      if (Date.now() - waitingSince > DM_POLL_FOR_MS) {
-        setGaveUp(true);
-        return;
-      }
-      timer.current = setTimeout(tick, DM_POLL_MS);
-    };
-    timer.current = setTimeout(tick, DM_POLL_MS);
-    return () => {
-      cancelled = true;
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, [claim, waitingSince, supabase]);
-
-  async function copyCode() {
-    if (!claim) return;
-    try {
-      await navigator.clipboard.writeText(claim.code);
-      toast("Code copied");
-    } catch {
-      toast("Couldn’t copy — type it in instead.");
-    }
-  }
-
-  function retry() {
-    setLoadFailed(false);
-    setClaim(null);
-    setAttempt((n) => n + 1);
-  }
-
+function AccountCard({ profile, handle, onEdit }: { profile: ConsumerProfile; handle: string; onEdit: () => void }) {
+  const [removing, setRemoving] = useState(false);
+  const verified = Boolean(profile.instagram_proved_at);
   return (
-    <ConnectCard account={claim?.account}>
-      {claim && (
-        <button
-          type="button"
-          onClick={copyCode}
-          aria-label={`Your code ${claim.code}, tap to copy`}
-          className="border-border bg-muted/30 flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
-          data-instagram-dm-code
-        >
-          {claim.code}
-          <Copy className="text-muted-foreground h-4 w-4" />
-        </button>
-      )}
-      {claim && !answered ? (
-        <div className="mt-2">
-          <PhotoQuestion
-            busy={savingChoice}
-            onAnswer={(useIt) => {
-              setSavingChoice(true);
-              void savePhotoChoice(supabase, useIt).then((ok) => {
-                setSavingChoice(false);
-                if (ok) setAnswered(true);
-              });
-            }}
-          />
-        </div>
-      ) : claim ? (
+    <SettingsGroup>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <IconChip tint="instagram">
+          <Instagram className="h-[18px] w-[18px]" />
+        </IconChip>
         <a
-          href={claim.link}
+          href={`https://www.instagram.com/${handle}/`}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => {
-            void navigator.clipboard?.writeText(claim.code).catch(() => {});
-            setGaveUp(false);
-            setWaitingSince(Date.now());
-          }}
-          className={cn(
-            ME_BUTTON_CLASS,
-            "bg-foreground text-paper mt-2 flex w-full items-center justify-center gap-2",
-          )}
-          data-instagram-dm-start
+          aria-label={`View @${handle} on Instagram`}
+          className="min-w-0 flex-1 truncate text-sm font-semibold hover:underline"
         >
-          <Send className="h-4 w-4" />
-          Send my code on Instagram
+          @{handle}
         </a>
-      ) : loadFailed ? (
-        <Button
-          type="button"
-          size="sm"
-          onClick={retry}
-          className={cn(ME_BUTTON_CLASS, "w-full")}
+        <span
+          className="bg-muted text-foreground flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+          data-instagram-status={verified ? "verified" : "unverified"}
         >
-          Couldn’t get a code — try again
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          disabled
-          className={cn(ME_BUTTON_CLASS, "w-full")}
-          data-instagram-dm-start
-        >
-          <Spinner size="sm" className="border-white/40 border-t-white" />
-          Send my code on Instagram
-        </Button>
-      )}
-      {claim &&
-        waitingSince !== null &&
-        (gaveUp ? (
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              setGaveUp(false);
-              setWaitingSince(Date.now());
-            }}
-            className={cn(ME_BUTTON_CLASS, "mt-2 w-full")}
-          >
-            <BadgeCheck className="h-4 w-4" />
-            Check again
-          </Button>
-        ) : (
-          <p
-            className="text-muted-foreground type-label mt-2 flex items-center justify-center gap-2"
-            aria-live="polite"
-          >
-            <Spinner size="sm" />
-            Waiting for your message…
-          </p>
-        ))}
-    </ConnectCard>
-  );
-}
-
-/** The live Connect card: three steps that match the screen, then
- *  `children` (the code and the send button) and the password line.
- *  `account` is the Instagram the code goes to, Mesita's until the server
- *  names one. "Connected", never "verified": Verified is the follower bar. */
-function ConnectCard({
-  account = "mesita",
-  children,
-}: {
-  account?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div data-instagram-connect="dm">
-      <SettingsGroup title="Connect">
-        <ol className="divide-border/60 divide-y">
-          {[
-            <>
-              Tap Send my code: it copies a one-time code and opens Instagram
-            </>,
-            <>
-              Paste it in a message to <b>@{account}</b> and send
-            </>,
-            <>Come back here: you&apos;re connected in a few seconds</>,
-          ].map((line, i) => (
-            <li key={i} className="flex items-center gap-3 px-4 py-3">
-              <IconChip>
-                <span className="text-sm font-semibold tabular-nums">
-                  {i + 1}
-                </span>
-              </IconChip>
-              <span className="min-w-0 flex-1 text-sm">{line}</span>
-            </li>
-          ))}
-        </ol>
-        <div className="border-border/60 border-t px-4 py-3">
-          {children}
-          <PasswordLine />
-        </div>
-      </SettingsGroup>
-    </div>
-  );
-}
-
-function PasswordLine() {
-  return (
-    <p className="text-muted-foreground type-label mt-2 text-center">
-      We never ask for your password.
-    </p>
-  );
-}
-
-/** The Connect card while the Meta channel is off (MESITA-2579, MESITA-3001):
- *  CONNECT BY USERNAME, FOR TESTING (MESITA-3039, Pato: "you just assume is
- *  true and use apify … it's a testing bot"). The guest types a username and
- *  says it is theirs; consumer-web-lookup-instagram scrapes it (Apify) and
- *  stores the handle, followers and photo, then the page lands connected
- *  like the DM flow. Nothing proves ownership until the Meta DM bot.
- *  `pending` marks it as the silhouette drawn while the page asks which way
- *  connecting works today: the same card, nothing interactive. */
-function ConnectLookup({
-  pending = false,
-  changing = false,
-  oldHandle = null,
-  onBusyChange,
-  onCancel,
-}: {
-  pending?: boolean;
-  /** Change account (MESITA-3060): the old handle stays until this lands. */
-  changing?: boolean;
-  oldHandle?: string | null;
-  onBusyChange?: (busy: boolean) => void;
-  onCancel?: () => void;
-}) {
-  const supabase = useBrowserSupabase();
-  const [raw, setRaw] = useState("");
-  const [mine, setMine] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<
-    | { kind: "not_found"; username: string }
-    | { kind: "error"; message: string }
-    | null
-  >(null);
-
-  const username = normalizeInstagramHandle(raw);
-  const typed = raw.trim().replace(/^@/, "");
-  const invalid = typed !== "" && !username;
-  const canSubmit = !pending && !busy && username !== null && mine;
-
-  // The photo question, asked before the fetch (MESITA-4349).
-  const [asking, setAsking] = useState(false);
-
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!canSubmit || !username) return;
-    setAsking(true);
-  }
-
-  async function answer(useIt: boolean) {
-    if (!username) return;
-    setBusy(true);
-    onBusyChange?.(true);
-    const ok = await savePhotoChoice(supabase, useIt);
-    if (!ok) {
-      setBusy(false);
-      onBusyChange?.(false);
-      return;
-    }
-    setAsking(false);
-    await lookup();
-  }
-
-  async function lookup() {
-    if (!username) return;
-    setBusy(true);
-    onBusyChange?.(true);
-    setResult(null);
-    try {
-      const r = await apiLookupInstagram(supabase, username);
-      // First connect lands on Me; a change or a same-handle sync lands here.
-      if (changing || r.result === "synced") landHere(r);
-      else landConnected();
-    } catch (err) {
-      setResult(
-        err instanceof EFError && err.code === "profile_not_found"
-          ? { kind: "not_found", username }
-          : {
-              kind: "error",
-              message:
-                err instanceof EFError && err.code
-                  ? syncErrorCopy(err, username)
-                  : errMsg(err, "Couldn’t connect — try again."),
-            },
-      );
-      setBusy(false);
-      onBusyChange?.(false);
-    }
-  }
-
-  return (
-    <div
-      data-instagram-connect={pending ? undefined : "lookup"}
-      aria-busy={pending || undefined}
-    >
-      <SettingsGroup title="Connect">
-        <div className="flex items-start gap-3 px-4 py-3">
-          <IconChip tint="instagram">
-            <Instagram className="h-[18px] w-[18px]" />
-          </IconChip>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">
-              {changing ? "Change account" : "Connect your Instagram"}
-            </p>
-            <p className="text-muted-foreground type-label">
-              {changing && oldHandle
-                ? `@${oldHandle} stays connected until the new one is found.`
-                : "Type your username. We add your followers and photo from your Instagram."}
-            </p>
-          </div>
-        </div>
-        <form
-          onSubmit={submit}
-          className="border-border/60 flex flex-col gap-3 border-t px-4 py-3"
-          noValidate
-        >
-          <label className="flex flex-col gap-1">
-            <span className="type-label font-semibold">Instagram username</span>
-            {/* The @ is drawn, never typed (Pato, MESITA-3045: "automatically
-                write the @ here"); a typed or pasted one is dropped. */}
-            <span className="relative block">
-              <span
-                aria-hidden
-                className="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm"
-              >
-                @
-              </span>
-              <input
-                type="text"
-                autoCapitalize="none"
-                autoCorrect="off"
-                autoComplete="off"
-                spellCheck={false}
-                placeholder="username"
-                maxLength={30}
-                value={raw}
-                disabled={pending}
-                onChange={(e) => {
-                  setRaw(e.target.value.trimStart().replace(/^@+/, ""));
-                  setResult(null);
-                }}
-                aria-invalid={invalid || undefined}
-                aria-describedby={invalid ? "ig-lookup-invalid" : undefined}
-                className={cn(INPUT_CLASS, "pl-7")}
-                data-instagram-lookup-username
-              />
-            </span>
-          </label>
-          {invalid && (
-            <p id="ig-lookup-invalid" className="text-destructive type-label">
-              Use letters, numbers, periods and underscores, up to 30.
-            </p>
-          )}
-          <label className="flex min-h-11 items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={mine}
-              disabled={pending}
-              onChange={(e) => setMine(e.target.checked)}
-              className="accent-foreground h-5 w-5 shrink-0"
-              data-instagram-lookup-mine
-            />
-            This is my Instagram account
-          </label>
-          {asking ? (
-            <PhotoQuestion onAnswer={(y) => void answer(y)} busy={busy} />
-          ) : (
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!canSubmit}
-            className={cn(ME_BUTTON_CLASS, "w-full")}
-            data-instagram-lookup-submit
-          >
-            {busy && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            {busy ? "Connecting…" : "Connect"}
-          </Button>
-          )}
-          <div aria-live="polite">
-            {busy && (
-              <p className="text-muted-foreground type-label text-center">
-                Reading your Instagram. This can take up to a minute.
-              </p>
-            )}
-            {result?.kind === "not_found" && (
-              <p
-                className="text-muted-foreground type-label text-center"
-                data-instagram-lookup-empty
-              >
-                We couldn&apos;t find @{result.username} on Instagram. Check the
-                username and try again.
-              </p>
-            )}
-            {result?.kind === "error" && (
-              <p
-                className="text-destructive type-label text-center"
-                data-instagram-lookup-error
-              >
-                {result.message}
-              </p>
-            )}
-          </div>
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={busy}
-              className="text-muted-foreground hover:text-foreground type-label min-h-11 font-semibold underline underline-offset-4 transition disabled:opacity-60"
-            >
-              Cancel
-            </button>
-          )}
-          <PasswordLine />
-        </form>
-      </SettingsGroup>
-    </div>
-  );
-}
-
-/** The Connect card while the page asks which way connecting works today
- *  (Pato, MESITA-2701: "the placeholders must be similar to the page you are
- *  loading, like the sizes"): today's card, the off one. Shared with the
- *  route's fallback (InstagramSkeleton). */
-export function ConnectCardSkeleton() {
-  return <ConnectLookup pending />;
-}
-
-// THE ACCOUNT ROW (MESITA-3060). The handle links to the account on
-// Instagram (built only from the stored handle); the line under it is the
-// count and "Updated …" from the later of connect and
-// sync, rendered client-only. Disconnect left this row for a link at the
-// page bottom.
-function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
-  const { igHandle: handle, igFollowers } = useConsumerIdentity();
-  const profile = useServerProfile();
-  // The emulated count while the emulator is on (MESITA-4693).
-  const own = useConsumerProfile().data;
-  const emulated = own?.instagram_followers_emulated ?? null;
-  const now = useSyncExternalStore(
-    minuteClock.subscribe,
-    minuteClock.now,
-    minuteClock.server,
-  );
-  const stamps = [profile?.instagram_verified_at, profile?.instagram_synced_at]
-    .filter((v): v is string => typeof v === "string")
-    .sort();
-  const updatedAt = stamps.length ? stamps[stamps.length - 1] : null;
-  const ago = now != null && updatedAt ? updatedAgo(updatedAt, now) : "";
-
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <IconChip tint="instagram">
-        <Instagram className="h-[18px] w-[18px]" />
-      </IconChip>
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
-          {handle && !pending ? (
-            <a
-              href={`https://www.instagram.com/${handle}/`}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`View @${handle} on Instagram`}
-              className="block truncate text-sm font-semibold hover:underline"
-            >
-              @{handle}
-            </a>
-          ) : (
-            <p className="truncate text-sm font-semibold">
-              {handle ? `@${handle}` : "Instagram connected"}
-            </p>
-          )}
-        </div>
-        <p className="text-muted-foreground type-label truncate">
-          {emulated != null ? `${followersLabel(emulated)} (test)` : followersLabel(igFollowers)}
-          {ago ? ` · Updated ${ago}` : ""}
-        </p>
+          {verified && <BadgeCheck className="h-4 w-4" aria-hidden />}
+          {verified ? "Verified" : "Unverified"}
+        </span>
       </div>
-    </div>
+      <ShareRow profile={profile} />
+      <div className="grid grid-cols-2 gap-2 px-4 pb-4">
+        <button type="button" onClick={onEdit} className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)} data-instagram-change>
+          Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => setRemoving(true)}
+          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS, "text-destructive")}
+          data-instagram-disconnect
+        >
+          Remove
+        </button>
+      </div>
+      <RemoveDialog open={removing} handle={handle} onClose={() => setRemoving(false)} />
+    </SettingsGroup>
   );
 }
 
-// SHARE MY INSTAGRAM (MESITA-4850, over MESITA-4659's "Show my handle"): the
-// Public + Instagram level. Linking never turns it on. Until the guest has
-// answered for this handle (instagram_handle_shown null, also after a Change)
-// the card asks, showing how others would see them; after that it is a switch.
-// Not now writes false and never opens a Private profile. A guest under 18 or
-// with no year of birth is Private (the server's social_lock): no choice here.
-function ShareRow({ pending = false }: { pending?: boolean }) {
+// SHOW MY INSTAGRAM: the Public + Instagram level (MESITA-4850), verified or
+// not. Off never opens a Private profile; under 18 there is no choice.
+function ShareRow({ profile }: { profile: ConsumerProfile }) {
   const supabase = useBrowserSupabase();
-  const { igHandle: handle } = useConsumerIdentity();
-  const { data, error } = useConsumerProfile();
   const [flipped, setFlipped] = useState<boolean | null>(null);
-  const [saving, setSaving] = useState(false);
-  const known = data != null || error != null;
-  const shown = flipped ?? data?.social_level === "instagram";
-  const off = !known || saving || pending;
+  const shown = flipped ?? profile.social_level === "instagram";
 
-  const answer = (next: boolean) => {
-    if (off) return;
-    setFlipped(next);
-    setSaving(true);
-    apiUpdateConsumerProfile(
-      supabase,
-      next ? { social_level: "instagram" } : { instagram_handle_shown: false },
-    )
-      .then(() => setFlipped(null))
-      .catch((e) => {
-        setFlipped(null);
-        toast.error(errMsg(e, "Couldn't change that."));
-      })
-      .finally(() => setSaving(false));
-  };
-
-  if (data?.social_lock) {
+  if (profile.social_lock) {
     return (
-      <p
-        className="text-muted-foreground type-label border-border/60 mx-4 mb-3 rounded-xl border p-3"
-        data-instagram-share="locked"
-      >
-        {data.social_lock === "minor"
+      <p className="text-muted-foreground type-label border-border/60 mx-4 mb-3 rounded-xl border p-3" data-instagram-share="locked">
+        {profile.social_lock === "minor"
           ? "Profiles of guests under 18 are always private, so your Instagram never shows."
-          : "Add your year of birth in Profile to share your Instagram."}
+          : "Add your year of birth in Profile to show your Instagram."}
       </p>
     );
   }
-
-  // Not proved: nothing to share yet, only the proof (MESITA-4856).
-  if (data?.social_level && !data.instagram_proved_at && handle && !pending) {
-    return <ProveCard handle={handle} />;
-  }
-
-  if (data?.social_level && data.instagram_handle_shown == null && handle && !pending) {
-    return (
-      <div
-        className="border-border/60 mx-4 mb-3 flex flex-col gap-3 rounded-xl border p-3"
-        data-instagram-share="ask"
-      >
-        <p className="text-sm font-semibold">Share your Instagram to see theirs</p>
-        <div className="bg-muted flex items-center gap-3 rounded-xl p-3">
-          <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-full">
-            {data.avatar_url ? (
-              <SizedImg src={data.avatar_url} size="thumb" alt="" className="h-full w-full object-cover" />
-            ) : (
-              <DefaultAvatar className="h-full w-full" />
-            )}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">
-              {data.first_name?.trim() || "Mesita member"} viewed a place
-            </span>
-            <span className="text-muted-foreground type-label block truncate">@{handle}</span>
-          </span>
-        </div>
-        <p className="text-muted-foreground type-label">
-          This is how other guests will see you. Only guests who share theirs see your full @handle, and your Instagram may show your full name. Change it anytime in Profile.
-        </p>
-        <Button type="button" className={ME_BUTTON_CLASS} disabled={off} onClick={() => answer(true)}>
-          Share my Instagram
-        </Button>
-        <button
-          type="button"
-          disabled={off}
-          onClick={() => answer(false)}
-          className={cn(QUIET_BUTTON_CLASS, "h-11 w-full rounded-xl text-sm font-semibold")}
-        >
-          Not now
-        </button>
-      </div>
-    );
-  }
-
+  const flip = () => {
+    if (flipped !== null) return;
+    const next = !shown;
+    setFlipped(next);
+    apiUpdateConsumerProfile(supabase, next ? { social_level: "instagram" } : { instagram_handle_shown: false })
+      .catch((e) => toast.error(errMsg(e, "Couldn't change that.")))
+      .finally(() => setFlipped(null));
+  };
   return (
     <button
       type="button"
       role="switch"
       aria-checked={shown}
-      disabled={off}
-      onClick={() => answer(!shown)}
+      disabled={flipped !== null}
+      onClick={flip}
       className="border-border/60 hover:bg-muted/60 mx-4 mb-3 flex w-[calc(100%-2rem)] items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-60"
       data-instagram-share={shown ? "on" : "off"}
     >
@@ -1120,11 +238,13 @@ function ShareRow({ pending = false }: { pending?: boolean }) {
         <AtSign className="h-[18px] w-[18px]" />
       </IconChip>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Share my Instagram</span>
+        <span className="block text-sm font-semibold">Show my Instagram on my profile</span>
         <span className="text-muted-foreground type-label block">
           {shown
-            ? "Your first name, photo and @handle show, and you see other guests' Instagram."
-            : "Off: your name, photo and @handle never show, and others' stay hidden from you."}
+            ? "Guests see your photo and a link to your Instagram."
+            : profile.social_level === "private"
+              ? "Your profile is Private. Turning this on makes it Public, with your photo and Instagram."
+              : "Off. On, guests see your photo and a link to your Instagram."}
         </span>
       </span>
       <Switch on={shown} />
@@ -1132,296 +252,267 @@ function ShareRow({ pending = false }: { pending?: boolean }) {
   );
 }
 
-// PROVE IT'S YOURS (MESITA-4856): the code, where to put it, and the check.
-// The check is a paid scrape of the bio, so it never polls. It lands by a
-// reload, like a Sync, so every screen reads the proved account.
-function ProveCard({ handle }: { handle: string }) {
-  const supabase = useBrowserSupabase();
-  const [code, setCode] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
+const VIP_LINE: Record<NonNullable<ConsumerProfile["instagram_vip_status"]>, string> = {
+  eligible: "Your Instagram made you VIP.",
+  not_enough: "VIP by Instagram needs more than 5,000 followers.",
+  not_public: "VIP by Instagram needs a public account.",
+  unconfirmed: "We couldn't confirm VIP automatically: Instagram didn't share everything we need. Your verified badge stays.",
+};
 
-  async function run(step: () => Promise<void>) {
+// VERIFY BY ONE DM, with the VIP question first. The choice fetches the code,
+// so the send button is a plain link: the tap copies the code and opens
+// Instagram in one gesture (an await would get the tab blocked on iOS).
+function VerifyCard({ profile, handle }: { profile: ConsumerProfile; handle: string }) {
+  const supabase = useBrowserSupabase();
+  const reload = useReload();
+  const [channel, setChannel] = useState<InstagramChannel | null>(null);
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [claim, setClaim] = useState<InstagramDmClaim | null>(null);
+  const [sent, setSent] = useState(false);
+  const [problem, setProblem] = useState<"wrong_account" | "expired" | "failed" | null>(null);
+  const verified = Boolean(profile.instagram_proved_at);
+  const vip = profile.guest_class === "vip";
+
+  useEffect(() => {
+    let cancelled = false;
+    apiInstagramChannel(supabase)
+      .then((c) => {
+        if (!cancelled) setChannel(c);
+      })
+      .catch(() => {
+        if (!cancelled) setChannel({ channel: "off" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!claim || !sent) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      try {
+        const status = await apiInstagramDmStatus(supabase);
+        if (cancelled) return;
+        if (dmVerified(status, claim.handle)) {
+          toast.success(`@${claim.handle} is verified`);
+          setClaim(null);
+          await reload();
+          return;
+        }
+        if (status.status === "expired" || status.status === "none") {
+          setClaim(null);
+          setSent(false);
+          setProblem("expired");
+          return;
+        }
+        setProblem(status.status === "wrong_account" ? "wrong_account" : null);
+      } catch {
+        // A failed read is retried on the next tick.
+      }
+      if (!cancelled) timer = setTimeout(tick, DM_POLL_MS);
+    };
+    timer = setTimeout(tick, DM_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // `reload` is rebuilt each render; the poll belongs to the claim.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claim, sent, supabase]);
+
+  async function start(vipCheck: boolean) {
     if (busy) return;
     setBusy(true);
-    setFailed(null);
+    setProblem(null);
     try {
-      await step();
-    } catch (e) {
-      if (e instanceof EFError && (e.code === "code_expired" || e.code === "no_claim")) setCode(null);
-      setFailed(errMsg(e, "That didn't work. Try again."));
+      setClaim(await apiStartInstagramDm(supabase, vipCheck));
+      setSent(false);
+      setAsking(false);
+    } catch {
+      setProblem("failed");
     } finally {
       setBusy(false);
     }
   }
-  const start = () => run(async () => setCode(await apiStartInstagramProof(supabase, handle)));
-  const check = () =>
-    run(async () => {
-      await apiCheckInstagramProof(supabase);
-      window.location.reload();
-    });
-  const copy = () => {
-    if (!code) return;
-    navigator.clipboard.writeText(code).then(
-      () => toast.success("Code copied."),
-      () => toast.error("Couldn't copy. Type the code instead."),
-    );
-  };
+
+  const status = verified ? profile.instagram_vip_status : null;
+  const live = channel?.channel === "dm";
+  // Verified and VIP, or told its count is not enough: nothing left to start.
+  const canStart = !verified || !vip;
 
   return (
-    <div
-      className="border-border/60 mx-4 mb-3 flex flex-col gap-3 rounded-xl border p-3"
-      data-instagram-share="prove"
-    >
-      <div>
-        <p className="text-sm font-semibold">Prove @{handle} is yours</p>
-        <p className="text-muted-foreground type-label">
-          {code
-            ? "Put this code in your Instagram bio, save it, then check. You can remove it afterwards."
-            : "Needed to share your Instagram and see other guests'. It takes a minute."}
+    <SettingsGroup title={verified ? "Verified" : "Verify account"}>
+      <div className="flex flex-col gap-3 px-4 pt-1 pb-4" data-instagram-verify>
+        <p className="text-muted-foreground text-sm">
+          {verified
+            ? `Mesita verified that you own @${handle}.`
+            : `Optional. Send a one-time code from @${handle} to Mesita's Instagram bot and get the verified badge.`}
         </p>
+        {status && (
+          <div className="flex items-start gap-3" data-instagram-vip={status}>
+            <IconChip>
+              <Crown className="h-[18px] w-[18px]" />
+            </IconChip>
+            <p className="min-w-0 flex-1 text-sm">
+              {VIP_LINE[status]}{" "}
+              {!vip && (
+                <PushLink href={CONSUMER_ROUTES.mePages.vip} className="font-semibold underline underline-offset-2">
+                  Use an invitation code
+                </PushLink>
+              )}
+            </p>
+          </div>
+        )}
+
+        {claim ? (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(claim.code).then(
+                  () => toast("Code copied"),
+                  () => toast("Couldn't copy. Type it in instead."),
+                );
+              }}
+              aria-label={`Your code ${claim.code}, tap to copy`}
+              className={cn(QUIET_BUTTON_CLASS, "h-12 w-full rounded-xl text-base font-semibold tabular-nums")}
+              data-instagram-dm-code
+            >
+              {claim.code}
+              <Copy className="h-4 w-4" aria-hidden />
+            </button>
+            <p className="text-muted-foreground type-label">
+              Paste it in a message to @{claim.account}, from @{claim.handle}. It works once and lasts 15 minutes.
+            </p>
+            <a
+              href={claim.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                void navigator.clipboard?.writeText(claim.code).catch(() => {});
+                setSent(true);
+              }}
+              className={cn(ME_BUTTON_CLASS, "bg-foreground text-paper flex w-full items-center justify-center gap-2")}
+              data-instagram-dm-start
+            >
+              <Send className="h-4 w-4" aria-hidden />
+              Send my code on Instagram
+            </a>
+            {sent && problem !== "wrong_account" && (
+              <p className="text-muted-foreground type-label flex items-center justify-center gap-2" aria-live="polite">
+                <Spinner size="sm" />
+                Waiting for your message…
+              </p>
+            )}
+          </>
+        ) : asking ? (
+          <div className="flex flex-col gap-2" data-instagram-vip-question>
+            <p className="text-sm font-semibold">Allow Mesita to check your Instagram follower count for VIP?</p>
+            <p className="text-muted-foreground type-label">
+              VIP needs a public account with more than 5,000 followers. Your badge doesn&apos;t depend on it.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void start(true)}
+                className={cn(ME_BUTTON_CLASS, "bg-foreground text-paper disabled:opacity-60")}
+              >
+                Allow
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => (verified ? setAsking(false) : void start(false))}
+                className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
+              >
+                {verified ? "Not now" : "No, just verify"}
+              </button>
+            </div>
+          </div>
+        ) : canStart ? (
+          live ? (
+            <Button
+              type="button"
+              // Already VIP: no follower count is needed, so none is asked for.
+              onClick={() => (vip ? void start(false) : setAsking(true))}
+              disabled={busy}
+              className={cn(ME_BUTTON_CLASS, "w-full")}
+              data-instagram-verify-start
+            >
+              {verified ? "Check VIP eligibility" : "Verify account"}
+            </Button>
+          ) : channel ? (
+            !verified && (
+              <p className="text-muted-foreground type-label" data-instagram-verify-off>
+                Verification isn&apos;t open yet. You can show your Instagram without it.
+              </p>
+            )
+          ) : (
+            <Spinner size="sm" />
+          )
+        ) : null}
+
+        <div aria-live="polite">
+          {problem && (
+            <p className="text-destructive type-label" data-instagram-verify-problem={problem}>
+              {problem === "wrong_account"
+                ? `That message came from a different account. Send the code from @${handle}, or edit your handle.`
+                : problem === "expired"
+                  ? "That code expired. Get a new one to try again."
+                  : "Couldn't get a code. Try again."}
+            </p>
+          )}
+        </div>
       </div>
-      {code ? (
-        <>
-          <button
-            type="button"
-            onClick={copy}
-            aria-label={`Copy ${code}`}
-            className={cn(QUIET_BUTTON_CLASS, "h-12 w-full rounded-xl text-base font-semibold tabular-nums")}
-          >
-            {code}
-            <Copy className="h-4 w-4" aria-hidden />
-          </button>
-          <Button type="button" className={ME_BUTTON_CLASS} disabled={busy} onClick={() => void check()}>
-            {busy ? "Reading your bio…" : "Check my bio"}
-          </Button>
-        </>
-      ) : (
-        <Button type="button" className={ME_BUTTON_CLASS} disabled={busy} onClick={() => void start()}>
-          {busy ? "Getting your code…" : "Get my code"}
-        </Button>
-      )}
-      {failed && (
-        <p role="alert" className="text-destructive type-label">
-          {failed}
-        </p>
-      )}
-    </div>
+    </SettingsGroup>
   );
 }
 
-// THE FOLLOWER EMULATOR (Pato, 2026-11-22, MESITA-4662: "here in instagram
-// for the moment add an emulator box to emulate public instagram with +x
-// followers"). Test mode only: the server sends emulator_available while
-// payments run in Stripe test mode and refuses a number otherwise
-// (emulator_live). The number stands in for the real count;
-// Reset to real writes null. Live money never reads it.
-// 320 · 1,001 · 10,000 (MESITA-4714): either side of the badge's 1,000.
-const EMULATOR_PICKS = [320, 1001, 10000] as const;
-const EMULATOR_MAX = 100_000_000;
-
-function FollowerEmulatorBox({ pending = false }: { pending?: boolean }) {
+function RemoveDialog({ open, handle, onClose }: { open: boolean; handle: string; onClose: () => void }) {
   const supabase = useBrowserSupabase();
-  const { data } = useConsumerProfile();
-  const [raw, setRaw] = useState("");
-  const [saving, setSaving] = useState(false);
-  if (!data?.emulator_available) return null;
-  const current = data.instagram_followers_emulated ?? null;
-  const value = raw.trim() === "" ? null : Number(raw);
-  const valid = value != null && Number.isInteger(value) && value >= 0 && value <= EMULATOR_MAX;
-
-  const write = (next: number | null) => {
-    if (saving || pending) return;
-    setSaving(true);
-    apiUpdateConsumerProfile(supabase, { instagram_followers_emulated: next })
-      .then(() => setRaw(""))
-      .catch((e) => toast.error(errMsg(e, "Couldn't change that.")))
-      .finally(() => setSaving(false));
-  };
-
-  return (
-    <div
-      className="border-border/60 mx-4 mb-3 flex flex-col gap-3 rounded-xl border border-dashed p-3"
-      data-instagram-emulator
-    >
-      <div>
-        <p className="text-sm font-semibold">Emulator (test)</p>
-        <p className="text-muted-foreground type-label">
-          {current != null
-            ? `Emulating ${current.toLocaleString("en-US")} followers.`
-            : "Using your real followers."}
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="Followers"
-          value={raw}
-          disabled={pending || saving}
-          onChange={(e) => setRaw(e.target.value.replace(/[^0-9]/g, "").slice(0, 9))}
-          className={cn(INPUT_CLASS, "min-w-0 flex-1")}
-          aria-label="Emulated followers"
-          data-instagram-emulator-input
-        />
-        <button
-          type="button"
-          onClick={() => valid && write(value)}
-          disabled={!valid || pending || saving}
-          className={cn(ROW_BUTTON_CLASS, "h-auto px-4")}
-          data-instagram-emulator-apply
-        >
-          Apply
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {EMULATOR_PICKS.map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => write(n)}
-            disabled={pending || saving}
-            className={cn(ROW_BUTTON_CLASS, "h-9 px-3")}
-            data-instagram-emulator-pick={n}
-          >
-            {n.toLocaleString("en-US")}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => write(null)}
-          disabled={pending || saving || current == null}
-          className={cn(ROW_BUTTON_CLASS, "h-9 px-3")}
-          data-instagram-emulator-reset
-        >
-          Reset to real
-        </button>
-      </div>
-      <p className="text-muted-foreground type-label">
-        Test mode only. Changes your follower count here, never real money.
-      </p>
-    </div>
-  );
-}
-
-function DisconnectDialog({
-  open,
-  handle,
-  onClose,
-}: {
-  open: boolean;
-  handle: string | null;
-  onClose: () => void;
-}) {
-  const supabase = useBrowserSupabase();
+  const reload = useReload();
   const [busy, setBusy] = useState(false);
 
-  async function disconnect() {
+  async function remove() {
     if (busy) return;
     setBusy(true);
     try {
       await apiDisconnectInstagram(supabase);
-      window.location.reload();
+      await reload();
     } catch (err) {
-      toast.error(errMsg(err, "Couldn’t disconnect — try again."));
+      toast.error(errMsg(err, "Couldn't remove it. Try again."));
       setBusy(false);
     }
   }
 
-  const who = handle ? `@${handle}` : "your Instagram";
   return (
-    <LocalDialog open={open} onClose={onClose} ariaLabel="Disconnect Instagram">
+    <LocalDialog open={open} onClose={onClose} ariaLabel="Remove Instagram">
       <div className={SHEET_BODY_CLASS}>
-        <h2 className={SHEET_TITLE_CLASS}>Disconnect {who}?</h2>
+        <h2 className={SHEET_TITLE_CLASS}>Remove @{handle}?</h2>
         <p className="text-muted-foreground type-body mt-2 leading-snug">
-          Your username and followers come off Mesita, and so does a picture
-          that came from Instagram. You can connect again anytime.
+          Its link and verified badge come off your profile, and so does VIP if your Instagram gave it. A picture that came from
+          Instagram goes too.
         </p>
         <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className={SHEET_CANCEL_BUTTON_CLASS}
-          >
+          <button type="button" onClick={onClose} className={SHEET_CANCEL_BUTTON_CLASS}>
             Cancel
           </button>
           <button
             type="button"
-            onClick={disconnect}
+            onClick={() => void remove()}
             disabled={busy}
             className="bg-destructive flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
             data-instagram-disconnect-confirm
           >
-            {busy && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            {busy ? "Disconnecting…" : "Disconnect"}
+            {busy && <Spinner size="sm" className="border-white/40 border-t-white" />}
+            {busy ? "Removing…" : "Remove"}
           </button>
         </div>
       </div>
     </LocalDialog>
-  );
-}
-
-// THE PHOTO IS A QUESTION (Pato, 2026-11-18, MESITA-4349: "use my
-// instagram photo is asked at the time you connect or sync, like is a
-// question … a question you always ask before fetching"). Sync, Connect and
-// Send my code first show this in place of their buttons; the answer is
-// saved (consumers.use_instagram_photo, which both verify paths read) and
-// only then does the fetch run. Use it replaces the current picture,
-// whatever it is (MESITA-3046); Keep mine leaves it as it is. It was a
-// standing switch row under the account (MESITA-2585) until then.
-async function savePhotoChoice(
-  supabase: ReturnType<typeof useBrowserSupabase>,
-  useIt: boolean,
-): Promise<boolean> {
-  try {
-    await apiUpdateConsumerProfile(supabase, { use_instagram_photo: useIt });
-    return true;
-  } catch (e) {
-    toast.error(errMsg(e, "Couldn't save that. Try again."));
-    return false;
-  }
-}
-
-function PhotoQuestion({
-  onAnswer,
-  busy = false,
-}: {
-  onAnswer: (useIt: boolean) => void;
-  busy?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-3" data-instagram-photo-question>
-      <div className="flex items-center gap-3">
-        <IconChip>
-          <ImageIcon className="h-[18px] w-[18px]" />
-        </IconChip>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">Use your Instagram photo?</span>
-          <span className="text-muted-foreground type-label block">As your Mesita picture.</span>
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onAnswer(true)}
-          className={cn(ME_BUTTON_CLASS, "bg-foreground text-paper flex items-center justify-center disabled:opacity-60")}
-          data-instagram-photo-yes
-        >
-          Use it
-        </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onAnswer(false)}
-          className={cn(ME_BUTTON_CLASS, QUIET_BUTTON_CLASS)}
-          data-instagram-photo-no
-        >
-          Keep mine
-        </button>
-      </div>
-    </div>
   );
 }

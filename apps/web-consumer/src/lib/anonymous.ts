@@ -45,7 +45,6 @@ export const NEEDS_SESSION = new Set([
   "consumer-web-signin-phone",
   "consumer-web-get-profile",
   "consumer-web-update-profile",
-  "consumer-web-lookup-instagram",
   "consumer-web-claim-instagram",
 ]);
 
@@ -67,7 +66,6 @@ const OPEN = new Set([
   "consumer-web-signin-phone",
   "consumer-web-get-profile",
   "consumer-web-update-profile",
-  "consumer-web-lookup-instagram",
   "consumer-web-claim-instagram",
 ]);
 

@@ -3,7 +3,7 @@
 // guests never see your activity, but you cannot see activity of others if
 // private"); a Public one sees everyone but their Instagram.
 // Private: nothing. Public: first name, age and sex, no photo.
-// Public + Instagram: name, photo and @handle, for guests who share theirs.
+// Public + Instagram: name, photo and @handle, verified or not (MESITA-4858).
 //
 // MINORS ARE ALWAYS PRIVATE (Pato, 2026-11-24: "minors have their accounts in
 // private automatically and cannot change that configuration. only ask for
@@ -31,14 +31,12 @@ export type SocialFacts = {
   birth_year: number | null;
   social_private: boolean | null;
   instagram_verified_at: string | null;
-  /** MESITA-4856: the guest proved the account is theirs (DM or bio code). */
-  instagram_proved_at: string | null;
   instagram_handle_shown: boolean | null;
 };
 
 export function socialLevel(c: SocialFacts, now: Date = new Date()): SocialLevel {
   if (c.social_private === true || socialLock(c.birth_year, now)) return "private";
-  return c.instagram_verified_at != null && c.instagram_proved_at != null && c.instagram_handle_shown === true ? "instagram" : "public";
+  return c.instagram_verified_at != null && c.instagram_handle_shown === true ? "instagram" : "public";
 }
 
 /** Why this member sees nobody's activity, or null when they do. */

@@ -381,57 +381,25 @@ export async function writeConsumer(
 
 // ── readInstagramStatus — what Me › Instagram polls (MESITA-2575) ──────────
 
-/** The guest's proved handle and when it was proved, or nulls. */
+/** The guest's handle, when a DM proved it, and the follower check's answer. */
 export async function readInstagramStatus(
   admin: SupabaseClient,
   consumerId: string,
 ): Promise<
-  | { ok: true; handle: string | null; verifiedAt: string | null }
+  | { ok: true; handle: string | null; provedAt: string | null; vipStatus: string | null }
   | { ok: false; error: string }
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("instagram_handle, instagram_verified_at")
+    .select("instagram_handle, instagram_proved_at, instagram_vip_status")
     .eq("id", consumerId)
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
   return {
     ok: true,
     handle: (data?.instagram_handle as string | null) ?? null,
-    verifiedAt: (data?.instagram_verified_at as string | null) ?? null,
-  };
-}
-
-// ── readInstagramSyncState — what a Sync reads first (MESITA-3060) ─────────
-
-/** The handle and stored follower count a Sync starts from; `deleted` for a
- *  closed account. A missing row reads as no handle. */
-export async function readInstagramSyncState(
-  admin: SupabaseClient,
-  consumerId: string,
-): Promise<
-  | {
-    ok: true;
-    handle: string | null;
-    followers: number | null;
-    /** MESITA-4263: null when not known yet. */
-    isPrivate: boolean | null;
-    deleted: boolean;
-  }
-  | { ok: false; error: string }
-> {
-  const { data, error } = await admin
-    .from("consumers")
-    .select("instagram_handle, instagram_followers_count, instagram_is_private, deleted_at")
-    .eq("id", consumerId)
-    .maybeSingle();
-  if (error) return { ok: false, error: error.message };
-  return {
-    ok: true,
-    handle: (data?.instagram_handle as string | null) ?? null,
-    followers: (data?.instagram_followers_count as number | null) ?? null,
-    isPrivate: (data?.instagram_is_private as boolean | null) ?? null,
-    deleted: Boolean(data?.deleted_at),
+    provedAt: (data?.instagram_proved_at as string | null) ?? null,
+    vipStatus: (data?.instagram_vip_status as string | null) ?? null,
   };
 }
 
@@ -439,7 +407,8 @@ export async function readInstagramSyncState(
 
 /** Takes the Instagram off the account: handle, follower count, verified
  *  time, and the picture when it is an Instagram copy (`{id}/instagram-…`,
- *  instagram-avatar.ts's naming; an upload stays). */
+ *  from before MESITA-4858; an upload stays). The
+ *  proof, the VIP check and a pending code go with the handle (DB trigger). */
 export async function disconnectInstagram(
   admin: SupabaseClient,
   consumerId: string,
@@ -483,7 +452,7 @@ export async function readSocialStanding(
 > {
   const { data, error } = await admin
     .from("consumers")
-    .select("birth_year, social_private, instagram_verified_at, instagram_proved_at, instagram_handle_shown")
+    .select("birth_year, social_private, instagram_verified_at, instagram_handle_shown")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -494,7 +463,6 @@ export async function readSocialStanding(
       ? {
         birth_year: (data.birth_year as number | null) ?? null,
         social_private: (data.social_private as boolean | null) ?? null,
-        instagram_proved_at: (data.instagram_proved_at as string | null) ?? null,
         instagram_verified_at: (data.instagram_verified_at as string | null) ??
           null,
         instagram_handle_shown: (data.instagram_handle_shown as boolean | null) ?? null,

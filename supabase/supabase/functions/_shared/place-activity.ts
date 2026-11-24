@@ -17,7 +17,7 @@
 // place profile's line.
 
 import { isUuid } from "./place-id.ts";
-import { GUEST_NAME, shownAge, type ShownSex, shownSex, type SocialFacts, socialLevel } from "./social-level.ts";
+import { GUEST_NAME, shownAge, type ShownSex, shownSex, socialBlocked, type SocialFacts } from "./social-level.ts";
 
 export const ACTIVITY_KINDS = ["saved", "viewed"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
@@ -110,14 +110,14 @@ export function maskHandle(handle: string): string {
   return `${handle.slice(0, 3)}***`;
 }
 
-/** Whether a viewer sees other members' full handles (MESITA-2594): only
- *  with their own Instagram verified and (MESITA-4659) their own handle shown
- *  on Mesita. Give to get: the viewer is at the instagram level (MESITA-4850). */
+/** Whether a viewer sees other members' full handles: every member who sees
+ *  Social at all (MESITA-4858: "a clickable link wherever Mesita displays the
+ *  guest's social profile"; it ends MESITA-2594's give to get). */
 export function seesHandles(
   viewer: SocialFacts | null,
   now: Date = new Date(),
 ): boolean {
-  return viewer != null && socialLevel(viewer, now) === "instagram";
+  return socialBlocked(viewer, now) === null;
 }
 
 /** "@Perdon " → "perdon", or null. */

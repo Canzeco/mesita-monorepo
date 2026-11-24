@@ -171,21 +171,5 @@ describe("full handle and Open Instagram", () => {
     // PersonInstagramPill since MESITA-4695), counted.
     expect(card).toContain("<PersonInstagramPill");
     expect(card).toContain('trackEvent(supabase, "social_open_instagram", {})');
-    // Never on the guest's own card, never for a masked handle (MESITA-2594).
-    expect(card).toContain(
-      "person.handle && !person.isYou && !person.handleLocked",
-    );
-  });
-
-  // MESITA-2594: you see others' Instagram only if you show yours. The server
-  // masks; the card offers the way to unlock instead of a link.
-  it("a masked handle has no link and says how to see it", () => {
-    const card = FEED.slice(FEED.indexOf("function PersonCard("));
-    // Since MESITA-4695: a viewer without Instagram gets the add-yours box
-    // (whatever the person has); a masked handle reads "No Instagram", no link.
-    expect(FEED).toContain("data-social-add-instagram");
-    expect(FEED).toContain("CONSUMER_ROUTES.mePages.instagram");
-    expect(card).toContain("person.handle && (person.isYou || !person.handleLocked)");
-    expect(card).toContain('<PersonInstagramPill label="No Instagram" />');
   });
 });

@@ -2,7 +2,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { levelPatch, shownAge, shownSex, socialBlocked, socialLevel, socialLock } from "./social-level.ts";
 
 const NOW = new Date("2026-11-24T12:00:00Z");
-const open = { social_private: false, instagram_verified_at: "2026-01-01", instagram_proved_at: "2026-01-01", instagram_handle_shown: true };
+const open = { social_private: false, instagram_verified_at: "2026-01-01", instagram_handle_shown: true };
 
 Deno.test("minors and guests with no year are private whatever they chose (MESITA-4850)", () => {
   assertEquals(socialLevel({ ...open, birth_year: 2010 }, NOW), "private");
@@ -17,8 +17,6 @@ Deno.test("an adult's level", () => {
   assertEquals(socialLevel({ ...open, birth_year: 1990, social_private: true }, NOW), "private");
   assertEquals(socialLevel({ ...open, birth_year: 1990, instagram_handle_shown: null }, NOW), "public");
   assertEquals(socialLevel({ ...open, birth_year: 1990, instagram_verified_at: null }, NOW), "public");
-  // A typed username proves nothing (MESITA-4856).
-  assertEquals(socialLevel({ ...open, birth_year: 1990, instagram_proved_at: null }, NOW), "public");
   assertEquals(levelPatch("private"), { social_private: true, instagram_handle_shown: false });
 });
 

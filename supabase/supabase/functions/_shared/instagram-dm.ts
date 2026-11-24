@@ -3,11 +3,11 @@
 // consumer-web-claim-instagram. The guest sends Mesita's Instagram account
 // their one-time code; Meta's webhook carries the message to us with the
 // sender's Instagram-scoped id (IGSID), and Meta's User Profile API returns
-// the sender's username, follower count and photo. Consent exists because
+// the sender's username, plus the follower count only when the guest allowed
+// the VIP check. Never a photo (MESITA-4858). Consent exists because
 // the guest wrote first; Mesita never messages anyone first.
 //
-// Off until every Meta secret is set: the Me › Instagram page then keeps the
-// bio-code flow (MESITA-2461).
+// Off until every Meta secret is set (MESITA-2579): nobody can verify then.
 
 import { numOf } from "./parse-utils.ts";
 import { normalizeHandle } from "./instagram-claim.ts";
@@ -76,24 +76,30 @@ export function inboundMessages(body: unknown): InboundDm[] {
   return out;
 }
 
-/** What the User Profile API told us about the sender. */
+/** The fields asked of Meta: the count only with the guest's yes. */
+export function profileFields(vipCheck: boolean): string {
+  return vipCheck ? "username,follower_count" : "username";
+}
+
+/** What the User Profile API told us about the sender. `isPrivate` is null
+ *  whenever Meta does not say: today its API has no such field, so a public
+ *  account cannot be confirmed and no one is made VIP by it. */
 export type DmProfile = {
   handle: string;
-  followers: number;
-  photoUrl: string | null;
+  followers: number | null;
+  isPrivate: boolean | null;
 };
 
 /** The User Profile API's answer, checked; null when it has no username. */
-export function readDmProfile(raw: unknown): DmProfile | null {
+export function readDmProfile(raw: unknown, vipCheck: boolean): DmProfile | null {
   const r = raw as Record<string, unknown> | null;
   const handle = normalizeHandle(r?.username);
   if (!handle) return null;
-  const followers = numOf(r?.follower_count);
-  const pic = r?.profile_pic;
+  const followers = vipCheck ? numOf(r?.follower_count) : null;
   return {
     handle,
-    followers: followers != null && followers > 0 ? Math.trunc(followers) : 0,
-    photoUrl: typeof pic === "string" && /^https:\/\//.test(pic) ? pic : null,
+    followers: followers != null && followers >= 0 ? Math.trunc(followers) : null,
+    isPrivate: vipCheck && typeof r?.is_private === "boolean" ? r.is_private : null,
   };
 }
 
@@ -140,7 +146,9 @@ export async function signatureIsValid(
 /** The bot's replies. Plain, one line each. */
 export const DM_REPLY = {
   verified: (handle: string) =>
-    `You're verified on Mesita ✅ @${handle} is connected. Head back to the app.`,
+    `@${handle} is verified on Mesita ✅ Head back to the app.`,
+  wrongAccount:
+    "This code is for a different Instagram account. Send it from that account, or change your handle in the Mesita app (Me › Instagram).",
   unknownCode:
     "That code isn't valid or has expired. Get a new one in the Mesita app (Me › Instagram).",
   failed: "Something went wrong on our side. Try sending the code again in a minute.",

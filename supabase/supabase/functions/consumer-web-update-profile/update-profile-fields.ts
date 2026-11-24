@@ -338,11 +338,7 @@ export function privacyRefusal(
   }
   if (level === "instagram" || body.instagram_handle_shown === true) {
     if (!stored?.instagram_handle || !stored.instagram_verified_at) {
-      return json({ ok: false, code: "instagram_needed", error: "Connect your Instagram first." }, 409);
-    }
-    // MESITA-4856: a typed username connects but never shares.
-    if (!stored.instagram_proved_at) {
-      return json({ ok: false, code: "instagram_proof_needed", error: "Prove this Instagram is yours first." }, 409);
+      return json({ ok: false, code: "instagram_needed", error: "Add your Instagram first." }, 409);
     }
   }
   return null;

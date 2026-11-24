@@ -100,9 +100,8 @@
 // and looks like shit"), and the history scrolls with no bar drawn over its
 // photos ("fix the scrolling bar").
 
-import { Suspense, useEffect, useRef, useState, type SVGProps } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Clock, Eye, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -138,7 +137,7 @@ import {
 } from "@/components/consumer/IdentityCard";
 import { cn, errMsg, formatKm } from "@/lib/utils";
 import { approxFollowers } from "@/lib/consumer-identity";
-import { useConsumerIdentity, useViewer } from "@/lib/identity-context";
+import { useViewer } from "@/lib/identity-context";
 import { trackEvent } from "@/lib/analytics/track";
 import { openSignGate } from "@/lib/anonymous";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -185,27 +184,6 @@ export function feedSentence(
 /** How often the open pane asks again (MESITA-2532: live, "just enough to
  *  odn't kill"). */
 export const LIVE_MS = 30_000;
-
-/** Lucide dropped its brand marks, so Instagram is drawn here in lucide's
- *  own 24px grid, stroke and caps (the way family-icons draws the taco). */
-function InstagramGlyph(props: SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-      {...props}
-    >
-      <rect width="20" height="20" x="2" y="2" rx="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <path d="M17.5 6.5h.01" />
-    </svg>
-  );
-}
 
 /** A word in the sentence that names a door (MESITA-2608): bold and
  *  underlined, the underline thin and a step down so it reads as a link, not
@@ -540,32 +518,6 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
     : (historyMemory.get(key) ?? null);
 }
 
-/** ADD YOURS TO SEE THEIRS (Pato, 2026-11-22, MESITA-4695: "for instagram
- *  of other people, mention in a yellow pink box: add your instagram to see
- *  other people's instagram, a shortcut button"): the Instagram gradient,
- *  white words, one button to Me › Instagram. */
-function AddInstagramBox({ connected }: { connected: boolean }) {
-  return (
-    <div
-      className="flex w-full flex-col items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#F9CE34] via-[#EE2A7B] to-[#6228D7] px-4 py-3.5 text-center text-white"
-      data-social-add-instagram
-    >
-      <p className="text-sm font-semibold">
-        {connected
-          ? "Share your Instagram to see other people's Instagram"
-          : "Add your Instagram to see other people's Instagram"}
-      </p>
-      <PushLink
-        href={CONSUMER_ROUTES.mePages.instagram}
-        className="flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-semibold text-neutral-950"
-      >
-        <InstagramGlyph className="h-4 w-4" />
-        {connected ? "Share yours to see" : "Add Instagram"}
-      </PushLink>
-    </div>
-  );
-}
-
 /** The person card (MESITA-2546, MESITA-2547, MESITA-2609): the member's
  *  identity card — the same card as the top of Me, photo and the four boxes
  *  — floating in the centre of this screen, appearing and disappearing at
@@ -595,7 +547,6 @@ function PersonCard({
 }) {
   const supabase = useBrowserSupabase();
   const history = useMemberHistory(event);
-  const { igConnected } = useConsumerIdentity();
   const scrollRef = useRef<HTMLDivElement>(null);
   const key = event ? cardKey(event) : null;
   const ready = history != null;
@@ -614,7 +565,7 @@ function PersonCard({
   const person = history?.person ?? fallback;
   const who = person ? person.name : "Member";
   const igUrl =
-    person && person.handle && !person.isYou && !person.handleLocked
+    person && person.handle && !person.handleLocked
       ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
       : null;
   return (
@@ -675,20 +626,18 @@ function PersonCard({
         <div className="px-5 pt-5">
           {person ? (
             // THE ME CARD'S FORMAT (Pato, 2026-11-22, MESITA-4695): name,
-            // then Instagram (no Class or Plan since MESITA-4709). A viewer without Instagram gets
-            // the add-yours box whatever this person has, so it never says
-            // whether they have one; "not shared" and "none" read alike.
+            // then Instagram (no Class or Plan since MESITA-4709): a link to
+            // whoever shows it (MESITA-4858); hidden and none read alike.
             <PersonModules
               name={who}
               avatarUrl={person.avatarUrl}
               sex={person.sex}
               age={person.age}
               instagram={
-                !person.isYou && (!igConnected || person.handleLocked) ? (
-                  <AddInstagramBox connected={igConnected} />
-                ) : person.handle && (person.isYou || !person.handleLocked) ? (
+                person.handle ? (
                   <PersonInstagramPill
                     label={`@${person.handle}`}
+                    verified={person.instagramBadge}
                     href={igUrl}
                     onOpen={() =>
                       trackEvent(supabase, "social_open_instagram", {})
