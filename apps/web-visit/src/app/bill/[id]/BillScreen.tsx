@@ -11,7 +11,7 @@ import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/
 
 // THE WAITER'S BILL (MESITA-4823), by its state:
 //
-// Steps 2 to 4 of the waiter's four (BillEntry; MESITA-4878):
+// The waiter's Charge and Receipt, and Bill and Tip again on an edit (MESITA-4879):
 //
 //   open       Bill and Tip, Send bill
 //   sent       waiting for the guest: Edit, Cancel
@@ -204,11 +204,11 @@ export function BillScreen({ billId }: { billId: string }) {
     if (bill.credit_cents > 0) lines.push(["Credits", `−${m(bill.credit_cents)}`]);
     lines.push(["Tip", bill.tip_cents > 0 ? m(bill.tip_cents) : "None"]);
     if (waiter) lines.push(["Waiter", waiter]);
-    // STEP 4, RECEIPT.
+    // RECEIPT.
     return (
       <main className="proof verify" data-bill="paid">
         {band}
-        <WaiterSteps at={4} />
+        <WaiterSteps at={5} />
         <section className="wp-paid" role="status">
           <span className="wp-paid-title">✓ Paid</span>
           <span className="wp-paid-amount">{collected > 0 ? m(collected) : "Nothing to collect"}</span>
@@ -286,21 +286,25 @@ export function BillScreen({ billId }: { billId: string }) {
     const lines = [
       { key: "bill", icon: <CoinsIcon className="pay-icon" />, label: "Bill", value: m(bill.bill_cents ?? 0), on: true },
       { key: "discount", icon: <CoinsIcon className="pay-icon" />, label: "Discount", value: `−${m(bill.discount_cents)}`, on: bill.discount_cents > 0, good: true },
-      { key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Credits", value: `−${m(bill.credit_cents)}`, on: bill.credit_cents > 0, good: true },
+      { key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Paid with credits", value: `−${m(bill.credit_cents)}`, on: bill.credit_cents > 0, good: true },
       { key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: "Tip", value: m(bill.tip_cents), on: bill.tip_cents > 0 },
-      { key: "collect", icon: <BanknoteIcon className="pay-icon" />, label: "Cash or card", value: m(due), on: true },
+      { key: "collect", icon: <BanknoteIcon className="pay-icon" />, label: "Collect, cash or card", value: m(due), on: true },
     ].filter((l) => l.on);
     return (
       <main className="proof verify" data-bill="collect">
-        <WaiterSteps at={3} />
+        <WaiterSteps at={4} />
         {band}
         {reconnecting}
         <p className="proof-line" role="status">
           The guest accepted
         </p>
+        {/* HOW THE GUEST PAYS (Pato, MESITA-4879: "probably he is using
+            credits so just subtracting from what you expect"). Their credits
+            show only once they accept: a bill is never a way to read a balance. */}
         <p className="proof-amount">Collect {m(due)}</p>
-        <section className="verify-box" aria-label="The bill">
-          {guest("Guest's bill", null)}
+        <p className="proof-line">{bill.credit_cents > 0 ? `${m(bill.credit_cents)} is paid with Mesita credits` : "Cash or card"}</p>
+        <section className="verify-box" aria-label="How the guest pays">
+          {guest("Bill and tip", total)}
           <ul className="pay-lines">
             {lines.map((l) => (
               <li key={l.key} className={l.good ? "pay-line-good" : undefined}>
@@ -331,7 +335,7 @@ export function BillScreen({ billId }: { billId: string }) {
   if (bill.state === "sent" && !editing) {
     return (
       <main className="proof verify" data-bill="sent">
-        <WaiterSteps at={3} />
+        <WaiterSteps at={4} />
         {band}
         {reconnecting}
         <section className="verify-box" aria-label="The bill">
@@ -377,6 +381,7 @@ export function BillScreen({ billId }: { billId: string }) {
     <BillEntry
       key={bill.state === "declined" ? `declined-${bill.version}` : "type"}
       start={bill.bill_cents ? { bill: bill.bill_cents, tip: bill.tip_cents } : undefined}
+      sendLabel="Send bill"
       busy={busy === "send"}
       error={error}
       top={

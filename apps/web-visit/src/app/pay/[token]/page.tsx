@@ -2,36 +2,41 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CodeEntry, GuestCheck } from "@/components/BillEntry";
-import { closeBill, getBill, keepBillStaff, openBill, signIn, type Staff } from "@/lib/bill-api";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
+import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
+import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff } from "@/lib/bill-api";
 
-// /pay/<token> — the waiter scanned a guest's Mesita QR. STEP 1, SCAN
-// (MESITA-4878): their own 8-digit code, which names the place and the waiter,
-// then whose QR it is (photo and first name). Yes opens the bill; No closes it.
-// Nothing about the phone is kept.
+// /pay/<token> — the waiter scanned a guest's Mesita QR: Bill, Tip, then Code
+// (MESITA-4879): their own 8 digits, which name the place and the waiter, then
+// whose QR it is, and Send bill. Nothing about the phone is kept.
 
-type Found = { billId: string; staff: Staff; name: string | null; photo: string | null };
+type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null };
+type Typed = { bill: number; tip: number };
 
 export default function ScanPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
+  const [typed, setTyped] = useState<Typed | null>(null);
+  const [view, setView] = useState<"type" | "code" | "guest" | "ended">("type");
   const [found, setFound] = useState<Found | null>(null);
-  const [ended, setEnded] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const open = (f: Found) => {
-    keepBillStaff(f.billId, f.staff);
-    router.replace(`/bill/${f.billId}`);
+  const go = (billId: string, staff: Staff) => {
+    keepBillStaff(billId, staff);
+    router.replace(`/bill/${billId}`);
+  };
+  const say = (r: "failed" | { error: string }) => {
+    setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
+    setBusy(null);
   };
 
   async function enter(code: string): Promise<boolean> {
     if (busy) return false;
-    setBusy(true);
+    setBusy("code");
     setError(null);
     const fail = (r: "failed" | { error: string }) => {
-      setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
-      setBusy(false);
+      say(r);
       // Only a refused code is typed again.
       return r === "failed" || !("code" in r) || r.code !== "staff_only";
     };
@@ -42,25 +47,43 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     if (opened === "failed" || "refused" in opened) return fail(opened);
     const now = await getBill(staff, opened.bill_id);
     if (now === "failed" || "refused" in now) return fail(now);
-    const f: Found = { billId: opened.bill_id, staff, name: now.guest_name ?? null, photo: now.guest_photo };
-    setBusy(false);
-    // A rescan of a bill already sent or accepted: that one goes on.
-    if (now.bill.state !== "open") open(f);
-    else setFound(f);
+    setBusy(null);
+    // The guest already accepted a bill here: that one is collected first.
+    if (now.bill.state === "accepted" || now.bill.state === "confirming") {
+      go(opened.bill_id, staff);
+      return true;
+    }
+    // A rescan finds the same bill, maybe already sent: send over its version.
+    setFound({ billId: opened.bill_id, staff, version: now.bill.version, currency: now.bill.currency, name: now.guest_name ?? null, photo: now.guest_photo });
+    setView("guest");
     return true;
+  }
+
+  async function send() {
+    if (!found || !typed || busy) return;
+    setBusy("send");
+    setError(null);
+    const r = await sendBill(found.staff, { bill_id: found.billId, version: found.version, bill_cents: typed.bill, tip_cents: typed.tip });
+    if (r === "failed") return say(r);
+    if ("refused" in r) {
+      // Accepted or changed on another phone: the bill's own screen says it.
+      if (r.code === "accepted" || r.code === "stale") return go(found.billId, found.staff);
+      return say(r);
+    }
+    go(found.billId, found.staff);
   }
 
   async function no() {
     if (!found || busy) return;
-    setBusy(true);
+    setBusy("no");
     setError(null);
     const r = await closeBill(found.staff, found.billId, "cancel");
-    setBusy(false);
-    if (r === "failed") return setError("Couldn't reach Mesita. Tap again.");
-    setEnded(true);
+    if (r === "failed") return say(r);
+    setBusy(null);
+    setView("ended");
   }
 
-  if (ended) {
+  if (view === "ended") {
     return (
       <main className="proof pay-end" data-scan="ended">
         <h1>Nothing was sent</h1>
@@ -68,6 +91,44 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       </main>
     );
   }
-  if (found) return <GuestCheck name={found.name} photo={found.photo} busy={busy} error={error} onYes={() => open(found)} onNo={() => void no()} />;
-  return <CodeEntry label="Continue" busy={busy} error={error} onCode={enter} />;
+  if (view === "guest" && found && typed) {
+    return (
+      <GuestCheck
+        name={found.name}
+        photo={found.photo}
+        total={moneyLabel(typed.bill + typed.tip, found.currency)}
+        busy={busy === "code" ? null : busy}
+        error={error}
+        onSend={() => void send()}
+        onNo={() => void no()}
+      />
+    );
+  }
+  if (view === "code") {
+    return (
+      <CodeEntry
+        label="Next"
+        busy={busy === "code"}
+        error={error}
+        onCode={enter}
+        onBack={() => {
+          setError(null);
+          setView("type");
+        }}
+      />
+    );
+  }
+  return (
+    <BillEntry
+      start={typed ?? undefined}
+      atTip={typed !== null}
+      sendLabel="Next"
+      busy={false}
+      error={null}
+      onSend={(bill, tip) => {
+        setTyped({ bill, tip });
+        setView("code");
+      }}
+    />
+  );
 }
