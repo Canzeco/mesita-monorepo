@@ -2,7 +2,7 @@
 
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BadgePercent, ChevronRight, Clock3, Gift, QrCode, Store } from "lucide-react";
+import { Percent, ChevronRight, Clock3, Gift, QrCode, Store } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -331,7 +331,7 @@ export function PlaceCredit({
               data-loyalty-card-prepay
             >
               <span className={cn(ROUND_FACE, "bg-[#635BFF] text-white")}>
-                <BadgePercent className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+                <Percent className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Prepay
             </PushLink>
