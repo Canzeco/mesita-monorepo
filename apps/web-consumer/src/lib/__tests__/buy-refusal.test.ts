@@ -32,4 +32,10 @@ describe("isDefinitiveRefusal", () => {
     expect(isDefinitiveRefusal(409, "in_progress")).toBe(false);
     expect(isDefinitiveRefusal(500, null)).toBe(false);
   });
+  it("card_failed on a request's first try charged nothing, so another card may pay", () => {
+    expect(isDefinitiveRefusal(502, "card_failed", true)).toBe(true);
+    expect(isDefinitiveRefusal(502, "stripe_unreachable", true)).toBe(false);
+    expect(isDefinitiveRefusal(409, "in_progress", true)).toBe(false);
+    expect(isDefinitiveRefusal(null, null, true)).toBe(false);
+  });
 });

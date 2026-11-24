@@ -863,7 +863,7 @@ export function PaymentsPanel({
       </div>
 
       {agreeing ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)} onKeyDown={(e) => e.key === "Escape" && !pending && setAgreeing(false)}>
           <div
             role="dialog"
             aria-modal="true"
@@ -880,7 +880,7 @@ export function PaymentsPanel({
               Your credits run in {currency} ({CURRENCY_NAME[currency] ?? currency}). Signing fixes it.
             </p>
             <div className="mt-6 flex justify-end gap-2">
-              <button type="button" className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS)} disabled={busy === "contract"} onClick={() => setAgreeing(false)}>
+              <button type="button" className={cn(PILL_BUTTON_CLASS, QUIET_PILL_CLASS)} autoFocus disabled={busy === "contract"} onClick={() => setAgreeing(false)}>
                 Cancel
               </button>
               <button type="button" className={PILL_BUTTON_CLASS} disabled={busy === "contract"} onClick={() => void agree()}>
