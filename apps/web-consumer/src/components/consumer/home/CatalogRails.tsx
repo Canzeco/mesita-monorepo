@@ -745,7 +745,8 @@ export function CatalogRails() {
     <CategoriesModal
       open={menuOpen}
       onClose={() => setMenuOpen(false)}
-      specials={chips.filter((c) => isSpecial(c.key)).map((c) => pill(c, true))}
+      lead={chips.filter((c) => c.key === SOCIAL_CHIP).map((c) => pill(c, true))}
+      specials={chips.filter((c) => isSpecial(c.key) && c.key !== SOCIAL_CHIP).map((c) => pill(c, true))}
     >
       {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, true))}
     </CategoriesModal>
