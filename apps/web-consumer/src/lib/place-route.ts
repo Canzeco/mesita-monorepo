@@ -38,8 +38,8 @@ export function placeHref(idOrSlug: string): string {
 // (consumer-web-get-place 404 — a deleted / reset-away row, a stale
 // localStorage favorite, an old bookmark).
 //
-// The bounce itself is deliberate: there's no error boundary, so landing the
-// guest somewhere real beats a 500. What was missing is the REASON — the
+// The bounce is deliberate: a dead id has nothing to show, so the guest lands
+// somewhere real. What was missing is the REASON — the
 // `gone` param carries the dead id to <PlaceGoneNotice />, which states what
 // happened and prunes the id so the same tile can't bounce us twice.
 export function placeGoneHref(fallback: string, idOrSlug: string): string {

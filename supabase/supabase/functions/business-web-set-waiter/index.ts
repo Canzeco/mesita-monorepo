@@ -1,22 +1,21 @@
 // Supabase Edge Function — business-web-set-waiter
 //
-// MESITA-4871: the waiters of a place, one 6-digit code each, so a bill and
-// its tip have a name. Mesita makes the code and keeps it for the
-// owner's screen (MESITA-4886). The owner and Mesita staff only.
+// MESITA-4904: a place's one 6-digit code, and whether the waiter types their name
+// before it. Mesita makes the code and keeps it for the owner's screen
+// (MESITA-4886). The owner and Mesita staff only.
 //
-// Body: { place_id, action: "add", name }
+// Body: { place_id, action: "new_code" | "name_on" | "name_off" }
 //     | { place_id, action: "codes_off" | "codes_on" }  (MESITA-4890: bills with no
 //       code, Discount only; saving Cashback turns codes on again)
-//     | { place_id, action: "new_code" | "remove", waiter_id }
-// Response: { ok: true, waiter_id, name, code?: "123456" }
-//   400 bad_request · 403 · 404 gone · 409 name_taken | too_many | cashback
+// Response: { ok: true, code?: "123456" }
+//   400 bad_request · 403 · 404 gone · 409 cashback
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { mintWaiterCode, mintWaiterKey, readWaiterName, WAITER_NAME_MAX, WAITERS_MAX } from "../_shared/waiter-code.ts";
+import { mintWaiterCode, mintWaiterKey } from "../_shared/waiter-code.ts";
 
 serveJson("business-web-set-waiter", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -25,22 +24,21 @@ serveJson("business-web-set-waiter", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, action, waiter_id: waiterId } = bodyRes.body;
+  const { place_id: placeId, action } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  if (action !== "add" && action !== "new_code" && action !== "remove" && action !== "codes_off" && action !== "codes_on") return json({ ok: false, error: "Unknown action" }, 400);
+  if (typeof action !== "string" || !["new_code", "name_on", "name_off", "codes_on", "codes_off"].includes(action)) return json({ ok: false, error: "Unknown action" }, 400);
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
   if (!canManage(access.role)) return ownerOnly();
 
   const stamp = { updated_at: new Date().toISOString(), updated_by: user.id };
-  const gone = () => json({ ok: false, code: "gone", error: "This waiter is gone. Reload the page." }, 404);
 
   if (action === "codes_on") {
     const { error } = await admin.from("place_waiters")
       .update({ ...stamp, lookup_hash: null, code: null, removed_at: stamp.updated_at })
       .eq("place_id", placeId).eq("no_code", true).is("removed_at", null);
     if (error) return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
-    return json({ ok: true, waiter_id: "", name: "" });
+    return json({ ok: true });
   }
   if (action === "codes_off") {
     const mech = await admin.rpc("place_visit_mechanism", { p_place_id: placeId });
@@ -52,39 +50,24 @@ serveJson("business-web-set-waiter", async (req) => {
     const { error } = await admin.from("place_waiters").insert({ place_id: placeId, name: "(no code)", no_code: true, lookup_hash, ...stamp });
     // Already off: the same answer.
     if (error && error.code !== "23505") return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
-    return json({ ok: true, waiter_id: "", name: "" });
+    return json({ ok: true });
   }
 
-  if (action === "remove") {
-    if (!isUuid(waiterId)) return gone();
-    const { data, error } = await admin.from("place_waiters")
-      .update({ ...stamp, lookup_hash: null, code: null, removed_at: stamp.updated_at })
-      .eq("id", waiterId).eq("place_id", placeId).eq("no_code", false).is("removed_at", null).select("id, name").maybeSingle();
+  if (action === "name_on" || action === "name_off") {
+    const { data, error } = await admin.from("place_waiters").update({ ...stamp, name_required: action === "name_on" })
+      .eq("place_id", placeId).eq("no_code", false).is("removed_at", null).select("id").maybeSingle();
     if (error) return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
-    return data ? json({ ok: true, waiter_id: data.id, name: data.name }) : gone();
+    return data ? json({ ok: true }) : json({ ok: false, code: "gone", error: "Make a code first." }, 404);
   }
 
-  const name = action === "add" ? readWaiterName(bodyRes.body.name) : null;
-  if (action === "add") {
-    if (!name) return json({ ok: false, code: "bad_request", error: `Type the waiter's name, up to ${WAITER_NAME_MAX} characters.` }, 400);
-    const { count, error } = await admin.from("place_waiters").select("id", { count: "exact", head: true }).eq("place_id", placeId).is("removed_at", null);
+  // The place's one code: a new one ends the last, and every phone signed in with it.
+  const row = { lookup_hash: mintWaiterKey(), code: mintWaiterCode(), ...stamp };
+  const changed = await admin.from("place_waiters").update(row)
+    .eq("place_id", placeId).eq("no_code", false).is("removed_at", null).select("code").maybeSingle();
+  if (changed.error) return json({ ok: false, error: `place_waiters: ${changed.error.message}` }, 500);
+  if (!changed.data) {
+    const { error } = await admin.from("place_waiters").insert({ place_id: placeId, name: "Staff", ...row });
     if (error) return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
-    if ((count ?? 0) >= WAITERS_MAX) return json({ ok: false, code: "too_many", error: `A place has up to ${WAITERS_MAX} waiters.` }, 409);
-  } else if (!isUuid(waiterId)) return gone();
-
-  // A code is one waiter's in its place: a collision draws again.
-  for (let i = 0; i < 10; i++) {
-    const code = mintWaiterCode();
-    const lookup_hash = mintWaiterKey();
-    const q = action === "add"
-      ? admin.from("place_waiters").insert({ place_id: placeId, name, lookup_hash, code, ...stamp })
-      : admin.from("place_waiters").update({ lookup_hash, code, ...stamp }).eq("id", waiterId).eq("place_id", placeId).eq("no_code", false).is("removed_at", null);
-    const { data, error } = await q.select("id, name").maybeSingle();
-    if (!error) return data ? json({ ok: true, waiter_id: data.id, name: data.name, code }) : gone();
-    if (error.code !== "23505") return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
-    if (error.message.includes("place_waiters_name")) {
-      return json({ ok: false, code: "name_taken", error: `${name} already has a code here.` }, 409);
-    }
   }
-  return json({ ok: false, error: "Couldn't make a code. Try again." }, 500);
+  return json({ ok: true, code: row.code });
 });

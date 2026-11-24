@@ -30,6 +30,7 @@ import { INSTAGRAM_DM_URL } from "@/lib/share-app";
 import { CHANNEL_MARKS } from "@/components/consumer/share/channel-icons";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { Panel } from "@/components/shared/Panel";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { GIFT_PENDING } from "@/lib/wallet-card";
@@ -74,7 +75,7 @@ function refusal(err: unknown, fallback: string, currency = "mxn"): string {
 export function SendCreditPage({ placeId }: { placeId: string }) {
   const getSupabase = useLazyBrowserSupabase();
   const router = useRouter();
-  const { wallet, credits, reread } = useWallet();
+  const { wallet, credits, failed, reread } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
@@ -94,6 +95,19 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   useEffect(() => {
     if (credits && !row) navigateTo(router, CONSUMER_ROUTES.walletSend, { replace: true });
   }, [credits, row, router]);
+
+  if (!wallet && failed) {
+    return (
+      <Screen title="Send Gift" paper>
+        <EmptyState
+          icon={Gift}
+          title="Couldn't load your credit"
+          description="Check your connection and try again."
+          action={{ label: "Try again", onClick: reread }}
+        />
+      </Screen>
+    );
+  }
 
   if (!row || !wallet) {
     return (
@@ -478,7 +492,22 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
   const getSupabase = useLazyBrowserSupabase();
   const [look, setLook] = useState<GiftLook | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Only a failure that is not an answer (no signal, a 5xx) can be tried again.
+  const [canRetry, setCanRetry] = useState(false);
+  const [tries, setTries] = useState(0);
   const [busy, setBusy] = useState(false);
+
+  function fail(err: unknown, fallback: string) {
+    setError(refusal(err, fallback));
+    setCanRetry(!(err instanceof EFError && err.code && GIFT_REFUSAL[err.code]));
+  }
+
+  // Looks again first: a take whose answer was lost reads as yours.
+  function retry() {
+    setError(null);
+    setLook(null);
+    setTries((n) => n + 1);
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -488,13 +517,13 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
         if (!cancelled) setLook(g);
       })
       .catch((err) => {
-        if (!cancelled) setError(refusal(err, "Couldn't open this link. Try again."));
+        if (!cancelled) fail(err, "Couldn't open this link. Try again.");
       });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, tries]);
 
   async function take() {
     if (!token) return;
@@ -504,7 +533,7 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
       toast.success(`${money(r.amount_cents, r.currency)} of credit is yours.`);
       onClaimed();
     } catch (err) {
-      setError(refusal(err, "Couldn't take the credit. Try again."));
+      fail(err, "Couldn't take the credit. Try again.");
     } finally {
       setBusy(false);
     }
@@ -512,8 +541,18 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
 
   const name = look?.place?.name ?? "this place";
   let body: ReactNode;
-  if (error) body = <p className="text-sm">{error}</p>;
-  else if (!look) body = <p className="text-muted-foreground text-sm">Opening your link…</p>;
+  if (error) {
+    body = (
+      <>
+        <p className="text-sm">{error}</p>
+        {canRetry ? (
+          <button type="button" className={`${PRIMARY} mt-6`} onClick={retry}>
+            Try again
+          </button>
+        ) : null}
+      </>
+    );
+  } else if (!look) body = <p className="text-muted-foreground text-sm">Opening your link…</p>;
   else if (look.yours || look.status === "claimed") {
     body = <p className="text-sm">{look.yours ? `This credit is already in your Wallet at ${name}.` : GIFT_REFUSAL.claimed}</p>;
   } else if (look.status === "taken_back") body = <p className="text-sm">{GIFT_REFUSAL.taken_back}</p>;

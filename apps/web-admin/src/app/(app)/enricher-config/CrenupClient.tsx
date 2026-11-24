@@ -33,7 +33,7 @@ import {
   FlowPanel,
 } from "./blocks";
 import { SectionStrip, type CrenupView } from "./SectionStrip";
-import { clampFunnel, savePayload, type CrenupSettings } from "./crenup-guards";
+import { changedPayload, clampFunnel, type CrenupSettings } from "./crenup-guards";
 import { MODELS_PARENT } from "../models-config/nav";
 import { UPRICH_PARENT } from "./nav";
 
@@ -83,7 +83,9 @@ export function CrenupClient({
   const blocked = settingsLoadError;
 
   const patch = (next: Partial<CrenupSettings>) => {
-    setSettings((s) => clampFunnel({ ...s, ...next }));
+    // The funnel settles when a field is left and on Save, never per key: "2"
+    // on the way to "25" must not cut the counts below it.
+    setSettings((s) => ({ ...s, ...next }));
     setOk(false);
   };
 
@@ -91,9 +93,13 @@ export function CrenupClient({
     if (blocked) return;
     setError(null);
     startTransition(async () => {
-      const r = await updateAtlasConfig(savePayload(settings));
+      const next = clampFunnel(settings);
+      setSettings(next);
+      const changed = changedPayload(next, savedSettings);
+      if (Object.keys(changed).length === 0) return;
+      const r = await updateAtlasConfig(changed);
       if (r.ok) {
-        setSavedSettings(settings);
+        setSavedSettings(next);
         setSettingsStamp(r.data.updatedAt);
         setOk(true);
       } else {

@@ -11,7 +11,7 @@ import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGT
 //
 //   Bill     the bill, before tip
 //   Tip      10 · 15 · 20% · Other; nothing is no tip
-//   Code     the waiter's own 6 digits, then whose QR it is; Send bill
+//   Code     the place's 6 digits (the waiter's name first, if asked, MESITA-4904), then whose QR it is; Send bill
 //   Confirm  the handshake: this tap and the guest's Pay, in any order
 //   Receipt  what was paid
 //
@@ -108,18 +108,50 @@ const Alert = ({ text }: { text: string | null }) =>
     </p>
   ) : null;
 
-/** The waiter's code: after the scan, or again from another phone. */
-export function CodeEntry({ busy, error, label, onCode, onBack }: { busy: boolean; error: string | null; label: string; onCode: (code: string) => Promise<boolean>; onBack?: () => void }) {
+/** The place's code: after the scan, or again from another phone. `askName`: the
+ *  owner asks for the waiter's name first (MESITA-4904). Nothing is kept. */
+export function CodeEntry({ busy, error, label, askName, onCode, onBack }: { busy: boolean; error: string | null; label: string; askName: boolean; onCode: (code: string, name: string | null) => Promise<boolean>; onBack?: () => void }) {
   const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [named, setNamed] = useState(false);
   const ready = code.length === WAITER_CODE_LENGTH && !busy;
   const go = () => {
-    if (ready) void onCode(code).then((ok) => !ok && setCode(""));
+    if (ready) void onCode(code, askName ? name.trim() : null).then((ok) => !ok && setCode(""));
   };
+  if (askName && !named) {
+    const next = () => name.trim() && setNamed(true);
+    return (
+      <main className="wp" data-bill="name">
+        <WaiterSteps at={2} busy={busy} onBack={onBack} />
+        <div className="wp-body">
+          <h1 className="wp-title">Your name</h1>
+          <input
+            className="wp-input"
+            value={name}
+            maxLength={40}
+            autoFocus
+            autoComplete="off"
+            aria-label="Your name"
+            placeholder="Your name"
+            enterKeyHint="next"
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) next();
+            }}
+          />
+          <Alert text={error} />
+        </div>
+        <button type="button" className="wp-go" disabled={!name.trim()} onClick={next}>
+          Next
+        </button>
+      </main>
+    );
+  }
   return (
     <main className="wp" data-bill="code">
-      <WaiterSteps at={2} busy={busy} onBack={onBack} />
+      <WaiterSteps at={2} busy={busy} onBack={askName ? () => setNamed(false) : onBack} />
       <div className="wp-body">
-        <h1 className="wp-title">Your waiter code</h1>
+        <h1 className="wp-title">Waiter code</h1>
         <Code code={code} />
         <Alert text={error} />
       </div>

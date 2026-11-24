@@ -287,10 +287,11 @@ export function buyRefusalAction(code: string | null): BuyRefusalAction {
 
 /** Whether a refusal is definitive (MESITA-4065): a 4xx is the server's
  *  answer, so the next tap starts a new request_id; anything else (no
- *  answer, 5xx, card_failed, stripe_unreachable) may have charged, so the
+ *  answer, 5xx, card_failed, stripe_unreachable, or in_progress: the same
+ *  request is still charging) may have charged, so the
  *  retry carries the same one. */
 export function isDefinitiveRefusal(status: number | null, code: string | null): boolean {
-  if (code === "card_failed" || code === "stripe_unreachable") return false;
+  if (code === "card_failed" || code === "stripe_unreachable" || code === "in_progress") return false;
   return status !== null && status >= 400 && status < 500;
 }
 

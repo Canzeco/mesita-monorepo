@@ -14,9 +14,8 @@
 //                          Cards Agreement (MESITA-3589), independent of Stripe
 //             account.stage: none|onboarding|in_review|connected|action_needed|
 //                          payouts_paused|restricted (Main §10's Place Stripe)
-//             code_set,    whether a waiter has a code
-//             waiters: [{ id, name, removed, tips_24h_cents, bills_24h,
-//                          tips_7d_cents, bills_7d, code }]  MESITA-4871
+//             code_set,    whether the place has a code
+//             staff_code (who manages the place only), name_required,
 //             fee: { hold, invoice },
 //             cashback: { welcome_bps, returning_bps, returning_vip_bps, … } }
 //                          MESITA-4698: the owner's two cashback lines and
@@ -105,20 +104,13 @@ serveJson("business-web-get-payments", async (req) => {
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;
-  // MESITA-4871: one code per waiter, with their tips; the codes themselves only
-  // for who manages the place (MESITA-4886).
-  const { data: waiterRows, error: waiterErr } = await admin.rpc("place_waiter_list", { p_place_id: placeId, p_livemode: paymentsLivemode() });
-  if (waiterErr) return json({ ok: false, error: `place_waiter_list: ${waiterErr.message}` }, 500);
-  const codes = new Map<string, string | null>();
-  if (canManage(access.role)) {
-    const { data: codeRows, error: codesErr } = await admin.from("place_waiters").select("id, code").eq("place_id", placeId).is("removed_at", null);
-    if (codesErr) return json({ ok: false, error: `place_waiters: ${codesErr.message}` }, 500);
-    for (const r of (codeRows ?? []) as Array<{ id: string; code: string | null }>) codes.set(r.id, r.code);
-  }
+  // MESITA-4904: the place's one code; itself only for who manages the place (MESITA-4886).
+  const { data: codeRow, error: codeErr } = await admin.from("place_waiters").select("code, name_required")
+    .eq("place_id", placeId).eq("no_code", false).is("removed_at", null).maybeSingle();
+  if (codeErr) return json({ ok: false, error: `place_waiters: ${codeErr.message}` }, 500);
   const { data: noCodeRow, error: noCodeErr } = await admin.from("place_waiters").select("id").eq("place_id", placeId).eq("no_code", true).is("removed_at", null).maybeSingle();
   if (noCodeErr) return json({ ok: false, error: `place_waiters: ${noCodeErr.message}` }, 500);
   const noCode = noCodeRow !== null;
-  const waiters = ((waiterRows ?? []) as Array<{ id: string; removed: boolean }>).map((w) => ({ ...w, code: codes.get(w.id) ?? null }));
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")
     .select(FEE_INVOICE_COLUMNS)
@@ -184,8 +176,9 @@ serveJson("business-web-get-payments", async (req) => {
     credit_limit,
     instagram_url,
     contract: { ...contract, text: LOYALTY_CARDS_TERMS_TEXT },
-    code_set: waiters.some((w) => !w.removed),
-    waiters,
+    code_set: codeRow !== null,
+    staff_code: canManage(access.role) ? codeRow?.code ?? null : null,
+    name_required: codeRow?.name_required === true,
     no_code: noCode,
     credits_balance,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),

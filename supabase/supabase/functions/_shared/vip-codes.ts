@@ -12,8 +12,32 @@ import { isUuid } from "./place-id.ts";
 import { readGuestLabels } from "./consumer-doc.ts";
 
 export const VIP_CODE_LABEL_MAX = 80;
-/** How many codes Admin › Guests lists, newest first. */
-export const VIP_CODE_LIST_LIMIT = 100;
+/** How many used or revoked codes Admin › VIP lists, newest first. Every
+ *  unused code is listed: it can still be revoked (MESITA-4912). */
+export const VIP_CODE_PAST_LIMIT = 100;
+
+const PAGE = 500;
+type Page<T> = { data: T[] | null; error: { message: string } | null };
+
+/** Every row of an ordered read, a page at a time (PostgREST caps one answer
+ *  at max_rows). Throws on a failed page: a part is never shown as the whole. */
+export async function readAllPages<T>(read: (from: number, to: number) => PromiseLike<Page<T>>, page = PAGE): Promise<T[]> {
+  const out: T[] = [];
+  for (;;) {
+    const { data, error } = await read(out.length, out.length + page - 1);
+    if (error) throw new Error(error.message);
+    out.push(...(data ?? []));
+    if ((data?.length ?? 0) < page) return out;
+  }
+}
+
+/** Runs `job` over `items` a chunk at a time: ids ride the URL, and one call
+ *  per guest must not open hundreds at once. */
+async function inChunks<T, R>(items: T[], size: number, job: (chunk: T[]) => Promise<R[]>): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += size) out.push(...await job(items.slice(i, i + size)));
+  return out;
+}
 
 export type VipCodeStatus = "unused" | "used" | "revoked";
 
@@ -63,21 +87,22 @@ export type VipGuestFacts = {
 };
 
 /** Admin › VIP: each VIP guest's why, followers and money status. One batched
- *  code read; one money-rule call per VIP guest (a short list). Throws on a
+ *  code read; one money-rule call per VIP guest, 25 at a time. Throws on a
  *  failed read: a wrong "Paid as VIP" is worse than none. */
 export async function readVipGuestFacts(admin: SupabaseClient, rows: VipGuestRaw[], livemode: boolean): Promise<Map<string, VipGuestFacts>> {
   const codeIds = [...new Set(rows.map((r) => r.vip_invitation_code_id).filter((v): v is string => typeof v === "string"))];
   const last4 = new Map<string, string>();
-  if (codeIds.length > 0) {
-    const { data, error } = await admin.from("vip_invitation_codes").select("id, code_last4").in("id", codeIds);
+  const found = await inChunks(codeIds, 100, async (ids) => {
+    const { data, error } = await admin.from("vip_invitation_codes").select("id, code_last4").in("id", ids);
     if (error) throw new Error(`vip_invitation_codes: ${error.message}`);
-    for (const c of data ?? []) last4.set(c.id as string, c.code_last4 as string);
-  }
-  const paid = await Promise.all(rows.map(async (r) => {
+    return data ?? [];
+  });
+  for (const c of found) last4.set(c.id as string, c.code_last4 as string);
+  const paid = await inChunks(rows, 25, (some) => Promise.all(some.map(async (r) => {
     const { data, error } = await admin.rpc("consumer_is_vip_for_money", { p_consumer: r.id, p_livemode: livemode });
     if (error) throw new Error(`consumer_is_vip_for_money: ${error.message}`);
     return data === true;
-  }));
+  })));
   const out = new Map<string, VipGuestFacts>();
   rows.forEach((r, i) => {
     out.set(String(r.id), {
@@ -213,17 +238,28 @@ export function codeStatus(r: { used_at: string | null; revoked_at: string | nul
   return "unused";
 }
 
-/** The newest codes, with who used each. */
+/** Every unused code and the newest used or revoked ones, with who used each. */
 export async function loadVipCodes(
   admin: SupabaseClient,
 ): Promise<{ ok: true; codes: VipCode[] } | { ok: false; error: string }> {
-  const { data, error } = await admin
-    .from("vip_invitation_codes")
-    .select("id, code_last4, label, vip_partner_id, created_at, used_at, used_by, revoked_at")
+  const select = "id, code_last4, label, vip_partner_id, created_at, used_at, used_by, revoked_at";
+  let unused: RawCode[];
+  try {
+    unused = await readAllPages<RawCode>((from, to) =>
+      admin.from("vip_invitation_codes").select(select).is("used_at", null).is("revoked_at", null)
+        .order("created_at", { ascending: false }).order("id").range(from, to)
+    );
+  } catch (err) {
+    return { ok: false, error: `vip_codes_read: ${err instanceof Error ? err.message : String(err)}` };
+  }
+  const past = await admin.from("vip_invitation_codes").select(select)
+    .or("used_at.not.is.null,revoked_at.not.is.null")
     .order("created_at", { ascending: false })
-    .limit(VIP_CODE_LIST_LIMIT);
-  if (error) return { ok: false, error: `vip_codes_read: ${error.message}` };
-  const rows = (data ?? []) as RawCode[];
+    .limit(VIP_CODE_PAST_LIMIT);
+  if (past.error) return { ok: false, error: `vip_codes_read: ${past.error.message}` };
+  // Once each: a code used between the two reads is in both.
+  const byId = new Map([...unused, ...((past.data ?? []) as RawCode[])].map((r) => [r.id, r]));
+  const rows = [...byId.values()].sort((a, b) => b.created_at.localeCompare(a.created_at));
   const userIds = [...new Set(rows.map((r) => r.used_by).filter((v): v is string => !!v))];
   const read = await readGuestLabels(admin, userIds);
   if (!read.ok) return { ok: false, error: `vip_code_guests_read: ${read.message}` };

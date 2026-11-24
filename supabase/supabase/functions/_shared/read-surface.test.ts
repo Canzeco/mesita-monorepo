@@ -291,10 +291,8 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
-  // Manage › Guests (MESITA-2550): the guest list and search, and the closed-
-  // account check after a Class or Plan change (MESITA-2553). Writes go through the admin_set_guest_standing RPC.
+  // Manage › Guests (MESITA-2550): the guest list and search.
   "admin-web-list-guests/index.ts",
-  "admin-web-set-guest-standing/index.ts",
   // Single Place › Admin › Reports (MESITA-2686): first name and member
   // number of each reporting guest, error checked. Read-only.
   "_shared/place-reports-handler.ts",

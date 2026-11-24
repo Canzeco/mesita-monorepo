@@ -29,6 +29,7 @@ import {
   isDefinitiveRefusal,
 } from "@/lib/api/wallet";
 import { apiListCards, brandLabel } from "@/lib/api/cards";
+import { readLastCard as readDefaultCard } from "@/lib/guest-pay-draft";
 import { isApplePhone, walletInBrowser } from "@/lib/pay-wallet";
 import { runBankCheck } from "@/lib/api/tab";
 import { useAddCardModal } from "@/lib/added-card";
@@ -43,6 +44,7 @@ import {
   isMesitaPlaceId,
 } from "@/lib/api/activity";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { fetchSavedPlaceCard } from "@/lib/save-place-card";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import {
@@ -99,6 +101,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   sheets: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
+  const supabase = useBrowserSupabase();
   const router = useRouter();
   // THE MODAL, NOT THE PAGE (Pato, 2026-11-18, MESITA-4325: "if i click
   // reservations ... offers ... display the fucking modal. don't open the
@@ -197,9 +200,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setAskUnsave(true);
       return;
     }
-    toggle(place.id);
+    // A signed-out tap saved nothing: it opened Sign.
+    if (!toggle(place.id)) return;
+    fetchSavedPlaceCard(supabase, place.id);
     toast.success(`Added ${place.name} to Saved`);
-  }, [place.id, place.name, saved, toggle]);
+  }, [place.id, place.name, saved, toggle, supabase]);
 
   // A Google Maps link asks first (MESITA-4448): it waits here for the
   // modal's yes. Every other outside link opens as before.
@@ -476,10 +481,13 @@ export function usePlaceVouchers(
         pay_method === "card" ||
         ((pay_method === "apple_pay" || pay_method === "google_pay") && !walletInBrowser(pay_method, isApplePhone()));
       setPayCards({ state: "ready", cards: list, cardFirst });
+      // The default picked on Payment methods, else the last card paid with.
+      const chosen = readDefaultCard();
+      const remembered = chosen && pickPayCard(list, chosen) === chosen ? chosen : readLastCard(userKey.current);
       setPayCardId((prev) =>
         prev && list.some((c) => c.id === prev)
           ? prev
-          : pickPayCard(list, readLastCard(userKey.current)),
+          : pickPayCard(list, remembered),
       );
     } catch (err) {
       if (mine !== cardsRequest.current) return;

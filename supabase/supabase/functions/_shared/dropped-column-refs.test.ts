@@ -210,6 +210,13 @@ const DEAD_LINKS_DROPPED_COLUMNS = {
 /** MESITA-4766 — Instagram Stories removed (20261123230000_vip_back_stories_out.sql). */
 const STORIES_DROPPED_COLUMNS = {
   wallet_entries: ["story_mention_id"],
+  place_cashback_settings: ["story_reward_cents"],
+  cashback_defaults: ["story_reward_cents"],
+} as const satisfies Record<string, readonly string[]>;
+
+/** MESITA-4648 — guest columns nothing reads (20261125060000_drop_dead_schema.sql). */
+const DEAD_GUEST_DROPPED_COLUMNS = {
+  consumers: ["appear_anonymous", "instagram_is_private", "vip_until"],
 } as const satisfies Record<string, readonly string[]>;
 
 /** Every dropping table's columns, all cuts merged. */
@@ -223,6 +230,7 @@ for (
     PAY_WAYS_DROPPED_COLUMNS,
     DEAD_LINKS_DROPPED_COLUMNS,
     STORIES_DROPPED_COLUMNS,
+    DEAD_GUEST_DROPPED_COLUMNS,
   ]
 ) {
   for (const [table, cols] of Object.entries(list)) {

@@ -102,11 +102,12 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
       .then(({ reservations }) =>
         reservations.filter((r) => r.place?.id === place.id),
       )
-      // Fail OPEN: a flaky list read must not block someone from booking.
-      .catch(() => [] as EFReservationRow[])
+      // Fail OPEN: a flaky list read must not block someone from booking. A
+      // failed re-read keeps the tables already known.
+      .catch(() => null)
       .then((rows) => {
         if (cancelled) return;
-        setMine(rows);
+        if (rows) setMine(rows);
         setChecking(false);
       });
     return () => {

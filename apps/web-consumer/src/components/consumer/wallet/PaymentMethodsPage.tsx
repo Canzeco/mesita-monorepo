@@ -46,13 +46,15 @@ export function PaymentMethodsPage() {
   const getSupabase = useLazyBrowserSupabase();
   const applePhone = useApplePhone();
   const { wallet, failed, reread } = useWallet({ withCards: true });
-  // The pick the guest just made, shown before the server answers.
-  const [pending, setPending] = useState<PayMethod | null>(null);
+  // The guest's last pick here, shown before the server answers and kept
+  // after: the reread still holds the old one until it lands.
+  const [picked, setPicked] = useState<PayMethod | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const cards = wallet?.cards ?? null;
   const loading = !failed && wallet === null;
   const cardsFailed = failed || (wallet !== null && wallet.cards === null);
-  const stored = pending ?? wallet?.pay_method ?? null;
+  const stored = picked ?? wallet?.pay_method ?? null;
   const way = defaultMethod(stored, cards ?? [], applePhone, readLastCard());
   const checked: PayMethod | null = way === null ? null : way.kind;
   const checkedCard = way?.kind === "card" ? way.card.id : null;
@@ -76,16 +78,19 @@ export function PaymentMethodsPage() {
   }
 
   async function choose(next: PayMethod, cardId?: string) {
-    if (pending || (checked === next && (next !== "card" || !cardId || cardId === checkedCard))) return;
+    if (saving || (checked === next && (next !== "card" || !cardId || cardId === checkedCard))) return;
     if (cardId) writeLastCard(cardId);
-    setPending(next);
+    const before = picked;
+    setPicked(next);
+    setSaving(true);
     try {
       await apiSetPayMethod(getSupabase(), next);
       reread();
     } catch {
+      setPicked(before);
       toast.error("Couldn't save your default. Try again.");
     } finally {
-      setPending(null);
+      setSaving(false);
     }
   }
 
@@ -105,7 +110,7 @@ export function PaymentMethodsPage() {
         radio={
           expired
             ? null
-            : { on: checked === "card" && checkedCard === card.id, busy: pending !== null, onPick: () => void choose("card", card.id) }
+            : { on: checked === "card" && checkedCard === card.id, busy: saving, onPick: () => void choose("card", card.id) }
         }
       />,
     );
@@ -118,7 +123,7 @@ export function PaymentMethodsPage() {
         chip={w.chip}
         title={w.title}
         line={here ? "In this browser" : "Not in this browser"}
-        radio={here ? { on: checked === w.key, busy: pending !== null, onPick: () => void choose(w.key) } : null}
+        radio={here ? { on: checked === w.key, busy: saving, onPick: () => void choose(w.key) } : null}
       />,
     );
   }

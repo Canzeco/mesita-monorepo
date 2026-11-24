@@ -16,7 +16,7 @@
 //                                            Welcome Regular · Returning Regular ·
 //                                            Welcome VIP · Returning VIP (three
 //                                            picks each, Off included)
-//   Waiter Codes       #waiter-codes       · one 6-digit code per waiter; optional at Discount (MESITA-4890)
+//   Waiter Codes       #waiter-codes       · one 6-digit code; optional at Discount (MESITA-4890)
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -318,6 +318,9 @@ export function PaymentsPanel({
   // The rates Visit Checkout comes back to when enabled again (Off stores 0
   // for all three; MESITA-4752): the last saved set with any rate on.
   const [lastRates, setLastRates] = useState(() => restoreRates(initial.cashback ?? CASHBACK_DEFAULTS));
+  // What the server last held with a rate on: where Discard goes back to, so
+  // an abandoned draft never returns (MESITA-4918).
+  const [savedRates, setSavedRates] = useState(lastRates);
   const currency = initial.currency ?? "MXN";
   const [contract, setContract] = useState<LoyaltyCardsContract>(initial.contract ?? { signed: false, signed_at: null, terms_version: null });
   const [agreeing, setAgreeing] = useState(false);
@@ -361,13 +364,16 @@ export function PaymentsPanel({
 
   /** The cashback record into the draft; equal to the saved one drops it. */
   function editRates(next: CashbackRates) {
-    setCashbackDraft(sameRates(next, cashback) ? null : next);
+    const same = sameRates(next, cashback);
+    setCashbackDraft(same ? null : next);
+    // Back to a saved Off drops the rates picked on the way there.
+    if (same && !anyRate(cashback)) setLastRates(savedRates);
   }
 
   function discard() {
     setEdits({});
     setCashbackDraft(null);
-    if (anyRate(cashback)) setLastRates(restoreRates(cashback));
+    setLastRates(savedRates);
     setError(null);
   }
 
@@ -383,7 +389,10 @@ export function PaymentsPanel({
         setCashback(r.data);
         setCashbackDraft(null);
         // Saved Off keeps the rates it comes back to (MESITA-4752).
-        if (anyRate(r.data)) setLastRates(restoreRates(r.data));
+        if (anyRate(r.data)) {
+          setLastRates(restoreRates(r.data));
+          setSavedRates(restoreRates(r.data));
+        }
       }
       let saved = settings;
       const order = [...draftKeys].sort((a, b) => Number(b === "prepayments") - Number(a === "prepayments"));
@@ -808,14 +817,14 @@ export function PaymentsPanel({
         </Card>
       </div>
 
-      {/* WAITER CODES (MESITA-4871). Configuration only: whose tip it was is on
-          the visit (Pato, MESITA-4890: "just to configure, not to monitor"). */}
+      {/* WAITER CODE, one per place (MESITA-4904). Configuration only: a typed
+          name is on the visit (Pato, MESITA-4890: "just to configure, not to monitor"). */}
       <div id="waiter-codes" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(HashIcon, "Visit Checkout - Waiter Codes", {
-            line: line("One 6-digit code per waiter. They scan the guest's QR and type their code to send the bill."),
+          {head(HashIcon, "Visit Checkout - Waiter Code", {
+            line: line("Staff scan the guest's QR and type this code to send the bill."),
           })}
-          <WaiterCodes placeId={placeId} initial={initial.waiters} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
+          <WaiterCodes placeId={placeId} initialCode={initial.staff_code} initialAskName={initial.name_required} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
 

@@ -4,7 +4,7 @@
 // re-fetch succeeds, and a failed re-fetch only surfaces while blocked. Dirty
 // checks, patchers and payload shaping stay with each page.
 
-import { useEffect, useState, useTransition } from "react";
+import { type SetStateAction, useEffect, useRef, useState, useTransition } from "react";
 import type { ActionResult } from "@/lib/action-result";
 
 /** What a config page's server component seeds its client with. */
@@ -29,7 +29,12 @@ export function useConfigEditor<C, R extends Loaded<C>>({
   load: () => Promise<R>;
   onLoaded?: (r: Extract<R, { ok: true }>) => void;
 }) {
-  const [cfg, setCfg] = useState<C>(initialConfig);
+  const [cfg, setCfgState] = useState<C>(initialConfig);
+  const edited = useRef(false);
+  const setCfg = (next: SetStateAction<C>) => {
+    edited.current = true;
+    setCfgState(next);
+  };
   const [saved, setSaved] = useState<C>(initialConfig);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(loadError);
@@ -46,7 +51,9 @@ export function useConfigEditor<C, R extends Loaded<C>>({
         if (loadBlocked) setError(r.error);
         return;
       }
-      setCfg(r.config);
+      // Typed before this reply landed: the edits stay, on the server's seed.
+      if (edited.current && !loadBlocked) return;
+      setCfgState(r.config);
       setSaved(r.config);
       onLoaded?.(r as Extract<R, { ok: true }>);
       setUpdatedAt(r.updatedAt ?? null);

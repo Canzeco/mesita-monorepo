@@ -1,6 +1,6 @@
 // Auth (MESITA-4871): a waiter's 6-digit code and its token.
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { checkWaiterToken, mintWaiterCode, mintWaiterKey, mintWaiterToken, readWaiterCode, readWaiterName, waiterOfToken } from "./waiter-code.ts";
+import { checkWaiterToken, mintWaiterCode, mintWaiterKey, mintWaiterToken, readWaiterCode, readWaiterName, WAITER_TOKEN_MAX, waiterOfToken } from "./waiter-code.ts";
 
 const W = { id: "00000000-0000-4000-8000-000000004871", placeId: "00000000-0000-4000-8000-000000000001", lookupHash: "a".repeat(64) };
 const NOW = 1_790_000_000_000;
@@ -22,11 +22,16 @@ Deno.test("a token key is 32 random bytes", () => {
 });
 
 Deno.test("a token is one waiter's, one place's, and ends with the code or in 12 hours", async () => {
-  const t = await mintWaiterToken("key", W, NOW);
-  assert(t.length <= 128, `${t.length}`);
+  const t = await mintWaiterToken("key", W, "Ana Núñez", NOW);
+  assert((await mintWaiterToken("key", W, "😀".repeat(40), NOW)).length <= WAITER_TOKEN_MAX);
   assertEquals(waiterOfToken(t), W.id);
   assertEquals(waiterOfToken("s2.x"), null);
-  assert(await checkWaiterToken("key", W, t, NOW));
+  assertEquals((await checkWaiterToken("key", W, t, NOW))?.name, "Ana Núñez");
+  assertEquals((await checkWaiterToken("key", W, await mintWaiterToken("key", W, "😀".repeat(40), NOW), NOW))?.name, "😀".repeat(40));
+  assertEquals((await checkWaiterToken("key", W, await mintWaiterToken("key", W, null, NOW), NOW))?.name, null);
+  const forged = t.split(".");
+  forged[4] = btoa("Luis").replaceAll("=", "");
+  assertEquals(await checkWaiterToken("key", W, forged.join("."), NOW), null, "the name is signed");
   assertEquals(await checkWaiterToken("other", W, t, NOW), null);
   assertEquals(await checkWaiterToken("key", { ...W, placeId: "00000000-0000-4000-8000-000000000002" }, t, NOW), null);
   assertEquals(await checkWaiterToken("key", { ...W, lookupHash: "b".repeat(64) }, t, NOW), null, "a new code ends it");

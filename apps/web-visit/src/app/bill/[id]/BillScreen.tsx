@@ -86,7 +86,7 @@ export function BillScreen({ billId }: { billId: string }) {
     let timer: ReturnType<typeof setTimeout>;
     const loop = async () => {
       if (document.visibilityState === "visible") await refresh();
-      if (alive) timer = setTimeout(() => void loop(), nextDelay(Date.now() - changedAt.current));
+      if (alive) timer = setTimeout(() => void loop(), nextDelay(changedAt.current === 0 ? 0 : Date.now() - changedAt.current));
     };
     void loop();
     const onShow = () => {
@@ -133,11 +133,13 @@ export function BillScreen({ billId }: { billId: string }) {
     }
   }
 
-  async function unlock(code: string | null): Promise<boolean> {
+  const [askName, setAskName] = useState(false);
+  async function unlock(code: string | null, name: string | null = null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
-    const r = await checkCode(code, { bill_id: billId });
+    const r = await checkCode(code, { bill_id: billId }, name);
+    if (r !== "failed" && "refused" in r && r.name_required) setAskName(true);
     setBusy(null);
     if (r !== "failed" && "refused" in r && r.code === "ticket_closed") {
       setGone(true);
@@ -164,7 +166,7 @@ export function BillScreen({ billId }: { billId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locked]);
 
-  if (locked) return <CodeEntry label="Open bill" busy={busy === "code"} error={error} onCode={unlock} />;
+  if (locked) return <CodeEntry label="Open bill" askName={askName} busy={busy === "code"} error={error} onCode={unlock} />;
   if (gone) {
     return (
       <main className="proof pay-end" data-bill="gone">
@@ -396,7 +398,10 @@ export function BillScreen({ billId }: { billId: string }) {
                   Cancel
                 </button>
                 {guestReady ? null : (
-                  <button type="button" className="wp-no" disabled={busy !== null} onClick={() => setEditing(true)}>
+                  <button type="button" className="wp-no" disabled={busy !== null} onClick={() => {
+                    setError(null);
+                    setEditing(true);
+                  }}>
                     Edit
                   </button>
                 )}

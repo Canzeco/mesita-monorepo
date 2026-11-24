@@ -76,6 +76,40 @@ describe("Saved is server-side", () => {
     );
     expect(saved()).toEqual([A]);
   });
+
+  it("a save during a read is kept, then yields to the server if its write failed; another account never gets it", async () => {
+    vi.useFakeTimers();
+    try {
+      const { mod, saved } = await freshStore({ "mesita:saved-places-synced": "1" });
+      mod.setSavedPlacesRemote(() => {});
+      const { renderToString } = await import("react-dom/server");
+      const { createElement } = await import("react");
+      let setSaved: (id: string, on: boolean) => void = () => {};
+      renderToString(
+        createElement(function Probe() {
+          setSaved = mod.useSavedPlaces().setSaved;
+          return null;
+        }),
+      );
+      const server = async () => ({ ids: [B], places: [] });
+      await mod.syncSavedPlaces(async () => {
+        setSaved(A, true);
+        return server();
+      }, async () => {});
+      expect(saved()).toEqual([B, A]);
+      vi.advanceTimersByTime(60_000);
+      await mod.syncSavedPlaces(server, async () => {});
+      expect(saved()).toEqual([B]);
+      await mod.syncSavedPlaces(async () => {
+        setSaved(A, true);
+        mod.clearSavedPlacesLocal();
+        return server();
+      }, async () => {});
+      expect(saved()).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("the feed's copy", () => {

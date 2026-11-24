@@ -1,12 +1,7 @@
-// Manage › Guests (MESITA-2550, MESITA-2553): the pure half of
-// admin-web-list-guests and admin-web-set-guest-standing. An operator finds a
-// guest and sets their Class (regular or VIP, through a partner) and their Plan
-// (free or premium). The two are independent. The admin_set_guest_standing RPC is
-// the only writer; no consumer EF accepts either field. A VIP also carries the
-// partner it came through and an optional last day (MESITA-2556); neither
-// drives a rule, and no rate is stored anywhere.
-// An operator can also set one guest's monthly reservation cap (MESITA-2555,
-// consumers.reservation_cap_override; null = the plan's cap).
+// Admin › VIP (MESITA-2550, MESITA-4766): the pure half of
+// admin-web-list-guests. A guest's Class is automatic (an invitation code,
+// MESITA-4849); no Edge Function sets a Class, Plan, note or cap for a guest
+// (MESITA-4649 retired the one that did; its page left with MESITA-3846).
 
 import {
   toClass,
@@ -16,20 +11,15 @@ import {
 } from "./place-activity.ts";
 import {
   planReservationCap,
-  RESERVATION_CAP_OVERRIDE_MAX,
   readCapOverride,
 } from "./reservation-cap.ts";
-import { isUuid } from "./place-id.ts";
 import { nonBlank } from "./input.ts";
 
-/** Columns both admin EFs read back. */
+/** Columns admin-web-list-guests reads. */
 export const GUEST_ROW_SELECT =
-  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, vip_partner_id, vip_until, reservation_cap_override, created_at";
+  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, vip_partner_id, reservation_cap_override, created_at";
 
 export const GUEST_LIST_LIMIT = 50;
-
-/** The VIP note's limit, the same as the database CHECK. */
-export const GUEST_CLASS_NOTE_MAX = 280;
 
 export type GuestRow = {
   id: string;
@@ -47,8 +37,6 @@ export type GuestRow = {
   guestClassNote: string | null;
   /** MESITA-2556: the partner this VIP came through; null when none is recorded. */
   vipPartnerId: string | null;
-  /** MESITA-2556: the VIP's last day (YYYY-MM-DD), or null for no end date. */
-  vipUntil: string | null;
   /** Operator-set reservations a month; null = the plan's cap. */
   reservationCapOverride: number | null;
   /** The plan's cap, what applies while there is no override. */
@@ -70,7 +58,6 @@ export type RawGuest = {
   guest_class_set_by?: unknown;
   guest_class_note?: unknown;
   vip_partner_id?: unknown;
-  vip_until?: unknown;
   reservation_cap_override?: unknown;
   created_at?: unknown;
 };
@@ -94,7 +81,6 @@ export function toGuestRow(
     guestClassSetByEmail: setBy ? setByEmail(setBy) : null,
     guestClassNote: nonBlank(raw.guest_class_note),
     vipPartnerId: nonBlank(raw.vip_partner_id),
-    vipUntil: nonBlank(raw.vip_until),
     reservationCapOverride: readCapOverride(raw.reservation_cap_override),
     planReservationCap: planReservationCap(raw.plan),
     createdAt: String(raw.created_at ?? ""),
@@ -123,142 +109,4 @@ export function guestSearchFilter(q: unknown): string | null {
   const digits = clean.replace(/-/g, "");
   if (/^\d{8}$/.test(digits)) terms.push(`code.eq.${digits.slice(0, 4)}-${digits.slice(4)}`);
   return terms.join(",");
-}
-
-export type StandingPatch = {
-  plan?: ConsumerPlan;
-  /** Present when the note is being set; null clears it. */
-  guestClassNote?: string | null;
-  /** Present when the partner is being set; null clears it. */
-  vipPartnerId?: string | null;
-  /** Present when the last day is being set (YYYY-MM-DD); null = no end date. */
-  vipUntil?: string | null;
-  /** Present when the cap is being set; null goes back to the plan's cap. */
-  reservationCapOverride?: number | null;
-};
-
-/** A refusal with a stable code and a message that says the fix. */
-export type StandingError = { code: string; error: string; status: number };
-
-/** A real calendar day as YYYY-MM-DD, or null. */
-function calendarDay(v: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
-  const d = new Date(`${v}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v ? v : null;
-}
-
-/** The body of a set call, checked: at least one field. `today` is the UTC
- *  day a new last day may not fall before. */
-export function readStandingBody(
-  body: unknown,
-  today: string = new Date().toISOString().slice(0, 10),
-): { ok: true; consumerId: string; patch: StandingPatch } | ({ ok: false } & StandingError) {
-  const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
-  // An Admin built before MESITA-2553 still sends `diamond`.
-  if ("diamond" in b) {
-    return {
-      ok: false,
-      status: 400,
-      code: "stale_client",
-      error: "Admin is out of date. Reload the page.",
-    };
-  }
-  const consumerId = typeof b.consumerId === "string" ? b.consumerId.trim() : "";
-  if (!/^[0-9a-f-]{36}$/i.test(consumerId)) {
-    return { ok: false, status: 400, code: "invalid_consumer", error: "consumerId must be a guest's id" };
-  }
-  const patch: StandingPatch = {};
-  // MESITA-3850: Class is automatic (an invitation code, MESITA-4849), so no operator sets it.
-  if ("guestClass" in b) {
-    return {
-      ok: false,
-      status: 400,
-      code: "class_automatic",
-      error:
-        "Class is automatic: VIP is by invitation code. Send plan, the note, the partner, the last day or the cap.",
-    };
-  }
-  if ("plan" in b) {
-    if (b.plan !== "free" && b.plan !== "premium") {
-      return {
-        ok: false,
-        status: 400,
-        code: "invalid_plan",
-        error: `plan must be 'free' or 'pro' (got '${String(b.plan)}')`,
-      };
-    }
-    patch.plan = b.plan;
-  }
-  if ("guestClassNote" in b) {
-    const v = b.guestClassNote;
-    if (v !== null && typeof v !== "string") {
-      return { ok: false, status: 400, code: "invalid_note", error: "guestClassNote must be text or null" };
-    }
-    const note = typeof v === "string" ? v.trim() : "";
-    if (note.length > GUEST_CLASS_NOTE_MAX) {
-      return {
-        ok: false,
-        status: 400,
-        code: "note_too_long",
-        error: `guestClassNote is ${note.length} characters; the limit is ${GUEST_CLASS_NOTE_MAX}`,
-      };
-    }
-    patch.guestClassNote = note === "" ? null : note;
-  }
-  if ("reservationCapOverride" in b) {
-    const v = b.reservationCapOverride;
-    if (v !== null && readCapOverride(v) === null) {
-      return {
-        ok: false,
-        status: 400,
-        code: "invalid_reservation_cap",
-        error:
-          `reservationCapOverride must be a whole number 0..${RESERVATION_CAP_OVERRIDE_MAX}, or null for the plan's cap (got '${String(v)}')`,
-      };
-    }
-    patch.reservationCapOverride = v as number | null;
-  }
-  if ("vipPartnerId" in b) {
-    const v = b.vipPartnerId;
-    if (v !== null && (typeof v !== "string" || !isUuid(v.trim()))) {
-      return {
-        ok: false,
-        status: 400,
-        code: "invalid_partner",
-        error: "vipPartnerId must be a partner's id or null",
-      };
-    }
-    patch.vipPartnerId = v === null ? null : (v as string).trim().toLowerCase();
-  }
-  if ("vipUntil" in b) {
-    const v = b.vipUntil;
-    const day = typeof v === "string" ? calendarDay(v.trim()) : null;
-    if (v !== null && !day) {
-      return {
-        ok: false,
-        status: 400,
-        code: "invalid_vip_until",
-        error: `vipUntil must be a day as YYYY-MM-DD, or null for no end date (got '${String(v)}')`,
-      };
-    }
-    if (day && day < today) {
-      return {
-        ok: false,
-        status: 400,
-        code: "vip_until_past",
-        error: `vipUntil ${day} is in the past; pick today (${today}) or later`,
-      };
-    }
-    patch.vipUntil = day;
-  }
-  if (Object.keys(patch).length === 0) {
-    return {
-      ok: false,
-      status: 400,
-      code: "nothing_to_set",
-      error:
-        "Send plan, guestClassNote, vipPartnerId, vipUntil, reservationCapOverride, or several together",
-    };
-  }
-  return { ok: true, consumerId, patch };
 }

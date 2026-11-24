@@ -186,9 +186,11 @@ function pendingChangeOf(row: EFReservationRow): ReservationItem["pendingChange"
 
 export function toReservationItem(row: EFReservationRow): ReservationItem {
   const state = reservationPhase(row);
-  // A reservation is still yours to move while it's live and ahead of us.
-  const live =
-    state === "created" || state === "booking" || state === "confirmed";
+  // A reservation is still yours to move while it's live and ahead of us: the
+  // server refuses both once the slot's time passes, with no grace (MESITA-4139).
+  const movable =
+    (state === "created" || state === "booking" || state === "confirmed") &&
+    !(new Date(row.reserved_at).getTime() < Date.now());
   const alternatives = normalizeClientAlternatives(row.alternatives);
   const counterOffer =
     row.state === "pending" && (alternatives?.length ?? 0) > 0;
@@ -212,8 +214,8 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     // The 8-digit code the agents speak on calls — the guest's handle on the booking.
     referenceCode: row.reference_code ?? undefined,
     notes: row.notes ?? undefined,
-    canCancel: live,
-    canReschedule: live,
+    canCancel: movable,
+    canReschedule: movable,
     guestNotify: row.consumer_notify === "app" ? "app" : "call",
     guestConfirmedAt: row.consumer_confirmed_at ?? null,
     alternatives,

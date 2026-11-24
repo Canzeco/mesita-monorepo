@@ -7,8 +7,9 @@ import {
   readJson,
   readPlaceIdAlias } from "./http.ts";
 import { readAdminPlace } from "./admin-place.ts";
+import { anonymousReviews } from "./anonymous-reviews.ts";
 import { writePlace } from "./place-doc.ts";
-import { isPlaceListed } from "./place-state.ts";
+import { isPlaceDeleted, isPlaceListed } from "./place-state.ts";
 import { recordAdminOperatorEvent } from "./admin-operator-events.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
 
@@ -16,6 +17,12 @@ import { requireAdminRequest } from "../_shared/request.ts";
 const UNLISTED_STATE = "paused";
 /** Where a re-list lands. */
 const LISTED_STATE = "active";
+
+/** The reply, as business-web-get-place answers it: no reviewer name or photo (MESITA-4905). */
+function withAnonymousReviews(place: unknown) {
+  const p = place as Record<string, unknown>;
+  return { ...p, google_reviews: anonymousReviews(p.google_reviews) };
+}
 
 type Body = { placeId?: unknown; projectId?: unknown; listed?: unknown };
 
@@ -53,8 +60,13 @@ export async function handleSetPlaceListed(req: Request, source: string): Promis
   if (alreadyListed === listed) {
     const readBack = await readAdminPlace(admin, placeId);
     if (!readBack.ok) return readBack.response;
-    const place = readBack.place;
+    const place = withAnonymousReviews(readBack.place);
     return json({ ok: true, listed, state: currentState, place });
+  }
+
+  // A deleted place never comes back through this toggle (MESITA-4909).
+  if (listed && isPlaceDeleted(currentState)) {
+    return json({ ok: false, code: "deleted", error: "This place was deleted. Enable can't bring it back." }, 409);
   }
 
   const nextState = listed ? LISTED_STATE : UNLISTED_STATE;
@@ -92,7 +104,7 @@ export async function handleSetPlaceListed(req: Request, source: string): Promis
 
   const readBack = await readAdminPlace(admin, placeId);
   if (!readBack.ok) return readBack.response;
-  const place = readBack.place;
+  const place = withAnonymousReviews(readBack.place);
 
   return json({ ok: true, listed, state: nextState, place });
 }

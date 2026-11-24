@@ -208,7 +208,13 @@ export function RescheduleForm({ r }: { r: ReservationItem }) {
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice, hours, tz);
+  const time = resolveSlot(
+    date,
+    timeChoice,
+    hours,
+    tz,
+    r.reservedAt ? placeDateTime(r.reservedAt, tz) : null,
+  );
 
   async function submitReschedule() {
     if (busy || !date || !time) return;
@@ -280,7 +286,11 @@ export function RescheduleForm({ r }: { r: ReservationItem }) {
   );
 }
 
-type Loaded = { state: "loading" } | { state: "missing" } | { state: "found"; r: ReservationItem };
+type Loaded =
+  | { state: "loading" }
+  | { state: "failed" }
+  | { state: "missing" }
+  | { state: "found"; r: ReservationItem };
 
 export function RescheduleRoute({ id }: { id: string }) {
   const supabase = useBrowserSupabase();
@@ -299,7 +309,7 @@ export function RescheduleRoute({ id }: { id: string }) {
         );
       })
       .catch(() => {
-        if (!cancelled) setLoaded({ state: "missing" });
+        if (!cancelled) setLoaded({ state: "failed" });
       });
     return () => {
       cancelled = true;
@@ -310,6 +320,15 @@ export function RescheduleRoute({ id }: { id: string }) {
     return (
       <Screen title="Reschedule" scrolls>
         <p className="text-muted-foreground px-4 py-6 text-sm">Loading…</p>
+      </Screen>
+    );
+  }
+  if (loaded.state === "failed") {
+    return (
+      <Screen title="Reschedule" scrolls>
+        <p className="text-muted-foreground px-4 py-6 text-sm">
+          Couldn&apos;t load this reservation. Go back and try again.
+        </p>
       </Screen>
     );
   }

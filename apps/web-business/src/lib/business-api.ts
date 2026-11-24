@@ -464,9 +464,12 @@ export type PlacePayments = {
   currency: string;
   /** The Loyalty Cards Agreement (MESITA-3589); older servers lack it. */
   contract?: LoyaltyCardsContract;
-  /** Whether a waiter has a code (MESITA-4871). */
+  /** Whether the place has a code. */
   code_set: boolean;
-  waiters: PlaceWaiter[];
+  /** The place's one 6-digit code (MESITA-4904); null for an editor, or none. */
+  staff_code: string | null;
+  /** The waiter types their name before the code. */
+  name_required: boolean;
   /** MESITA-4890: bills need no waiter code (Discount only). */
   no_code?: boolean;
   /** MESITA-3946: credit guests hold here now; null when the read failed. */
@@ -533,7 +536,8 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       contract: r.data.contract,
       code_set: r.data.code_set === true,
       no_code: r.data.no_code === true,
-      waiters: Array.isArray(r.data.waiters) ? r.data.waiters : [],
+      staff_code: typeof r.data.staff_code === "string" ? r.data.staff_code : null,
+      name_required: r.data.name_required === true,
       credits_balance: r.data.credits_balance
         ? {
             available_cents: Number(r.data.credits_balance.available_cents) || 0,
@@ -661,25 +665,12 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** One waiter, their tips (MESITA-4871) and their code (MESITA-4886; null for
- *  an editor, a removed waiter, or a code made before it was kept). */
-export type PlaceWaiter = {
-  id: string;
-  name: string;
-  removed: boolean;
-  tips_24h_cents: number;
-  bills_24h: number;
-  tips_7d_cents: number;
-  bills_7d: number;
-  code?: string | null;
-};
-
-/** Add a waiter, replace their 6-digit code or remove them. */
+/** The place's code: a new one, the name asked with it, or codes on and off. */
 export async function setWaiter(
   placeId: string,
-  body: { action: "add"; name: string } | { action: "new_code" | "remove"; waiter_id: string } | { action: "codes_on" | "codes_off" },
-): Promise<Result<{ waiter_id: string; name: string; code?: string }>> {
-  const r = await efInvoke<{ waiter_id: string; name: string; code?: string }>("business-web-set-waiter", { place_id: placeId, ...body });
+  action: "new_code" | "name_on" | "name_off" | "codes_on" | "codes_off",
+): Promise<Result<{ code?: string }>> {
+  const r = await efInvoke<{ code?: string }>("business-web-set-waiter", { place_id: placeId, action });
   if (!r.ok) return fail(r);
   return { ok: true, data: r.data };
 }

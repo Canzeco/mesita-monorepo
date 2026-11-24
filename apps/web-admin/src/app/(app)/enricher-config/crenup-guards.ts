@@ -121,3 +121,31 @@ export function savePayload(s: CrenupSettings) {
     enrichEveryViews: s.enrichEveryViews,
   };
 }
+
+/** The EF checks these as one chain, so they travel together. */
+const FUNNEL_KEYS = [
+  "gatherGoogleImages",
+  "gatherInstagramDepth",
+  "gatherInstagramPosts",
+  "analyzeGoogleImages",
+  "analyzeInstagramImages",
+  "saveTotalImages",
+] as const;
+
+/** Only what this page changed: an open tab never writes back knobs another
+ *  tab saved since. */
+export function changedPayload(
+  next: CrenupSettings,
+  saved: CrenupSettings,
+): Partial<ReturnType<typeof savePayload>> {
+  const a = savePayload(next);
+  const b = savePayload(saved);
+  const funnel = FUNNEL_KEYS.some((k) => a[k] !== b[k]);
+  return Object.fromEntries(
+    Object.entries(a).filter(
+      ([k, v]) =>
+        v !== b[k as keyof typeof b] ||
+        (funnel && (FUNNEL_KEYS as readonly string[]).includes(k)),
+    ),
+  );
+}

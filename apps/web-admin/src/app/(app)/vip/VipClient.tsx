@@ -174,7 +174,7 @@ export function VipClient({
       <SectionCard
         icon={<TicketIcon aria-hidden />}
         title="Invitation codes"
-        subtitle="Twelve digits a guest types once on Me to become VIP. Each code is shown once, when you issue it."
+        subtitle="Twelve digits a guest types once on Me to become VIP. Each code is shown once, when you issue it. Lists every unused code, and the newest 100 used or revoked."
       >
         <div className="mt-4 flex flex-col gap-4">
           {issued ? (

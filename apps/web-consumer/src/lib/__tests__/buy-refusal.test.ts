@@ -29,6 +29,7 @@ describe("isDefinitiveRefusal", () => {
     expect(isDefinitiveRefusal(null, null)).toBe(false);
     expect(isDefinitiveRefusal(502, "card_failed")).toBe(false);
     expect(isDefinitiveRefusal(502, "stripe_unreachable")).toBe(false);
+    expect(isDefinitiveRefusal(409, "in_progress")).toBe(false);
     expect(isDefinitiveRefusal(500, null)).toBe(false);
   });
 });

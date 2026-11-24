@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  changedPayload,
   clampFunnel,
   savePayload,
   type CrenupSettings,
@@ -163,5 +164,23 @@ describe("savePayload", () => {
       "requestThreshold", "reviewsUpdateEveryViews", "reviewsUpdateFirstAfterViews",
       "saveImagesToStorage", "saveTotalImages", "updateEveryViews", "updateFirstAfterViews",
     ]);
+  });
+});
+
+describe("changedPayload", () => {
+  it("sends only what changed, so a stale tab never reverts another's save", () => {
+    expect(changedPayload({ ...seed, createOnOpenAdmin: false }, seed)).toEqual({ createOnOpenAdmin: false });
+    expect(changedPayload(seed, seed)).toEqual({});
+  });
+
+  it("sends the image chain together", () => {
+    expect(changedPayload({ ...seed, analyzeInstagramImages: 8 }, seed)).toEqual({
+      gatherGoogleImages: 10,
+      gatherInstagramDepth: 10,
+      gatherInstagramPosts: 8,
+      analyzeGoogleImages: 10,
+      analyzeInstagramImages: 8,
+      saveTotalImages: 10,
+    });
   });
 });

@@ -7,7 +7,7 @@ import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
 import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR: Bill, Tip, then Code
-// (MESITA-4879): their own 6 digits, which name the waiter, then
+// (MESITA-4879): the place's 6 digits (MESITA-4904), then
 // whose QR it is, and Send bill. Nothing about the phone is kept.
 
 type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
@@ -20,6 +20,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const [view, setView] = useState<"type" | "code" | "guest" | "ended" | "closed">("type");
   const [found, setFound] = useState<Found | null>(null);
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
+  const [askName, setAskName] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // THE GUEST WATCHES IT BEING TYPED (MESITA-4887): every 250 ms when it
@@ -58,7 +59,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setBusy(null);
   };
 
-  async function enter(code: string | null): Promise<boolean> {
+  async function enter(code: string | null, name: string | null = null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
@@ -72,7 +73,8 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       // Only a refused code is typed again.
       return r === "failed" || !("code" in r) || r.code !== "staff_only";
     };
-    const key = await signIn(code, { token });
+    const key = await signIn(code, { token }, name);
+    if (key !== "failed" && "refused" in key && key.name_required) setAskName(true);
     if (code === null && key !== "failed" && "refused" in key && key.code === "code_needed") {
       setBusy(null);
       setView("code");
@@ -103,8 +105,9 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     const r = await sendBill(found.staff, { bill_id: found.billId, version: found.version, bill_cents: typed.bill, tip_cents: typed.tip });
     if (r === "failed") return say(r);
     if ("refused" in r) {
-      // Accepted or changed on another phone: the bill's own screen says it.
-      if (r.code === "accepted" || r.code === "stale") return go(found.billId, found.staff);
+      // Accepted or changed on another phone, or the code is needed again: the
+      // bill's own screen says it.
+      if (r.code === "accepted" || r.code === "stale" || r.code === "staff_code_needed") return go(found.billId, found.staff);
       return say(r);
     }
     go(found.billId, found.staff);
@@ -116,6 +119,8 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setError(null);
     const r = await closeBill(found.staff, found.billId, "cancel");
     if (r === "failed") return say(r);
+    // Not cancelled (already paid, or over): the bill's own screen says which.
+    if ("refused" in r) return go(found.billId, found.staff);
     setBusy(null);
     setView("ended");
   }
@@ -157,6 +162,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     return (
       <CodeEntry
         label="Next"
+        askName={askName}
         busy={busy === "code"}
         error={error}
         onCode={enter}

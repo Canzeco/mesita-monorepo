@@ -192,6 +192,7 @@ export function SearchMap({
   places,
   dots = [],
   userLocation,
+  chosenLocation,
   selectedId,
   pins,
   searching = false,
@@ -199,11 +200,14 @@ export function SearchMap({
   onTapPlacePin,
   onSelectPin,
   onFirstViewport,
+  onMapFailed,
   onUserViewport,
   onCameraMoveStart,
   onLiveViewport,
 }: {
   apiKey: string;
+  /** Where the map opens with no device fix. */
+  chosenLocation: Coords | null;
   places: Place[];
   /** Places n+1…m of this view (MESITA-3980): small, no label, no tap. */
   dots?: MapDot[];
@@ -224,6 +228,8 @@ export function SearchMap({
   onTapPlacePin: (place: Place) => void;
   onSelectPin?: (pin: SearchMapPin) => void;
   onFirstViewport?: (box: ViewportBox) => void;
+  /** The Maps script failed: no viewport will ever report. */
+  onMapFailed?: () => void;
   onUserViewport?: (box: ViewportBox, meta: ViewportMeta) => void;
   /** The camera started moving: a pending reload is cancelled. */
   onCameraMoveStart?: () => void;
@@ -259,6 +265,7 @@ export function SearchMap({
           places={places}
           dots={dots}
           userLocation={userLocation}
+          chosenLocation={chosenLocation}
           selectedId={selectedId}
           pins={pins}
           cameraIntent={cameraIntent}
@@ -271,6 +278,7 @@ export function SearchMap({
           onLiveViewport={onLiveViewport}
         />
         {!mapReady && <MapLoadingVeil onGiveUp={handleMapReady} />}
+        <MapFailureReporter onFailed={onMapFailed} />
       </APIProvider>
       {mapReady && <SearchMapReticle searching={searching} />}
     </div>
@@ -374,6 +382,17 @@ function MapLoadingVeil({ onGiveUp }: { onGiveUp: () => void }) {
   return <MapVeil />;
 }
 
+function MapFailureReporter({ onFailed }: { onFailed?: () => void }) {
+  const status = useApiLoadingStatus();
+  const failed =
+    status === APILoadingStatus.FAILED ||
+    status === APILoadingStatus.AUTH_FAILURE;
+  useEffect(() => {
+    if (failed) onFailed?.();
+  }, [failed, onFailed]);
+  return null;
+}
+
 function hasCoords(
   place: Place,
 ): place is Place & { lat: number; lng: number } {
@@ -384,6 +403,7 @@ function SearchMapCanvas({
   places,
   dots,
   userLocation,
+  chosenLocation,
   selectedId,
   pins,
   cameraIntent,
@@ -398,6 +418,7 @@ function SearchMapCanvas({
   places: Place[];
   dots: MapDot[];
   userLocation: Coords | null;
+  chosenLocation: Coords | null;
   selectedId: string | null;
   pins?: SearchMapPin[] | null;
   cameraIntent?: CameraIntent | null;
@@ -412,13 +433,14 @@ function SearchMapCanvas({
   onLiveViewport?: (box: ViewportBox) => void;
 }) {
   const located = places.filter(hasCoords);
+  const opensAt = userLocation ?? chosenLocation;
 
   return (
     <Map
       // Uncontrolled: these are read once, at mount. Every later move is a
       // CameraIntent the guest asked for.
-      defaultCenter={userLocation ?? MONTERREY_CENTER}
-      defaultZoom={userLocation ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
+      defaultCenter={opensAt ?? MONTERREY_CENTER}
+      defaultZoom={opensAt ? MAP_USER_ZOOM : MAP_DEFAULT_ZOOM}
       gestureHandling="greedy"
       disableDefaultUI
       // `disableDefaultUI` does NOT cover this one. Google keeps a "Keyboard

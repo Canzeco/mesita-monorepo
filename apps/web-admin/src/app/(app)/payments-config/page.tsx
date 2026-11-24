@@ -41,15 +41,6 @@ const WHO: Record<string, string> = {
   voucher_vip: "Only VIP guests (invited by code), one per visit",
 };
 
-/** "MX$100", "¥1,000": whole units in the currency's own symbol. */
-const whole = (amount: number, code: string) => {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: code, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `${amount.toLocaleString("en-US")} ${code}`;
-  }
-};
-
 const wait = (sec: number) => (sec <= 0 ? "At once" : sec % 3600 === 0 ? `${sec / 3600} h` : `${Math.round(sec / 60)} min`);
 
 export default async function PaymentsConfigPage() {
@@ -83,7 +74,7 @@ export default async function PaymentsConfigPage() {
           title="Vouchers"
           subtitle={
             res.ok
-              ? `A place sells vouchers in its own currency (${res.currencies.join(", ")}). Small starts with 1; Big is 10× Small. Mesita's fee: ${res.fee_bps / 100}% of the price.`
+              ? `A place sells vouchers in its own currency (${res.currencies.join(", ")}). Mesita's fee: ${res.fee_bps / 100}% of the price.`
               : undefined
           }
         >
@@ -133,7 +124,7 @@ export default async function PaymentsConfigPage() {
           <SectionCard
             icon={<CoinsIcon aria-hidden />}
             title="Currencies"
-            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the Loyalty Cards Agreement). Small +10% starts with 1; Big +20% is 10× Small; VIP costs the Small price."
+            subtitle="Three countries at launch: Mexico, the United States and Canada, each in its own currency (fixed when the place signs the Loyalty Cards Agreement)."
           >
             <div className="mt-4">
               <Table className="min-w-[640px]" data-admin-voucher-currencies>
@@ -141,8 +132,6 @@ export default async function PaymentsConfigPage() {
                   <Tr>
                     <Th>Currency</Th>
                     <Th>Country</Th>
-                    <Th numeric>Small · +10%</Th>
-                    <Th numeric>Big · +20%</Th>
                     <Th>Status</Th>
                   </Tr>
                 </THead>
@@ -151,12 +140,6 @@ export default async function PaymentsConfigPage() {
                     <Tr key={c.code} data-currency={c.code}>
                       <Td className="font-semibold">{c.code}</Td>
                       <Td className="text-muted-foreground">{c.country}</Td>
-                      <Td numeric className="whitespace-nowrap">
-                        {whole(c.small, c.code)} → {whole(c.small * 1.1, c.code)}
-                      </Td>
-                      <Td numeric className="whitespace-nowrap">
-                        {whole(c.big, c.code)} → {whole(c.big * 1.2, c.code)}
-                      </Td>
                       <Td className={c.selling ? "font-semibold whitespace-nowrap" : "text-muted-foreground whitespace-nowrap"}>
                         {c.selling ? "Selling" : "Not yet"}
                       </Td>

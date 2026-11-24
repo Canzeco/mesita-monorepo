@@ -158,8 +158,9 @@ export function otpErrorMessage(
   if (code === "over_request_rate_limit" || error.status === 429) {
     return "Too many attempts. Wait a few minutes and try again.";
   }
+  // Supabase answers otp_expired for a wrong code too.
   if (code === "otp_expired" || /expired/i.test(message)) {
-    return "That code expired. Ask for a new one.";
+    return `That code isn't right or has expired. Check the ${digits} digits or ask for a new one.`;
   }
   if (code === "email_address_not_authorized" || /not authorized/i.test(message)) {
     return "Email sign-in isn't available yet. Use your phone or Google.";

@@ -72,6 +72,10 @@ export function LocationGate() {
   const here = needsLocation(usePathname() ?? "");
   const asking = here && answered && !hasPoint;
   const wasAsking = useRef(false);
+  const hasPointRef = useRef(hasPoint);
+  useEffect(() => {
+    hasPointRef.current = hasPoint;
+  }, [hasPoint]);
   useEffect(() => {
     if (settled) markAnswered();
   }, [settled]);
@@ -90,7 +94,10 @@ export function LocationGate() {
     }
   }, [asking, hasPoint, supabase]);
 
-  if (!asking) return null;
+  // A fix that lands mid-pin must not take the map away: the pin step stays
+  // until the guest saves it or goes back.
+  const pinning = here && open && picker !== null;
+  if (!asking && !pinning) return null;
 
   const close = () => {
     setOpen(false);
@@ -121,7 +128,22 @@ export function LocationGate() {
 
       {/* The floating location modal (MESITA-4628), Home's own. While its
           pin step is open, the backdrop and Escape act as Back. */}
-      <LocationModal open={open} onClose={close} picker={picker} onPickerChange={setPicker} />
+      <LocationModal
+        open={open}
+        onClose={close}
+        picker={picker}
+        onPickerChange={(next) => {
+          // A search pick that resolves after a point landed and the gate
+          // closed must not bring it back.
+          if (next !== null && picker === null && hasPointRef.current) {
+            setOpen(false);
+            return;
+          }
+          setPicker(next);
+          // Back with a point already: nothing left to ask.
+          if (next === null && hasPoint) setOpen(false);
+        }}
+      />
     </div>
   );
 }

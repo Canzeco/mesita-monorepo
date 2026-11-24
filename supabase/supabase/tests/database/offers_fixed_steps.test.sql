@@ -20,11 +20,11 @@ insert into public.consumers (id) values
 -- MESITA-4746: a story pays only a guest with the followers badge (public,
 -- more than 1,000 followers). Both story guests wear it; d does not.
 update public.consumers
-   set instagram_verified_at = now(), instagram_is_private = false, instagram_followers_count = 5000
+   set instagram_verified_at = now(), instagram_followers_count = 5000
  where id in ('00000000-0000-4000-8000-0000000a4717', '00000000-0000-4000-8000-0000000b4717');
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000d4747');
-insert into public.consumers (id, instagram_verified_at, instagram_is_private, instagram_followers_count)
-values ('00000000-0000-4000-8000-0000000d4747', now(), false, 500);
+insert into public.consumers (id, instagram_verified_at, instagram_followers_count)
+values ('00000000-0000-4000-8000-0000000d4747', now(), 500);
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000014717', 'Steps Probe');
 insert into public.places (id, slug, state, content_state, currency)

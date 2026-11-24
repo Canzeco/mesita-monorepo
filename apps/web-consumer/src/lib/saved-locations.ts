@@ -50,6 +50,47 @@ export function setSavedLocationsRemote(sink: SavedLocationsRemote | null): void
   remote = sink;
 }
 
+// WHAT THIS BROWSER JUST WROTE (MESITA-4903): a server list read while a change
+// was in flight may predate it, so a sync lays these over its snapshot. Only
+// changes sent since shortly before the read began count: an older one that
+// failed still yields to the server.
+const WRITE_SETTLE_MS = 10_000;
+/** A null `location` is a removal. `front` as in SavedLocationsRemote. */
+const recent = new Map<
+  string,
+  { location: SavedLocation | null; front: boolean; at: number }
+>();
+// Bumped when the account changes: a sync begun before it is dropped.
+let epoch = 0;
+
+function writeUpsert(location: SavedLocation, front: boolean): void {
+  if (!remote) return;
+  const earlier = recent.get(location.id);
+  const at = Date.now();
+  const pendingFront = earlier?.front && at - earlier.at < WRITE_SETTLE_MS;
+  if (front) recent.delete(location.id); // keep insertion order = newest last
+  recent.set(location.id, { location, front: front || Boolean(pendingFront), at });
+  remote.upsert(location, front);
+}
+
+function writeRemove(id: string): void {
+  if (!remote) return;
+  recent.set(id, { location: null, front: false, at: Date.now() });
+  remote.remove(id);
+}
+
+function withRecent(server: readonly SavedLocation[], since: number): SavedLocation[] {
+  let list = [...server];
+  for (const [id, w] of recent) {
+    if (w.at < since) continue;
+    const { location } = w;
+    if (location === null) list = list.filter((l) => l.id !== id);
+    else if (w.front) list = [location, ...list.filter((l) => l.id !== id)];
+    else list = list.map((l) => (l.id === id ? location : l));
+  }
+  return list;
+}
+
 /** At most this many; see `evictionFor` for which one makes room. */
 export const SAVED_LOCATIONS_MAX = 8;
 export const SAVED_LOCATION_FALLBACK = "Saved location";
@@ -253,8 +294,8 @@ export function addSavedLocation(
   const rest = evict ? cache.filter((l) => l.id !== evict.id) : cache;
   const kept = write([location, ...rest]);
   // The eviction first: the server refuses a ninth pin.
-  if (evict) remote?.remove(evict.id);
-  remote?.upsert(getSavedLocations()[0], true);
+  if (evict) writeRemove(evict.id);
+  writeUpsert(getSavedLocations()[0], true);
   return { location: getSavedLocations()[0], kept };
 }
 
@@ -267,7 +308,7 @@ export function updateSavedLocation(id: string, patch: SavedLocationPatch): Save
   if (!current) return null;
   const next = { ...current, ...patch, id, kind: "point" as const };
   const kept = write([next, ...cache.filter((l) => l.id !== id)]);
-  remote?.upsert(getSavedLocations()[0], true);
+  writeUpsert(getSavedLocations()[0], true);
   return { location: getSavedLocations()[0], kept };
 }
 
@@ -279,7 +320,7 @@ export function patchSavedLocationInPlace(id: string, patch: SavedLocationPatch)
     cache.map((l) => (l.id === id ? { ...l, ...patch, id, kind: "point" as const } : l)),
   );
   const written = cache.find((l) => l.id === id);
-  if (written) remote?.upsert(written, false);
+  if (written) writeUpsert(written, false);
   return kept;
 }
 
@@ -304,7 +345,7 @@ export function removeSavedLocation(id: string): void {
   ensureHydrated();
   if (!cache.some((l) => l.id === id)) return;
   write(cache.filter((l) => l.id !== id));
-  remote?.remove(id);
+  writeRemove(id);
 }
 
 /** Called by consumer-local-reset.ts when the signed-in guest changes. */
@@ -317,6 +358,8 @@ export function clearSavedLocationsLocal(): void {
       /* private mode — nothing to clear */
     }
   }
+  recent.clear();
+  epoch += 1;
   cache = EMPTY;
   hydrated = true;
   for (const l of listeners) l();
@@ -333,12 +376,15 @@ export async function syncSavedLocations(
   push: (location: SavedLocation) => Promise<unknown>,
 ): Promise<void> {
   if (typeof window === "undefined") return;
+  const begun = epoch;
+  const since = Date.now() - WRITE_SETTLE_MS;
   let server: SavedLocation[];
   try {
     server = readStoredLocations(await read());
   } catch {
     return;
   }
+  if (begun !== epoch) return;
   ensureHydrated();
   let firstSync = false;
   try {
@@ -351,8 +397,11 @@ export async function syncSavedLocations(
     const pending = cache.filter((l) => !onServer.has(l.id)).reverse();
     let room = SAVED_LOCATIONS_MAX - server.length;
     let pushed = false;
-    for (const l of pending) {
+    for (const old of pending) {
       if (room <= 0) break;
+      // As it stands now: edited or removed while the pushes ran.
+      const l = cache.find((c) => c.id === old.id);
+      if (!l) continue;
       try {
         await push(l);
         room -= 1;
@@ -365,6 +414,7 @@ export async function syncSavedLocations(
         const status = (err as { status?: unknown } | null)?.status;
         if (status !== 400 && status !== 409) return;
       }
+      if (begun !== epoch) return;
     }
     if (pushed) {
       try {
@@ -372,6 +422,7 @@ export async function syncSavedLocations(
       } catch {
         return;
       }
+      if (begun !== epoch) return;
     }
     try {
       window.localStorage.setItem(SYNCED_KEY, "1");
@@ -379,7 +430,7 @@ export async function syncSavedLocations(
       /* best effort */
     }
   }
-  write(server.slice(0, SAVED_LOCATIONS_MAX));
+  write(withRecent(server, since).slice(0, SAVED_LOCATIONS_MAX));
   hydrated = true;
 }
 

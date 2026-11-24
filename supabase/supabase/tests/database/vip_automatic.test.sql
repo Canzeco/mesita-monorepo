@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(17);
+select plan(15);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3850'),
@@ -18,18 +18,18 @@ insert into auth.users (id) values
   ('00000000-0000-4000-8000-000000103850'),
   ('00000000-0000-4000-8000-000000113850'),
   ('00000000-0000-4000-8000-000000124662');
-insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
-  ('00000000-0000-4000-8000-0000000a3850', null, null, null, null),
-  ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 5000, false),
-  ('00000000-0000-4000-8000-0000000c3850', 'probe_3850_c', now(), 5001, false),
-  ('00000000-0000-4000-8000-0000000f3850', 'probe_3850_f', now(), 90000, true),
-  ('00000000-0000-4000-8000-000000103850', 'probe_3850_g', now(), 90000, null);
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count) values
+  ('00000000-0000-4000-8000-0000000a3850', null, null, null),
+  ('00000000-0000-4000-8000-0000000b3850', 'probe_3850_b', now(), 5000),
+  ('00000000-0000-4000-8000-0000000c3850', 'probe_3850_c', now(), 5001),
+  ('00000000-0000-4000-8000-0000000f3850', 'probe_3850_f', now(), 90000),
+  ('00000000-0000-4000-8000-000000103850', 'probe_3850_g', now(), 90000);
 insert into public.consumers (id, instagram_followers_count) values
   ('00000000-0000-4000-8000-0000000d3850', 90000);
-insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
-  ('00000000-0000-4000-8000-000000113850', null, null, 6000, false);
-insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_is_private) values
-  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 5001, false);
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count) values
+  ('00000000-0000-4000-8000-000000113850', null, null, 6000);
+insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count) values
+  ('00000000-0000-4000-8000-0000000e3850', 'probe_3850_e', now(), 5001);
 
 select is(
   (select attgenerated::text from pg_attribute
@@ -119,19 +119,6 @@ select throws_ok(
   '428C9',
   null,
   'nothing can write the class'
-);
-
-select throws_ok(
-  $$select * from public.admin_set_guest_standing('00000000-0000-4000-8000-0000000a3850', 'vip', null, null, false, null, false, null, false, null)$$,
-  '22023',
-  null,
-  'the standing RPC refuses a class'
-);
-
-select is(
-  (select plan from public.admin_set_guest_standing('00000000-0000-4000-8000-0000000a3850', null, 'premium', null, false, null, false, null, false, null)),
-  'premium',
-  'the standing RPC still sets the Plan'
 );
 
 select ok(

@@ -11,7 +11,10 @@ import { CONSUMER_ROUTES, payCodePath, placeOffersPath } from "@/lib/consumer-ro
 import { hasInAppBack, lastMoveWasTraverse, navigateTo, noteTraverse, replaceAddress } from "@/lib/navigate";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { PlacePhoto } from "./pay-common";
-import { usePayLocation } from "./pay-location";
+import { roundLocation, usePayLocation, type Loc } from "./pay-location";
+import { LocationPicker } from "@/components/consumer/home/LocationPicker";
+import { useActiveLocation } from "@/lib/active-location";
+import { useUserLocation } from "@/lib/use-user-location";
 import { usePayPlaces } from "./use-pay-places";
 import { useOpenBill } from "./use-open-bill";
 import type { GuestBill } from "@/lib/api/pay-bill";
@@ -61,7 +64,13 @@ export function PayPage({
   // x, redirect to main pay page, not to the second page"): ✕, Back and Done
   // from the QR or the offers land here with no list open.
   const pick = (href: string) => navigateTo(router, href, { replace: true, motion: "push" });
-  const { loc, askLocation, notNow } = usePayLocation({ prime: true });
+  const { loc: phone, askLocation, notNow } = usePayLocation({ prime: true });
+  // HOME'S LOCATION, THE SAME BOX (Pato, 2026-11-24, MESITA-4908): a saved
+  // location chosen in it, or the phone's fix, sorts both lists.
+  const chosen = useActiveLocation();
+  const fix = useUserLocation();
+  const point = chosen ?? fix;
+  const loc: Loc = point ? { state: "on", at: roundLocation(point) } : phone;
   const { places, failed: placesFailed, refresh: refreshPlaces } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // The guest's one open bill (MESITA-4823); undefined while it is read.
   const bill = useOpenBill();
@@ -76,15 +85,8 @@ export function PayPage({
   const [shown, setShown] = useState(false);
   if (allReady && !shown) setShown(true);
 
-  // TEN ROWS TO SEE IT FULL (Pato, 2026-11-24, MESITA-4844: "for the moment,
-  // display the same place 10 times"). Test mode only: a live place ends it.
-  // Remove once he has seen it.
-  const filled =
-    sorted && sorted.length > 0 && sorted.length < 10 && sorted.every((p) => p.test_mode)
-      ? Array.from({ length: 10 }, (_, i) => sorted[i % sorted.length])
-      : sorted;
   const list = {
-    places: filled,
+    places: sorted,
     failed: placesFailed,
     loc,
     onUseLocation: askLocation,
@@ -151,7 +153,9 @@ function focusTitle(el: HTMLElement | null) {
 }
 
 /** A FULL-PAGE MODAL (Pato, 2026-11-24, MESITA-4846): from the bottom over the
- *  whole app, its title with ✕, the place table under it, all white (Pato,
+ *  whole app, ✕ and its title, then Home's location box on the right (Pato,
+ *  MESITA-4908: "put X at the left, and then mention current location at the
+ *  right, as in home"), the place table under it, all white (Pato,
  *  MESITA-4852: "keep it clean"; the tile's colour before). A reload on it
  *  shows it at once. */
 function PlaceModal({
@@ -170,15 +174,15 @@ function PlaceModal({
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={word} fullScreen startShown={back}>
       <div className="border-border bg-card text-foreground shrink-0 border-b pt-[env(safe-area-inset-top)]" data-pay-modal={id}>
-        <div className="grid h-14 grid-cols-[3.5rem_minmax(0,1fr)_3.5rem] items-center">
-          <span />
-          {/* Focus lands on the title, so no ring is drawn on ✕ at opening. */}
-          <h2 ref={focusTitle} tabIndex={-1} className="text-center text-xl font-semibold outline-none">
-            {word}
-          </h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="flex h-14 items-center justify-center">
+        <div className="flex h-14 items-center gap-1 pr-2">
+          <button type="button" onClick={onClose} aria-label="Close" className="flex h-14 w-12 shrink-0 items-center justify-center">
             <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
           </button>
+          {/* Focus lands on the title, so no ring is drawn on ✕ at opening. */}
+          <h2 ref={focusTitle} tabIndex={-1} className="shrink-0 text-xl font-semibold outline-none">
+            {word}
+          </h2>
+          <LocationPicker />
         </div>
       </div>
       {/* No bar over the table (Pato, 2026-11-24, MESITA-4845). */}
