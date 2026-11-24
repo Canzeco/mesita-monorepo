@@ -86,3 +86,7 @@ export const PLACE_BONE_CLASS = "bg-muted animate-pulse rounded-lg";
 
 export const ERROR_BOX_CLASS =
   "rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive";
+
+/** A map box before its map paints: the map's green (Pato, 2026-11-23,
+ *  MESITA-4803), the consumer's MAP_WAIT_CLASS. */
+export const PLACE_MAP_WAIT_CLASS = "bg-[#cdeec4]";

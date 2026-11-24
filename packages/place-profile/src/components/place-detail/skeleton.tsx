@@ -5,6 +5,7 @@ import {
   PLACE_BODY_CLASS,
   PLACE_BONE_CLASS,
   PLACE_BUTTON_CLASS,
+  PLACE_MAP_WAIT_CLASS,
   PLACE_META_CLASS,
   PLACE_OUTLINE_CHIP_CLASS,
   PLACE_TITLE_CLASS,
@@ -170,7 +171,7 @@ function OverviewSkeleton() {
       {/* LocationBox: the 144px map, the address, Google Maps · Ask Uber. */}
       <Box>
         <BoxTitleBar width="w-20" meta />
-        <Bone className="h-36" />
+        <Bone className={cn("h-36", PLACE_MAP_WAIT_CLASS)} />
         <LineBars type={PLACE_BODY_CLASS} widths={["w-full", "w-1/2"]} />
         <div className="grid grid-cols-2 gap-2">
           <Bone className={PLACE_BUTTON_CLASS} />

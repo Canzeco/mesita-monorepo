@@ -21,6 +21,7 @@ import {
   MONTERREY_CENTER,
   MAP_DEFAULT_ZOOM,
   MAP_USER_ZOOM,
+  MAP_WAIT_COLOR,
   MAP_MINIMAL_STYLES,
   MAP_PIN_CURSOR,
   MAP_PIN_HIT_SIZE,
@@ -231,7 +232,7 @@ export function SearchMap({
   onLiveViewport?: (box: ViewportBox) => void;
 }) {
   // The Maps SDK bootstrap + first tile paint leave the canvas blank for a
-  // beat — hold a muted skeleton veil over it until tiles actually land
+  // beat — hold a green skeleton veil over it until tiles actually land
   // (or the SDK load fails, so the veil can't sit there forever).
   const [mapReady, setMapReady] = useState(false);
   const handleMapReady = useCallback(() => setMapReady(true), []);
@@ -351,7 +352,7 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
   );
 }
 
-// Muted skeleton veil that hides the blank canvas until tiles paint — the
+// Green skeleton veil that hides the blank canvas until tiles paint — the
 // same MapVeil search/loading.tsx draws, so the route's skeleton hands over
 // without a move (MESITA-2701). Renders nothing once the SDK reports a load
 // failure — an error state must never sit under an eternal skeleton.
@@ -421,6 +422,7 @@ function SearchMapCanvas({
       keyboardShortcuts={false}
       clickableIcons={false}
       reuseMaps
+      backgroundColor={MAP_WAIT_COLOR}
       draggableCursor={MAP_PIN_CURSOR}
       draggingCursor={MAP_PIN_CURSOR}
       className="absolute inset-0 h-full w-full cursor-default [&_*]:!cursor-default"
