@@ -109,7 +109,3 @@ export function usePayLocation({ prime }: { prime: boolean }): {
   return { loc, askLocation, notNow };
 }
 
-/** "350 m" / "2.4 km". */
-export function distanceText(m: number): string {
-  return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`;
-}
