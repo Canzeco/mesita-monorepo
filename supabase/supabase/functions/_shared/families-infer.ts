@@ -19,9 +19,13 @@ export const FAMILIES_MIN = 1;
 /** One number with the editor's cap and the trigger's literal (MESITA-2893). */
 export const FAMILIES_MAX = ENRICH_FIELD_LIMITS.familiesPerPlace.max;
 
-/** The families the model may pick: every live family except Undefined. */
+/**
+ * The families the model may pick: every live family except Undefined and
+ * Restaurants, which code adds (offered, it made the model skip Dinner:
+ * families-eval recall 0.46).
+ */
 export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
-  return families.filter((f) => f.slug !== "undefined");
+  return families.filter((f) => f.slug !== "undefined" && f.slug !== "restaurants");
 }
 
 /**
@@ -35,7 +39,6 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
  * This map is the master; Docs › Atlas points here.
  */
 export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
-  restaurants: "a restaurant — Mesita adds this itself for every Google restaurant, so pick it only when no sharper family fits",
   coffee: "a café or coffee bar — coffee is a main reason to go, including cafés that also serve breakfast or brunch",
   breakfast: "breakfast or brunch is a main meal — a morning place; not a taquería, grill or restaurant that merely opens early",
   sweet: "dessert or baked goods are the point — ice cream, gelato, cakes, pastries, churros, chocolate, a bakery or pastry shop",
@@ -100,7 +103,8 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
     "Cuisine and meal families (every cuisine, Breakfast, Brunch, Coffee, " +
     "Quick) describe what the place serves: give each one that truly applies; " +
     "Dinner only when its meaning fits. When unsure about a family, leave " +
-    `it out — but always return at least one, the closest by meaning. ${count}`
+    `it out — but always return at least one, the closest by meaning; only for a " +
+    `plain restaurant that truly matches none, return an empty list. ${count}`
   );
 }
 
@@ -180,16 +184,17 @@ export function mainGoogleCategory(
 /**
  * Restaurants, settled by code (MESITA-4820): on every place whose main Google
  * category is a restaurant, beside the model's picks and past the stage's
- * limit (never past seven); off any other place that has a sharper family.
+ * limit (never past seven). `raw` is the model's own reply.
  */
 export function settleRestaurants(
   picked: string[] | null,
   mainCategory: string | null,
+  raw?: unknown,
 ): string[] | null {
-  if (!picked) return null;
-  const rest = picked.filter((f) => f !== "restaurants");
-  if (isRestaurantType(mainCategory)) return ["restaurants", ...rest].slice(0, FAMILIES_MAX);
-  return rest.length ? rest : picked;
+  if (!isRestaurantType(mainCategory)) return picked;
+  // An empty list is an answer for a restaurant: nothing sharper fits.
+  if (!picked) return Array.isArray(raw) && raw.length === 0 ? ["restaurants"] : null;
+  return ["restaurants", ...picked].slice(0, FAMILIES_MAX);
 }
 
 /** Is this Google category enabled on Mesita? A failed read answers no. */

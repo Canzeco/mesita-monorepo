@@ -41,11 +41,14 @@
    ],
    "category": "fine_dining_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "european",
     "fancy"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -64,10 +67,13 @@
    ],
    "category": "spanish_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "european"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -88,9 +94,12 @@
    ],
    "category": "seafood_restaurant",
    "labels": [
+    "restaurants",
     "seafood"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "seafood",
     "dinner",
@@ -110,10 +119,12 @@
    ],
    "category": "hamburger_restaurant",
    "labels": [
+    "restaurants",
     "american",
     "burgers"
    ],
    "contested": [
+    "brunch",
     "quick_bite"
    ],
    "snapshot": [
@@ -136,9 +147,12 @@
    ],
    "category": "indonesian_restaurant",
    "labels": [
+    "restaurants",
     "asian"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -158,10 +172,13 @@
    ],
    "category": "french_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "european"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "fancy",
@@ -179,9 +196,12 @@
    ],
    "category": "seafood_restaurant",
    "labels": [
+    "restaurants",
     "seafood"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "seafood",
     "dinner",
@@ -200,10 +220,13 @@
    ],
    "category": "italian_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "italian"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "italian",
     "dinner",
@@ -223,11 +246,14 @@
    ],
    "category": "fine_dining_restaurant",
    "labels": [
+    "restaurants",
     "asian",
     "dinner",
     "fancy"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -246,10 +272,13 @@
    ],
    "category": "japanese_restaurant",
    "labels": [
+    "restaurants",
     "japanese",
     "sushi"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "japanese",
     "sushi",
@@ -269,10 +298,13 @@
    ],
    "category": "middle_eastern_restaurant",
    "labels": [
+    "restaurants",
     "arabic",
     "dinner"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -290,10 +322,13 @@
    ],
    "category": "fine_dining_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "fancy"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "fancy",
@@ -314,6 +349,7 @@
     "healthy"
    ],
    "contested": [
+    "brunch",
     "coffee"
    ],
    "snapshot": [
@@ -334,10 +370,13 @@
    ],
    "category": "brunch_restaurant",
    "labels": [
+    "restaurants",
     "breakfast",
     "coffee"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "breakfast",
     "coffee",
@@ -369,7 +408,9 @@
     "breakfast",
     "coffee"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "coffee",
     "breakfast",
@@ -392,7 +433,9 @@
    "labels": [
     "coffee"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "coffee",
     "breakfast",
@@ -416,7 +459,8 @@
     "coffee"
    ],
    "contested": [
-    "breakfast"
+    "breakfast",
+    "brunch"
    ],
    "snapshot": [
     "coffee",
@@ -444,7 +488,9 @@
     "coffee",
     "healthy"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "coffee",
     "breakfast",
@@ -476,6 +522,7 @@
     "coffee"
    ],
    "contested": [
+    "brunch",
     "pizza"
    ],
    "snapshot": [
@@ -502,7 +549,9 @@
    "labels": [
     "coffee"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "coffee",
     "breakfast",
@@ -524,9 +573,12 @@
    ],
    "category": "bar_and_grill",
    "labels": [
+    "restaurants",
     "drinks"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -551,7 +603,9 @@
     "drinks",
     "night_out"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "drinks",
     "dinner",
@@ -573,7 +627,9 @@
    "labels": [
     "drinks"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "drinks",
     "dinner",
@@ -596,7 +652,9 @@
    "labels": [
     "drinks"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "drinks",
     "dinner",
@@ -615,8 +673,11 @@
     "restaurant"
    ],
    "category": "bar_and_grill",
-   "labels": [],
+   "labels": [
+    "restaurants"
+   ],
    "contested": [
+    "brunch",
     "dinner"
    ],
    "snapshot": [
@@ -638,7 +699,9 @@
     "drinks",
     "night_out"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "drinks",
     "night_out",
@@ -658,7 +721,9 @@
    "labels": [
     "drinks"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "drinks",
     "dinner",
@@ -678,7 +743,9 @@
    "labels": [
     "drinks"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "drinks",
     "dinner",
@@ -700,10 +767,12 @@
    ],
    "category": "bistro",
    "labels": [
+    "restaurants",
     "dinner",
     "european"
    ],
    "contested": [
+    "brunch",
     "italian"
    ],
    "snapshot": [
@@ -725,9 +794,12 @@
    ],
    "category": "steak_house",
    "labels": [
+    "restaurants",
     "steak"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "steak",
     "dinner",
@@ -747,10 +819,13 @@
    ],
    "category": "salad_shop",
    "labels": [
+    "restaurants",
     "healthy",
     "quick_bite"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "healthy",
     "quick_bite",
@@ -768,9 +843,11 @@
    ],
    "category": "steak_house",
    "labels": [
+    "restaurants",
     "steak"
    ],
    "contested": [
+    "brunch",
     "dinner"
    ],
    "snapshot": [
@@ -791,10 +868,13 @@
    ],
    "category": "steak_house",
    "labels": [
+    "restaurants",
     "dinner",
     "steak"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "steak",
     "dinner",
@@ -817,11 +897,14 @@
    ],
    "category": "steak_house",
    "labels": [
+    "restaurants",
     "dinner",
     "fancy",
     "steak"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "steak",
     "dinner",
@@ -841,10 +924,13 @@
    ],
    "category": "spanish_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "european"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "drinks",
@@ -862,10 +948,13 @@
    ],
    "category": "taco_restaurant",
    "labels": [
+    "restaurants",
     "quick_bite",
     "tacos"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "tacos",
     "quick_bite",
@@ -883,10 +972,13 @@
    ],
    "category": "indonesian_restaurant",
    "labels": [
+    "restaurants",
     "asian",
     "dinner"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "dinner",
     "family",
@@ -904,9 +996,11 @@
    ],
    "category": "american_restaurant",
    "labels": [
+    "restaurants",
     "american"
    ],
    "contested": [
+    "brunch",
     "dinner"
    ],
    "snapshot": [
@@ -933,10 +1027,13 @@
    ],
    "category": "taco_restaurant",
    "labels": [
+    "restaurants",
     "quick_bite",
     "tacos"
    ],
-   "contested": [],
+   "contested": [
+    "brunch"
+   ],
    "snapshot": [
     "tacos",
     "family",
@@ -961,10 +1058,12 @@
    ],
    "category": "mediterranean_restaurant",
    "labels": [
+    "restaurants",
     "dinner",
     "european"
    ],
    "contested": [
+    "brunch",
     "steak"
    ],
    "snapshot": [
