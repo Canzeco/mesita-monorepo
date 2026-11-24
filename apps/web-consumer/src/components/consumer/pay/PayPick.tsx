@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -115,13 +115,12 @@ export function PlaceList({
         // per place, one tap; plain columns, no boxes.
         <div data-pay-places>
           <div className={cn(ROW_GRID[kind], "border-border bg-muted text-muted-foreground sticky top-14 z-10 h-9 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
-            <span>Place</span>
+            <span className="pl-3.5">Place</span>
             {HEADS[kind].map((h) => (
-              <span key={h} className="text-right tabular-nums">
+              <span key={h} className="text-center tabular-nums">
                 {h}
               </span>
             ))}
-            <span />
           </div>
           <div className="divide-border border-border divide-y border-b">
             {shown.map((p, i) => (
@@ -144,11 +143,13 @@ function fold(v: string): string {
 
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
-/** The table's columns: the place, what it gives, the ›. */
+/** The table's columns (Pato, 2026-11-24, MESITA-4845: "name 50% and then
+ *  prepay offers 50% wide, each 16.66%"): no ›, no gaps. Pay's two share its
+ *  half by what they hold. */
 const HEADS: Record<ListKind, string[]> = { prepay: ["$200", "$1,000", "$5,000"], pay: ["Your credits", "This bill"] };
 const ROW_GRID: Record<ListKind, string> = {
-  prepay: "grid w-full grid-cols-[minmax(0,1fr)_2.75rem_2.75rem_2.75rem_1rem] items-center gap-1.5 px-3.5",
-  pay: "grid w-full grid-cols-[minmax(0,1fr)_6.75rem_4rem_1rem] items-center gap-1.5 px-3.5",
+  prepay: "grid w-full grid-cols-[50%_repeat(3,minmax(0,1fr))] items-center",
+  pay: "grid w-full grid-cols-[50%_minmax(0,29fr)_minmax(0,21fr)] items-center",
 };
 
 /** A place, one row, the one button. Prepay: the bonus of each voucher it
@@ -174,7 +175,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       className={cn(ROW_GRID[kind], "hover:bg-muted/60 min-h-14 py-2 text-left transition-colors")}
       data-pay-pick-place
     >
-      <span className="flex min-w-0 items-center gap-2.5">
+      <span className="flex min-w-0 items-center gap-2.5 pr-1.5 pl-3.5">
         <PlacePhoto place={p} className="h-9 w-9 max-[359px]:hidden" />
         <span className="min-w-0">
           <span className="line-clamp-2 text-sm leading-tight font-semibold">{name}</span>
@@ -183,23 +184,22 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       </span>
       {kind === "prepay" ? (
         bonuses.map((pct, i) => (
-          <span key={VOUCHERS_SHOWN[i]} className={cn("text-right text-sm font-semibold tabular-nums", pct ? "text-indigo-700" : "text-muted-foreground")}>
+          <span key={VOUCHERS_SHOWN[i]} className={cn("text-center text-sm font-semibold tabular-nums", pct ? "text-indigo-700" : "text-muted-foreground")}>
             {pct ? `+${pct}%` : "–"}
           </span>
         ))
       ) : (
         <>
-          <span className={cn("text-right text-sm leading-tight font-semibold tabular-nums", credits ? "text-foreground" : "text-muted-foreground")}>
+          <span className={cn("text-center text-sm leading-tight font-semibold tabular-nums max-[429px]:text-xs", credits ? "text-foreground" : "text-muted-foreground")}>
             {credits ?? "–"}
             {p.pending_cents > 0 ? <span className="text-muted-foreground block text-xs">+{money(p.pending_cents, p.currency)}</span> : null}
           </span>
-          <span className={cn("text-right text-sm leading-tight font-semibold tabular-nums", offer ? "text-emerald-700" : "text-muted-foreground")}>
+          <span className={cn("text-center text-sm leading-tight font-semibold tabular-nums", offer ? "text-emerald-700" : "text-muted-foreground")}>
             {offer ? `${bps / 100}%` : "–"}
             {offer ? <span className="block text-xs">{offer}</span> : null}
           </span>
         </>
       )}
-      <ChevronRight className="text-muted-foreground h-4 w-4 justify-self-end" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }
