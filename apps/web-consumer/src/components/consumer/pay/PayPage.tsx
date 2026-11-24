@@ -432,14 +432,19 @@ export function PayPage({
           floating look), the black-pill switch at its top, a hairline, then
           the chosen tab's rows inside the same card. */}
       <div className="mt-2 flex flex-1 flex-col pb-8" data-pay-cards>
-        <div className="border-border bg-card overflow-hidden rounded-2xl border shadow-md" data-pay-menu-box>
-        <div className="border-border border-b p-1.5" data-pay-tabs-box>
+        {/* A BLACK FRAME (Pato, 2026-11-23, MESITA-4792: "box must be black,
+            with white background or something to clearly represent the
+            borders"): the switch sits on the black, the rows on a white
+            panel inside it. */}
+        <div className="bg-foreground rounded-2xl p-1.5 shadow-md" data-pay-menu-box>
+        <div className="pb-1.5" data-pay-tabs-box>
           <PayTabs tab={tab} onTab={chooseTab} />
         </div>
         <div
           role="tabpanel"
           id={`pay-panel-${tab}`}
           aria-labelledby={`pay-tab-${tab}`}
+          className="bg-card overflow-hidden rounded-xl"
           data-pay-panel={tab}
         >
           {/* Both stay mounted, so each read runs and the page paints whole
@@ -607,7 +612,8 @@ function PayTabs({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void }) {
             }}
             className={cn(
               "flex h-10 min-w-0 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold whitespace-nowrap transition",
-              on ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              // On the black frame (MESITA-4792): the picked tab a white pill.
+              on ? "bg-card text-foreground" : "text-background/75 hover:bg-background/10 hover:text-background",
             )}
             data-pay-tab={id}
           >
