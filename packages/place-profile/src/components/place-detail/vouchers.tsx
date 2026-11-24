@@ -800,7 +800,7 @@ function CashbackPanel({ cashback }: { cashback: PlaceCashback }) {
  *  THE ONLY (i) (Pato, 2026-11-23, MESITA-4804: "only one i in how it works.
  *  there display all the info, don't lose info"): the rows' own (i) went;
  *  their deals and rules are in here. */
-function HowItWorks({ title, lead, tab, children }: { title: string; lead: string; tab: string; children: ReactNode }) {
+function HowItWorks({ title, lead, tab, menu, children }: { title: string; lead: string; tab: string; menu?: ReactNode; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -842,7 +842,8 @@ function HowItWorks({ title, lead, tab, children }: { title: string; lead: strin
                     <X className="h-6 w-6" strokeWidth={2.25} />
                   </button>
                 </div>
-                <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
+                {menu}
+                <div key={title} className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
                   <p className="text-foreground text-base leading-snug" data-how-lead>
                     {lead}
                   </p>
@@ -943,7 +944,11 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
   // MESITA-4770: a Discount comes off the printed bill before paying; the
   // waiter sees it on the bill. Cashback lands as credit an hour later.
   const shown = rows.find((o) => o.line === guest) ?? rows[0];
-  const discount = shown.mech === "discount";
+  // TWO SECTIONS (Pato, 2026-11-24, MESITA-4874): how discounts work, how
+  // cashback works; it opens on this place's. The other one is an example.
+  const [section, setSection] = useState<VisitMechanism>(shown.mech);
+  const here = section === shown.mech;
+  const discount = section === "discount";
   const rate = `${shown.bps / 100}%`;
   const gives = (EXAMPLE_BILL * shown.bps) / 10000;
   const steps: Step[] = discount
@@ -953,7 +958,7 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
         { Icon: Utensils, title: "You pay", amount: `$${EXAMPLE_BILL - gives}`, line: "Plus your tip" },
       ]
     : [
-        { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: "At this place" },
+        { Icon: QrCode, title: "You pay", amount: `$${EXAMPLE_BILL}`, line: here ? "At this place" : "At the place" },
         { Icon: Clock, title: "Wait", amount: "1 hour", line: "Nothing to do" },
         { Icon: Wallet, title: "You get", amount: `$${gives}`, line: `${rate} back as credit`, green: true },
       ];
@@ -961,21 +966,44 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
   const facts: Fact[] = discount
     ? [
         { Icon: Utensils, text: "The discount is on the bill, never on the tip." },
-        { Icon: Wallet, text: "If you have credits here, they are used first. Credits never pay the tip." },
+        { Icon: Wallet, text: `If you have credits ${here ? "here" : "there"}, they are used first. Credits never pay the tip.` },
       ]
     : [
-        { Icon: Utensils, text: "Use your cashback to pay any bill at this place." },
+        { Icon: Utensils, text: here ? "Use your cashback to pay any bill at this place." : "Use your cashback to pay any bill at the place that gave it." },
         { Icon: InfinityIcon, text: "It never expires." },
         { Icon: Wallet, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip. One bill earns $1,000 of cashback at most." },
       ];
   return (
     <HowItWorks
       tab="pay"
-      title={discount ? "How your discount works" : "How cashback works"}
+      title={discount ? "How discounts work" : "How cashback works"}
+      menu={
+        <div className="border-border grid shrink-0 grid-cols-2 gap-1 border-b p-2" role="group" aria-label="How it works" data-how-sections>
+          {(["discount", "cashback"] as const).map((x) => (
+            <button
+              key={x}
+              type="button"
+              aria-pressed={section === x}
+              onClick={() => setSection(x)}
+              className={cn(
+                "flex min-h-11 items-center justify-center rounded-xl text-base font-semibold transition",
+                section === x ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground",
+              )}
+              data-how-section={x}
+            >
+              {x === "discount" ? "Discounts" : "Cashback"}
+            </button>
+          ))}
+        </div>
+      }
       lead={
-        discount
-          ? "When you pay your bill here with Mesita, the discount comes off before you pay."
-          : "Pay your bill with Mesita and part of it comes back to you as credit for your next visit here."
+        here
+          ? discount
+            ? "This place gives discounts. When you pay your bill here with Mesita, the discount comes off before you pay."
+            : "This place gives cashback. Pay your bill with Mesita and part of it comes back to you as credit for your next visit here."
+          : discount
+            ? "Some places give discounts. When you pay your bill with Mesita, the discount comes off before you pay. This place gives cashback instead."
+            : "Some places give cashback. Pay your bill with Mesita and part of it comes back to you as credit for your next visit there. This place gives discounts instead."
       }
     >
       <NumberedSteps
@@ -988,13 +1016,13 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
           { title: "Pay at the place", text: "Pay your waiter in cash or on the place's card terminal. Mesita doesn't charge your card." },
           discount
             ? { title: "Done", text: "Your waiter confirms the payment and you get your receipt." }
-            : { title: "Get your cashback", text: "Your waiter confirms the payment. One hour later the cashback is in your Wallet, as credit for this place." },
+            : { title: "Get your cashback", text: `Your waiter confirms the payment. One hour later the cashback is in your Wallet, as credit for ${here ? "this" : "that"} place.` },
         ]}
       />
       <Box title={`Example: a $${EXAMPLE_BILL} bill`}>
         <StepList steps={steps} />
       </Box>
-      <TierTable rows={rows} guest={guest} />
+      {here ? <TierTable rows={rows} guest={guest} /> : null}
       <GoodToKnow facts={facts} />
     </HowItWorks>
   );
