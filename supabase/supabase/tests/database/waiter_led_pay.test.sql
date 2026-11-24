@@ -3,7 +3,7 @@
 -- nothing owed still takes both taps, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(81);
+select plan(87);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -123,26 +123,33 @@ select ok(not has_function_privilege('authenticated', 'public.pay_bill_accept(uu
 
 -- ── The waiter code is tried only with a live QR, and counted (MESITA-4833) ──
 insert into public.place_waiters (id, place_id, name, lookup_hash, code) values
-  ('00000000-0000-4000-8000-0000000e4871', '00000000-0000-4000-8000-000000014823', 'Ana', repeat('c', 64), '0123'),
-  ('00000000-0000-4000-8000-0000000f4871', '00000000-0000-4000-8000-000000024823', 'Luis', repeat('3', 64), '4567');
+  ('00000000-0000-4000-8000-0000000e4871', '00000000-0000-4000-8000-000000014823', 'Ana', repeat('c', 64), '012345'),
+  ('00000000-0000-4000-8000-0000000f4871', '00000000-0000-4000-8000-000000024823', 'Luis', repeat('3', 64), '456789');
 update public.pay_guest_codes set place_id = '00000000-0000-4000-8000-000000014823' where token_hash = repeat('7', 64);
 insert into t select 'qr', public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('e', 63) || '1');
-select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), '0123')->>'code'), 'place_needed', 'a PIN is tried only in a place');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), '012345')->>'code'), 'place_needed', 'a PIN is tried only in a place');
 select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('e', 63) || '1', p_place_id => '00000000-0000-4000-8000-000000014823')->>'ok'), 'true', 'the QR names it');
 select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('e', 63) || '1')->>'ok'), 'true', 'and keeps it when minted again');
-select is((public.waiter_code_try(repeat('e', 63) || '9', null, repeat('a', 64), '0123')->>'code'), 'code_gone', 'a code is not tried without a live QR');
-select is((public.waiter_code_try(null, gen_random_uuid(), repeat('a', 64), '0123')->>'code'), 'code_gone', 'nor with an unknown bill');
-select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), '0123')->>'place_id'), '00000000-0000-4000-8000-000000014823', 'the right code names its place');
-select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), '0123')->>'waiter_id'), '00000000-0000-4000-8000-0000000e4871', 'and its waiter');
-select is((select count(*)::int from generate_series(1, 5) g where public.waiter_code_try(repeat('e', 63) || '1', null, md5(g::text) || md5(g::text), '4567')->>'code' = 'staff_only'), 5, 'five wrong codes are counted');
-select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), '0123')->>'code'), 'locked', 'the sixth on one guest is locked, from any address');
-select is((public.waiter_code_try(repeat('7', 64), null, repeat('a', 64), '0123')->>'ok'), 'true', 'another guest at the same address is not');
-select is((public.waiter_code_try(null, (select (v->>'bill_id')::uuid from t where k='o5'), repeat('b', 64), '9999')->>'code'), 'staff_only', 'a bill answers for its own place');
-insert into public.place_charge_tries (place_id, kind, addr_hash, tried_at) select null, 'guest', encode(sha256(convert_to('waiter-code-guest:00000000-0000-4000-8000-0000000a4823', 'UTF8')), 'hex'), now() - interval '3 hours' from generate_series(1, 9);
-select is((public.waiter_code_try(null, (select (v->>'bill_id')::uuid from t where k='o5'), repeat('b', 64), '4567')->>'code'), 'locked', 'ten wrong codes in a day lock a guest');
-select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), '0123', now() + interval '9 minutes 59 seconds')->>'code'), 'locked', 'for ten minutes');
+select is((public.waiter_code_try(repeat('e', 63) || '9', null, repeat('a', 64), '012345')->>'code'), 'code_gone', 'a code is not tried without a live QR');
+select is((public.waiter_code_try(null, gen_random_uuid(), repeat('a', 64), '012345')->>'code'), 'code_gone', 'nor with an unknown bill');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), '012345')->>'place_id'), '00000000-0000-4000-8000-000000014823', 'the right code names its place');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('a', 64), '012345')->>'waiter_id'), '00000000-0000-4000-8000-0000000e4871', 'and its waiter');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, md5('x') || md5('x'), '456789')->>'left'), '2', 'a wrong code says the tries left');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, md5('x') || md5('x'), '456789')->>'left'), '1', 'and counts down');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, md5('x') || md5('x'), '456789')->>'code'), 'ticket_closed', 'the third one closes the ticket (MESITA-4898)');
+select ok((select closed_at is not null and expires_at <= now() from public.pay_guest_codes where consumer_id = '00000000-0000-4000-8000-0000000b4823'), 'its QR is dead');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), '012345')->>'code'), 'code_gone', 'the right code no longer works on it');
+select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000b4823', repeat('e', 63) || '1', p_place_id => '00000000-0000-4000-8000-000000014823')->>'ok'), 'true', 'a new QR');
+select is((select wrong_codes from public.pay_guest_codes where consumer_id = '00000000-0000-4000-8000-0000000b4823'), 0, 'is a new ticket');
+insert into public.place_charge_tries (place_id, kind, addr_hash) select null, 'guest', encode(sha256(convert_to('waiter-code-guest:00000000-0000-4000-8000-0000000b4823', 'UTF8')), 'hex') from generate_series(1, 12);
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), '012345')->>'code'), 'locked', 'fifteen wrong codes lock a guest, from any address');
+select is((public.waiter_code_try(repeat('7', 64), null, repeat('a', 64), '012345')->>'ok'), 'true', 'another guest at the same address is not');
+select is((public.waiter_code_try(null, (select (v->>'bill_id')::uuid from t where k='o5'), repeat('b', 64), '999999')->>'code'), 'staff_only', 'a bill answers for its own place');
+insert into public.place_charge_tries (place_id, kind, addr_hash, tried_at) select null, 'guest', encode(sha256(convert_to('waiter-code-guest:00000000-0000-4000-8000-0000000a4823', 'UTF8')), 'hex'), now() - interval '3 hours' from generate_series(1, 14);
+select is((public.waiter_code_try(null, (select (v->>'bill_id')::uuid from t where k='o5'), repeat('b', 64), '456789')->>'code'), 'locked', 'fifteen wrong codes in a day lock a guest');
+select is((public.waiter_code_try(repeat('e', 63) || '1', null, repeat('b', 64), '012345', now() + interval '9 minutes 59 seconds')->>'code'), 'locked', 'for ten minutes');
 insert into public.place_charge_tries (place_id, kind, addr_hash) select null, 'staff', repeat('f', 64) from generate_series(1, 30);
-select is((public.waiter_code_try(repeat('7', 64), null, repeat('f', 64), '0123')->>'code'), 'locked', 'thirty wrong codes lock an address');
+select is((public.waiter_code_try(repeat('7', 64), null, repeat('f', 64), '012345')->>'code'), 'locked', 'thirty wrong codes lock an address');
 -- ── 300 bills an hour per place, whatever the key ──
 insert into public.pay_bills (consumer_id, place_id, livemode, currency, status, staff_key_hash, expires_at)
 select '00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', true, 'mxn', 'cancelled', repeat('0', 64), now() from generate_series(1, 300);

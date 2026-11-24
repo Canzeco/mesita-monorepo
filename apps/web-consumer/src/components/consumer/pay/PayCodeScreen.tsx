@@ -119,6 +119,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const [showAgain, setShowAgain] = useState(false);
   const [typing, setTyping] = useState<BillTyping | null>(null);
   // The guest wants the QR back while the waiter types.
+  // Three wrong waiter codes ended this QR (MESITA-4898).
+  const [closed, setClosed] = useState(false);
   const [qrOver, setQrOver] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [armedAt, setArmedAt] = useState(0);
@@ -138,9 +140,10 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   }, []);
 
   const take = useCallback(
-    (b: GuestBill | null, t: BillTyping | null) => {
+    (b: GuestBill | null, t: BillTyping | null, ended = false) => {
       setMisses(0);
       setTyping(t);
+      setClosed(ended);
       typingNow.current = t !== null;
       if (!t) setQrOver(false);
       setNow(Date.now());
@@ -167,7 +170,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     const n = ++reads.current;
     try {
       const r = await apiGetPayCode(getSupabase(), following.current ? { bill_id: following.current } : {});
-      if (alive.current && n === reads.current) take(r.bill, r.typing ?? null);
+      if (alive.current && n === reads.current) take(r.bill, r.typing ?? null, r.closed === true);
     } catch {
       if (alive.current) setMisses((x) => x + 1);
     }
@@ -186,7 +189,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           // Private mode: a reload mints another.
         }
       }
-      take(r.bill, r.typing ?? null);
+      reads.current++;
+      take(r.bill, r.typing ?? null, r.closed === true);
     } catch {
       if (!alive.current) return;
       // No signal: the last QR still works until it ends.
@@ -207,7 +211,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
 
   // A new QR before this one ends, while it is the one on screen.
   useEffect(() => {
-    if (!code || !showing) return;
+    if (!code || !showing || closed) return;
     const wait = Math.max(Date.parse(code.expires_at) - Date.now() - RENEW_MS, 1000);
     const id = setTimeout(() => void mint(), wait);
     const onVisible = () => {
@@ -218,7 +222,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       clearTimeout(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [code, showing, mint]);
+  }, [code, showing, closed, mint]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -311,6 +315,21 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       </div>
     </div>
   );
+
+  if (closed && !billNeedsGuest(bill)) {
+    return frame(
+      "Ticket closed",
+      <PaySection className="flex flex-col items-center p-4 text-center" data-pay-closed>
+        <XCircle className={cn("h-10 w-10", BAD)} aria-hidden />
+        <p className="mt-2 text-base" role="status">Too many wrong waiter codes.</p>
+        <p className="text-muted-foreground mt-1 max-w-xs text-sm">Nothing was paid. Show a new QR to try again.</p>
+      </PaySection>,
+      <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={again}>
+        New QR
+      </Button>,
+      1,
+    );
+  }
 
   // WRITE BILL: the waiter scanned and is typing.
   const writing = !rescan && (!bill || bill.state === "open") && !qrOver && (typing !== null || bill?.state === "open");

@@ -139,6 +139,11 @@ export function BillScreen({ billId }: { billId: string }) {
     setError(null);
     const r = await checkCode(code, { bill_id: billId });
     setBusy(null);
+    if (r !== "failed" && "refused" in r && r.code === "ticket_closed") {
+      setGone(true);
+      setLocked(false);
+      return true;
+    }
     if (r === "failed" || "refused" in r) {
       // No code here to try: it is typed (MESITA-4890).
       if (code === null) return false;

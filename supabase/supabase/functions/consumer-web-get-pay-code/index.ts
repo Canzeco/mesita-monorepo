@@ -11,7 +11,9 @@
 //             bill: { id, state, version, currency, bill_cents, tip_cents,
 //                     quote, expires_at, attempt_id, tab_id, test_mode,
 //                     place: { id, name, photo_url } } | null,
-//             typing: { bill_cents, tip_cents, step } | null, server_time }
+//             typing: { bill_cents, tip_cents, step } | null,
+//             closed: boolean (three wrong waiter codes ended the QR, MESITA-4898),
+//             server_time }
 //   typing (MESITA-4883): what the waiter is typing now, before a bill is sent.
 //   401 sign_in
 
@@ -59,8 +61,8 @@ serveJson("consumer-web-get-pay-code", async (req) => {
       };
     }
     const waiting = !bill || bill.state === "open" || bill.state === "cancelled" || bill.state === "expired" || bill.state === "paid";
-    const typing = waiting ? await readTyping(admin, user.id, nowMs) : null;
-    return json({ ok: true, code, bill, typing, server_time: new Date(nowMs).toISOString() });
+    const draft = waiting ? await readTyping(admin, user.id, nowMs) : null;
+    return json({ ok: true, code, bill, typing: draft?.typing ?? null, closed: draft?.closed === true, server_time: new Date(nowMs).toISOString() });
   } catch (err) {
     return failWithRequestId("consumer-web-get-pay-code", "Couldn't load your QR. Try again.", err);
   }

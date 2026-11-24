@@ -1,13 +1,13 @@
-// Auth (MESITA-4871): a waiter's 4-digit code and its token.
+// Auth (MESITA-4871): a waiter's 6-digit code and its token.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { checkWaiterToken, mintWaiterCode, mintWaiterKey, mintWaiterToken, readWaiterCode, readWaiterName, waiterOfToken } from "./waiter-code.ts";
 
 const W = { id: "00000000-0000-4000-8000-000000004871", placeId: "00000000-0000-4000-8000-000000000001", lookupHash: "a".repeat(64) };
 const NOW = 1_790_000_000_000;
 
-Deno.test("a code is four digits", () => {
-  assertEquals(readWaiterCode(" 12 34 "), "1234");
-  for (const bad of ["123", "12345", "123a", "12345678", 1234, null]) assertEquals(readWaiterCode(bad), null);
+Deno.test("a code is six digits", () => {
+  assertEquals(readWaiterCode(" 123 456 "), "123456");
+  for (const bad of ["1234", "12345", "12345a", "1234567", 123456, null]) assertEquals(readWaiterCode(bad), null);
   for (let i = 0; i < 50; i++) assert(readWaiterCode(mintWaiterCode()));
 });
 

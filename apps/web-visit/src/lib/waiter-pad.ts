@@ -1,9 +1,9 @@
-// The waiter's keypad (MESITA-4871): amounts and the 4-digit code are typed on
+// The waiter's keypad (MESITA-4871): amounts and the 6-digit code are typed on
 // keys drawn in the page, as in the guest app; the phone keyboard never opens.
 
 import { readAmount } from "@mesita/place-profile/lib/money";
 
-export const WAITER_CODE_LENGTH = 4;
+export const WAITER_CODE_LENGTH = 6;
 export type Key = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "." | "back";
 
 /** The server's ceiling: 100,000.00 a bill or a tip. */

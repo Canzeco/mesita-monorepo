@@ -2,7 +2,7 @@
 
 // Waiter Codes (MESITA-4871, Pato: "add a section to add waiter codes … different
 // codes for different waiters in order to appropriately direct the tip"). One
-// 4-digit code per waiter, made by Mesita, always shown to the owner (Pato,
+// 6-digit code per waiter, made by Mesita, always shown to the owner (Pato,
 // MESITA-4886: "it's not a nuclear code. show it"). No tips here (MESITA-4890).
 // CODES ARE OPTIONAL AT DISCOUNT (Pato, MESITA-4890: "enable the mode of no
 // password, only for discounts … display a red warning"); saving Cashback turns
@@ -119,7 +119,7 @@ export function WaiterCodes({
                   </th>
                   {canEdit ? (
                     <td className={cn(CELL, "text-base font-semibold tracking-wider tabular-nums select-all")}>
-                      {w.code ? w.code : <span className="text-muted-foreground text-sm font-normal tracking-normal">{w.removed ? "—" : "Tap New code"}</span>}
+                      {w.code ? `${w.code.slice(0, 3)} ${w.code.slice(3)}` : <span className="text-muted-foreground text-sm font-normal tracking-normal">{w.removed ? "—" : "Tap New code"}</span>}
                     </td>
                   ) : null}
                   {canEdit ? (

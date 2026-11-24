@@ -188,10 +188,11 @@ export function typingOf(r: DraftRow | null, nowMs: number): Typing | null {
   return { bill_cents: r.draft_bill_cents ?? 0, tip_cents: r.draft_tip_cents ?? 0, step };
 }
 
-export async function readTyping(admin: SupabaseClient, consumerId: string, nowMs: number): Promise<Typing | null> {
-  const { data, error } = await admin.from("pay_guest_codes").select("draft_bill_cents, draft_tip_cents, draft_step, draft_at").eq("consumer_id", consumerId).maybeSingle();
+export async function readTyping(admin: SupabaseClient, consumerId: string, nowMs: number): Promise<{ typing: Typing | null; closed: boolean }> {
+  const { data, error } = await admin.from("pay_guest_codes").select("draft_bill_cents, draft_tip_cents, draft_step, draft_at, closed_at").eq("consumer_id", consumerId).maybeSingle();
   if (error) throw new Error(`pay_guest_codes_draft: ${error.message}`);
-  return typingOf(data as DraftRow | null, nowMs);
+  const row = data as (DraftRow & { closed_at: string | null }) | null;
+  return { typing: typingOf(row, nowMs), closed: row?.closed_at != null };
 }
 
 export async function readBill(admin: SupabaseClient, id: string): Promise<BillRow | null> {

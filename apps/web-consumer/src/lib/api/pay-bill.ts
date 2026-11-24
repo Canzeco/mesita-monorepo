@@ -48,8 +48,8 @@ export type PayCode = { url: string; expires_at: string };
 export async function apiGetPayCode(
   client: SupabaseClient,
   args: { mint?: boolean; bill_id?: string; place_id?: string } = {},
-): Promise<{ code: PayCode | null; bill: GuestBill | null; typing?: BillTyping | null }> {
-  return await invokeEF<{ code: PayCode | null; bill: GuestBill | null; typing?: BillTyping | null }>(client, "consumer-web-get-pay-code", args);
+): Promise<{ code: PayCode | null; bill: GuestBill | null; typing?: BillTyping | null; closed?: boolean }> {
+  return await invokeEF<{ code: PayCode | null; bill: GuestBill | null; typing?: BillTyping | null; closed?: boolean }>(client, "consumer-web-get-pay-code", args);
 }
 
 export async function apiAnswerBill(
