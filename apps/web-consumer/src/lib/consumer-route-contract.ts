@@ -69,7 +69,7 @@ export const CONSUMER_ROUTES = {
   // is a door that opens the object:
   //
   //   /pay                       Pay Bill, your money (the tab)
-  //   /pay/pick                  Pay's first step: choose the place (MESITA-4837)
+  //   /pay/pick                  an old address: the Wallet's Pay tile (MESITA-4838)
   //   /pay/place/<placeId>       pay at that place: opens your bill there and
   //                              becomes /pay/bill/<id> (the table QR's door)
   //   /pay/bill/<billId>         the bill at the table (MESITA-3564)
@@ -583,7 +583,7 @@ export const ROUTE_MAP = {
   pay: row("/pay", "pay", "tab", null),
   // The pay screens own the whole frame, as the place screen does: no bar,
   // the header's back is the way out, so every step fits (MESITA-3739).
-  payPick: row("/pay/pick", "pay", "page", "pay", false),
+  payPick: row("/pay/pick", "pay", "door", "pay"),
   payCode: row("/pay/code", "pay", "page", "pay", false),
   payPlace: row("/pay/place/:placeId", "pay", "door", "pay", false),
   payBill: row("/pay/bill/:billId", "pay", "page", "pay", false),
@@ -604,7 +604,7 @@ export const ROUTE_MAP = {
   walletCard: row("/wallet/cards/:cardId", "pay", "page", "pay", false),
   // Pay's Buy Credits and Send Gift lists, and a Loyalty Card's send page,
   // which was a sheet over it (MESITA-4096).
-  walletBuy: row("/wallet/buy", "pay", "page", "pay"),
+  walletBuy: row("/wallet/buy", "pay", "door", "pay"),
   walletSend: row("/wallet/send", "pay", "page", "pay"),
   walletPlaceSend: row(
     "/wallet/place/:placeId/send",

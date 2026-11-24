@@ -3,7 +3,6 @@ import { routeFor, type RouteId } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
-import { PayPickLoading } from "@/components/consumer/pay/PayPick";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
 import InstagramLoading from "./me/instagram/loading";
@@ -21,7 +20,6 @@ import WalletPlaceLoading from "./wallet/place/[placeId]/loading";
 import WalletGiftLoading from "./wallet/gift/[token]/loading";
 import WalletAddCardLoading from "./wallet/cards/new/loading";
 import WalletMethodsLoading from "./wallet/methods/loading";
-import WalletBuyLoading from "./wallet/buy/loading";
 import WalletSendLoading from "./wallet/send/loading";
 import WalletPlaceSendLoading from "./wallet/place/[placeId]/send/loading";
 import PlaceReserveLoading from "./place/[id]/reserve/loading";
@@ -72,7 +70,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   reservation: () => <ReservationPageLoading />,
   reservationReschedule: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
-  payPick: () => <PayPickLoading />,
+  payPick: () => <PayLoading />,
   payCode: () => <PayCodeLoading />,
   payPlace: () => <PayPlaceLoading />,
   payBill: () => <PayTabLoading />,
@@ -85,7 +83,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   walletAddCard: () => <WalletAddCardLoading />,
   walletCard: () => <WalletAddCardLoading />,
   walletMethods: () => <WalletMethodsLoading />,
-  walletBuy: () => <WalletBuyLoading />,
+  walletBuy: () => <PayLoading />,
   walletSend: () => <WalletSendLoading />,
   walletPlaceSend: () => <WalletPlaceSendLoading />,
   visit: () => <VisitLoading />,

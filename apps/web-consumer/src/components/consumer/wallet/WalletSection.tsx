@@ -7,7 +7,7 @@ import { AddCreditsCardDialog } from "./AddCreditsCardDialog";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { photoUrl } from "@mesita/place-profile";
 import { Screen } from "@/components/consumer/nav/Screen";
-import { CONSUMER_ROUTES, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, walletPlacePath, walletSendPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 import { PlaceActionRow } from "@/components/consumer/pay/PlaceActionRow";
@@ -231,19 +231,14 @@ export function WalletSection({
   return (
     <div className="flex flex-col" data-wallet>
       {wallet?.settling ? (
-        <p className="text-background/70 px-1 pb-1.5 text-sm" role="status">
+        <p className="text-muted-foreground px-3 py-2 text-sm" role="status">
           Confirming a payment…
         </p>
       ) : null}
 
-      {/* ONE WHITE BOX PER CARD (Pato, 2026-11-23, MESITA-4794: "divide
-          loyalty cards in white boxes inside the same giant black box"): the
-          black frame shows between them; was one panel with hairlines
-          (MESITA-4560). */}
-      {/* LIGHT GREY, NOT WHITE (Pato, 2026-11-23, MESITA-4810: "make the boxes
-          a bit gray, not fully white, only the selector white"). White while
-          loading, so the grey bones show. */}
-      <div className={cn("flex flex-col gap-1.5 [&>*]:overflow-hidden [&>*]:rounded-xl", creditsState === "loading" ? "[&>*]:bg-card" : "[&>*]:bg-muted")}>
+      {/* ROWS ON THE MENU'S WHITE PANEL, a hairline between them (MESITA-4838);
+          grey boxes on black before (MESITA-4794). */}
+      <div className="divide-border flex flex-col divide-y">
         {creditsState === "rows"
           ? cards.map((row) => {
               const gone = row.balance.place === null;
@@ -259,6 +254,7 @@ export function WalletSection({
                   pendingAt={soonestPendingAt(row.balance.entries)}
                   disabled={gone}
                   placeId={row.placeId}
+                  giftHref={!gone && wallet?.can_send === true && row.card.available_cents > 0 ? walletSendPath(row.placeId) : null}
                   onOpen={() => navigateTo(router, walletPlacePath(row.placeId), { motion: "drill" })}
                 />
               );
@@ -277,7 +273,7 @@ export function WalletSection({
             (MESITA-4765, D5). Not while the cards load. */}
         {creditsState !== "loading" ? (
           <button type="button" onClick={() => setAddOpen(true)} className={PAY_ROW} data-wallet-add-card>
-            <span className={cn(PAY_THUMB, "bg-card text-foreground")} aria-hidden>
+            <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
               <Plus className="h-4 w-4" strokeWidth={2.25} />
             </span>
             <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>Add Loyalty Card</span>
@@ -287,8 +283,7 @@ export function WalletSection({
       </div>
       <AddCreditsCardDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {creditsState === "failed" ? (
-        // Its own box: dark words would vanish on the black frame.
-        <div className="bg-muted mt-1.5 rounded-xl p-3">
+        <div className="p-3">
           <EmptyState
             inline
             icon={WalletIcon}
