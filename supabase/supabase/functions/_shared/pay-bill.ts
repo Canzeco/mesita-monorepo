@@ -165,6 +165,26 @@ export async function billStaff(
 
 // ── The database ────────────────────────────────────────────────────────────
 
+/** What the waiter is typing now (MESITA-4883): display only. */
+export const TYPING_STEPS = ["bill", "tip", "code"] as const;
+export type Typing = { bill_cents: number; tip_cents: number; step: (typeof TYPING_STEPS)[number] };
+/** The waiter's page sends every five seconds at most; past this it stopped. */
+export const TYPING_STALE_MS = 15_000;
+
+type DraftRow = { draft_bill_cents: number | null; draft_tip_cents: number | null; draft_step: string | null; draft_at: string | null };
+/** Pure. */
+export function typingOf(r: DraftRow | null, nowMs: number): Typing | null {
+  const step = TYPING_STEPS.find((x) => x === r?.draft_step);
+  if (!r?.draft_at || !step || nowMs - Date.parse(r.draft_at) > TYPING_STALE_MS) return null;
+  return { bill_cents: r.draft_bill_cents ?? 0, tip_cents: r.draft_tip_cents ?? 0, step };
+}
+
+export async function readTyping(admin: SupabaseClient, consumerId: string, nowMs: number): Promise<Typing | null> {
+  const { data, error } = await admin.from("pay_guest_codes").select("draft_bill_cents, draft_tip_cents, draft_step, draft_at").eq("consumer_id", consumerId).maybeSingle();
+  if (error) throw new Error(`pay_guest_codes_draft: ${error.message}`);
+  return typingOf(data as DraftRow | null, nowMs);
+}
+
 export async function readBill(admin: SupabaseClient, id: string): Promise<BillRow | null> {
   const { data, error } = await admin.from("pay_bills").select(BILL_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`pay_bills_read: ${error.message}`);

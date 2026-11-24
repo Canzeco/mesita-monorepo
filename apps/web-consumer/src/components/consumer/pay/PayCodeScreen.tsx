@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAnswerBill, apiGetPayCode, billNeedsGuest, type GuestBill, type PayCode } from "@/lib/api/pay-bill";
+import { apiAnswerBill, apiGetPayCode, type BillTyping, billNeedsGuest, type GuestBill, type PayCode } from "@/lib/api/pay-bill";
 import { money, payPlaceCashbackBps, payPlaceDiscountBps } from "@/lib/api/wallet";
 import { payBillPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
@@ -24,13 +24,16 @@ import { usePayPlaces } from "./use-pay-places";
 // general Mesita QR, never a place's; the waiter scans it and sends the bill;
 // this same screen becomes the bill:
 //
-// THREE VIEWS (MESITA-4878, Pato: "1. QR 2. Pay Bill & Confirm payment 3. Receipt"):
-//   1 QR        "Show this to your waiter"; opened from a place, the guest's
-//               credits and rate there and nothing more (MESITA-4881, Pato: "don't
-//               overexplain here"; the tiers and a Prepay line under MESITA-4878)
-//   2 Pay Bill  what it comes to, Accept or Decline; then Pay $X at the place,
-//               which only the waiter confirms
-//   3 Receipt   /pay/bill/<id>
+// FOUR VIEWS (MESITA-4883, Pato: "1. QR 2. Write Bill (observe in real time)
+// 3. Pay Bill 4. Receipt"; three under MESITA-4878):
+//   1 QR          "Show this to your waiter"; opened from a place, the guest's
+//                 credits and rate there and nothing more (MESITA-4881, Pato:
+//                 "don't overexplain here")
+//   2 Write Bill  the bill and the tip as the waiter types them, read every
+//                 half second; shown, never paid
+//   3 Pay Bill    what it comes to, Accept or Decline; then Pay $X at the place,
+//                 which only the waiter confirms
+//   4 Receipt   /pay/bill/<id>
 //   over       declined, cancelled or expired, and the QR again
 //
 // `from` (a place's Pay Bill) only says what the guest gets there; it is never
@@ -38,6 +41,10 @@ import { usePayPlaces } from "./use-pay-places";
 // and never pay the tip; the server works every number out, and Accept names
 // the version on screen.
 
+/** While the waiter types (Pato, MESITA-4883: "every 500ms … to simulate real
+ *  time writing"), while the QR waits, then with a bill. */
+const TYPING_MS = 500;
+const LIVE_MS = 1000;
 const FAST_MS = 3000;
 const SLOW_MS = 5000;
 /** A new QR this long before the old one ends. */
@@ -70,11 +77,15 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   // The waiter lost the bill's page: the QR again, for the accepted bill (MESITA-4831).
   const [showAgain, setShowAgain] = useState(false);
+  const [typing, setTyping] = useState<BillTyping | null>(null);
+  // The guest wants the QR back while the waiter types.
+  const [qrOver, setQrOver] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [armedAt, setArmedAt] = useState(0);
   const following = useRef<string | null>(null);
   const seen = useRef("");
   const changedAt = useRef(0);
+  const typingNow = useRef(false);
   const alive = useRef(true);
   const reads = useRef(0);
   useEffect(() => {
@@ -85,12 +96,15 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   }, []);
 
   const take = useCallback(
-    (b: GuestBill | null) => {
+    (b: GuestBill | null, t: BillTyping | null) => {
       setMisses(0);
+      setTyping(t);
+      typingNow.current = t !== null;
+      if (!t) setQrOver(false);
       setNow(Date.now());
       const shown = b;
       if (billNeedsGuest(shown)) following.current = shown.id;
-      const key = shown ? `${shown.id}:${shown.state}:${shown.version}` : "";
+      const key = `${shown ? `${shown.id}:${shown.state}:${shown.version}` : ""}:${t ? `${t.step}:${t.bill_cents}:${t.tip_cents}` : ""}`;
       if (key !== seen.current) {
         seen.current = key;
         changedAt.current = Date.now();
@@ -108,7 +122,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     const n = ++reads.current;
     try {
       const r = await apiGetPayCode(getSupabase(), following.current ? { bill_id: following.current } : {});
-      if (alive.current && n === reads.current) take(r.bill);
+      if (alive.current && n === reads.current) take(r.bill, r.typing ?? null);
     } catch {
       if (alive.current) setMisses((x) => x + 1);
     }
@@ -127,7 +141,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           // Private mode: a reload mints another.
         }
       }
-      take(r.bill);
+      take(r.bill, r.typing ?? null);
     } catch {
       if (!alive.current) return;
       // No signal: the last QR still works until it ends.
@@ -165,9 +179,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     let timer: ReturnType<typeof setTimeout>;
     const loop = async () => {
       if (document.visibilityState === "visible") await refresh();
-      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current < 120_000 ? FAST_MS : SLOW_MS);
+      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? FAST_MS : typingNow.current ? TYPING_MS : LIVE_MS);
     };
-    timer = setTimeout(() => void loop(), FAST_MS);
+    timer = setTimeout(() => void loop(), LIVE_MS);
     const onVisible = () => {
       if (document.visibilityState === "visible") void refresh();
     };
@@ -251,9 +265,44 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     </div>
   );
 
+  // WRITE BILL: the waiter scanned and is typing.
+  const writing = !rescan && (!bill || bill.state === "open") && !qrOver && (typing !== null || bill?.state === "open");
+  if (writing) {
+    const shown = (c: number) => money(c, here?.currency ?? "mxn");
+    const t = typing ?? { bill_cents: 0, tip_cents: 0, step: "code" as const };
+    const row = (label: string, cents: number, on: boolean, empty: string) => (
+      <div className={cn("flex items-center justify-between gap-3 rounded-2xl border px-4 py-4 transition", on ? "border-foreground" : "border-border")} data-write-bill-row={label}>
+        <dt className={cn("text-base font-semibold", !on && "text-muted-foreground")}>{label}</dt>
+        <dd className={cn("flex items-center gap-1 text-2xl font-bold tabular-nums", cents === 0 && "text-muted-foreground")}>
+          {cents > 0 ? shown(cents) : empty}
+          {on ? <span className="bg-foreground h-6 w-0.5 animate-pulse motion-reduce:animate-none" aria-hidden /> : null}
+        </dd>
+      </div>
+    );
+    return frame(
+      "Write Bill",
+      <section className="flex min-h-fit flex-1 flex-col justify-center gap-4 py-4" data-write-bill={t.step}>
+        <div className="flex flex-col items-center gap-1 text-center">
+          <p className="text-muted-foreground text-base" role="status">
+            {t.step === "bill" ? "Your waiter is writing your bill" : t.step === "tip" ? "Your waiter is writing the tip" : "Your waiter is about to send it"}
+          </p>
+          <p className={cn("leading-tight font-bold tracking-tight tabular-nums", shown(t.bill_cents + t.tip_cents).length > 10 ? "text-4xl" : "text-5xl")}>{shown(t.bill_cents + t.tip_cents)}</p>
+        </div>
+        <dl className="flex flex-col gap-2">
+          {row("Bill", t.bill_cents, t.step === "bill", shown(0))}
+          {row("Tip", t.tip_cents, t.step === "tip", t.step === "code" ? "No tip" : shown(0))}
+        </dl>
+        <p className="text-muted-foreground text-center text-sm">You check it and accept it next. Nothing is paid yet.</p>
+      </section>,
+      <button type="button" className={QUIET_BUTTON_CLASS} onClick={() => setQrOver(true)}>
+        Show my QR
+      </button>,
+      2,
+    );
+  }
+
   // THE QR.
   if (!bill || bill.state === "open" || rescan) {
-    const typing = bill?.state === "open";
     const discount = here ? payPlaceDiscountBps(here) : 0;
     const back = here && discount === 0 ? payPlaceCashbackBps(here) : 0;
     return frame(
@@ -277,7 +326,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         ) : null}
         <PaySection className="flex min-h-0 flex-1 flex-col items-center gap-3 p-4 text-center">
           <h2 className="text-base font-semibold" role="status">
-            {typing ? "Your waiter is typing the bill" : "Show this to your waiter"}
+            Show this to your waiter
           </h2>
           <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
             <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
@@ -316,7 +365,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           Back to the bill
         </button>
       ) : null,
-      rescan ? 2 : 1,
+      rescan ? 3 : 1,
     );
   }
 
@@ -434,7 +483,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
             Cancel bill
           </button>
           </div>,
-          2,
+          3,
         )}
         <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">
           <div className="p-5">
@@ -480,7 +529,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         {busy === "accept" ? <Spinner size="sm" label="Accepting" /> : "Accept"}
       </Button>
     </div>,
-    2,
+    3,
   );
 }
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
-import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff } from "@/lib/bill-api";
+import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR: Bill, Tip, then Code
 // (MESITA-4879): their own 8 digits, which name the place and the waiter, then
@@ -21,6 +21,33 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const [found, setFound] = useState<Found | null>(null);
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // THE GUEST WATCHES IT BEING TYPED (MESITA-4883): every half second when it
+  // changed, every five while it did not, one call at a time.
+  const typing = useRef<Typing>({ bill_cents: 0, tip_cents: 0, step: "bill" });
+  const onTyping = useCallback((bill_cents: number, tip_cents: number, step: "bill" | "tip") => {
+    typing.current = { bill_cents, tip_cents, step };
+  }, []);
+  const live = view !== "ended";
+  useEffect(() => {
+    if (!live) return;
+    let sent = "";
+    let at = 0;
+    let out = false;
+    const tick = () => {
+      const now = JSON.stringify(typing.current);
+      if (out || document.visibilityState !== "visible" || (now === sent && Date.now() - at < 5000)) return;
+      out = true;
+      sent = now;
+      at = Date.now();
+      void typeBill(token, typing.current).finally(() => {
+        out = false;
+      });
+    };
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [live, token]);
 
   const go = (billId: string, staff: Staff) => {
     keepBillStaff(billId, staff);
@@ -123,10 +150,12 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       start={typed ?? undefined}
       atTip={typed !== null}
       sendLabel="Next"
+      onTyping={onTyping}
       busy={false}
       error={null}
       onSend={(bill, tip) => {
         setTyped({ bill, tip });
+        typing.current = { bill_cents: bill, tip_cents: tip, step: "code" };
         setView("code");
       }}
     />

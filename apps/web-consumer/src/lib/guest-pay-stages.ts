@@ -1,10 +1,10 @@
 // THE GUEST'S PAY STEPS (Pato, 2026-11-23, MESITA-4813: "Yes, cut to three"):
-// QR · Pay Bill · Receipt (MESITA-4878), drawn by the strip at the bottom of every
+// QR · Write Bill · Pay Bill · Receipt (MESITA-4883), drawn by the strip at the bottom of every
 // screen of the ticket (MESITA-4600). Pick, the Pay tab's list, is step 0 and
 // wears no strip (MESITA-4635). Bill · Method · Pay · Receipt until then.
 
-export const STRIP_STEPS = ["QR", "Pay Bill", "Receipt"] as const;
-export type StripAt = 1 | 2 | 3 | "done";
+export const STRIP_STEPS = ["QR", "Write Bill", "Pay Bill", "Receipt"] as const;
+export type StripAt = 1 | 2 | 3 | 4 | "done";
 
 /** What the ✕ does before the waiter's screens (MESITA-4598: the ticket is
  *  gone at once, no question; MESITA-4061: a bill that may already be open

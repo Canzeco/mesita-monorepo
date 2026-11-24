@@ -164,13 +164,15 @@ export type BillEntryProps = {
   top?: React.ReactNode;
   /** The last button: Next to the code, or Send bill on an edit. */
   sendLabel: string;
+  /** Every key, for the guest's screen (MESITA-4883). */
+  onTyping?: (billCents: number, tipCents: number, step: "bill" | "tip") => void;
   /** Open on the tip (back from the code). */
   atTip?: boolean;
   onSend: (billCents: number, tipCents: number) => void;
   onLeave?: () => void;
 };
 
-export function BillEntry({ start, busy, error, top, sendLabel, atTip, onSend, onLeave }: BillEntryProps) {
+export function BillEntry({ start, busy, error, top, sendLabel, atTip, onTyping, onSend, onLeave }: BillEntryProps) {
   const [step, setStep] = useState(atTip ? 1 : 0);
   const [bill, setBill] = useState(start?.bill ? amountText(start.bill) : "");
   const [tip, setTip] = useState(start?.tip ? amountText(start.tip) : "");
@@ -182,6 +184,10 @@ export function BillEntry({ start, busy, error, top, sendLabel, atTip, onSend, o
   const picked = other || tipCents === 0 ? null : (TIP_PCTS.find((p) => pct(p) === tipCents) ?? null);
   const typing = other || (tipCents > 0 && picked === null);
   const ready = !busy && billCents !== null;
+
+  useEffect(() => {
+    onTyping?.(billCents ?? 0, tipCents, step === 0 ? "bill" : "tip");
+  }, [onTyping, billCents, tipCents, step]);
 
   const go = () => {
     if (!ready || billCents === null) return;

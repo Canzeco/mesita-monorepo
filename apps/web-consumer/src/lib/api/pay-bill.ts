@@ -35,13 +35,16 @@ export type GuestBill = {
   } | null;
 };
 
+/** What the waiter is typing now (MESITA-4883): shown, never paid. */
+export type BillTyping = { bill_cents: number; tip_cents: number; step: "bill" | "tip" | "code" };
+
 export type PayCode = { url: string; expires_at: string };
 
 export async function apiGetPayCode(
   client: SupabaseClient,
   args: { mint?: boolean; bill_id?: string } = {},
-): Promise<{ code: PayCode | null; bill: GuestBill | null }> {
-  return await invokeEF<{ code: PayCode | null; bill: GuestBill | null }>(client, "consumer-web-get-pay-code", args);
+): Promise<{ code: PayCode | null; bill: GuestBill | null; typing?: BillTyping | null }> {
+  return await invokeEF<{ code: PayCode | null; bill: GuestBill | null; typing?: BillTyping | null }>(client, "consumer-web-get-pay-code", args);
 }
 
 export async function apiAnswerBill(

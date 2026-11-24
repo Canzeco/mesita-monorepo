@@ -66,6 +66,11 @@ export function keepBillStaff(billId: string, staff: Staff | null) {
   }
 }
 
+/** What is on the keypad, for the guest's screen (MESITA-4883). Display only:
+ *  a lost one is nothing. */
+export type Typing = { bill_cents: number; tip_cents: number; step: "bill" | "tip" | "code" };
+export const typeBill = (token: string, typing: Typing) => post("visit-web-type-bill", { token, ...typing });
+
 export const openBill = (staff: Staff, by: { token: string } | { again_bill_id: string }) =>
   call<{ bill_id: string }>("visit-web-open-bill", { ...keyed(staff), ...by }, "Couldn't open the bill. Try again.");
 
