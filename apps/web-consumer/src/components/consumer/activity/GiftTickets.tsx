@@ -90,7 +90,7 @@ export function GiftFace({
 }
 
 const FACES = {
-  row: { face: "h-10 w-10 text-sm", overlap: "-ml-3", bubble: "h-[18px] w-[18px]", icon: "h-[11px] w-[11px]" },
+  row: { face: "h-12 w-12 text-base", overlap: "-ml-4", bubble: "h-5 w-5", icon: "h-[11px] w-[11px]" },
   page: { face: "h-16 w-16 text-xl", overlap: "-ml-4", bubble: "h-6 w-6", icon: "h-3.5 w-3.5" },
 } as const;
 
@@ -146,50 +146,52 @@ export function GiftTicketRow({
   const words = giftSentence(g);
   // TAKE BACK ON THE ROW (MESITA-4324, Pato: "remove the waiting for a
   // friend list … it must be expressed in the gift tickets"): a gift you
-  // sent that nobody took yet carries the small grey Take back where the
-  // time was; the time moves to the state line. The pill is the link's
+  // sent that nobody took yet carries the small grey Take back on its own
+  // line under the words (MESITA-4816, it squeezed them). The pill is the link's
   // sibling, never inside it (a link cannot hold a button).
   const canTakeBack = g.status === "open" && g.sender.you && onChanged !== undefined;
   const ago = timeAgo(movedAt(g));
   return (
-    <li className="flex items-center gap-2 pr-4">
+    <li>
       <PushLink
         href={giftTicketPath(g.gift_id)}
         aria-label={`Gift, ${money(g.amount_cents, g.currency)} at ${place}, from ${who(g.sender, "someone")}${g.status === "taken_back" ? "" : ` to ${who(g.recipient, "nobody yet")}`}, ${state.label}`}
-        className={cn("hover:bg-muted/40 active:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 transition", !canTakeBack && "-mr-4 pr-4")}
+        className="hover:bg-muted/40 active:bg-muted/60 flex items-center gap-4 px-4 py-4 transition"
         data-gift-ticket={g.status}
       >
         <GiftFaces g={g} />
-        {g.place?.photo ? (
+        {/* The place's photo only where the place is not the page (MESITA-4816). */}
+        {!showPlace ? null : g.place?.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={g.place.photo}
             alt=""
-            className="bg-muted h-10 w-10 shrink-0 rounded-xl object-cover"
+            className="bg-muted h-12 w-12 shrink-0 rounded-xl object-cover"
           />
         ) : (
-          <span className="bg-muted h-10 w-10 shrink-0 rounded-xl" aria-hidden />
+          <span className="bg-muted h-12 w-12 shrink-0 rounded-xl" aria-hidden />
         )}
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold break-words tabular-nums">
+          <span className="block text-base font-semibold break-words tabular-nums">
             {words}
           </span>
-          {/* The state (with the time, beside Take back), then the place on
+          {/* The state, then the place on
               its own line: the row grows rather than cut a word (MESITA-4343,
               Pato: "it's ok if tickets are a bit taller"). */}
-          <span className="mt-0.5 block text-sm break-words">
+          <span className="mt-1 block text-sm break-words">
             <span className={cn("font-semibold", GIFT_TONE[state.tone])}>{state.label}</span>
-            {canTakeBack ? <span className="text-muted-foreground tabular-nums"> · {ago}</span> : null}
           </span>
           {showPlace ? (
-            <span className="text-muted-foreground mt-0.5 block text-sm break-words">{place}</span>
+            <span className="text-muted-foreground mt-1 block text-sm break-words">{place}</span>
           ) : null}
         </span>
-        {canTakeBack ? null : (
-          <span className="text-muted-foreground shrink-0 self-start text-sm tabular-nums">{ago}</span>
-        )}
+        <span className="text-muted-foreground shrink-0 self-start text-sm tabular-nums">{ago}</span>
       </PushLink>
-      {canTakeBack ? <TakeBack g={g} onDone={onChanged} variant="pill" /> : null}
+      {canTakeBack ? (
+        <div className="-mt-1 flex justify-end px-4 pb-4">
+          <TakeBack g={g} onDone={onChanged} variant="pill" />
+        </div>
+      ) : null}
     </li>
   );
 }
