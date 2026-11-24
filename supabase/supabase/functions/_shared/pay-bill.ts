@@ -1,5 +1,5 @@
 // Waiter-led pay (MESITA-4823). The guest shows one general QR (and six
-// digits under it); the waiter scans it on visit.mesita.ai, types the bill and
+// digits under it); the waiter scans it on service.mesita.ai, types the bill and
 // the tip and sends; the guest accepts or declines; the rest is paid outside
 // Mesita; the waiter's Received spends the credits and grants the cashback.
 //

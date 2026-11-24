@@ -2,7 +2,7 @@
 // one string (an empty box is a space), so sign-gate reads it unchanged and a
 // gap never passes as four digits. Pure; GuestVerify moves the focus.
 
-export const CODE_LENGTH = 4;
+export const CODE_LENGTH = 6;
 
 /** The four boxes' digits, "" for an empty box. */
 export function codeDigits(code: string): string[] {

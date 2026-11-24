@@ -134,7 +134,7 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
 
   const cents = readAmount(amount);
   const tipCents = tip.trim() === "" ? 0 : readAmount(tip);
-  const codeOk = /^\d{4}$/.test(placeCode.replace(/\s/g, ""));
+  const codeOk = /^\d{6}$/.test(placeCode.replace(/\s/g, ""));
   const canOpen = codeOk && cents !== null && tipCents !== null && !busy;
   const tipHigh = cents !== null && tipCents !== null && tipCents > cents / 2;
 
@@ -352,8 +352,8 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
             className="secret"
             inputMode="numeric"
             autoComplete="off"
-            maxLength={5}
-            placeholder="4-digit code"
+            maxLength={7}
+            placeholder="6-digit code"
             value={placeCode}
             onChange={(e) => setPlaceCode(e.target.value)}
           />

@@ -18,7 +18,7 @@ Deno.test("isProofToken: refuses anything the column check would refuse", () => 
   }
 });
 
-Deno.test("proofUrl: visit.mesita.ai unless VISIT_WEB_URL overrides it", () => {
+Deno.test("proofUrl: service.mesita.ai unless VISIT_WEB_URL overrides it", () => {
   assertEquals(proofUrl("T", () => undefined), `${PROOF_ORIGIN}/proof/T`);
   assertEquals(proofUrl("T", () => "https://visit-test.example.com/ "), "https://visit-test.example.com/proof/T");
   assertEquals(proofUrl("T", () => "  "), `${PROOF_ORIGIN}/proof/T`);

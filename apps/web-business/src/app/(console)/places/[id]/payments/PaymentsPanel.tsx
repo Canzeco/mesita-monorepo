@@ -38,7 +38,6 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
@@ -191,7 +190,7 @@ const CURRENCY_NAME: Record<string, string> = {
 };
 
 /** The waiter's charge (MESITA-3306) and the staff list (MESITA-3462). */
-const VISIT_ORIGIN = "https://visit.mesita.ai";
+const VISIT_ORIGIN = "https://service.mesita.ai";
 
 type VoucherKey = Extract<PaymentKey, `voucher_${string}`>;
 const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_");
@@ -320,9 +319,7 @@ export function PaymentsPanel({
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The tier moves when the Credits Account flips here; refetched then.
   const [creditLimit, setCreditLimit] = useState<CreditLimit | null>(initial.credit_limit ?? null);
-  const waiterUrl = `${VISIT_ORIGIN}/waiter/${encodeURIComponent(placeId)}`;
   const [codeSet, setCodeSet] = useState(initial.code_set);
-  const [linkCopied, setLinkCopied] = useState(false);
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
   const ready = account.state === "ready";
@@ -763,29 +760,10 @@ export function PaymentsPanel({
               );
             })}
           </ul>
-          {/* THE WAITER'S PHONES (MESITA-4823): waiters send the bill, so a
-              place needs its waiter code and the link a phone opens once. */}
+          {/* THE WAITER CODE (MESITA-4827): waiters scan the guest's QR and
+              type it on every bill. */}
           <ul className="divide-border border-border divide-y border-t" data-waiter-phones>
             <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
-            <li className="flex min-h-16 flex-wrap items-center gap-4 px-5 py-3 text-sm sm:px-6" data-waiter-link>
-              <span className="shrink-0 rounded-lg border bg-white p-1.5">
-                <QRCodeSVG value={waiterUrl} size={72} marginSize={0} title="Waiter link" />
-              </span>
-              <div className="min-w-48 flex-1">
-                <p className="font-medium">Waiter link</p>
-                <p className="text-muted-foreground">Each waiter opens it once and types the waiter code. Then they scan a guest&apos;s Mesita QR to send the bill.</p>
-              </div>
-              <a className={PILL_BUTTON_CLASS} href={waiterUrl} target="_blank" rel="noreferrer">
-                Open
-              </a>
-              <button
-                type="button"
-                className={PILL_BUTTON_CLASS}
-                onClick={() => void navigator.clipboard.writeText(waiterUrl).then(() => setLinkCopied(true), () => setError("Couldn't copy the link."))}
-              >
-                {linkCopied ? "Copied" : "Copy"}
-              </button>
-            </li>
           </ul>
           {cashDue.length > 0 ? (
             <ul className="divide-border border-border divide-y border-t" data-cash-due>

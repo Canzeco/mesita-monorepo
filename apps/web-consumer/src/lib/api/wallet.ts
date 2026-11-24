@@ -324,7 +324,7 @@ export type PayProof = {
   currency: string;
   /** Null while the payment is still open. */
   paid_at: string | null;
-  /** When staff marked the proof seen on visit.mesita.ai. */
+  /** When staff marked the proof seen on service.mesita.ai. */
   proof_seen_at: string | null;
   proof: { token: string; url: string } | null;
   expires_at?: string | null;

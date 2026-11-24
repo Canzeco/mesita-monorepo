@@ -1,7 +1,7 @@
 // What a visit is (MESITA-3463, decided at the /autoplan gate of 2026-11-08):
 // a guest's payment at a place that reached paid with a card part above
 // zero. A card charge on the place's own Stripe account is the proof of
-// presence; "Mark as seen" on visit.mesita.ai stays a backstop for disputes
+// presence; "Mark as seen" on service.mesita.ai stays a backstop for disputes
 // and amount checks and never counts.
 //
 //   counts        card_cents > 0 and the row reached paid (paid,

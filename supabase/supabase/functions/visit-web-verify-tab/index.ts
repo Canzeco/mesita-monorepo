@@ -1,7 +1,7 @@
 // Supabase Edge Function — visit-web-verify-tab
 //
 // MESITA-3707 (guest pays, waiter verifies): the waiter scanned the guest's
-// QR (visit.mesita.ai/tab/<token>), types the 4-digit waiter code and taps
+// QR (service.mesita.ai/tab/<token>), types the 4-digit waiter code and taps
 // Confirm (MESITA-4521: the code is required; one click no longer confirms).
 // Any phone signed in with the waiter code may verify (MESITA-3734: there is no Staff QR): its staff
 // token must be a current `s2` token of the tab's place (_shared/staff.ts),

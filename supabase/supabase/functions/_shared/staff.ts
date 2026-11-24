@@ -1,4 +1,4 @@
-// Staff identity on visit.mesita.ai (MESITA-3462) and the staff list of a
+// Staff identity on service.mesita.ai (MESITA-3462) and the staff list of a
 // place's Mesita Payments.
 //
 //   visit-web-list-payments   readListBody → staffAccess → listPayments

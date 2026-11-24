@@ -71,7 +71,7 @@ export function writeOpenTabId(id: string | null) {
 
 /** MESITA-3709: the guest's own payments (guest tabs) on this device, newest
  *  first, so the Pay list shows them In progress and their QR survives a
- *  reload. The QR's link (visit.mesita.ai/tab/<token>) is only a key to the
+ *  reload. The QR's link (service.mesita.ai/tab/<token>) is only a key to the
  *  waiter's Verify page; it is kept until the waiter verifies or the
  *  three-hour window ends. The server is the truth. */
 const GUEST_TABS_KEY = "mesita.pay.guest-tabs";

@@ -3,7 +3,7 @@
 // MESITA-3304 (W2a): a signed-in guest pays a place from their credit there.
 // One RPC (wallet_pay_credit) under the (guest, place) lock writes the paid
 // payment and its spend entry and answers a proof token; the QR opens the
-// proof on visit.mesita.ai.
+// proof on service.mesita.ai.
 //
 // MESITA-4708: NO CARD FOR A BILL. The card part (MESITA-3305, W2b: a Stripe
 // Checkout for the rest and a tip) is gone: cards buy vouchers only. A

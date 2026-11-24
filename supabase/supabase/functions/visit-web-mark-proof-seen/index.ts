@@ -1,6 +1,6 @@
 // Supabase Edge Function — visit-web-mark-proof-seen
 //
-// MESITA-3304 (W2a): staff mark a payment proof seen on visit.mesita.ai. The
+// MESITA-3304 (W2a): staff mark a payment proof seen on service.mesita.ai. The
 // stamp is set once; a second tap (or a second phone) answers the stored
 // time, which is how the page and the guest's screen show "Already seen".
 //

@@ -44,7 +44,7 @@ export const MONEY_CODES = [
   // The session
   "sign_in",
   "forbidden",
-  // visit.mesita.ai's payments list without staff access (MESITA-3462)
+  // service.mesita.ai's payments list without staff access (MESITA-3462)
   "staff_only",
   "in_progress",
   "locked",

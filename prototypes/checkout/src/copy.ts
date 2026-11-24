@@ -6,7 +6,7 @@ export const copy = {
     title: "Mesita checkout prototype",
     console: "Business › Checkout",
     guest: "Guest's phone",
-    waiter: "Waiter's phone · visit.mesita.ai",
+    waiter: "Waiter's phone · service.mesita.ai",
   },
   scenario: {
     credit: "Guest credit here",

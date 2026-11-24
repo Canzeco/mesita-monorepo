@@ -2,12 +2,12 @@
 //
 // A paid Mesita payment carries one proof token: 128 random bits, base64url,
 // 22 characters, stored in clear on wallet_payments.proof_token. It is the
-// only key the staff page on visit.mesita.ai has (no session there): it
+// only key the staff page on service.mesita.ai has (no session there): it
 // reads one receipt and stamps it seen, and the guest reopens the same QR
 // from the Wallet, so it is never rotated. W2c's charge token gates a money
 // flow and stays hashed; this one does not.
 
-export const PROOF_ORIGIN = "https://visit.mesita.ai";
+export const PROOF_ORIGIN = "https://service.mesita.ai";
 
 const TOKEN = /^[A-Za-z0-9_-]{22}$/;
 

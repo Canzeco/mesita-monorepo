@@ -1,6 +1,6 @@
 // Supabase Edge Function — visit-web-get-proof
 //
-// MESITA-3304 (W2a): the staff page on visit.mesita.ai reads a payment proof.
+// MESITA-3304 (W2a): the staff page on service.mesita.ai reads a payment proof.
 // No sign-in there: the 128-bit token in the QR is the key. The answer says
 // what Mesita received at which place and when, the server's clock, and
 // whether staff already saw it; never who paid.

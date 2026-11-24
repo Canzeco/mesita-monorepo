@@ -151,7 +151,7 @@ export function PayPage({
           then below each place ticket"): Tickets rides the header as an
           icon; the Payment method | Tickets row is gone, so Pay Bill is the
           page's first button. */}
-      <PayHeader title="Mesita Wallet" action={<WalletHeaderActions />} />
+      <PayHeader title="Mesita" action={<WalletHeaderActions />} />
 
       {/* THREE BUTTONS IN ONE ROW (Pato, 2026-11-21, MESITA-4579: "try to
           put the buttons in a horizontal instead of vertical, the three

@@ -40,12 +40,28 @@ async function call<T>(name: string, body: Record<string, unknown>, fallback: st
 
 export type Staff = { place_id: string; staff_token: string };
 
-export const signIn = (place_id: string, place_code?: string) =>
-  call<{ place: { id: string; name: string | null }; has_code: boolean; staff_token?: string | null; staff_expires_at?: string | null }>(
-    "visit-web-sign-in",
-    { place_id, ...(place_code ? { place_code } : {}) },
-    "Couldn't sign in. Try again.",
-  );
+/** The place's 6-digit code; the code alone names the place. */
+export const signIn = (code: string) =>
+  call<{ place: { id: string; name: string | null }; staff_token: string }>("visit-web-sign-in", { code }, "Couldn't check the code. Try again.");
+
+// The staff key of one bill, in this tab only: the code is typed once per
+// bill, and nothing about the phone is remembered (MESITA-4827).
+const keyOf = (billId: string) => `mesita.bill.${billId}`;
+export function readBillStaff(billId: string): Staff | null {
+  try {
+    return JSON.parse(sessionStorage.getItem(keyOf(billId)) ?? "null") as Staff | null;
+  } catch {
+    return null;
+  }
+}
+export function keepBillStaff(billId: string, staff: Staff | null) {
+  try {
+    if (staff) sessionStorage.setItem(keyOf(billId), JSON.stringify(staff));
+    else sessionStorage.removeItem(keyOf(billId));
+  } catch {
+    // Private mode: the bill asks for the code again.
+  }
+}
 
 export const openBill = (staff: Staff, by: { token: string } | { again_bill_id: string }) =>
   call<{ bill_id: string }>("visit-web-open-bill", { ...staff, ...by }, "Couldn't open the bill. Try again.");

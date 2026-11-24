@@ -1,7 +1,7 @@
 // Supabase Edge Function — visit-web-bill-tab
 //
 // MESITA-3562 (Pay at the table, _shared/tab.ts): the waiter sends the bill
-// to the guest's screen. No sign-in on visit.mesita.ai: the waiter is staff
+// to the guest's screen. No sign-in on service.mesita.ai: the waiter is staff
 // by the place code (once per device; it answers MESITA-3462's 12-hour staff
 // token, which every later call carries) for the tab's place. The bill and
 // the tip suggestion may change until the guest pays (409 paying); each

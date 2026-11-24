@@ -1,7 +1,7 @@
 // Supabase Edge Function — visit-web-open-charge
 //
 // MESITA-3306 (W2c): staff open the waiter's charge at
-// visit.mesita.ai/charge/<place>. No sign-in there: the place code is the
+// service.mesita.ai/charge/<place>. No sign-in there: the place code is the
 // key. The place-code gate lives here and nowhere else (gate d2): a place
 // with no code answers place_code_required. The answer is a 4-digit code the
 // guest types on Pay and a charge_token the staff screen polls with; both are

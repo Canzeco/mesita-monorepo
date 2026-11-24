@@ -1,4 +1,4 @@
-// The calls this app makes, with plain fetch: no sign-in on visit.mesita.ai,
+// The calls this app makes, with plain fetch: no sign-in on service.mesita.ai,
 // so supabase-js has no session to carry. The proof token in the URL is the
 // key (MESITA-3304). A refusal's words are the server's. The two
 // NEXT_PUBLIC_SUPABASE_ variables are public and the build bakes them in, so

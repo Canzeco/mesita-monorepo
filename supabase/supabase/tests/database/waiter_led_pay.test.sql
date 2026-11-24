@@ -40,8 +40,8 @@ insert into t select 'open', public.pay_bill_open(repeat('a', 64), null, '000000
 select is((select v->>'outcome' from t where k = 'open'), 'opened', 'the QR opens a bill session');
 select is((public.pay_bill_open(repeat('1', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64))->>'outcome'), 'reused', 'the six digits reach the same session');
 select is((public.pay_guest_code_set('00000000-0000-4000-8000-0000000a4823', repeat('2', 64), repeat('3', 64))->>'ok'), 'true', 'the code rotates');
-select is((public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64))->>'ok'), 'true', 'the previous QR works for a minute');
-select is((public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64), now() + interval '61 seconds')->>'code'), 'code_gone', 'and then it does not');
+select is((public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64))->>'ok'), 'true', 'the previous QR works for five minutes');
+select is((public.pay_bill_open(repeat('a', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('c', 64), now() + interval '301 seconds')->>'code'), 'code_gone', 'and then it does not');
 
 -- ── Send and edit ──
 select is((public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='open'), '00000000-0000-4000-8000-000000024823', 0, 50000, 5000, repeat('c', 64))->>'code'), 'forbidden', 'another place never bills this session');

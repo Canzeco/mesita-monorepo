@@ -9,10 +9,9 @@ import { describe, expect, it } from "vitest";
 const PANEL = readFileSync(join(__dirname, "PaymentsPanel.tsx"), "utf8");
 
 describe("the place code on Payments", () => {
-  it("sets the waiter code and links the waiter's phone (MESITA-4823), and never gates cash on it", () => {
+  it("sets the waiter code (MESITA-4827), and never gates cash on it", () => {
     expect(PANEL).toContain("<WaiterCodeRow");
     expect(PANEL).not.toContain("Set the waiter code first.");
-    expect(PANEL).toContain("/waiter/${encodeURIComponent(placeId)}");
   });
 
   it("never lets an owner turn cash off (it is always accepted)", () => {
