@@ -85,15 +85,8 @@ export function PayPage({
   const [shown, setShown] = useState(false);
   if (allReady && !shown) setShown(true);
 
-  // TEN ROWS TO SEE IT FULL (Pato, 2026-11-24, MESITA-4844: "for the moment,
-  // display the same place 10 times"). Test mode only: a live place ends it.
-  // Remove once he has seen it.
-  const filled =
-    sorted && sorted.length > 0 && sorted.length < 10 && sorted.every((p) => p.test_mode)
-      ? Array.from({ length: 10 }, (_, i) => sorted[i % sorted.length])
-      : sorted;
   const list = {
-    places: filled,
+    places: sorted,
     failed: placesFailed,
     loc,
     onUseLocation: askLocation,
