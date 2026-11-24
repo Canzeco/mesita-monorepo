@@ -103,8 +103,9 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     const r = await sendBill(found.staff, { bill_id: found.billId, version: found.version, bill_cents: typed.bill, tip_cents: typed.tip });
     if (r === "failed") return say(r);
     if ("refused" in r) {
-      // Accepted or changed on another phone: the bill's own screen says it.
-      if (r.code === "accepted" || r.code === "stale") return go(found.billId, found.staff);
+      // Accepted or changed on another phone, or the code is needed again: the
+      // bill's own screen says it.
+      if (r.code === "accepted" || r.code === "stale" || r.code === "staff_code_needed") return go(found.billId, found.staff);
       return say(r);
     }
     go(found.billId, found.staff);
@@ -116,6 +117,8 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setError(null);
     const r = await closeBill(found.staff, found.billId, "cancel");
     if (r === "failed") return say(r);
+    // Not cancelled (already paid, or over): the bill's own screen says which.
+    if ("refused" in r) return go(found.billId, found.staff);
     setBusy(null);
     setView("ended");
   }

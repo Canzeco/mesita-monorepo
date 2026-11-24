@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { MAX_GOOGLE_PLACE_IDS } from "./google-place-ids";
 import { ListPlus, Search } from "lucide-react";
 
 import {
@@ -69,6 +70,7 @@ export function SearchTab({
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<SearchResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sentUpTo, setSentUpTo] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
 
   const parsed = useMemo(() => splitSearchBarInput(bar), [bar]);
@@ -85,10 +87,11 @@ export function SearchTab({
   const failedQueries = result?.queries.filter((q) => q.error !== null) ?? [];
 
   async function runSearch() {
-    if (unitCount === 0 || overLimit) return;
+    if (running || unitCount === 0 || overLimit) return;
     setRunning(true);
     setError(null);
     setResult(null);
+    setSentUpTo(0);
     try {
       const res = await fetch("/api/bulk-search", {
         method: "POST",
@@ -114,6 +117,9 @@ export function SearchTab({
   }
 
   const allPlaceIds = (result?.uniquePlaces ?? []).map((p) => p.id);
+  // The boxes take MAX_GOOGLE_PLACE_IDS at a time; the next tap sends the rest.
+  const sendFrom = sentUpTo < allPlaceIds.length ? sentUpTo : 0;
+  const sendIds = allPlaceIds.slice(sendFrom, sendFrom + MAX_GOOGLE_PLACE_IDS);
 
   async function copyText(text: string, key: string) {
     try {
@@ -228,9 +234,15 @@ export function SearchTab({
             <Button
               tone="secondary"
               icon={<ListPlus aria-hidden className="h-4 w-4" />}
-              onClick={() => onSendIds(allPlaceIds)}
+              onClick={() => {
+                setSentUpTo(sendFrom + sendIds.length);
+                onSendIds(sendIds);
+              }}
             >
-              Send {allPlaceIds.length}{" "}
+              Send{" "}
+              {allPlaceIds.length > MAX_GOOGLE_PLACE_IDS
+                ? `${sendFrom + 1}–${sendFrom + sendIds.length} of ${allPlaceIds.length}`
+                : allPlaceIds.length}{" "}
               {allPlaceIds.length === 1 ? "ID" : "IDs"} to the boxes below
             </Button>
           )}
