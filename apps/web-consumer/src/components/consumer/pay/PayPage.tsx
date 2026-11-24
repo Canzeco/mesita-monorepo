@@ -57,6 +57,10 @@ export function PayPage({
     if (hasInAppBack()) router.back();
     else replaceAddress(CONSUMER_ROUTES.pay);
   };
+  // THE PICK TAKES THE LIST'S PLACE (Pato, 2026-11-24, MESITA-4896: "if i press
+  // x, redirect to main pay page, not to the second page"): ✕, Back and Done
+  // from the QR or the offers land here with no list open.
+  const pick = (href: string) => navigateTo(router, href, { replace: true, motion: "push" });
   const { loc, askLocation, notNow } = usePayLocation({ prime: true });
   const { places, failed: placesFailed, refresh: refreshPlaces } = usePayPlaces(loc.state === "on" ? loc.at : null);
   // The guest's one open bill (MESITA-4823); undefined while it is read.
@@ -127,11 +131,11 @@ export function PayPage({
         <PlaceList
           kind="prepay"
           {...list}
-          onPick={(id) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" })}
+          onPick={(id) => pick(placeOffersPath(id, "prepayment"))}
         />
       </PlaceModal>
       <PlaceModal id="pay" open={modal === "pay"} onClose={closeModal}>
-        <PlaceList kind="pay" {...list} onPick={(id) => navigateTo(router, payCodePath(id), { motion: "drill" })} />
+        <PlaceList kind="pay" {...list} onPick={(id) => pick(payCodePath(id))} />
       </PlaceModal>
     </>
   );
@@ -148,8 +152,8 @@ function focusTitle(el: HTMLElement | null) {
 
 /** A FULL-PAGE MODAL (Pato, 2026-11-24, MESITA-4846): from the bottom over the
  *  whole app, its title with ✕, the place table under it, all white (Pato,
- *  MESITA-4852: "keep it clean"; the tile's colour before). Back to it (from a
- *  place, from the QR) shows it at once. */
+ *  MESITA-4852: "keep it clean"; the tile's colour before). A reload on it
+ *  shows it at once. */
 function PlaceModal({
   id,
   open,
