@@ -136,7 +136,7 @@ const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 
 /** THE BOXES UNDER A PLACE. Prepay: each voucher it sells, what you pay over
  *  what you get. Pay (MESITA-4837): the guest's credits here, then what their
- *  own next bill gets; nothing to say, no box. */
+ *  own next bill gets and as which visit. */
 function offerBoxes(p: PayPlace, kind: ListKind): OfferBox[] {
   if (kind === "prepay") {
     const o = p.offers;
@@ -156,17 +156,34 @@ function offerBoxes(p: PayPlace, kind: ListKind): OfferBox[] {
   }
   const discount = payPlaceDiscountBps(p);
   const cashback = payPlaceCashbackBps(p);
+  const bps = discount || cashback;
+  // GREY CREDITS, MORE SAID (Pato, 2026-11-24, MESITA-4839: "display maybe
+  // more info here ... current credit in gray, not green"): always two boxes.
   return [
-    ...(p.available_cents > 0
-      ? [{ key: "credits", top: "Your credits", bottom: money(p.available_cents, p.currency), tone: BOX_TINT.prepay }]
-      : []),
-    ...(discount > 0
-      ? [{ key: "discount", top: "On this bill", bottom: `${discount / 100}% Discount`, tone: BOX_TINT.discount }]
-      : cashback > 0
-        ? [{ key: "cashback", top: "On this bill", bottom: `${cashback / 100}% Cashback`, tone: BOX_TINT.cashback }]
-        : []),
+    {
+      key: "credits",
+      top: "Your credits",
+      bottom: p.available_cents > 0 ? money(p.available_cents, p.currency) : "None yet",
+      bonus: p.pending_cents > 0 ? `+${money(p.pending_cents, p.currency)} pending` : p.available_cents > 0 ? "Used first" : "Prepay to get some",
+      tone: "bg-muted",
+    },
+    {
+      key: "offer",
+      top: "On this bill",
+      bottom: bps > 0 ? `${bps / 100}% ${discount > 0 ? "Discount" : "Cashback"}` : "No offer",
+      bonus: bps > 0 ? VISIT_NAME[p.visit_line ?? "welcome"] : "Pay as usual",
+      tone: discount > 0 ? BOX_TINT.discount : cashback > 0 ? BOX_TINT.cashback : "bg-muted",
+    },
   ];
 }
+
+/** The guest's own tier here, as Offers names it. */
+const VISIT_NAME = {
+  welcome: "Welcome Visit",
+  returning: "Returning Visit",
+  welcome_vip: "VIP Welcome Visit",
+  returning_vip: "VIP Returning Visit",
+} as const;
 
 /** A place: photo, name, the address on one line and the distance; under
  *  them its offer boxes (MESITA-4748). The row is the one button (D8): the
@@ -175,7 +192,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
   const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
   const name = p.name ?? "A Mesita place";
   const shown = offerBoxes(p, kind);
-  const spoken = [name, distance, ...shown.map((b) => [b.top, b.bottom, b.bonus && `${b.bonus} Bonus`].filter(Boolean).join(" "))].filter(Boolean).join(", ");
+  const spoken = [name, distance, ...shown.map((b) => [b.top, b.bottom, b.bonus && (kind === "prepay" ? `${b.bonus} Bonus` : b.bonus)].filter(Boolean).join(" "))].filter(Boolean).join(", ");
   return (
     <button
       type="button"
@@ -208,7 +225,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
             <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2 py-1.5", b.tone)}>
               <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
               <span className="mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums">{b.bottom}</span>
-              {b.bonus ? <span className="mt-0.5 block truncate text-xs leading-tight font-semibold text-emerald-700 tabular-nums">{b.bonus}<span className="max-[359px]:hidden"> Bonus</span></span> : null}
+              {b.bonus ? <span className={cn("mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums", kind === "prepay" ? "text-emerald-700" : "text-foreground/70")}>{b.bonus}{kind === "prepay" ? <span className="max-[359px]:hidden"> Bonus</span> : null}</span> : null}
             </span>
           ))}
         </span>
