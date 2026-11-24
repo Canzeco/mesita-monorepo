@@ -19,7 +19,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
           <Skeleton className="h-[148px] min-w-0 rounded-2xl" aria-hidden />
           <Skeleton className="h-[148px] min-w-0 rounded-2xl" aria-hidden />
         </div>
-        <div className="bg-muted -mx-2 mt-2 flex min-h-0 flex-1 flex-col px-1.5 pb-1.5">
+        <div className="bg-muted my-2 flex min-h-0 flex-1 flex-col rounded-2xl px-1.5 pb-1.5">
           <div className="h-12 shrink-0" />
           <div className="bg-card min-h-0 flex-1 overflow-hidden rounded-xl">
             <div className={SECTION_ROWS}>

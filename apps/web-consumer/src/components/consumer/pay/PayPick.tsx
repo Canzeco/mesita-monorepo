@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, QrCode } from "lucide-react";
+import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -114,13 +114,14 @@ export function PlaceList({
         // different buttons ... it must look like place selector"): one row
         // per place, one tap; plain columns, no boxes.
         <div data-pay-places>
-          <div className={cn(ROW_GRID[kind], "border-border bg-muted text-muted-foreground sticky top-14 z-10 h-9 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
+          <div className={cn(ROW_GRID[kind], "border-border bg-muted text-muted-foreground sticky top-14 z-10 border-b text-xs font-semibold", kind === "prepay" ? "h-11" : "h-9")} aria-hidden data-pay-head-row>
             <span className="pl-3.5">Place</span>
             {HEADS[kind].map((h) => (
-              <span key={h} className="text-center tabular-nums">
+              <span key={h} className={cn("text-center tabular-nums", kind === "prepay" && "text-foreground text-base max-[374px]:text-sm")}>
                 {h}
               </span>
             ))}
+            <span />
           </div>
           <div className="divide-border border-border divide-y border-b">
             {shown.map((p, i) => (
@@ -144,12 +145,13 @@ function fold(v: string): string {
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
 /** The table's columns (Pato, 2026-11-24, MESITA-4845: "name 50% and then
- *  prepay offers 50% wide, each 16.66%"): no ›, no gaps. Pay is thirds, with no
+ *  prepay offers 50% wide, each 16.66%"): no gaps. A › ends every row: it opens (Pato,
+ *  MESITA-4848). Pay is thirds, with no
  *  distance (Pato: "33% and 33% and 33%"). */
 const HEADS: Record<ListKind, string[]> = { prepay: ["$200", "$1,000", "$5,000"], pay: ["Your credits", "This bill"] };
 const ROW_GRID: Record<ListKind, string> = {
-  prepay: "grid w-full grid-cols-[50%_repeat(3,minmax(0,1fr))] items-center",
-  pay: "grid w-full grid-cols-3 items-center",
+  prepay: "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center",
+  pay: "grid w-full grid-cols-[repeat(3,minmax(0,1fr))_1.5rem] items-center",
 };
 
 /** A place, one row, the one button. Prepay: the bonus of each voucher it
@@ -157,6 +159,8 @@ const ROW_GRID: Record<ListKind, string> = {
  *  own next bill gets. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
   const name = p.name ?? "A Mesita place";
+  // Which branch it is (Pato, 2026-11-24, MESITA-4848).
+  const address = kind === "prepay" ? p.address : null;
   const discount = payPlaceDiscountBps(p);
   const bps = discount || payPlaceCashbackBps(p);
   const offer = bps > 0 ? (discount > 0 ? "Discount" : "Cashback") : null;
@@ -164,7 +168,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
   const credits = p.available_cents > 0 ? money(p.available_cents, p.currency) : null;
   const spoken =
     kind === "prepay"
-      ? [name, ...bonuses.map((pct, i) => (pct === null ? null : `${HEADS.prepay[i]}, +${pct}% bonus`))]
+      ? [name, address, ...bonuses.map((pct, i) => (pct === null ? null : `${HEADS.prepay[i]}, +${pct}% bonus`))]
       : [name, credits ? `${credits} in credits` : null, offer ? `${bps / 100}% ${offer} on this bill` : null];
   return (
     <button
@@ -178,6 +182,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
         <PlacePhoto place={p} className={kind === "prepay" ? "h-9 w-9 max-[359px]:hidden" : "h-8 w-8 max-[359px]:hidden"} />
         <span className="min-w-0">
           <span className="line-clamp-2 text-sm leading-tight font-semibold">{name}</span>
+          {address ? <span className="text-muted-foreground mt-0.5 block truncate text-xs leading-tight">{address}</span> : null}
         </span>
       </span>
       {kind === "prepay" ? (
@@ -198,6 +203,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
           </span>
         </>
       )}
+      <ChevronRight className="text-muted-foreground h-4 w-4" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }

@@ -109,8 +109,10 @@ export function PayPage({
             onClick={() => (bill ? navigateTo(router, CONSUMER_ROUTES.payCode, { motion: "drill" }) : openModal("pay"))}
           />
         </div>
-        {/* ONE BORDER, edge to edge (MESITA-4842): black, its title on it. */}
-        <section className="bg-foreground -mx-2 mt-2 flex min-h-0 flex-1 flex-col px-1.5 pb-1.5" aria-labelledby="pay-credits" data-pay-credits>
+        {/* ONE BORDER, black, its title on it; 8px off every side, the tiles'
+            corners (Pato, MESITA-4848: "i don't like the credits box without
+            margin"; edge to edge before). */}
+        <section className="bg-foreground my-2 flex min-h-0 flex-1 flex-col rounded-2xl px-1.5 pb-1.5" aria-labelledby="pay-credits" data-pay-credits>
           <h2 id="pay-credits" className="text-background flex h-12 shrink-0 items-center justify-center gap-2 text-lg font-semibold">
             <WalletIcon className="h-5 w-5" strokeWidth={2.25} aria-hidden />
             Credits
