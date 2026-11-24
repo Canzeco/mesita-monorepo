@@ -29,14 +29,16 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
         {/* MESITA-4785: the third box, the switch on top and its rows below
             in the same card. */}
         <div className="mt-2 flex flex-1 flex-col pb-8">
-          <section className="border-border bg-card overflow-hidden rounded-2xl border shadow-md">
-            <div className="border-border border-b p-1.5">
-              <Skeleton className="h-10 w-full rounded-xl" aria-hidden />
+          <section className="bg-foreground rounded-2xl p-1.5 shadow-md">
+            <div className="pb-1.5">
+              <div className="bg-background/15 h-10 w-full animate-pulse rounded-xl" aria-hidden />
             </div>
-            <div className={SECTION_ROWS}>
-              <LoyaltyCardBoxSkeleton />
-              <LoyaltyCardBoxSkeleton />
-              <LoyaltyCardBoxSkeleton />
+            <div className="bg-card overflow-hidden rounded-xl">
+              <div className={SECTION_ROWS}>
+                <LoyaltyCardBoxSkeleton />
+                <LoyaltyCardBoxSkeleton />
+                <LoyaltyCardBoxSkeleton />
+              </div>
             </div>
           </section>
         </div>
