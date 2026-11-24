@@ -25,24 +25,15 @@
 // DiscoverModeNav.
 
 import type { ReactNode } from "react";
-import { Outfit } from "next/font/google";
+import { HOME_WORDMARK_CLASS } from "@/components/brand/home-wordmark";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { useSavedLocationBackfill } from "@/lib/use-saved-location-backfill";
-
-const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
 /** The band: white, sticky, a hairline under it dividing it from the white
  *  tab strip, as Search's header divides from its chips (Pato, MESITA-2538:
  *  "try adding a line dividing mesita header with the other shit"). */
 export const BRAND_HEADER_CLASS =
   "border-border bg-card text-foreground sticky top-0 z-20 shrink-0 border-b";
-
-/** The header's name, set as type, not a drawn logo (MESITA-2480). */
-// A BIT TALLER (Pato, 2026-11-23, MESITA-4758: "make the mesita in home
-// header a bit taller"): text-3xl, 30px (text-2xl, 24px before), in a 56px
-// row (52px before). Named sizes only (the type-roles lint).
-export const HOME_WORDMARK_CLASS =
-  "text-foreground shrink-0 text-3xl leading-none tracking-[-0.03em] select-none";
 
 /** The white band with the word "Mesita", then the tab's own control (Home:
  *  the location box). */
@@ -51,7 +42,7 @@ export function BrandHeader({ children }: { children?: ReactNode }) {
     <div className={BRAND_HEADER_CLASS}>
       <div className="flex h-14 items-center gap-3 px-4" data-home-header>
         <span
-          className={`${wordmarkFont.className} ${HOME_WORDMARK_CLASS}`}
+          className={HOME_WORDMARK_CLASS}
           data-home-wordmark
         >
           Mesita

@@ -1,4 +1,4 @@
-import { MesitaMark } from "@/components/brand/MesitaMark";
+import { HOME_WORDMARK_CLASS } from "@/components/brand/home-wordmark";
 import { BAR } from "@/components/consumer/search/header-classes";
 import type { ReactNode } from "react";
 
@@ -49,12 +49,11 @@ export function PayHeader({
   // 52px with an 18px bold title at the left (MESITA-4087).
   //
   // TITLE LEFT, TICKETS RIGHT (Pato, 2026-11-21, MESITA-4559: "Mesita
-  // Wallet to the left, tickets to the right"): the mark and title at the
-  // left edge, the action (Tickets' icon button) at the right. Centred
-  // before (MESITA-4525). NO MARK (Pato, 2026-11-21, MESITA-4573: "remove
-  // Mesita logo and only mention Mesita Wallet"): the words alone, until
-  // MESITA and its mark (Pato, 2026-11-24, MESITA-4827: "instead of saying
-  // mesita wallet, say mesita with the mesita logo here too").
+  // Wallet to the left, tickets to the right"): the title at the left edge,
+  // the action at the right. Centred before (MESITA-4525). HOME'S WORDMARK
+  // (Pato, 2026-11-24, MESITA-4830: "top left same icon logo as in home. i
+  // like the one in home"), on Home's 16px inset; the mark and an Inter
+  // "Mesita" under MESITA-4827, "Mesita Wallet" before it.
   return (
     <div
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
@@ -65,9 +64,8 @@ export function PayHeader({
           the left half, the action filling the right half, on the same 8px
           edges and 8px gap as Prepay | Pay Bill below. */}
       <div className={action ? "grid min-h-11 grid-cols-2 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
-        <h1 className="flex min-h-11 min-w-0 items-center pl-1 text-xl font-semibold tracking-tight">
-          {title === "Mesita" ? <MesitaMark className="mr-2 h-7 w-7 shrink-0" /> : null}
-          <span className="min-w-0 truncate">{title}</span>
+        <h1 className="flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight">
+          <span className={title === "Mesita" ? HOME_WORDMARK_CLASS : "min-w-0 truncate"}>{title}</span>
         </h1>
         {action ? <div className="min-w-0">{action}</div> : null}
       </div>
