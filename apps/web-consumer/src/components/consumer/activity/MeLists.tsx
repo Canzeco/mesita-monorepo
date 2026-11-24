@@ -32,6 +32,7 @@
 // once its sources answered. Nothing here computes a balance: it lists and
 // formats what the server sent.
 
+import { payModalPath } from "@/components/consumer/pay/pay-sections";
 import { useEffect, useMemo, useState } from "react";
 import { PANEL_CLASS } from "@/components/shared/Panel";
 import { usePathname } from "next/navigation";
@@ -201,11 +202,11 @@ const EMPTY: Record<
   },
   all: {
     title: "No tickets yet",
-    action: { label: "Pay", href: CONSUMER_ROUTES.pay },
+    action: { label: "Pay", href: payModalPath("pay") },
   },
   visits: {
     title: "No visits yet",
-    action: { label: "Pay", href: CONSUMER_ROUTES.pay },
+    action: { label: "Pay", href: payModalPath("pay") },
   },
   vouchers: {
     title: "No vouchers yet",

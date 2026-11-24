@@ -14,6 +14,7 @@ import {
   noteTraverse,
   takePanelExit,
 } from "@/lib/navigate";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // THE STAGE EVERY SCREEN STANDS ON (MESITA-3644). The shell's body (the
 // screen, the tab placeholder and the @modal host) sits in one React
@@ -38,12 +39,14 @@ const STAGE_MOTION = {
 // The history index of the screen on show, to tell Back from Forward. Set
 // after each commit; a popstate reads it before the new screen commits.
 let shown: number | null = null;
+let shownPath: string | null = null;
 
 export function ScreenStage({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
     shown = currentEntryIndex();
+    shownPath = pathname;
   }, [pathname]);
 
   useEffect(() => {
@@ -65,7 +68,9 @@ export function ScreenStage({ children }: { children: React.ReactNode }) {
       noteTraverse(true);
       const now = currentEntryIndex();
       const forward = now !== null && shown !== null && now > shown;
-      const skip = takePanelExit() || browserAnimated;
+      // A Wallet modal opening or closing is not a new screen (MESITA-4846).
+      const walletModal = shownPath === CONSUMER_ROUTES.pay && window.location.pathname === CONSUMER_ROUTES.pay;
+      const skip = takePanelExit() || browserAnimated || walletModal;
       browserAnimated = false;
       if (skip) return;
       startTransition(() => {

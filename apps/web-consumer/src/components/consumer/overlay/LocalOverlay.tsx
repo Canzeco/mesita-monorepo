@@ -28,11 +28,11 @@ import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
 // Presence: the parent just flips `open`. When `open` goes false the
 // overlay plays the exit transition before unmounting.
 
-function useLocalPresence(open: boolean) {
+function useLocalPresence(open: boolean, startShown = false) {
   // `shown` drives the CSS transition classes; `mounted` keeps the DOM alive
   // through the exit transition.
   const [mounted, setMounted] = useState(open);
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useState(open && startShown);
 
   useEffect(() => {
     // All state flips happen inside rAF/timeout callbacks (never in the
@@ -218,6 +218,7 @@ export function LocalSheet({
   fullScreen = false,
   fit = false,
   from = "bottom",
+  startShown = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -231,8 +232,10 @@ export function LocalSheet({
    *  left to right, the place screen's own motion (SlideOverShell), for a
    *  full-screen page opened from it (the Offers page, MESITA-3453). */
   from?: "bottom" | "right";
+  /** Already up when it mounts open: a Back that restores it (MESITA-4846). */
+  startShown?: boolean;
 }) {
-  const { mounted, shown } = useLocalPresence(open);
+  const { mounted, shown } = useLocalPresence(open, startShown);
   useEscape(open, onClose);
   const panelRef = useOverlayFocus(open);
 
