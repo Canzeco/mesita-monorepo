@@ -68,8 +68,8 @@ function ClassCard({ vip, reason }: { vip: boolean; reason: "code" | "instagram"
 /** What VIP gets (MESITA-4789's two VIP tiers), in the guest's words. */
 function VipPerks() {
   const rows = [
-    { Icon: PartyPopper, title: "Welcome Visit (VIP)", line: "A higher rate on your first bill at a place." },
-    { Icon: Repeat, title: "Returning Visit (VIP)", line: "A higher rate on every bill after that." },
+    { Icon: PartyPopper, title: "VIP Welcome Visit", line: "A higher rate on your first bill at a place." },
+    { Icon: Repeat, title: "VIP Returning Visit", line: "A higher rate on every bill after that." },
   ];
   return (
     <section className="bg-card border-border overflow-hidden rounded-2xl border" aria-label="What VIP gets" data-vip-perks>

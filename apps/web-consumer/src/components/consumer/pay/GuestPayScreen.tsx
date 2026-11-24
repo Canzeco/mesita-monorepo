@@ -221,8 +221,8 @@ export function GuestPayScreen({
   const discountCents = discountOf(billCents, discountBps);
   const toPayCents = billCents - discountCents;
   const discountLabel =
-    place?.visit_line === "returning_vip" ? "Returning Visit (VIP) discount"
-    : place?.visit_line === "welcome_vip" ? "Welcome Visit (VIP) discount"
+    place?.visit_line === "returning_vip" ? "VIP Returning Visit discount"
+    : place?.visit_line === "welcome_vip" ? "VIP Welcome Visit discount"
     : place?.visit_line === "returning" ? "Returning Visit discount"
     : "Welcome Visit discount";
   const creditOn = useCredit && spendable > 0;
