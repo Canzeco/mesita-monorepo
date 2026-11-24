@@ -39,6 +39,8 @@ import {
 import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { setActiveLocation, savedLocationKey } from "@/lib/active-location";
 import {
+  MAP_WAIT_CLASS,
+  MAP_WAIT_COLOR,
   MAP_MINIMAL_STYLES,
   MONTERREY_CENTER,
   MAP_USER_LOCATION_PIN_COLOR,
@@ -379,7 +381,10 @@ function PinMapLayer({
 
   return (
     <>
+      {/* Green until the tiles land (MESITA-4803). */}
+      <div aria-hidden className={cn("absolute inset-0", MAP_WAIT_CLASS)} />
       <Map
+        backgroundColor={MAP_WAIT_COLOR}
         defaultCenter={camera.center}
         defaultZoom={camera.zoom}
         gestureHandling="greedy"

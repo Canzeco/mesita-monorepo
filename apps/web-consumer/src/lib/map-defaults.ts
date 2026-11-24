@@ -228,3 +228,9 @@ export const MAP_SELECTED_PIN_COLOR = "#7c3aed";
 export const MAP_SELECTED_PIN_STROKE_COLOR = "#ffffff";
 export const MAP_PIN_STROKE_COLOR = "#ffffff";
 export const MAP_USER_LOCATION_STROKE_COLOR = "#ffffff";
+
+/** THE MAP'S GREEN, before its tiles land (Pato, 2026-11-23, MESITA-4803:
+ *  "show it green the placeholder … grey seems bad"): the styled map's own
+ *  park green. The canvas's color, and MAP_WAIT_CLASS for the boxes. */
+export const MAP_WAIT_COLOR = "#cdeec4";
+export const MAP_WAIT_CLASS = "bg-[#cdeec4]";

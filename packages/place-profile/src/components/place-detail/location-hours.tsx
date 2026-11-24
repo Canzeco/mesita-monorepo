@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Clock, MapPin } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
@@ -8,11 +8,37 @@ import type { PlaceDetail } from "../../place-detail";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
-import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
+import { PLACE_BODY_CLASS, PLACE_MAP_WAIT_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 
 import { GoogleMapsMark } from "../BrandLogos";
 import { Box } from "./box";
+
+const noSubscribe = () => () => {};
+
+/** Google's embed, unseen until it loads so the box's green shows instead of
+ *  its blank page (MESITA-4803). Drawn in the browser only: a load that
+ *  finished before hydration would never fire `onLoad`. */
+function MapEmbed({ src, title }: { src: string; title: string }) {
+  const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const [loaded, setLoaded] = useState(false);
+  if (!inBrowser) return null;
+  return (
+    <iframe
+      src={src}
+      title={title}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      onLoad={() => setLoaded(true)}
+      className={cn(
+        "pointer-events-none h-full w-full border-0 transition-opacity duration-200",
+        loaded ? "opacity-100" : "opacity-0",
+      )}
+      tabIndex={-1}
+      aria-hidden
+    />
+  );
+}
 
 // ── 6. Location ─────────────────────────────────────────────────────────
 
@@ -56,16 +82,8 @@ export function LocationBox({
           removed the drawn purple grid, which was never a map. No
           coordinates, no map. */}
       {embedUrl ? (
-        <div className="border-border relative h-36 overflow-hidden rounded-lg border">
-          <iframe
-            src={embedUrl}
-            title={`Map of ${place.name}`}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            className="pointer-events-none h-full w-full border-0"
-            tabIndex={-1}
-            aria-hidden
-          />
+        <div className={cn("border-border relative h-36 overflow-hidden rounded-lg border", PLACE_MAP_WAIT_CLASS)}>
+          <MapEmbed key={embedUrl} src={embedUrl} title={`Map of ${place.name}`} />
           <OutboundLink
             url={mapsUrl}
             onOpenLink={onOpenLink}

@@ -5,6 +5,7 @@ import type { MapScore, Place } from "@/lib/api/places";
 import { Skeleton } from "@/components/shared";
 import type { Coords } from "@/lib/use-user-location";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
+import { MAP_WAIT_CLASS } from "@/lib/map-defaults";
 import { cn } from "@/lib/utils";
 
 import { AddPlaceButton } from "./AddPlaceButton";
@@ -95,7 +96,7 @@ export const SIGHT_BOTTOM_CSS = "var(--sight-bottom, 0.76)";
 /** The sight's `top`: the clear window's middle. */
 export const SIGHT_MID_TOP = `calc((${SIGHT_TOP_CSS} + ${SIGHT_BOTTOM_CSS}) * 50%)`;
 
-/** The map before its tiles paint: a grey veil, the spinner ON THE CROSS
+/** The map before its tiles paint: a green veil (MESITA-4803), the spinner ON THE CROSS
  *  (Pato, MESITA-2677: "the loading spin must be aligned with the cross"),
  *  at the sight, not the map's middle. SearchMap holds it until the tiles
  *  land; search/loading.tsx draws the same one (MESITA-2701). z-10: over
@@ -103,7 +104,7 @@ export const SIGHT_MID_TOP = `calc((${SIGHT_TOP_CSS} + ${SIGHT_BOTTOM_CSS}) * 50
 export function MapVeil() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
-      <Skeleton className="absolute inset-0 rounded-none" />
+      <Skeleton className={cn("absolute inset-0 rounded-none", MAP_WAIT_CLASS)} />
     </div>
   );
 }
