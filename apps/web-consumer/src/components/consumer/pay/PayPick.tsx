@@ -169,7 +169,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
 function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const bonuses = VOUCHERS_SHOWN.map((k) => (p.offers?.sell.includes(k) ? voucherPct(p.offers, k) : null));
-  const spoken = [name, p.address, ...bonuses.map((pct, i) => (pct === null ? null : `${PREPAY_HEADS[i]}, +${pct}% bonus`))];
+  const spoken = [name, ...bonuses.map((pct, i) => (pct === null ? null : `${PREPAY_HEADS[i]}, +${pct}% bonus`))];
   return (
     <button
       type="button"
@@ -180,11 +180,8 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
     >
       <span className="flex min-w-0 items-center gap-2.5 pr-1 pl-3.5">
         <PlacePhoto place={p} className="h-9 w-9 max-[359px]:hidden" />
-        <span className="min-w-0">
-          <span className="line-clamp-2 text-sm leading-tight font-semibold">{name}</span>
-          {/* Which branch it is (MESITA-4848). */}
-          {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-xs leading-tight">{p.address}</span> : null}
-        </span>
+        {/* The name alone, no address (Pato, 2026-11-24, MESITA-4861). */}
+        <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
       </span>
       {bonuses.map((pct, i) => (
         <span key={VOUCHERS_SHOWN[i]} className="flex justify-center">
