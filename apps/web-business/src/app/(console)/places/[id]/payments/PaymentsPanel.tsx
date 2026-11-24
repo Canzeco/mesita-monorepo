@@ -55,7 +55,7 @@ import {
 import { Card } from "@/components/shell/Page";
 import { WaiterCodes } from "./WaiterCodes";
 import { Switch } from "@/components/ui/config";
-import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, FOCUS_RING_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { setUnsavedEdits } from "@/lib/unsaved-edits";
@@ -88,19 +88,23 @@ import {
   startPaymentOnboarding,
 } from "@/lib/business-api";
 
-/** One row: title and line · value · control; the line wraps, the rest hold.
- *  CLEANER (Pato, 2026-11-23, MESITA-4756: "make it cleaner … use a better
- *  design"): no coloured icon square in front of each row.
- *  SYMMETRY (Pato, 2026-11-23, MESITA-4744: "keep symmetry."): every row is
- *  its own grid, so auto value and control tracks landed at a different x on
- *  each row. Both get the same minimum width and sit right-aligned, so every
- *  value and every switch or select line up down the page. */
-const MARK_ROW =
-  "grid min-h-14 scroll-mt-24 grid-cols-[minmax(0,1fr)_minmax(7rem,auto)_minmax(6rem,auto)] items-center gap-4 px-5 py-3 text-sm sm:px-6 [&>*:nth-child(2)]:justify-self-end [&>*:nth-child(2)]:text-right [&>*:nth-child(3)]:justify-self-end";
-const HEAD = "flex items-center gap-2 px-5 pt-4 pb-2 font-sans text-base font-semibold sm:px-6";
+/** ONE LAYOUT FOR EVERY BOX (Pato, 2026-11-24, MESITA-4885: "more standarized
+ *  … prettier and cleaner … same sections, same params"). A box is a header
+ *  (mark, title, line, its one control), rows, then an optional footer. A row
+ *  is text left and its value or controls right, all ending on one edge; on a
+ *  phone, controls (not plain values) drop under the text. */
+const ROW = "flex scroll-mt-24 items-center gap-4 px-5 py-3 text-sm sm:px-6 sm:min-h-17";
+const STACK = "flex-wrap gap-y-2.5 sm:flex-nowrap";
+const TEXT = "min-w-0 flex-1";
+const STACK_TEXT = "min-w-0 basis-full sm:basis-0 sm:flex-1";
+const CONTROLS = "flex w-full shrink-0 items-center justify-between gap-4 sm:w-auto sm:justify-end";
+const VALUE = "shrink-0 text-right font-semibold whitespace-nowrap tabular-nums";
+const ROWS = "divide-border border-border divide-y border-t";
+const ACTION = cn(PILL_BUTTON_CLASS, "h-10 shrink-0 px-4 text-sm whitespace-nowrap");
+const FOOT = "border-border bg-muted/40 text-muted-foreground space-y-1 border-t px-5 py-3 text-xs sm:px-6";
 const NOTE = "text-muted-foreground text-xs";
 const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
-const SECTION = "flex flex-col p-0 sm:p-0";
+const SECTION = "flex flex-col overflow-hidden p-0 sm:p-0";
 /** A voucher: its bonus field, one objective line, and the Offers page's face. */
 type Product = { key: PaymentKey; name: string; line: string; field: VoucherBonusField; tone: string; icon: Icon };
 
@@ -147,7 +151,7 @@ function wholeMoney(cents: number, currency: string): string {
  *  each Off or one of two rates, all always shown, paid out by the place's
  *  one mechanism (MESITA-4770: Discount off this bill, or Cashback for the
  *  next visit). `line` names Cashback; a Discount place reads Discount. */
-const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; note?: string; icon: Icon }> = [
+const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; icon: Icon }> = [
   // FOUR TIERS (Pato, 2026-11-23, MESITA-4789: "Welcome Regular, Returning
   // Regular, Welcome VIP, Returning VIP"), in his order.
   { key: "welcome_bps", id: "welcome-regular", name: "Welcome Regular", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
@@ -158,7 +162,6 @@ const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: st
     id: "returning-vip",
     name: "Returning VIP",
     line: "Cashback on every later bill of a VIP guest.",
-    note: "VIP guests: by invitation code.",
     icon: CrownSimpleIcon,
   },
 ];
@@ -248,7 +251,7 @@ const COUNTRY: Record<string, string> = {
   ES: "Spain", FR: "France", DE: "Germany", IT: "Italy", NL: "Netherlands", PT: "Portugal", IE: "Ireland", BE: "Belgium", AT: "Austria",
 };
 
-/** The quiet grey pill (Cancel in the Agreement dialog, Open Stripe). */
+/** The quiet grey pill (Cancel in the Agreement dialog). */
 const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opacity-100";
 
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
@@ -430,10 +433,18 @@ export function PaymentsPanel({
     if (r.ok) setCreditLimit(r.data.credit_limit ?? null);
   }
 
-  /** Picks as pills (MESITA-4764): the picked one filled. `shown` is what
-   *  reads picked. */
-  const picks = (label: string, values: readonly number[], shown: number, text: (v: number) => string, disabled: boolean, pick: (v: number) => void) => (
-    <div className="flex gap-1" role="group" aria-label={label}>
+  /** One choice of two: a grey track, the picked half raised. Halves are
+   *  equal, so every track lines up down the page. */
+  const segments = <T extends string | number>(
+    label: string,
+    values: readonly T[],
+    shown: T,
+    text: (v: T) => string,
+    disabled: boolean,
+    pick: (v: T) => void,
+    width = "w-34",
+  ) => (
+    <div className={cn("bg-muted grid h-10 shrink-0 auto-cols-fr grid-flow-col rounded-full p-0.75", width)} role="group" aria-label={label}>
       {values.map((v) => {
         const picked = shown === v;
         return (
@@ -444,8 +455,9 @@ export function PaymentsPanel({
             disabled={disabled}
             onClick={() => pick(v)}
             className={cn(
-              "rounded-full border px-3 py-1.5 text-sm font-semibold tabular-nums disabled:opacity-50",
-              picked ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
+              "rounded-full text-sm tabular-nums transition-colors disabled:opacity-50",
+              FOCUS_RING_CLASS,
+              picked ? "bg-card text-foreground font-semibold shadow-sm" : "text-muted-foreground hover:text-foreground font-medium",
             )}
           >
             {text(v)}
@@ -480,13 +492,22 @@ export function PaymentsPanel({
   }
 
 
-  /** A box's heading, with its Phosphor mark. */
-  const head = (Mark: Icon, title: string) => (
-    <h2 className={HEAD}>
-      <Mark size={18} weight="bold" aria-hidden className="text-muted-foreground" />
-      {title}
-    </h2>
+  /** A box's header: mark, title, line, and its one control on the right. */
+  const head = (Mark: Icon, title: string, opts: { line?: React.ReactNode; control?: React.ReactNode; id?: string; state?: string; stack?: boolean; stripe?: boolean } = {}) => (
+    <header id={opts.id} data-place-state={opts.state} className={cn("flex scroll-mt-24 items-center gap-4 px-5 py-4 text-sm sm:px-6", opts.stack && STACK)}>
+      <div className={cn("flex items-center gap-4", opts.stack ? STACK_TEXT : TEXT)}>
+        <span className={cn("grid size-9 shrink-0 place-items-center rounded-lg", opts.stripe ? "bg-[#635BFF] text-white" : "bg-muted text-foreground")}>
+          <Mark size={20} weight="bold" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h2 className="font-sans text-base font-semibold">{title}</h2>
+          {opts.line}
+        </div>
+      </div>
+      {opts.control}
+    </header>
   );
+  const line = (text: React.ReactNode) => <p className="text-muted-foreground">{text}</p>;
 
   /** The one missing step, linked to the box that does it. */
   const step = (text: string, href: string) => (
@@ -498,6 +519,7 @@ export function PaymentsPanel({
   const needsCredits = step("Enable the Credits Account first.", "#loyalty-cards-agreement");
   const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
   const needsPrepayments = step("Enable Prepaid Vouchers first.", "#accept-prepayments");
+  const creditsSet = contract.signed && settings.loyalty_cards;
   const creditsBlock = settings.loyalty_cards ? null : contract.signed ? needsCredits : needsContract;
 
   /** A row's one line under its title: the missing step if blocked, else its note. */
@@ -518,13 +540,15 @@ export function PaymentsPanel({
     const blocked = !takesCards ? needsStripe : !prepaymentsOn ? needsPrepayments : !on && !settings.loyalty_cards ? creditsBlock : null;
     const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
     return (
-      <li key={key} className={MARK_ROW} data-place-state={key}>
-        <div className="min-w-0">
+      <li key={key} className={cn(ROW, STACK)} data-place-state={key}>
+        <div className={STACK_TEXT}>
           <p className="font-medium">{name}</p>
           <p className="text-muted-foreground">{line}</p>
-          {under(blocked, note)}
+          {/* The header already says the box's own missing step. */}
+          {under(prepaymentsBlocked ? null : blocked, note)}
         </div>
-        {picks(`${name} bonus`, VOUCHER_BONUS_PICKS_BPS[field], rates[field], (b) => `+${pct(b)}`, pending || !!blocked, (b) =>
+        <div className={CONTROLS}>
+        {segments(`${name} bonus`, VOUCHER_BONUS_PICKS_BPS[field], rates[field], (b) => `+${pct(b)}`, pending || !!blocked, (b) =>
           editRates({ ...rates, [field]: b }),
         )}
         <Switch
@@ -533,6 +557,7 @@ export function PaymentsPanel({
           onClick={() => isVoucherKey(key) && editSwitch(key, !on)}
           label={`${name}: ${on ? "on" : "off"}`}
         />
+        </div>
       </li>
     );
   };
@@ -545,7 +570,7 @@ export function PaymentsPanel({
 
   return (
     <>
-      {testMode ? <TestBand className="w-fit" detail="Stripe sandbox: guests pay with Stripe's test cards, no real money moves." /> : null}
+      {testMode ? <TestBand className="rounded-2xl px-5 sm:px-6" detail="Stripe sandbox: guests pay with Stripe's test cards, no real money moves." /> : null}
       {fee.hold ? (
         <p className={cn(ERROR_BOX_CLASS, "flex flex-wrap items-center justify-between gap-3")} data-fee-hold>
           <span>
@@ -564,24 +589,24 @@ export function PaymentsPanel({
       <div id="credits-account" className="scroll-mt-24">
         <Card className={SECTION}>
           {head(WalletIcon, "Credits Account")}
-          <ul className="divide-border divide-y">
-            <li id="loyalty-cards-agreement" className={MARK_ROW} data-place-state="loyalty_cards_contract">
-              <div className="min-w-0">
+          <ul className={ROWS}>
+            <li id="loyalty-cards-agreement" className={cn(ROW, !creditsSet && STACK)} data-place-state="loyalty_cards_contract">
+              <div className={creditsSet ? TEXT : STACK_TEXT}>
                 <p className="font-medium">Credits Agreement</p>
                 <p className="text-muted-foreground">Your agreement with Mesita to run credits here. Separate from Stripe.</p>
               </div>
-              <p className={cn("font-semibold whitespace-nowrap", !contract.signed && "text-muted-foreground")}>{contract.signed ? signedOn(contract) : "Not signed"}</p>
-              {contract.signed && settings.loyalty_cards ? (
-                <span />
-              ) : contract.signed ? (
-                <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => void flip("loyalty_cards", true)}>
-                  Enable
-                </button>
-              ) : (
-                <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => setAgreeing(true)}>
-                  Agree
-                </button>
-              )}
+              <div className={creditsSet ? undefined : CONTROLS}>
+                <p className={cn(VALUE, !contract.signed && "text-muted-foreground")}>{contract.signed ? signedOn(contract) : "Not signed"}</p>
+                {creditsSet ? null : contract.signed ? (
+                  <button type="button" className={ACTION} disabled={pending} onClick={() => void flip("loyalty_cards", true)}>
+                    Enable
+                  </button>
+                ) : (
+                  <button type="button" className={ACTION} disabled={pending} onClick={() => setAgreeing(true)}>
+                    Agree
+                  </button>
+                )}
+              </div>
             </li>
             {/* CREDITS LIMIT · CREDITS OUTSTANDING (Pato, 2026-11-23, MESITA-4752:
                 "Credits Agreement · Credits Limit · Credits Outstanding (remove
@@ -589,8 +614,8 @@ export function PaymentsPanel({
                 switch is gone: signing turns credits on, and they stay on.
                 Older servers send no limit: no rows. */}
             {creditLimit ? (
-              <li id="credit-limit" className={cn(MARK_ROW, "scroll-mt-24")} data-place-state="credit_limit">
-                <div className="min-w-0">
+              <li id="credit-limit" className={ROW} data-place-state="credit_limit">
+                <div className={TEXT}>
                   <p className="font-medium">Credits Limit</p>
                   <p className="text-muted-foreground">{limitLine(creditLimit)}</p>
                   {creditLimit.next ? (
@@ -601,20 +626,18 @@ export function PaymentsPanel({
                     </p>
                   ) : null}
                 </div>
-                <p className={cn("font-semibold whitespace-nowrap tabular-nums", creditLimit.limit_cents === null && "text-muted-foreground")}>
+                <p className={cn(VALUE, creditLimit.limit_cents === null && "text-muted-foreground")}>
                   {creditLimit.limit_cents === null ? "No new credit" : wholeMoney(creditLimit.limit_cents, creditLimit.currency)}
                 </p>
-                <span />
               </li>
             ) : null}
             {creditLimit ? (
-              <li id="credits-outstanding" className={MARK_ROW} data-place-state="credits_outstanding">
-                <div className="min-w-0">
+              <li id="credits-outstanding" className={ROW} data-place-state="credits_outstanding">
+                <div className={TEXT}>
                   <p className="font-medium">Credits Outstanding</p>
                   <p className="text-muted-foreground">What guests hold here now: your debt, always honoured.</p>
                 </div>
-                <p className="font-semibold whitespace-nowrap tabular-nums">{wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}</p>
-                <span />
+                <p className={VALUE}>{wholeMoney(creditLimit.outstanding_cents, creditLimit.currency)}</p>
               </li>
             ) : null}
           </ul>
@@ -623,39 +646,33 @@ export function PaymentsPanel({
 
       <div id="stripe-account" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(StripeLogoIcon, "Stripe Account")}
-          <ul className="divide-border divide-y">
-            <li className={MARK_ROW} data-place-state="stripe">
-              <div className="min-w-0">
-                <p className="font-medium">Stripe Account</p>
-                <p className="text-muted-foreground">
-                  {ready
-                    ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
-                    : `${copy.line}${testMode ? " Sandbox." : ""}`}
-                </p>
+          {head(StripeLogoIcon, "Stripe Account", {
+            state: "stripe",
+            stack: true,
+            stripe: true,
+            line: line(
+              ready
+                ? ["Managed by Stripe", account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
+                : `${copy.line}${testMode ? " Sandbox." : ""}`,
+            ),
+            control: (
+              <div className={CONTROLS}>
+                <p className={cn(VALUE, !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
+                {copy.button ? (
+                  // Stripe's purple in every state (Pato, 2026-11-24, MESITA-4885).
+                  <button
+                    type="button"
+                    className={cn(ACTION, "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100")}
+                    disabled={pending}
+                    onClick={() => void stripe()}
+                  >
+                    {busy === "stripe" ? "Opening…" : copy.button}
+                    {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={16} weight="bold" aria-hidden /> : null}
+                  </button>
+                ) : null}
               </div>
-              <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
-              {copy.button ? (
-                <button
-                  type="button"
-                  // Standard pill size (MESITA-4534): Stripe's purple while
-                  // setup is unfinished, a quiet grey link once connected.
-                  className={cn(
-                    PILL_BUTTON_CLASS,
-                    "shrink-0 whitespace-nowrap",
-                    ready ? QUIET_PILL_CLASS : "bg-[#635BFF] text-white hover:bg-[#5249e6] hover:opacity-100",
-                  )}
-                  disabled={pending}
-                  onClick={() => void stripe()}
-                >
-                  {busy === "stripe" ? "Opening…" : copy.button}
-                  {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
-                </button>
-              ) : (
-                <span />
-              )}
-            </li>
-          </ul>
+            ),
+          })}
         </Card>
       </div>
 
@@ -664,20 +681,19 @@ export function PaymentsPanel({
           credit is the place's debt, always honoured. */}
       <div id="visit-checkout" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(ReceiptIcon, "Visit Checkout")}
-          <ul className="divide-border divide-y">
-            {/* ENABLED (Pato, 2026-11-23, MESITA-4752): cash, card and credits
-                are always accepted at the visit, so no switch asks; Enabled is
-                whether a bill here earns cashback (Off stores 0 for both rates). */}
-            <li id="visit-checkout-enabled" className={MARK_ROW} data-place-state="visit_checkout">
-              <div className="min-w-0">
-                <p className="font-medium">Enabled</p>
-                <p className="text-muted-foreground">
-                  {discount ? "Guests pay the bill here by cash or credit, and get a discount." : "Guests pay the bill here by cash or credit, and earn cashback."}
-                </p>
+          {/* ENABLED (Pato, 2026-11-23, MESITA-4752): cash, card and credits
+              are always accepted at the visit, so no switch asks; the header's
+              switch is whether a bill here earns (Off stores 0 for every rate). */}
+          {head(ReceiptIcon, "Visit Checkout", {
+            id: "visit-checkout-enabled",
+            state: "visit_checkout",
+            line: (
+              <>
+                {line(discount ? "Guests pay the bill here by cash or credit, and get a discount." : "Guests pay the bill here by cash or credit, and earn cashback.")}
                 {under(visitBlock, null)}
-              </div>
-              <p className={cn("font-semibold whitespace-nowrap", !visitOn && "text-muted-foreground")}>{visitOn ? "On" : "Off"}</p>
+              </>
+            ),
+            control: (
               <Switch
                 on={visitOn}
                 pending={pending || !!visitBlock}
@@ -689,40 +705,31 @@ export function PaymentsPanel({
                 }}
                 label={`Visit Checkout: ${visitOn ? "on" : "off"}`}
               />
-            </li>
+            ),
+          })}
+          <ul className={ROWS}>
             {/* MECHANISM (Pato, 2026-11-23, MESITA-4770: "YOU JUST SET THE TIER.
                 AND THEN THE MECHANISM FOR ALL YOUR VISIT TIERS"): one choice
                 for both rates. Discount comes off this bill; Cashback is
                 credit for the next visit. */}
-            <li id="visit-mechanism" className={MARK_ROW} data-place-state="visit_mechanism">
-              <div className="min-w-0">
+            <li id="visit-mechanism" className={cn(ROW, STACK)} data-place-state="visit_mechanism">
+              <div className={STACK_TEXT}>
                 {/* "Visit Mechanic" (Pato, 2026-11-23, MESITA-4789). */}
                 <p className="font-medium">Visit Mechanic</p>
                 <p className="text-muted-foreground">
                   {discount ? "Off the bill at the table. No Credits Agreement needed." : "Credit back for the guest's next visit here."}
                 </p>
               </div>
-              <span />
-              <div className="flex gap-1" role="group" aria-label="Visit Mechanic">
-                {VISIT_MECHANISMS.map((m) => {
-                  const picked = rates.visit_mechanism === m;
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      aria-pressed={picked}
-                      disabled={pending}
-                      onClick={() => editRates({ ...rates, visit_mechanism: m })}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-sm font-semibold disabled:opacity-50",
-                        picked ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
-                      )}
-                    >
-                      {MECHANISM_LABEL[m]}
-                    </button>
-                  );
-                })}
-              </div>
+              {segments(
+                "Visit Mechanic",
+                VISIT_MECHANISMS,
+                rates.visit_mechanism,
+                (m) => MECHANISM_LABEL[m],
+                pending,
+                (m) => editRates({ ...rates, visit_mechanism: m }),
+                // The rate rows' track, gap and switch: one left edge.
+                "w-full sm:w-50",
+              )}
             </li>
             {/* LIKE A VOUCHER ROW (Pato, 2026-11-23, MESITA-4789: "same design
                 for these cashback mechanics"): two rate pills, then the
@@ -735,13 +742,13 @@ export function PaymentsPanel({
               const remembered = lastRates[row.key] > 0 ? lastRates[row.key] : CASHBACK_DEFAULTS[row.key] > 0 ? CASHBACK_DEFAULTS[row.key] : steps[0];
               const locked = pending || !!visitBlock;
               return (
-                <li key={row.key} id={row.id} className={MARK_ROW} data-place-state={row.key}>
-                  <div className="min-w-0">
+                <li key={row.key} id={row.id} className={cn(ROW, STACK)} data-place-state={row.key}>
+                  <div className={STACK_TEXT}>
                     <p className="font-medium">{row.name}</p>
                     <p className="text-muted-foreground">{discount ? row.line.replace("Cashback", "Discount") : row.line}</p>
-                    {under(visitBlock, row.note ?? null)}
                   </div>
-                  {picks(row.name, steps, on ? live : remembered, pct, locked || !on, (b) => editRates({ ...rates, [row.key]: b }))}
+                  <div className={CONTROLS}>
+                  {segments(row.name, steps, on ? live : remembered, pct, locked || !on, (b) => editRates({ ...rates, [row.key]: b }))}
                   <Switch
                     on={on}
                     pending={locked}
@@ -755,6 +762,7 @@ export function PaymentsPanel({
                     }}
                     label={`${row.name}: ${on ? "on" : "off"}`}
                   />
+                  </div>
                 </li>
               );
             })}
@@ -769,7 +777,7 @@ export function PaymentsPanel({
                   </span>
                   <button
                     type="button"
-                    className={PILL_BUTTON_CLASS}
+                    className={ACTION}
                     onClick={() => {
                       const amount = moneyLabel(row.cash_cents, currency);
                       if (!window.confirm(`Mark ${amount} received?`)) return;
@@ -785,18 +793,23 @@ export function PaymentsPanel({
               ))}
             </ul>
           ) : null}
-          <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
-            {discount
-              ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
-              : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill."}
-          </p>
+          <footer className={FOOT} data-waiter-charge>
+            <p>
+              {discount
+                ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
+                : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill."}
+            </p>
+            <p>VIP guests: by invitation code.</p>
+          </footer>
         </Card>
       </div>
 
       {/* WAITER CODES (MESITA-4871): one per waiter, so the tip has a name. */}
       <div id="waiter-codes" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(HashIcon, "Visit Checkout - Waiter Codes")}
+          {head(HashIcon, "Visit Checkout - Waiter Codes", {
+            line: line("One 8-digit code per waiter. They scan the guest's QR and type their code to send the bill, so you know whose tip it is."),
+          })}
           <WaiterCodes placeId={placeId} initial={initial.waiters} currency={currency} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
@@ -806,29 +819,32 @@ export function PaymentsPanel({
           Payments (`stripe_payments`) gate, which no longer has a row. */}
       <div id="prepaid-vouchers" className="scroll-mt-24">
         <Card className={SECTION}>
-          {head(TicketIcon, "Prepaid Vouchers")}
-          <ul className="divide-border divide-y" data-place-state="vouchers">
-            <li id="accept-prepayments" className={MARK_ROW} data-place-state="prepayments">
-              <div className="min-w-0">
-                <p className="font-medium">Enabled</p>
-                <p className="text-muted-foreground">Guests pay by card through your Stripe Account</p>
-                {under(
-                  prepaymentsBlocked,
-                  prepaymentsOn && fee.hold ? "Off until Mesita's invoice is paid." : `${per100(currency)} You get the money now; the bonus lands 3 hours later.`,
-                )}
-              </div>
-              <p className={cn("font-semibold whitespace-nowrap", !prepaymentsOn && "text-muted-foreground")}>{prepaymentsOn ? "On" : "Off"}</p>
+          {head(TicketIcon, "Prepaid Vouchers", {
+            id: "accept-prepayments",
+            state: "prepayments",
+            line: (
+              <>
+                {line("Guests pay by card through your Stripe Account")}
+                {under(prepaymentsBlocked, prepaymentsOn && fee.hold ? "Off until Mesita's invoice is paid." : null)}
+              </>
+            ),
+            control: (
               <Switch
                 on={prepaymentsOn}
                 pending={pending || !!prepaymentsBlocked}
                 onClick={() => editSwitch("prepayments", !prepaymentsOn)}
                 label={`Prepaid Vouchers: ${prepaymentsOn ? "on" : "off"}`}
               />
-            </li>
+            ),
+          })}
+          <ul className={ROWS} data-place-state="vouchers">
             {/* Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
             {vouchers.map(voucherRow)}
           </ul>
-          {!anyTierOn ? <p className={cn(NOTE, "px-5 pb-4 sm:px-6")}>No vouchers available</p> : null}
+          <footer className={FOOT}>
+            <p>{per100(currency)} You get the money now; the bonus lands 3 hours later.</p>
+            {!anyTierOn ? <p>No vouchers available</p> : null}
+          </footer>
         </Card>
       </div>
 

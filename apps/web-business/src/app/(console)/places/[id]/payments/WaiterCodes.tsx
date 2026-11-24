@@ -12,7 +12,7 @@ import { setWaiter, type PlaceWaiter } from "@/lib/business-api";
 import { PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
-const QUIET = "border-border hover:bg-muted h-9 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition-colors disabled:opacity-40";
+const QUIET = "bg-muted hover:bg-muted/70 h-9 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors disabled:opacity-40";
 const CELL = "px-3 py-2.5 whitespace-nowrap first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6";
 
 export function WaiterCodes({
@@ -76,9 +76,6 @@ export function WaiterCodes({
 
   return (
     <div className="text-sm" data-waiter-codes>
-      <p className="text-muted-foreground px-5 pb-3 sm:px-6">
-        One 8-digit code per waiter. They scan the guest&apos;s QR and type their code to send the bill, so you know whose tip it is.
-      </p>
       {made ? (
         <div className="border-border bg-muted/50 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-5 py-4 sm:px-6" role="status">
           <div className="min-w-0">
@@ -147,7 +144,7 @@ export function WaiterCodes({
       ) : null}
       {canEdit ? (
         <form
-          className="border-border flex items-center gap-2 border-t px-5 py-3 sm:px-6"
+          className="border-border flex items-center gap-3 border-t px-5 py-3 sm:px-6"
           onSubmit={(e) => {
             e.preventDefault();
             if (name.trim()) void add();
@@ -162,7 +159,7 @@ export function WaiterCodes({
             autoComplete="off"
             className="border-border bg-background h-10 min-w-0 flex-1 rounded-full border px-4"
           />
-          <button type="submit" className={cn(PILL_BUTTON_CLASS, "shrink-0 whitespace-nowrap")} disabled={busy !== null || !name.trim()}>
+          <button type="submit" className={cn(PILL_BUTTON_CLASS, "h-10 shrink-0 px-4 text-sm whitespace-nowrap")} disabled={busy !== null || !name.trim()}>
             {busy === "add" ? "Adding…" : "Add waiter"}
           </button>
         </form>
