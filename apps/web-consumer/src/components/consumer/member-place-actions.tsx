@@ -44,6 +44,7 @@ import {
   isMesitaPlaceId,
 } from "@/lib/api/activity";
 import type { PlaceDetail } from "@/lib/place-detail";
+import { fetchSavedPlaceCard } from "@/lib/save-place-card";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import {
@@ -100,6 +101,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   sheets: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
+  const supabase = useBrowserSupabase();
   const router = useRouter();
   // THE MODAL, NOT THE PAGE (Pato, 2026-11-18, MESITA-4325: "if i click
   // reservations ... offers ... display the fucking modal. don't open the
@@ -198,9 +200,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setAskUnsave(true);
       return;
     }
-    toggle(place.id);
+    // A signed-out tap saved nothing: it opened Sign.
+    if (!toggle(place.id)) return;
+    fetchSavedPlaceCard(supabase, place.id);
     toast.success(`Added ${place.name} to Saved`);
-  }, [place.id, place.name, saved, toggle]);
+  }, [place.id, place.name, saved, toggle, supabase]);
 
   // A Google Maps link asks first (MESITA-4448): it waits here for the
   // modal's yes. Every other outside link opens as before.

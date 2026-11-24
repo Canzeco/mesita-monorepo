@@ -17,9 +17,14 @@ export const dynamic = "force-dynamic";
 export default async function HomePlacesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ row?: string }>;
+  searchParams: Promise<{ row?: string; gone?: string | string[] }>;
 }) {
-  const { row } = await searchParams;
-  if (!row) redirect(`${CONSUMER_ROUTES.home}?row=near`);
+  const { row, gone } = await searchParams;
+  if (!row) {
+    // A dead place's `?gone` rides along for PlaceGoneNotice (MESITA-4917).
+    const q = new URLSearchParams({ row: "near" });
+    if (typeof gone === "string" && gone) q.set("gone", gone);
+    redirect(`${CONSUMER_ROUTES.home}?${q.toString()}`);
+  }
   return null;
 }

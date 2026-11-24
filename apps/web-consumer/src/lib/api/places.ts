@@ -270,12 +270,11 @@ export async function apiFetchNearbyCatalog(
 }
 
 // Fetch one fully-enriched place (by uuid or slug) and adapt it into the
-// rich PlaceDetail shape the detail modal renders. Returns null so the 4
-// detail server components can fall back gracefully (redirect to swipe)
-// instead of throwing into a 500 — the app has no error boundary. A genuine
-// 404 is silent (expected); any other failure (401 expired session, 500 EF
-// bug, network) is logged first so it stops masquerading invisibly as a
-// deleted place.
+// rich PlaceDetail shape the detail modal renders. ONLY A 404 IS A GONE PLACE
+// (MESITA-4917): it returns null, and the place routes go Home with `?gone`,
+// which un-saves it in this browser. Any other failure (an expired session, a
+// 500, the network) throws to the place's error screen, so a blip never
+// reads as a deleted place.
 export async function apiFetchPlaceDetail(
   client: SupabaseClient,
   idOrSlug: string,
@@ -285,15 +284,10 @@ export async function apiFetchPlaceDetail(
       place: Record<string, unknown>;
       tags?: ResolvedTag[];
     }>(client, "consumer-web-get-place", { id: idOrSlug }, "Place not found");
-    return place ? placeRowToDetail(place, tags) : null;
+    return placeRowToDetail(place, tags);
   } catch (err) {
-    if (!(err instanceof EFError && err.status === 404)) {
-      console.error(
-        `[apiFetchPlaceDetail] consumer-get-place failed for "${idOrSlug}":`,
-        err,
-      );
-    }
-    return null;
+    if (err instanceof EFError && err.status === 404) return null;
+    throw err;
   }
 }
 
