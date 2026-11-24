@@ -10,7 +10,7 @@ import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { CONSUMER_ROUTES, payCodePath, placeOffersPath } from "@/lib/consumer-route-contract";
 import { navigateTo, replaceAddress } from "@/lib/navigate";
-import { PlacePhoto, QUIET_BUTTON_CLASS } from "./pay-common";
+import { PlacePhoto } from "./pay-common";
 import { usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 import { useOpenBill } from "./use-open-bill";
@@ -103,36 +103,40 @@ export function PayPage({
             role="tabpanel"
             id="pay-panel"
             aria-labelledby={`pay-tab-${tab}`}
-            className="bg-card text-foreground min-h-0 flex-1 overflow-hidden rounded-xl"
+            className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl"
           >
             {tab === "cards" ? null : (
-              // Its own scroller per tile, so each keeps its place.
-              <KeptScroll key={tab} className="scrollbar-thin-dark h-full overflow-y-auto overscroll-contain">
-                {tab === "prepay" ? (
-                  <PlaceList
-                    kind="prepay"
-                    {...list}
-                    onPick={(id) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" })}
-                  />
-                ) : (
-                  <>
+              <>
+                {/* Its own scroller per tile, so each keeps its place. */}
+                <KeptScroll key={tab} className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                  {tab === "prepay" ? (
+                    <PlaceList
+                      kind="prepay"
+                      {...list}
+                      onPick={(id) => navigateTo(router, placeOffersPath(id, "prepayment"), { motion: "drill" })}
+                    />
+                  ) : (
                     <PlaceList kind="pay" {...list} onPick={(id) => navigateTo(router, payCodePath(id), { motion: "drill" })} />
-                    {/* Not listed, or the list did not load: the QR works anyway. */}
-                    <div className="p-2.5">
-                      <PushLink
-                        href={CONSUMER_ROUTES.payCode}
-                        className={cn(QUIET_BUTTON_CLASS, "flex items-center justify-center")}
-                        data-pay-pick-any
-                      >
-                        My place isn&apos;t here
-                      </PushLink>
-                    </div>
-                  </>
-                )}
-              </KeptScroll>
+                  )}
+                </KeptScroll>
+                {tab === "pay" ? (
+                  // AT THE BOTTOM, THE SEARCH BOX'S TWIN (Pato, 2026-11-24,
+                  // MESITA-4839): same height, edges and corners. Not listed,
+                  // or the list did not load: the QR works anyway.
+                  <div className="border-border shrink-0 border-t p-2.5">
+                    <PushLink
+                      href={CONSUMER_ROUTES.payCode}
+                      className="border-border bg-card hover:bg-muted flex h-12 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition"
+                      data-pay-pick-any
+                    >
+                      My place isn&apos;t here
+                    </PushLink>
+                  </div>
+                ) : null}
+              </>
             )}
             {/* Always mounted, so its read runs with the others. */}
-            <KeptScroll className={cn("scrollbar-thin-dark h-full overflow-y-auto overscroll-contain", tab !== "cards" && "hidden")}>
+            <KeptScroll className={cn("scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-contain", tab !== "cards" && "hidden")}>
               <WalletSection onReady={onWalletReady} giftToken={giftToken} />
             </KeptScroll>
           </div>
