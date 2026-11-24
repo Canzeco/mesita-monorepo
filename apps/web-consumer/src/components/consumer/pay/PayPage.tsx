@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BadgePlus, ChevronRight, Coins, type LucideIcon, QrCode } from "lucide-react";
+import { BadgePercent, ChevronRight, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
@@ -69,8 +69,15 @@ export function PayPage({
   const [shown, setShown] = useState(false);
   if (allReady && !shown) setShown(true);
 
+  // TEN ROWS TO SEE IT FULL (Pato, 2026-11-24, MESITA-4844: "for the moment,
+  // display the same place 10 times"). Test mode only: a live place ends it.
+  // Remove once he has seen it.
+  const filled =
+    sorted && sorted.length > 0 && sorted.length < 10 && sorted.every((p) => p.test_mode)
+      ? Array.from({ length: 10 }, (_, i) => sorted[i % sorted.length])
+      : sorted;
   const list = {
-    places: sorted,
+    places: filled,
     failed: placesFailed,
     loc,
     onUseLocation: askLocation,
@@ -123,7 +130,7 @@ export function PayPage({
                   // works anyway.
                   <PushLink
                     href={CONSUMER_ROUTES.payCode}
-                    className="border-border bg-card hover:bg-muted flex h-14 shrink-0 items-center justify-center border-t px-4 text-sm font-semibold transition"
+                    className="bg-card hover:bg-muted flex h-14 shrink-0 items-center justify-center border-t-[6px] border-[#00D66F] px-4 text-sm font-semibold transition"
                     data-pay-pick-any
                   >
                     My place isn&apos;t here
@@ -175,11 +182,11 @@ const PENDING_ROW =
   "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
-// A plus badge (pay and get extra) and coins (Pato, 2026-11-24, MESITA-4843);
-// the wallet and the bank card before. The same marks everywhere.
+// The discount badge and, for Credits, the wallet (Pato,
+// 2026-11-24, MESITA-4844). The same marks everywhere.
 const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: BadgePlus, ink: "bg-white text-indigo-500" },
-  cards: { word: "Credits", icon: Coins, ink: "bg-white text-foreground" },
+  prepay: { word: "Prepay", icon: BadgePercent, ink: "bg-white text-indigo-500" },
+  cards: { word: "Credits", icon: WalletIcon, ink: "bg-white text-foreground" },
   pay: { word: "Pay", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
