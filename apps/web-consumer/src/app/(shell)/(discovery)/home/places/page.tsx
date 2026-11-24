@@ -7,12 +7,11 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // family, the pool and the scroll survive a trip to Social; this page only
 // claims the address.
 //
-// HOME OPENS ON A DRAW (Pato, 2026-11-23, MESITA-4758: "when you open home
-// page: 25% chance it opens in social, 50% nearby, 25% popular"). Opening
-// Home with no row asked (the bar's Home, any "go Home") is drawn here, on
-// the server, so the first paint already shows the row: 25% Social's
-// address, 50% ?row=near, 25% ?row=all (Popular's key). A chip tapped from
-// Social comes back with its own ?row and is never redrawn.
+// HOME ALWAYS OPENS ON NEARBY (Pato, 2026-11-23, MESITA-4808: "always open
+// in nearby"; MESITA-4758 drew Social, Nearby or Popular). Opening Home with
+// no row asked (the bar's Home, any "go Home") is sent to ?row=near here, on
+// the server, so a row left open before never comes back by itself. A chip
+// tapped from Social, or Me's Saved, carries its own ?row and is kept.
 export const dynamic = "force-dynamic";
 
 export default async function HomePlacesPage({
@@ -21,10 +20,6 @@ export default async function HomePlacesPage({
   searchParams: Promise<{ row?: string }>;
 }) {
   const { row } = await searchParams;
-  if (!row) {
-    const r = Math.random();
-    if (r < 0.25) redirect(CONSUMER_ROUTES.homeSocial);
-    redirect(`${CONSUMER_ROUTES.home}?row=${r < 0.75 ? "near" : "all"}`);
-  }
+  if (!row) redirect(`${CONSUMER_ROUTES.home}?row=near`);
   return null;
 }
