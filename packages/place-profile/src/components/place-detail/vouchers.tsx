@@ -2,7 +2,7 @@
 
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Repeat1, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -450,39 +450,6 @@ type Step = {
   short?: string;
 };
 
-/** Every voucher (MESITA-4717): 1 Pay X · 2 Wait 3 hours · 3 Receive Y,
- *  all of it at once. */
-/** NO CARD IN THE STEPS (Pato, 2026-11-23, MESITA-4737: "don't mention card
- *  on the how it works. its weird. the how it works should not display
- *  personal info"): Pay is the amount and "Here, in one tap", never the
- *  saved card or its last four digits. */
-function sheetSteps(pay: string, get: string): Step[] {
-  return [
-    { Icon: CreditCard, title: "Pay", amount: pay, line: "Here, in one tap" },
-    { Icon: Clock, title: "Wait 3 hours", short: "3 hours", line: "Nothing to do" },
-    { Icon: Wallet, title: "Receive it all", short: "Receive", amount: get, line: "Credit and bonus together", green: true },
-  ];
-}
-
-/** THE THREE TABS' STEPS (Pato, 2026-11-23, MESITA-4717): each tab opens
- *  with its fixed steps, one numbered line each, then its offers. */
-function NumberedSteps({ steps, tone, ...data }: { steps: string[]; tone: string } & { [k: `data-${string}`]: string | undefined }) {
-  return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="How it works" {...data}>
-      <ol className="divide-border divide-y">
-        {steps.map((s, i) => (
-          <li key={s} className="text-foreground flex items-center gap-3 px-4 py-3 text-sm">
-            <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold", tone)} aria-hidden>
-              {i + 1}
-            </span>
-            {s}
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
 const SECTION_LABEL = "text-muted-foreground text-xs leading-tight font-bold tracking-wider uppercase";
 
 /** THE STEPS RUN ACROSS (Pato, 2026-11-21, MESITA-4635: "steps of this
@@ -543,29 +510,38 @@ function Box({
   );
 }
 
-/** GOOD TO KNOW (D3): every rule of the offer in one box, the limit with
- *  them; Welcome's one-time rule first and amber (MESITA-4299: "mention that
- *  this is only one"). The header carries no limit chip any more. */
-function GoodToKnow({ productKey }: { productKey: MoneyVoucherKey }) {
-  const rows: { Icon: LucideIcon; text: string; warn?: boolean }[] = [];
-  if (productKey === "voucher_welcome") rows.push({ Icon: Clock, text: "Once per guest at this place.", warn: true });
-  rows.push({ Icon: Utensils, text: "Spend it on any bill here." }, { Icon: InfinityIcon, text: "It never expires." });
-  if (productKey === "voucher_vip") rows.push({ Icon: Repeat1, text: "One per visit." });
-  else if (productKey !== "voucher_welcome") rows.push({ Icon: Repeat, text: "Buy as many as you like." });
+/** One line of a Good to know box. */
+type Fact = { Icon: LucideIcon; text: string };
+
+function GoodToKnow({ facts }: { facts: Fact[] }) {
   return (
     <Box title="Good to know" data-offer-good-to-know="">
       <ul className="flex flex-col gap-2">
-        {rows.map((r) => (
-          <li
-            key={r.text}
-            className={cn(
-              "flex items-start gap-2.5 text-base leading-snug",
-              r.warn ? "-mx-1 rounded-xl bg-amber-50 px-3 py-2 font-semibold text-amber-900" : "text-foreground",
-            )}
-            data-offer-once={r.warn ? "" : undefined}
-          >
-            <r.Icon className={cn("mt-0.5 h-[18px] w-[18px] shrink-0", !r.warn && "text-muted-foreground")} strokeWidth={2.25} aria-hidden />
-            {r.text}
+        {facts.map((f) => (
+          <li key={f.text} className="text-foreground flex items-start gap-2.5 text-base leading-snug">
+            <f.Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
+            {f.text}
+          </li>
+        ))}
+      </ul>
+    </Box>
+  );
+}
+
+/** Every offer of a tab inside How it works (MESITA-4804): its name, what it
+ *  asks, its own rule, and its rate at the right. */
+function OfferFacts({ rows }: { rows: { key: string; title: string; line: string; rule?: string | null; rate: string }[] }) {
+  return (
+    <Box title="Offers" data-how-offers="">
+      <ul className="divide-border divide-y">
+        {rows.map((o) => (
+          <li key={o.key} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0" data-how-offer={o.key}>
+            <span className="min-w-0">
+              <span className="text-foreground block text-base leading-snug font-semibold">{o.title}</span>
+              <span className="text-muted-foreground block text-sm tabular-nums">{o.line}</span>
+              {o.rule ? <span className="block text-sm font-semibold text-amber-900">{o.rule}</span> : null}
+            </span>
+            <span className="text-foreground shrink-0 text-base leading-snug font-semibold tabular-nums">{o.rate}</span>
           </li>
         ))}
       </ul>
@@ -713,84 +689,6 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
   );
 }
 
-/** THE (i) (Pato, 2026-11-22, MESITA-4647: "if i want to see how it works,
- *  i open the receive in x time"; then a centred floating modal like
- *  Categories/Location, ✕ top right, no buy button): the deal, how it works
- *  and good to know. Information only; buying happens on the list. */
-function OfferInfo({
-  product,
-  line,
-  currency,
-  onClose,
-}: {
-  product: Product;
-  line: VoucherCatalogLine | undefined;
-  currency: string;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  const pay = priceValue(product, line, currency);
-  const get = creditValue(product, line, currency);
-  // INTO THE APP'S CARD (MESITA-4664): on the body at z-50 the panel fell
-  // under the app's own layers and only the dim showed. Like OffTileSheet:
-  // the card when there is one (absolute, above the app's z-scale), else the
-  // body (admin's preview).
-  if (typeof document === "undefined") return null;
-  const host = document.getElementById("mesita-app-card");
-  return createPortal(
-    <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-offer-info>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="offer-info-title"
-        className="bg-card flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
-          <h2 id="offer-info-title" className="text-foreground text-base font-semibold">
-            {product.short}
-          </h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
-            <X className="h-6 w-6" strokeWidth={2.25} />
-          </button>
-        </div>
-        <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
-          <OfferBox pay={pay} get={get} bonus={bonusValue(product, line)} />
-          <Box title="How it works">
-            <StepList steps={sheetSteps(whole(pay), whole(get))} />
-          </Box>
-          <GoodToKnow productKey={product.key} />
-        </div>
-      </div>
-    </div>,
-    host ?? document.body,
-  );
-}
-
-/** The deal: You pay $X · You get $Y with the bonus named, in its own box. */
-function OfferBox({ pay, get, bonus }: { pay: string; get: string; bonus: string }) {
-  return (
-    <div className={cn(CARD, "flex shrink-0 items-end justify-between gap-3 px-4 py-3")} data-offer-deal>
-      <div className="flex flex-col">
-        <span className="text-muted-foreground text-sm">You pay</span>
-        <span className="text-foreground text-2xl font-bold tabular-nums">{whole(pay)}</span>
-      </div>
-      <div className="flex flex-col items-end">
-        <span className="text-muted-foreground text-sm">
-          You get <span className="text-foreground font-semibold">{bonus}</span>
-        </span>
-        <span className="text-2xl font-bold text-[#00A85A] tabular-nums">{whole(get)}</span>
-      </div>
-    </div>
-  );
-}
-
 /** THE OFFERS PAGE IS A SHOP (Pato, 2026-11-22, MESITA-4647: "the offers can
  *  be multiselected ... don't create a special subpage ... it must feel like
  *  a shopify page. the voucher ticket is not created/saved until the sale is
@@ -853,15 +751,13 @@ export function youLine(cashback: PlaceCashback | null | undefined): CashbackLin
 
 /** MESITA-4698/4702: the place's cashback on the one Offers page. Two
  *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
- *  guest's own marked Yours, each with its (i). Nothing to buy: a
+ *  guest's own marked Yours. Nothing to buy: a
  *  confirmed bill earns it, 1 hour later (MESITA-4717), with no minimum. */
 function CashbackPanel({
   cashback,
-  onInfo,
   onBecomeVip,
 }: {
   cashback: PlaceCashback;
-  onInfo: (r: CashbackLineRow) => void;
   onBecomeVip?: () => void;
 }) {
   const rows = cashbackRows(cashback);
@@ -882,16 +778,6 @@ function CashbackPanel({
               <span className="flex min-w-0 flex-1 flex-col">
                 <span className="flex min-w-0 items-center gap-1">
                   <span className={cn("truncate text-base font-semibold", why ? "text-muted-foreground" : "text-foreground")}>{r.title}</span>
-                  {/* THE (i) ON CASHBACK TOO (Pato, MESITA-4702: "add the letter i in this cashbacks too"). */}
-                  <button
-                    type="button"
-                    aria-label={`How ${r.title} works`}
-                    onClick={() => onInfo(r)}
-                    className="text-muted-foreground hover:text-foreground -my-1 -ml-1 flex h-8 w-7 shrink-0 items-center justify-center rounded-full"
-                    data-cashback-info-open
-                  >
-                    <Info className="h-4 w-4" strokeWidth={2.25} />
-                  </button>
                 </span>
                 {/* "mention that it lands in 3 hours too" (Pato, MESITA-4702); 1 hour since MESITA-4717. */}
                 {/* MESITA-4770: a Discount comes off the bill at the table. */}
@@ -927,30 +813,19 @@ function CashbackPanel({
         })}
       </ul>
       {/* NO FOOTNOTE (Pato, MESITA-4702: "remove the explanations there,
-          that's why we have the i"): the cap and rules live in each (i). */}
+          that's why we have the i"): the rules live in How it works. */}
     </section>
   );
 }
 
-/** A cashback line's (i): how it is earned and when it lands. */
 /** HOW IT WORKS BEHIND AN (i) (Pato, 2026-11-23, MESITA-4725: "don't
  *  overexplain there. just the boxes. then below or something an i icon to
  *  see explanation, but don't show that always"): one quiet 44px text button
- *  under a tab's boxes; a tap opens the voucher (i)'s centred window with the
- *  tab's numbered steps and a short Good to know. */
-function HowItWorks({
-  title,
-  steps,
-  tone,
-  good,
-  tab,
-}: {
-  title: string;
-  steps: string[];
-  tone: string;
-  good: string[];
-  tab: string;
-}) {
+ *  under a tab's boxes; a tap opens a centred window.
+ *  THE ONLY (i) (Pato, 2026-11-23, MESITA-4804: "only one i in how it works.
+ *  there display all the info, don't lose info"): the rows' own (i) went;
+ *  their deals and rules are in here. */
+function HowItWorks({ title, tab, children }: { title: string; tab: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -993,18 +868,7 @@ function HowItWorks({
                   </button>
                 </div>
                 <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
-                  <NumberedSteps tone={tone} steps={steps} data-how-steps={tab} />
-                  {good.length > 0 ? (
-                    <Box title="Good to know">
-                      <ul className="flex flex-col gap-2">
-                        {good.map((g) => (
-                          <li key={g} className="text-foreground text-sm">
-                            {g}
-                          </li>
-                        ))}
-                      </ul>
-                    </Box>
-                  ) : null}
+                  {children}
                 </div>
               </div>
             </div>,
@@ -1015,94 +879,79 @@ function HowItWorks({
   );
 }
 
-function CashbackInfo({ row, onClose }: { row: CashbackLineRow; onClose: () => void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  if (typeof document === "undefined") return null;
-  const host = document.getElementById("mesita-app-card");
-  const pct = `${row.bps / 100}%`;
-  // THE VOUCHER (i)'S STRUCTURE (Pato, 2026-11-23, MESITA-4737: "pay i must
-  // have same structure as this"): the deal box, How it works as three
-  // steps across, Good to know with an icon per line. No card and nothing
-  // personal in the steps ("the how it works should not display personal
-  // info").
+/** Pay's How it works: the steps, every line's own facts and the rules. */
+function PayHowItWorks({ rows }: { rows: CashbackLineRow[] }) {
   // MESITA-4770: a Discount comes off the printed bill before paying; the
   // waiter sees it on the bill. Cashback lands as credit an hour later.
-  const discount = row.mech === "discount";
+  const discount = rows[0]?.mech === "discount";
   const steps: Step[] = discount
     ? [
-        { Icon: QrCode, title: "Type your bill", short: "Bill", amount: "Your bill", line: "In Pay Bill, here" },
-        { Icon: Wallet, title: "Get", short: "Get", amount: `${pct} off`, line: "Taken off before you pay", green: true },
+        { Icon: QrCode, title: "Type your bill", short: "Bill", line: "In Pay Bill, here" },
+        { Icon: Wallet, title: "Get", short: "Discount", line: "Taken off before you pay", green: true },
         { Icon: Utensils, title: "Pay the rest", short: "Pay", line: "Cash or credit; the waiter confirms" },
       ]
     : [
-        { Icon: QrCode, title: "Pay", short: "Pay", amount: "Your bill", line: "Here, or cash to the waiter" },
+        { Icon: QrCode, title: "Pay", short: "Pay", line: "Here, or cash to the waiter" },
         { Icon: Clock, title: "Wait 1 hour", short: "1 hour", line: "Nothing to do" },
-        { Icon: Wallet, title: "Receive", short: "Receive", amount: `${pct} back`, line: "As credit at this place", green: true },
+        { Icon: Wallet, title: "Receive", short: "Receive", line: "As credit at this place", green: true },
       ];
-  // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day): who the line is
-  // for, never on credit, no minimum, and the credit's own rules.
-  const good: { Icon: LucideIcon; text: string }[] = discount
-    ? [
-        { Icon: Repeat1, text: row.who + "." },
-        { Icon: Utensils, text: "On the bill, never on the tip." },
-      ]
+  // ONLY PATO'S FACTS (MESITA-4728: no cap, no once-a-day).
+  const facts: Fact[] = discount
+    ? [{ Icon: Utensils, text: "On the bill, never on the tip." }]
     : [
-        { Icon: Repeat1, text: row.who + "." },
         { Icon: Wallet, text: "Never on what you pay with credit." },
         { Icon: Utensils, text: "Spend it on any bill here." },
         { Icon: InfinityIcon, text: "It never expires." },
       ];
-  return createPortal(
-    <div className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-4")} onClick={onClose} data-cashback-info>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="cashback-info-title"
-        className="bg-card flex max-h-full w-full max-w-md cursor-auto flex-col overflow-hidden rounded-2xl shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="bg-card border-border flex h-14 shrink-0 items-center justify-between border-b pr-1.5 pl-4">
-          <h2 id="cashback-info-title" className="text-foreground text-base font-semibold">
-            {row.title}
-          </h2>
-          <button type="button" aria-label="Close" onClick={onClose} className="text-foreground hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition">
-            <X className="h-6 w-6" strokeWidth={2.25} />
-          </button>
-        </div>
-        <div className="scrollbar-thin-dark flex min-h-0 flex-col gap-3 overflow-y-auto p-4">
-          <div className={cn(CARD, "flex shrink-0 items-end justify-between gap-3 px-4 py-3")} data-offer-deal>
-            <div className="flex flex-col">
-              <span className="text-muted-foreground text-sm">You pay</span>
-              <span className="text-foreground text-2xl font-bold">Your bill</span>
-            </div>
-            <div className="flex flex-col items-end">
-              <span className="text-muted-foreground text-sm">You get</span>
-              <span className="text-2xl font-bold text-[#00A85A] tabular-nums">{pct} back</span>
-            </div>
-          </div>
-          <Box title="How it works">
-            <StepList steps={steps} />
-          </Box>
-          <Box title="Good to know">
-            <ul className="flex flex-col gap-2">
-              {good.map((g) => (
-                <li key={g.text} className="text-foreground flex items-start gap-2.5 text-base leading-snug">
-                  <g.Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" strokeWidth={2.25} aria-hidden />
-                  {g.text}
-                </li>
-              ))}
-            </ul>
-          </Box>
-        </div>
-      </div>
-    </div>,
-    host ?? document.body,
+  return (
+    <HowItWorks tab="pay" title="Pay">
+      <Box>
+        <StepList steps={steps} />
+      </Box>
+      <OfferFacts rows={rows.map((r) => ({ key: r.line, title: r.title, line: `${r.who}.`, rate: `${r.bps / 100}% ${visitWord(r.mech)}` }))} />
+      <GoodToKnow facts={facts} />
+    </HowItWorks>
+  );
+}
+
+/** Prepay's How it works: the steps, every voucher's deal and rule, the rules. */
+function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout }) {
+  const { loading, catalog, currency } = co;
+  const rule = (k: MoneyVoucherKey) =>
+    k === "voucher_welcome" ? "Once per guest at this place." : k === "voucher_vip" ? "One per visit." : null;
+  const facts: Fact[] = [
+    { Icon: Utensils, text: "Spend it on any bill here." },
+    { Icon: Gift, text: "Or send it to a friend." },
+    { Icon: InfinityIcon, text: "It never expires." },
+    ...(products.some((p) => rule(p.key) === null) ? [{ Icon: Repeat, text: "Buy as many as you like." }] : []),
+  ];
+  return (
+    <HowItWorks tab="prepay" title="Prepay">
+      <Box>
+        <StepList
+          steps={[
+            { Icon: CreditCard, title: "Pay", line: "Here, in one tap" },
+            { Icon: Clock, title: "Wait 3 hours", short: "3 hours", line: "Nothing to do" },
+            { Icon: Wallet, title: "Receive it all", short: "Receive", line: "Credit and bonus together", green: true },
+          ]}
+        />
+      </Box>
+      {loading ? null : (
+        <OfferFacts
+          rows={products.map((p) => {
+            const line = catalog[p.key];
+            return {
+              key: p.key,
+              title: p.short,
+              line: `You pay ${whole(priceValue(p, line, currency))}, you get ${whole(creditValue(p, line, currency))}`,
+              rule: rule(p.key),
+              rate: `${bonusValue(p, line)} Bonus`,
+            };
+          })}
+        />
+      )}
+      <GoodToKnow facts={facts} />
+    </HowItWorks>
   );
 }
 
@@ -1234,7 +1083,6 @@ function PrepaySection({
   failed,
   actions,
   onQty,
-  onInfo,
   onPay,
 }: {
   products: Product[];
@@ -1248,7 +1096,6 @@ function PrepaySection({
   failed: boolean;
   actions: PlaceActions | undefined;
   onQty: (k: MoneyVoucherKey, n: number) => void;
-  onInfo: (k: MoneyVoucherKey) => void;
   onPay: () => void;
 }) {
   const { loading, dim, guestLock, buyable, unavailable, catalog, currency } = co;
@@ -1291,7 +1138,7 @@ function PrepaySection({
                     : undefined;
                 // A PRODUCT ROW (Pato, 2026-11-22, MESITA-4647): left ONE
                 // green box, black "+10%" over "BONUS"; the name and the deal
-                // with the (i); − n + at the right. A blocked row says why,
+                // (no (i), MESITA-4804); − n + at the right. A blocked row says why,
                 // with a lock, and has no stepper.
                 return (
                   <li key={p.key} data-voucher={p.key} className={cn("flex min-h-16 items-center gap-2.5 px-3 py-2", blocked && dim && !linkIg && "opacity-50")}>
@@ -1311,16 +1158,6 @@ function PrepaySection({
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="flex min-w-0 items-center gap-1">
                         <span className={cn("truncate text-base font-semibold", blocked ? "text-muted-foreground" : "text-foreground")}>{p.short}</span>
-                        <button
-                          type="button"
-                          aria-label={`How ${p.short} works`}
-                          disabled={loading}
-                          onClick={() => onInfo(p.key)}
-                          className="text-muted-foreground hover:text-foreground -my-1 -ml-1 flex h-8 w-7 shrink-0 items-center justify-center rounded-full"
-                          data-offer-info-open
-                        >
-                          <Info className="h-4 w-4" strokeWidth={2.25} />
-                        </button>
                       </span>
                       <span className={cn("text-sm font-semibold tabular-nums", blocked ? "text-muted-foreground" : "text-foreground")}>
                         Pay {whole(pay)} <span className="text-muted-foreground">·</span> Get {whole(get)}
@@ -1351,13 +1188,7 @@ function PrepaySection({
           </section>
         );
       })}
-      <HowItWorks
-        tab="prepay"
-        title="Prepay"
-        tone={VOUCHER_TONE.voucher_200}
-        steps={["Pay for an offer", "Wait 3 hours", "Receive what you paid plus the bonus, all at once"]}
-        good={["Spend it here, or send it to a friend.", "It never expires."]}
-      />
+      <PrepayHowItWorks products={products} co={co} />
       {/* THE PAY BAR (MESITA-4647), SHOWN ONCE A VOUCHER IS PICKED (MESITA-4763; always there under (Pato,
           2026-11-22, MESITA-4659; MESITA-4710, d2a): sticky at the bottom,
           the same lines whatever is picked — Pay, Bonus (green), then under a
@@ -1458,13 +1289,11 @@ function PrepaySection({
 function CheckoutSection({
   cashback,
   loading,
-  onInfo,
   onPay,
   onBecomeVip,
 }: {
   cashback: PlaceCashback | null;
   loading: boolean;
-  onInfo: (r: CashbackLineRow) => void;
   onPay: (() => void) | undefined;
   onBecomeVip?: () => void;
 }) {
@@ -1474,27 +1303,14 @@ function CheckoutSection({
       {loading ? (
         <BoneRows n={2} />
       ) : cashback && rows.length > 0 ? (
-        <CashbackPanel cashback={cashback} onInfo={onInfo} onBecomeVip={onBecomeVip} />
+        <CashbackPanel cashback={cashback} onBecomeVip={onBecomeVip} />
       ) : (
         // No cashback here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
           This place gives no Back yet. You can still pay your bill here.
         </p>
       )}
-      {/* ONE STRUCTURE (MESITA-4737): Pay's How it works opens the same
-          window as a line's (i), for the guest's own line (else the first). */}
-      {rows.length > 0 ? (
-        <button
-          type="button"
-          onClick={() => onInfo(rows.find((r) => r.line === cashback?.line) ?? rows[0])}
-          aria-haspopup="dialog"
-          className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center gap-1.5 self-center px-1 text-sm font-semibold"
-          data-how-it-works="pay"
-        >
-          <Info className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
-          How it works
-        </button>
-      ) : null}
+      {rows.length > 0 ? <PayHowItWorks rows={rows} /> : null}
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
           just have shortcut to Go to Pay bill at the bottom, purple color"),
           sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
@@ -1537,7 +1353,6 @@ export function VouchersPane({
   }, [onLoad]);
 
   const co = useOfferCheckout(place, actions);
-  const [cashInfo, setCashInfo] = useState<CashbackLineRow | null>(null);
   const { loading, buyable, catalog, currency } = co;
   // ONE OWNER FOR LINKED STATE (MESITA-4710): the open tab lives here with
   // the basket and `locked`, so a switch never empties the basket and never
@@ -1546,7 +1361,6 @@ export function VouchersPane({
   const barRef = useRef<HTMLDivElement>(null);
   // The guest's own picks; until the first tap, an asked voucher counts as one.
   const [picked, setPicked] = useState<Basket | null>(null);
-  const [info, setInfo] = useState<MoneyVoucherKey | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const paying = useRef(false);
   const [payingNow, setPayingNow] = useState(false);
@@ -1634,7 +1448,6 @@ export function VouchersPane({
   // still loading (every row is a grey bone then).
   const products = listedProducts().filter((p) => loading || co.show(p.key) !== "hidden");
   const cashback = place.money?.cashback ?? null;
-  const infoProduct = info ? listedProducts().find((p) => p.key === info) ?? null : null;
 
   return (
     // THE MENU EDGE TO EDGE, THEN ONE TAB'S BOXES ON WHITE (MESITA-4727),
@@ -1662,23 +1475,17 @@ export function VouchersPane({
             failed={!place.money}
             actions={actions}
             onQty={setQty}
-            onInfo={setInfo}
             onPay={() => void pay()}
           />
         ) : (
           <CheckoutSection
             cashback={cashback}
             loading={loading}
-            onInfo={setCashInfo}
             onPay={actions?.onPay}
             onBecomeVip={actions?.guest?.guestClass === "vip" ? undefined : actions?.onBecomeVip}
           />
         )}
       </div>
-      {cashInfo && cashback ? <CashbackInfo row={cashInfo} onClose={() => setCashInfo(null)} /> : null}
-      {infoProduct ? (
-        <OfferInfo product={infoProduct} line={catalog[infoProduct.key]} currency={currency} onClose={() => setInfo(null)} />
-      ) : null}
     </div>
   );
 }
