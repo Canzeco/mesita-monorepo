@@ -2,8 +2,8 @@
 // from our own files, never the phone's emoji font (Pato, 2026-11-23,
 // MESITA-4782: "colors encode information", then chose "A · Fluent Flat"
 // over Apple's emoji, Noto, Twemoji, OpenMoji and one-colour icons). The
-// same picture on every phone. Fluent has no flags, so Mexican's flag is
-// Twemoji's (CC-BY 4.0, Twitter). Files: public/families/<key>.svg.
+// same picture on every phone. Brunch's
+// pancakes are drawn for Mesita in the same flat style. Files: public/families/<key>.svg.
 //
 // CONSUMER ONLY. The family list and its emoji (lib/place-families.ts) stay
 // the data admin and business show. Home's strip and menu, Search's chips
@@ -15,12 +15,13 @@ export const FAMILY_MARK_KEYS = [
   "social",
   "near",
   "all",
-  "dinner",
+  "restaurants",
   "coffee",
   "drinks",
-  "quick_bite",
   "breakfast",
-  "mexican",
+  "brunch",
+  "dinner",
+  "quick_bite",
   "tacos",
   "seafood",
   "asian",
@@ -35,7 +36,6 @@ export const FAMILY_MARK_KEYS = [
   "pizza",
   "burgers",
   "arabic",
-  "chicken",
   "sweet",
   "night_out",
   "fun",
@@ -45,8 +45,8 @@ export const FAMILY_MARK_KEYS = [
 const KNOWN = new Set<string>(FAMILY_MARK_KEYS);
 /** Search calls Home's `near` chip `nearby`. */
 const ALIASES: Readonly<Record<string, string>> = { nearby: "near" };
-/** A key with no picture of its own wears Dinner's plate. */
-export const FALLBACK_FAMILY_MARK = "dinner";
+/** A key with no picture of its own wears Restaurants' plate. */
+export const FALLBACK_FAMILY_MARK = "restaurants";
 
 /** The file for a row, chip or family key. */
 export function familyMarkSrc(key: string): string {

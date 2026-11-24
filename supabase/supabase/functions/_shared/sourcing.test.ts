@@ -7,8 +7,8 @@ import {
   parseCldrRegionCode,
 } from "./sourcing.ts";
 
-Deno.test("familiesForGoogleType: a gastropub is dinner and drinks", () => {
-  assertEquals(familiesForGoogleType("gastropub"), ["dinner", "drinks"]);
+Deno.test("familiesForGoogleType: a gastropub is a restaurant, dinner and drinks", () => {
+  assertEquals(familiesForGoogleType("gastropub"), ["restaurants", "drinks", "dinner"]);
   assertEquals(familiesForGoogleType("gas_station"), []);
 });
 
@@ -35,8 +35,8 @@ Deno.test("familiesForGoogleType: a place that is not a trip sits in no family (
 });
 
 Deno.test("familiesForGoogleType accepts the _restaurant alias", () => {
-  assertEquals(familiesForGoogleType("fine_dining"), ["dinner", "fancy"]);
-  assertEquals(familiesForGoogleType("FINE_DINING"), ["dinner", "fancy"]);
+  assertEquals(familiesForGoogleType("fine_dining"), ["restaurants", "dinner", "fancy"]);
+  assertEquals(familiesForGoogleType("FINE_DINING"), ["restaurants", "dinner", "fancy"]);
 });
 
 Deno.test("Text Search without a pin sends no country or bias", () => {

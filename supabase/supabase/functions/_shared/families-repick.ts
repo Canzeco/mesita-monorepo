@@ -29,6 +29,7 @@ import {
   familyVocabularyLines,
   mainGoogleCategory,
   pickFamilies,
+  settleRestaurants,
 } from "./families-infer.ts";
 import { readOperatorFields } from "./operator-fields.ts";
 
@@ -329,12 +330,13 @@ export async function runRepick(
   if (error) throw new Error(`place_profiles: ${error.message}`);
   const places = (data ?? []).map((r) => snapshot(r as Record<string, unknown>));
 
-  const pick = (raw: unknown) => pickFamilies(raw, familyVocab, familiesMax);
   const rows = await Promise.all(places.map(async (p): Promise<RepickRow> => {
     const base = { place_id: p.id, name: p.name, main_category: mainGoogleCategory(p.googleTypes, p.category), before: p.familyKeys };
     const skip = req.dryRun ? null : preSkip(p, enabled);
     if (skip) return { ...base, after: null, outcome: "skipped", reason: skip };
     const reply = await askModel(ctx.openaiKey, model, buildRepickMessages(p, familyLines, req.arm, familiesMax));
+    const pick = (raw: unknown) =>
+      settleRestaurants(pickFamilies(raw, familyVocab, familiesMax), base.main_category);
     const verdict = classifyReply(reply, p.familyKeys, pick);
     if (!("after" in verdict)) {
       // A dry run still shows what the model proposed when it proposed the same list.

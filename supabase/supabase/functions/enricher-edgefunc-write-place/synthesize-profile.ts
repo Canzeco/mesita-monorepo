@@ -29,6 +29,7 @@ import {
   familyVocabularyLines,
   isGoogleCategoryEnabled,
   mainGoogleCategory,
+  settleRestaurants,
   pickFamilies,
 } from "../_shared/families-infer.ts";
 import { pickZone } from "../_shared/zone-infer.ts";
@@ -205,7 +206,10 @@ async function fillAtlasProfileInner(
       presentation = textField(drafted.description) || null;
       mesitaName = textField(parsed.mesita_name) || null;
       tags = pickVocabularyTags(parsed.tags, tagSlugs, limits.tags);
-      pickedFamilies = pickFamilies(parsed.families, familyVocabulary, limits.families);
+      pickedFamilies = settleRestaurants(
+        pickFamilies(parsed.families, familyVocabulary, limits.families),
+        mainGoogleCategory(saved.google_types, saved.category),
+      );
       zone = pickZone(parsed.zone, anchor.city);
     }
   }

@@ -12,7 +12,7 @@ Deno.test("withFamilyKeys keeps the derived mapping and does not invent one", ()
     category: "gastropub",
     family_keys: ["dinner", "drinks"],
   });
-  assertEquals(out.family_keys, ["dinner", "drinks"]);
+  assertEquals(out.family_keys, ["drinks", "dinner"]);
   assertEquals(out.id, "1");
   assertEquals(withFamilyKeys({ category: "mexican" }).family_keys, ["undefined"]);
   assertEquals(

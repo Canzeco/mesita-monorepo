@@ -2,6 +2,18 @@
 // and is not a rail. A type may sit in several families: a list, never a
 // primary and a secondary (MESITA-2808).
 //
+// THE OFFICIAL TWENTY-FIVE (MESITA-4820, Pato 2026-11-23: "write the 25
+// families, the new official mesita families"): the kinds of place first
+// (Restaurants, Coffee, Bar — "the main value is restaurants coffees and
+// bars"), then the time of day (Breakfast, Brunch, Dinner), then the mood,
+// then going out (Club, Fun, Casino). Restaurants is a FACT: the main Google
+// category is a restaurant (`isRestaurantType`); it is added in code, beside
+// the model's picks. Mexican is gone (a third of Monterrey: it filtered
+// nothing), Wings is American, Night keeps its key `night_out` and reads
+// Club: lounges, cocktail and hookah bars are Bar. "Restaurants" is the one
+// label past nine letters. Every paragraph below that names Mexican, Wings
+// or Night as a rail is history.
+//
 // TWENTY-FIVE (MESITA-4818, Pato 2026-11-23: "Think deeply. Compress list
 // into 25 families"). Live counts on 265 places picked the five thinnest
 // rails, each with a parent a guest already browses: Club (3 places) and
@@ -97,12 +109,13 @@
 // nearest rail (MESITA-2382).
 
 export const CATALOG_FAMILY_SLUGS = [
-  "dinner",
+  "restaurants",
   "coffee",
   "drinks",
-  "quick_bite",
   "breakfast",
-  "mexican",
+  "brunch",
+  "dinner",
+  "quick_bite",
   "tacos",
   "seafood",
   "asian",
@@ -117,7 +130,6 @@ export const CATALOG_FAMILY_SLUGS = [
   "pizza",
   "burgers",
   "arabic",
-  "chicken",
   "sweet",
   "night_out",
   "fun",
@@ -133,29 +145,29 @@ export const CATALOG_FAMILIES: readonly {
   emoji: string;
   sort_order: number;
 }[] = [
-  { slug: "dinner", label: "Dinner", emoji: "🍽️", sort_order: 1 },
+  { slug: "restaurants", label: "Restaurants", emoji: "🍽️", sort_order: 1 },
   { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 2 },
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 3 },
-  { slug: "quick_bite", label: "Quick", emoji: "⚡", sort_order: 4 },
-  { slug: "breakfast", label: "Breakfast", emoji: "🍳", sort_order: 5 },
-  { slug: "mexican", label: "Mexican", emoji: "🇲🇽", sort_order: 6 },
-  { slug: "tacos", label: "Tacos", emoji: "🌮", sort_order: 7 },
-  { slug: "seafood", label: "Seafood", emoji: "🦐", sort_order: 8 },
-  { slug: "asian", label: "Asian", emoji: "🍥", sort_order: 9 },
-  { slug: "european", label: "European", emoji: "🥨", sort_order: 10 },
-  { slug: "fancy", label: "Fancy", emoji: "🥂", sort_order: 11 },
-  { slug: "steak", label: "Steak", emoji: "🥩", sort_order: 12 },
-  { slug: "japanese", label: "Japanese", emoji: "🍱", sort_order: 13 },
-  { slug: "american", label: "American", emoji: "🍟", sort_order: 14 },
-  { slug: "healthy", label: "Healthy", emoji: "🥗", sort_order: 15 },
-  { slug: "italian", label: "Italian", emoji: "🍝", sort_order: 16 },
-  { slug: "sushi", label: "Sushi", emoji: "🍣", sort_order: 17 },
-  { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 18 },
-  { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 19 },
-  { slug: "arabic", label: "Arabic", emoji: "🧆", sort_order: 20 },
-  { slug: "chicken", label: "Wings", emoji: "🍗", sort_order: 21 },
+  { slug: "breakfast", label: "Breakfast", emoji: "🍳", sort_order: 4 },
+  { slug: "brunch", label: "Brunch", emoji: "🥞", sort_order: 5 },
+  { slug: "dinner", label: "Dinner", emoji: "🌙", sort_order: 6 },
+  { slug: "quick_bite", label: "Quick", emoji: "⚡", sort_order: 7 },
+  { slug: "tacos", label: "Tacos", emoji: "🌮", sort_order: 8 },
+  { slug: "seafood", label: "Seafood", emoji: "🦐", sort_order: 9 },
+  { slug: "asian", label: "Asian", emoji: "🍥", sort_order: 10 },
+  { slug: "european", label: "European", emoji: "🥨", sort_order: 11 },
+  { slug: "fancy", label: "Fancy", emoji: "🥂", sort_order: 12 },
+  { slug: "steak", label: "Steak", emoji: "🥩", sort_order: 13 },
+  { slug: "japanese", label: "Japanese", emoji: "🍱", sort_order: 14 },
+  { slug: "american", label: "American", emoji: "🍟", sort_order: 15 },
+  { slug: "healthy", label: "Healthy", emoji: "🥗", sort_order: 16 },
+  { slug: "italian", label: "Italian", emoji: "🍝", sort_order: 17 },
+  { slug: "sushi", label: "Sushi", emoji: "🍣", sort_order: 18 },
+  { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 19 },
+  { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 20 },
+  { slug: "arabic", label: "Arabic", emoji: "🧆", sort_order: 21 },
   { slug: "sweet", label: "Dessert", emoji: "🍰", sort_order: 22 },
-  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 23 },
+  { slug: "night_out", label: "Club", emoji: "🪩", sort_order: 23 },
   { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 24 },
   { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 25 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
@@ -316,10 +328,10 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   juice_shop: ["healthy", "coffee"],
   juice_bar: ["healthy", "coffee"],
   breakfast_restaurant: ["breakfast"],
-  brunch_restaurant: ["breakfast"],
+  brunch_restaurant: ["brunch", "breakfast"],
   diner: ["breakfast", "american"],
   breakfast: ["breakfast"],
-  brunch: ["breakfast"],
+  brunch: ["brunch", "breakfast"],
   // Bakery · Dessert
   bagel_shop: ["breakfast", "quick_bite"],
   bakery: ["sweet", "breakfast"],
@@ -339,12 +351,12 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   vegan: ["healthy"],
   vegetarian: ["healthy"],
   // Tacos · Mexican
-  taco_restaurant: ["tacos", "mexican", "quick_bite"],
-  burrito_restaurant: ["tacos", "mexican", "quick_bite"],
-  taco: ["tacos", "mexican", "quick_bite"],
-  mexican_restaurant: ["mexican", "tacos", "dinner"],
-  tex_mex_restaurant: ["mexican", "tacos", "dinner"],
-  mexican: ["mexican", "tacos", "dinner"],
+  taco_restaurant: ["tacos", "quick_bite"],
+  burrito_restaurant: ["tacos", "quick_bite"],
+  taco: ["tacos", "quick_bite"],
+  mexican_restaurant: ["tacos", "dinner"],
+  tex_mex_restaurant: ["tacos", "dinner"],
+  mexican: ["tacos", "dinner"],
   // Pizza · Italian
   pizza_restaurant: ["pizza", "italian"],
   pizza: ["pizza", "italian"],
@@ -353,8 +365,8 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   // Burgers · Wings · Quick
   hamburger_restaurant: ["burgers", "quick_bite", "american", "dinner"],
   burger: ["burgers", "quick_bite", "american", "dinner"],
-  chicken_restaurant: ["chicken", "quick_bite"],
-  chicken_wings_restaurant: ["chicken"],
+  chicken_restaurant: ["american", "quick_bite"],
+  chicken_wings_restaurant: ["american"],
   sandwich_shop: ["quick_bite"],
   sandwich: ["quick_bite"],
   deli: ["quick_bite"],
@@ -474,31 +486,31 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   // American
   american_restaurant: ["american", "dinner"],
   american: ["american", "dinner"],
-  bar_and_grill: ["drinks", "american", "dinner"],
+  bar_and_grill: ["restaurants", "drinks", "american"],
   southwestern_us_restaurant: ["american", "dinner"],
   soul_food_restaurant: ["american", "dinner"],
   cajun_restaurant: ["american", "dinner"],
   californian_restaurant: ["american", "dinner"],
   hawaiian_restaurant: ["american", "dinner"],
   // Dinner, the wide table · Fancy
-  restaurant: ["dinner"],
+  restaurant: ["restaurants"],
   fine_dining_restaurant: ["fancy", "dinner"],
   fine_dining: ["fancy", "dinner"],
-  family_restaurant: ["dinner"],
-  buffet_restaurant: ["dinner"],
-  fusion_restaurant: ["dinner"],
-  soup_restaurant: ["dinner"],
-  western_restaurant: ["dinner"],
-  afghani_restaurant: ["dinner"],
-  african_restaurant: ["dinner"],
-  australian_restaurant: ["dinner"],
-  ethiopian_restaurant: ["dinner"],
-  latin_american_restaurant: ["dinner"],
-  south_american_restaurant: ["dinner"],
-  colombian_restaurant: ["dinner"],
-  chilean_restaurant: ["dinner"],
-  cuban_restaurant: ["dinner"],
-  caribbean_restaurant: ["dinner"],
+  family_restaurant: ["restaurants"],
+  buffet_restaurant: ["restaurants"],
+  fusion_restaurant: ["restaurants"],
+  soup_restaurant: ["restaurants"],
+  western_restaurant: ["restaurants"],
+  afghani_restaurant: ["restaurants"],
+  african_restaurant: ["restaurants"],
+  australian_restaurant: ["restaurants"],
+  ethiopian_restaurant: ["restaurants"],
+  latin_american_restaurant: ["restaurants"],
+  south_american_restaurant: ["restaurants"],
+  colombian_restaurant: ["restaurants"],
+  chilean_restaurant: ["restaurants"],
+  cuban_restaurant: ["restaurants"],
+  caribbean_restaurant: ["restaurants"],
   // Bar · Sports · Hookah (Beer, Cocktails and Wine folded into Bar, MESITA-2930)
   bar: ["drinks"],
   pub: ["drinks"],
@@ -508,9 +520,9 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   brewery: ["drinks"],
   beer_garden: ["drinks"],
   sports_bar: ["drinks"],
-  cocktail_bar: ["drinks", "night_out"],
-  lounge_bar: ["drinks", "night_out"],
-  hookah_bar: ["drinks", "night_out"],
+  cocktail_bar: ["drinks"],
+  lounge_bar: ["drinks"],
+  hookah_bar: ["drinks"],
   wine_bar: ["drinks"],
   winery: ["drinks"],
   billiards: ["drinks", "fun"],
@@ -564,7 +576,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
 };
 
 const COARSE_FALLBACK: Record<string, FamilyKey> = {
-  restaurants: "dinner",
+  restaurants: "restaurants",
   bars_nightlife: "drinks",
   cafes_bakeries: "coffee",
   // Not social (MESITA-2468): an unlisted sport, fitness, wellness or
@@ -595,7 +607,13 @@ export function familiesForCatalogSlug(
   coarse: string | null,
 ): FamilyKey[] {
   const explicit = EXPLICIT[slug];
-  if (explicit) return inOrder(explicit);
+  if (explicit) {
+    // Every Google restaurant is Restaurants (MESITA-4820): a fact, not a row.
+    return coarse === "restaurants" && !explicit.includes("undefined") &&
+        !explicit.includes("restaurants")
+      ? inOrder(["restaurants", ...explicit])
+      : inOrder(explicit);
+  }
   if (!coarse) return [];
   const fallback = COARSE_FALLBACK[coarse];
   return fallback ? [fallback] : [];

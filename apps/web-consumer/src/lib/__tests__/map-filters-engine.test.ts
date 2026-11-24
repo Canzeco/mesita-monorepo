@@ -46,12 +46,13 @@ describe("PLACE_FAMILIES catalog (final law)", () => {
   it("is twenty-five guest families plus Undefined last", () => {
     expect(PLACE_FAMILIES).toHaveLength(26);
     expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
-      "dinner",
+      "restaurants",
       "coffee",
       "drinks",
-      "quick_bite",
       "breakfast",
-      "mexican",
+      "brunch",
+      "dinner",
+      "quick_bite",
       "tacos",
       "seafood",
       "asian",
@@ -66,7 +67,6 @@ describe("PLACE_FAMILIES catalog (final law)", () => {
       "pizza",
       "burgers",
       "arabic",
-      "chicken",
       "sweet",
       "night_out",
       "fun",

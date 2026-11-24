@@ -9,12 +9,13 @@ import {
 Deno.test("place family catalog is twenty-five guest families, Undefined last", () => {
   assertEquals(FAMILIES.length, 26);
   assertEquals(FAMILIES.map((s) => s.slug), [
-    "dinner",
+    "restaurants",
     "coffee",
     "drinks",
-    "quick_bite",
     "breakfast",
-    "mexican",
+    "brunch",
+    "dinner",
+    "quick_bite",
     "tacos",
     "seafood",
     "asian",
@@ -29,7 +30,6 @@ Deno.test("place family catalog is twenty-five guest families, Undefined last", 
     "pizza",
     "burgers",
     "arabic",
-    "chicken",
     "sweet",
     "night_out",
     "fun",
@@ -83,7 +83,7 @@ Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog 
   );
   assertEquals(
     sanitizeFamilyKeys(["night_out", "drinks", "dinner"]),
-    ["dinner", "drinks", "night_out"],
+    ["drinks", "dinner", "night_out"],
   );
   assertEquals(sanitizeFamilyKeys(["a", "b", "c"]), []);
   assertEquals(sanitizeFamilyKeys(null), []);
