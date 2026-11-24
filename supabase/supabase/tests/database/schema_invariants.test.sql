@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(218);
+select plan(215);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -724,13 +724,6 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE'),
-  'only the service role can set a guest''s Plan (MESITA-2553; Class is automatic since MESITA-3850)'
-);
-
-select ok(
   pg_get_constraintdef((select oid from pg_constraint
     where conname = 'consumers_reservation_cap_override_check'
       and conrelid = 'public.consumers'::regclass)) like '%1000%',
@@ -763,29 +756,13 @@ select ok(
   'a guest who falls below the VIP bar may keep a recorded partner or end date (MESITA-3850 dropped MESITA-2556''s check)'
 );
 
--- MESITA-2590: a member can appear as "A member"; the one visibility rule reads it.
-select ok(
-  (select column_default from information_schema.columns
-    where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'appear_anonymous') = 'false'
-    and pg_get_functiondef('public.place_activity_visible(public.consumers)'::regprocedure)
-      like '%appear_anonymous%',
-  'consumers.appear_anonymous defaults to false and place_activity_visible reads it (MESITA-2590; retired by MESITA-4690, the follow-up rewrites this)'
-);
-
--- MESITA-4690: every Mesita profile is public; the column can never be true.
-select ok(
-  exists (select 1 from pg_constraint
-           where conrelid = 'public.consumers'::regclass
-             and conname = 'consumers_profile_always_public'
-             and contype = 'c'),
-  'consumers_profile_always_public exists (MESITA-4690)'
-);
-select throws_ok(
-  $$ insert into public.consumers (id, appear_anonymous) values ('00000000-0000-4000-8000-000000004690', true) $$,
-  '23514',
-  null,
-  'no profile can be hidden: appear_anonymous = true is refused (MESITA-4690)'
+-- MESITA-4648: what nothing reads is gone.
+select is(
+  (select count(*)::int from information_schema.columns
+    where table_schema = 'public'
+      and column_name in ('appear_anonymous', 'instagram_is_private', 'vip_until', 'story_reward_cents')),
+  0,
+  'the dead guest and story columns are gone (MESITA-4648)'
 );
 
 -- MESITA-2461: a handle is proved, not typed.

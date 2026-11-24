@@ -1,5 +1,5 @@
 -- MESITA-4454 — catalog_rank_lanes: the Organic and Inorganic lanes in one
--- statement, beside the untouched catalog_rank (H-1), and the seed that adds
+-- statement, and the seed that adds
 -- only absent config keys (E3, DX-n). Six fixture places (M-e): 0 reviews,
 -- no stars, a 2X, a 5X, a 2X below the ad floor, and a family filter.
 --
@@ -7,7 +7,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(21);
+select plan(19);
 
 insert into public.place_profiles
   (id, google_name, family_keys, enrichment_sources, lat, lng, google_stars_overall, google_review_count, business_state) values
@@ -69,25 +69,7 @@ select ok(
   has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
   and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
   and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute'),
-  'service role only, like catalog_rank');
-
--- The deployed EF keeps calling the old function, with its old named
--- arguments, until it redeploys (H-1).
-select is(
-  (select array_agg(k order by k) from jsonb_object_keys(public.catalog_rank(
-     p_lat => 25.67, p_lng => -100.30, p_half_km => 1, p_exponent => 1, p_root => 0.33,
-     p_premier_1 => 2, p_premier_2 => 5, p_families => array[]::text[],
-     p_known_families => array['tacos', 'coffee', 'dinner'], p_require_active => false,
-     p_nearest => false, p_stars_power => 6, p_repeat => 0.6)) k),
-  array['ids', 'read'],
-  'catalog_rank still answers {read, ids} with its old named arguments');
-
-select is(
-  jsonb_array_length(public.catalog_rank(
-     p_lat => 25.67, p_lng => -100.30, p_half_km => 1, p_exponent => 1, p_root => 0.33,
-     p_premier_1 => 2, p_premier_2 => 5, p_families => array[]::text[],
-     p_known_families => array['tacos', 'coffee', 'dinner'], p_require_active => false) -> 'ids'),
-  6, 'catalog_rank still ranks every gated place');
+  'service role only');
 
 -- ━━━ Both lanes from a point ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
