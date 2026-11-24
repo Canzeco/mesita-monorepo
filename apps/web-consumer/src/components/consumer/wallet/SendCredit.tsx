@@ -49,6 +49,9 @@ import { prepayReturnHref } from "./WalletPickers";
 
 const PRIMARY =
   "bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-sm font-semibold transition hover:opacity-90 active:scale-[0.99] disabled:opacity-50";
+/** A button to prepay is purple (MESITA-4840). */
+const PREPAY =
+  "flex h-12 w-full items-center justify-center rounded-xl bg-[#635BFF] text-sm font-semibold text-white transition hover:bg-[#5249e6] active:scale-[0.99]";
 const SECONDARY =
   "border-border bg-card hover:bg-muted flex h-12 w-full items-center justify-center rounded-xl border text-sm font-semibold transition disabled:opacity-50";
 
@@ -408,7 +411,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
                 {row.card.pending_cents > 0 ? GIFT_PENDING : `No credit at ${placeName} to send yet.`}
               </p>
               {buy ? (
-                <PushLink href={buy} className={`${PRIMARY} mt-6`} data-send-credit-buy>
+                <PushLink href={buy} className={`${PREPAY} mt-6`} data-send-credit-buy>
                   Buy Credits
                 </PushLink>
               ) : null}
@@ -432,7 +435,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       footer={
         <div className="flex flex-col gap-2">
           {(over || short) && buy ? (
-            <PushLink href={buy} className={SECONDARY} data-send-credit-buy>
+            <PushLink href={buy} className={PREPAY} data-send-credit-buy>
               Buy Credits
             </PushLink>
           ) : null}

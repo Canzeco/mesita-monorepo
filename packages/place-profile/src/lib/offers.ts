@@ -131,19 +131,21 @@ const GREEN = "bg-[#00D66F] text-neutral-950";
 // PREPAY GREEN, CASHBACK BLUE, DISCOUNT RED (Pato, 2026-11-23, MESITA-4777:
 // "make prepay green and cashback blue and discount red"): swaps the three
 // above the same day. Black ink on all three.
-const BLUE = "bg-[#4DA3FF] text-neutral-950";
-const RED = "bg-[#FF4D4D] text-neutral-950";
+// PREPAY PURPLE, PAY GREEN, ALWAYS (Pato, 2026-11-24, MESITA-4840: "all prepay
+// buttons must be purple like stripe (since prepayments are done via stripe)
+// and all pay buttons must be green"; discount or cashback, it doesn't matter).
+const PURPLE = "bg-[#635BFF] text-white";
 export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
-  voucher_welcome: GREEN,
-  voucher_200: GREEN,
-  voucher_1000: GREEN,
-  voucher_5000: GREEN,
-  voucher_vip: GREEN,
+  voucher_welcome: PURPLE,
+  voucher_200: PURPLE,
+  voucher_1000: PURPLE,
+  voucher_5000: PURPLE,
+  voucher_vip: PURPLE,
 };
-/** Every cashback line, one blue (MESITA-4777; red-pink under MESITA-4770). */
-export const CASHBACK_TONE = BLUE;
-/** Every visit discount, one red (MESITA-4777; green under MESITA-4770). */
-export const DISCOUNT_TONE = RED;
+/** Every cashback line, Pay's green (MESITA-4840; blue under MESITA-4777). */
+export const CASHBACK_TONE = GREEN;
+/** Every visit discount, the same green (MESITA-4840; red under MESITA-4777). */
+export const DISCOUNT_TONE = GREEN;
 /** The visit lines' colour by mechanism. */
 export function visitTone(m: VisitMechanism): string {
   return m === "discount" ? DISCOUNT_TONE : CASHBACK_TONE;
@@ -160,7 +162,7 @@ const OFFER_SLIDES: OfferSlide[] = [
   // "Prepay" on the previews since MESITA-4255 (Pato: "instead of classic use
   // the word prepay. its just clearer"); the Offers page keeps its "Classic
   // Offers" and "Special Offers" panels.
-  { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
+  { key: "prepay", lead: "Prepay", pill: "", pillShort: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: PURPLE },
   // No Welcome voucher slide since MESITA-4698: Welcome is a cashback line.
 ];
 

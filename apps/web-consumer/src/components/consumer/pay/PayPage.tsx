@@ -17,7 +17,7 @@ import { useOpenBill } from "./use-open-bill";
 import type { GuestBill } from "@/lib/api/pay-bill";
 import { PayHeader } from "./PayHeader";
 import { PayFrameLoading } from "./PayFrameLoading";
-import { bestVoucherBonus, PlaceList } from "./PayPick";
+import { PlaceList } from "./PayPick";
 import { TicketsShortcut } from "./TicketsShortcut";
 import { PAY_TAB_FILL, PAY_TABS, PAY_TILE, type PayTab, payTabPath, SECTION_CARD, SECTION_ROWS, SECTION_TITLE } from "./pay-sections";
 import { WalletSection } from "@/components/consumer/wallet/WalletSection";
@@ -63,7 +63,6 @@ export function PayPage({
   const sorted =
     places &&
     [...places].sort((x, y) => (x.distance_m === null ? 1 : y.distance_m === null ? -1 : x.distance_m - y.distance_m));
-  const bestBonus = bestVoucherBonus(places ?? []);
   const [walletReady, setWalletReady] = useState(false);
   const onWalletReady = useCallback(() => setWalletReady(true), []);
   const allReady = walletReady && (places !== null || placesFailed) && bill !== undefined;
@@ -100,11 +99,12 @@ export function PayPage({
             tab === "pay" && "rounded-tr-none",
             PAY_TAB_FILL[tab],
           )} data-pay-menu-box={tab}>
-          {/* WHY PREPAY, OVER THE SEARCH BOX (Pato, 2026-11-24, MESITA-4839): on
-              the green itself; the number is the best bonus listed. */}
+          {/* WHY PREPAY, A BLACK BOX OVER THE SEARCH BOX (Pato, 2026-11-24,
+              MESITA-4840: "put it in a black box with white letter";
+              "don't mention numbers"). */}
           {tab === "prepay" ? (
-            <p className="shrink-0 px-2 pt-1 pb-2 text-center text-sm font-semibold text-balance" data-prepay-line>
-              {bestBonus > 0 ? `Pay ahead, get up to ${bestBonus}% more to spend` : "Pay ahead, get more to spend"}
+            <p className="bg-foreground text-background mb-1.5 shrink-0 rounded-xl px-3 py-2.5 text-center text-sm font-semibold text-balance" data-prepay-line>
+              Prepay and get more for your money
             </p>
           ) : null}
           <div
@@ -188,9 +188,9 @@ const PENDING_ROW =
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
 const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: WalletIcon, ink: "#008A48" },
-  cards: { word: "Credits", icon: CreditCard, ink: "#171717" },
-  pay: { word: "Pay", icon: QrCode, ink: "#635BFF" },
+  prepay: { word: "Prepay", icon: WalletIcon, ink: "text-indigo-500" },
+  cards: { word: "Credits", icon: CreditCard, ink: "text-foreground" },
+  pay: { word: "Pay", icon: QrCode, ink: "text-neutral-950" },
 };
 
 /** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
@@ -242,7 +242,8 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
             className={cn(PAY_TILE, "relative", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
             data-pay-tab={id}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: ink }} aria-hidden>
+            {/* The exact green, black or purple in the disc; white on the chosen. */}
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", on ? cn("bg-white", ink) : PAY_TAB_FILL[id])} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>

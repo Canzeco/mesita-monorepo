@@ -48,9 +48,9 @@ export function payTabPath(t: PayTab): string {
 }
 /** Each tile's own colour; its box wears it too. */
 export const PAY_TAB_FILL: Record<PayTab, string> = {
-  prepay: "bg-[#00D66F] text-neutral-950",
+  prepay: "bg-[#635BFF] text-white",
   cards: "bg-foreground text-background",
-  pay: "bg-[#635BFF] text-white",
+  pay: "bg-[#00D66F] text-neutral-950",
 };
 /** A tile: a third of the row, 92px. */
 export const PAY_TILE = "flex h-[92px] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center";

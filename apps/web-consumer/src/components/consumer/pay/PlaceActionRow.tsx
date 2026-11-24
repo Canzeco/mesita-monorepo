@@ -1,6 +1,6 @@
 "use client";
 
-import { SizedImg } from "@mesita/place-profile";
+import { photoUrl } from "@mesita/place-profile";
 import { Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
 // A CARD, NOT A ROW (Pato, 2026-11-24, MESITA-4839: "credits must be more
-// visible. that looks like shit. try better"): the place's photo under a dark
+// visible. that looks like shit. try better"): the place's photo, repeated, under a dark
 // scrim, its name at the top, the balance large at the bottom, a white Gift
 // button at the top right (MESITA-4838: "each credit card having a quick button to
 // gift"). The whole card opens the Loyalty Card; Gift is its own link over
@@ -45,18 +45,27 @@ export function PlaceActionRow({
 }) {
   return (
     <div
-      className={cn("bg-foreground relative isolate flex min-h-40 flex-col overflow-hidden rounded-2xl text-white", disabled && "opacity-60 grayscale")}
+      className={cn("bg-foreground relative isolate flex min-h-32 flex-col overflow-hidden rounded-2xl text-white", disabled && "opacity-60 grayscale")}
       data-wallet-row
       data-place-id={placeId}
     >
-      {photo ? <SizedImg src={photo} size="card" alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" /> : null}
-      <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/55" aria-hidden />
+      {/* THE WHOLE PHOTO, REPEATED (Pato, 2026-11-24, MESITA-4840: "is okay if
+          you stretch the image or repeat the image"): as tall as the card, side
+          by side; one photo cropped to the card before. */}
+      {photo ? (
+        <span
+          className="absolute inset-0 -z-10 bg-left bg-repeat-x"
+          style={{ backgroundImage: `url(${JSON.stringify(photoUrl(photo, "card"))})`, backgroundSize: "auto 100%" }}
+          aria-hidden
+        />
+      ) : null}
+      <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/75" aria-hidden />
       <button
         type="button"
         disabled={disabled}
         aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}, ${amount} in credits`}
         onClick={() => onOpen?.()}
-        className="flex flex-1 flex-col items-start justify-between gap-6 p-4 text-left disabled:cursor-default"
+        className="flex flex-1 flex-col items-start justify-between gap-3 p-3.5 text-left disabled:cursor-default"
         data-loyalty-card
       >
         <span className={cn("line-clamp-2 max-w-full text-base leading-tight font-semibold", giftHref && "pr-28")}>{name}</span>

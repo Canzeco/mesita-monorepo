@@ -262,8 +262,8 @@ export function WalletSection({
           : null}
         {creditsState === "loading" ? (
           <>
-            <Skeleton className="h-40 w-full rounded-2xl" aria-hidden />
-            <Skeleton className="h-40 w-full rounded-2xl" aria-hidden />
+            <Skeleton className="h-32 w-full rounded-2xl" aria-hidden />
+            <Skeleton className="h-32 w-full rounded-2xl" aria-hidden />
           </>
         ) : null}
         {/* ADD ANOTHER CARD, LAST (Pato, 2026-11-21, MESITA-4573: "in

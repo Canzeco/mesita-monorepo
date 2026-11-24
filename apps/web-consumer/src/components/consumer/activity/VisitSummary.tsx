@@ -361,7 +361,7 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
       <TimelinePanel steps={events.map(([at, label, value]) => ({ label, when: when(at), value }))} />
 
       <TicketActions
-        primary={{ label: "Pay Bill", href: payCodePath(tab.place.id) }}
+        primary={{ label: "Pay Bill", href: payCodePath(tab.place.id), pay: true }}
         secondary={{ label: "Open the place", href: placePath(tab.place.id) }}
       />
     </TicketPage>

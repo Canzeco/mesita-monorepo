@@ -26,7 +26,7 @@ export const BAD = "text-red-700";
 
 /** An offer's tint under black ink (MESITA-4777): Prepay green, Discount
  *  red, Cashback blue; offers.ts holds the solid tones. */
-export const BOX_TINT = { prepay: "bg-[#00D66F]/15", discount: "bg-[#FF4D4D]/15", cashback: "bg-[#4DA3FF]/15" } as const;
+export const BOX_TINT = { prepay: "bg-[#635BFF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#00D66F]/15" } as const;
 
 /** "350 m" / "2.4 km". */
 export function distanceText(m: number): string {

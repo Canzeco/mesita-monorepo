@@ -293,19 +293,23 @@ export function TicketTimeline({ steps, open = false }: { steps: TicketStep[]; o
   );
 }
 
-/** One filled button and one outline, side by side. */
+/** One filled button and one outline, side by side; a button to pay is green
+ *  (MESITA-4840). */
 export function TicketActions({
   primary,
   secondary,
 }: {
-  primary: { label: string; href: string };
+  primary: { label: string; href: string; pay?: boolean };
   secondary?: { label: string; href: string };
 }) {
   return (
     <div className="flex gap-2">
       <Link
         href={primary.href}
-        className="bg-foreground text-background flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
+        className={cn(
+          "flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition",
+          primary.pay ? "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]" : "bg-foreground text-background hover:opacity-90",
+        )}
       >
         {primary.label}
       </Link>
