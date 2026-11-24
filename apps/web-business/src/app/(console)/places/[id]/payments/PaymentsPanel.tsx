@@ -38,6 +38,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { moneyState, NOT_YET_SELLABLE, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
@@ -51,6 +52,7 @@ import {
   WalletIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { Card } from "@/components/shell/Page";
+import { WaiterCodeRow } from "./WaiterCode";
 import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -318,7 +320,9 @@ export function PaymentsPanel({
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The tier moves when the Credits Account flips here; refetched then.
   const [creditLimit, setCreditLimit] = useState<CreditLimit | null>(initial.credit_limit ?? null);
-  const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
+  const waiterUrl = `${VISIT_ORIGIN}/waiter/${encodeURIComponent(placeId)}`;
+  const [codeSet, setCodeSet] = useState(initial.code_set);
+  const [linkCopied, setLinkCopied] = useState(false);
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
   const ready = account.state === "ready";
@@ -759,6 +763,30 @@ export function PaymentsPanel({
               );
             })}
           </ul>
+          {/* THE WAITER'S PHONES (MESITA-4823): waiters send the bill, so a
+              place needs its waiter code and the link a phone opens once. */}
+          <ul className="divide-border border-border divide-y border-t" data-waiter-phones>
+            <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
+            <li className="flex min-h-16 flex-wrap items-center gap-4 px-5 py-3 text-sm sm:px-6" data-waiter-link>
+              <span className="shrink-0 rounded-lg border bg-white p-1.5">
+                <QRCodeSVG value={waiterUrl} size={72} marginSize={0} title="Waiter link" />
+              </span>
+              <div className="min-w-48 flex-1">
+                <p className="font-medium">Waiter link</p>
+                <p className="text-muted-foreground">Each waiter opens it once and types the waiter code. Then they scan a guest&apos;s Mesita QR to send the bill.</p>
+              </div>
+              <a className={PILL_BUTTON_CLASS} href={waiterUrl} target="_blank" rel="noreferrer">
+                Open
+              </a>
+              <button
+                type="button"
+                className={PILL_BUTTON_CLASS}
+                onClick={() => void navigator.clipboard.writeText(waiterUrl).then(() => setLinkCopied(true), () => setError("Couldn't copy the link."))}
+              >
+                {linkCopied ? "Copied" : "Copy"}
+              </button>
+            </li>
+          </ul>
           {cashDue.length > 0 ? (
             <ul className="divide-border border-border divide-y border-t" data-cash-due>
               {cashDue.map((row) => (
@@ -789,10 +817,6 @@ export function PaymentsPanel({
             {discount
               ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
               : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later."}{" "}
-            <a className="underline underline-offset-2" href={chargeUrl} target="_blank" rel="noreferrer">
-              Waiter&apos;s screen
-            </a>
-            {" · "}
             <a className="underline underline-offset-2" href={staffListUrl} target="_blank" rel="noreferrer">
               Staff list
             </a>

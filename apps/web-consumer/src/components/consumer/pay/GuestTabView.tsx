@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { navigateTo } from "@/lib/navigate";
 import { BadgePercent, Banknote, CircleCheck, HandCoins, Loader2, PenLine, ReceiptText, Wallet, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
@@ -155,6 +158,12 @@ export function GuestTabView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsBack, tab.tab_id]);
 
+  // A bill still open is the waiter's (MESITA-4823): /pay/code shows it.
+  const router = useRouter();
+  const live = !signed && !ended && !confirming;
+  useEffect(() => {
+    if (live) navigateTo(router, CONSUMER_ROUTES.payCode, { replace: true, motion: "none" });
+  }, [live, router]);
   // Confirm only: the header's X asks to cancel; the other states keep Back.
   const signing = !done && !confirming;
   // The phone must not lock while the guest waits for the waiter (MESITA-4131).
@@ -232,6 +241,7 @@ export function GuestTabView({
   }
 
   const placeName = tab.place.name ?? "A Mesita place";
+  if (live) return <Skeleton className="my-4 min-h-0 w-full flex-1 rounded-2xl" aria-hidden />;
 
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
   // ... keep the structure"). The same three

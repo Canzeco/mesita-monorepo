@@ -8,7 +8,7 @@ import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { canRemoveLoyaltyCard, money } from "@/lib/api/wallet";
-import { creditEntryPath, payPlacePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
+import { creditEntryPath, payCodePath, payReceiptPath, walletSendPath } from "@/lib/consumer-route-contract";
 import { useRouter } from "next/navigation";
 import { navigateTo } from "@/lib/navigate";
 import { placeHref } from "@/lib/place-route";
@@ -337,7 +337,7 @@ export function PlaceCredit({
             </PushLink>
           ) : null}
           <PushLink
-            href={payPlacePath(row.placeId)}
+            href={payCodePath(row.placeId)}
             className={ROUND}
             aria-label={spendable > 0 ? `Pay Bill: use ${money(spendable, card.currency)} at the table` : "Pay Bill"}
             data-loyalty-card-pay

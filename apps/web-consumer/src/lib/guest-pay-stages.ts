@@ -3,7 +3,7 @@
 // screen of the ticket (MESITA-4600). Pick, the Pay tab's list, is step 0 and
 // wears no strip (MESITA-4635). Bill · Method · Pay · Receipt until then.
 
-export const STRIP_STEPS = ["Bill", "Show waiter", "Receipt"] as const;
+export const STRIP_STEPS = ["Show QR", "Bill", "Receipt"] as const;
 export type StripAt = 1 | 2 | 3 | "done";
 
 /** What the ✕ does before the waiter's screens (MESITA-4598: the ticket is

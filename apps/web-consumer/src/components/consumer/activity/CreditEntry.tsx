@@ -76,7 +76,7 @@ import {
 import {
   creditEntryPath,
   giftTicketPath,
-  payPlacePath,
+  payCodePath,
   placePath,
   walletPlacePath,
   walletSendPath,
@@ -373,7 +373,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           <TicketActions primary={loyaltyCard} />
         ) : b.spendable_cents > 0 ? (
           <TicketActions
-            primary={{ label: "Pay here", href: payPlacePath(placeId) }}
+            primary={{ label: "Pay Bill", href: payCodePath(placeId) }}
             secondary={received ? undefined : loyaltyCard}
           />
         ) : (

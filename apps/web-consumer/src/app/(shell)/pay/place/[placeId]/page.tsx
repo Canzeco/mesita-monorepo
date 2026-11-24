@@ -1,13 +1,11 @@
 import { redirect } from "next/navigation";
-import { PayTabScreen } from "@/components/consumer/pay/PayTabScreen";
-import { CONSUMER_ROUTES, isRouteId } from "@/lib/consumer-route-contract";
+import { isRouteId, payCodePath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
-// /pay/place/<placeId> — the door to pay at a place (MESITA-3614): opens the
-// guest's bill there and becomes /pay/bill/<id>.
+// /pay/place/<placeId> — an old door (printed table QRs, sent links). The
+// waiter leads now (MESITA-4823): it opens the guest's QR.
 export default async function Page({ params }: { params: Promise<{ placeId: string }> }) {
   const { placeId } = await params;
-  if (!isRouteId(placeId)) redirect(CONSUMER_ROUTES.pay);
-  return <PayTabScreen start={{ kind: "place", placeId }} />;
+  redirect(payCodePath(isRouteId(placeId) ? placeId : null));
 }

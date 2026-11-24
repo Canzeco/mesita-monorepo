@@ -10,8 +10,8 @@ export default function VisitHome() {
     <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-16 text-center">
       <p className="text-2xl font-semibold tracking-tight">Mesita Visit</p>
       <p className="mt-2 max-w-[32ch] text-sm leading-relaxed opacity-70">
-        Scan a guest&apos;s payment QR to check it here. To charge a guest or see today&apos;s payments, open your place&apos;s
-        links from Business › Payments.
+        Scan a guest&apos;s Mesita QR to send their bill. A new phone opens the waiter link first: the manager has it on Business › Offers.
+
       </p>
     </main>
   );

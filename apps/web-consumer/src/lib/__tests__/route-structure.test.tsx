@@ -905,6 +905,7 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(childDirs(pay)).toEqual([
       "(wallet)",
       "bill",
+      "code",
       "join",
       "pick",
       "place",

@@ -1,20 +1,11 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, ReceiptText } from "lucide-react";
-import { apiListVisits } from "@/lib/api/tab";
-import {
-  barShowsOn,
-  CONSUMER_ROUTES,
-  isAtRoute,
-  payPlacePath,
-  payBillPath,
-} from "@/lib/consumer-route-contract";
-import { pickOpenGuestPayment } from "@/lib/pay-open";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { pendingTicket } from "./GuestPayScreen";
+import { money } from "@/lib/api/wallet";
+import { barShowsOn, CONSUMER_ROUTES, isAtRoute } from "@/lib/consumer-route-contract";
+import { useOpenBill } from "./use-open-bill";
 
 // THE TICKET IN PROGRESS, ON EVERY TAB (MESITA-3906, Pato: "what happens if
 // the app closes ... if i open app in my profile"): while the guest has a
@@ -27,69 +18,20 @@ import { pendingTicket } from "./GuestPayScreen";
 // Pato: "if I am in the pay page, then actually show the payment ticket
 // not in the header but in the center").
 //
-// Two kinds: one being filled in (Bill · Tip · Method · Pay), kept on this
-// phone (GuestPayScreen's draft, 30 minutes), and a bill already sent and
-// waiting for the waiter's signature, found on the server once when the app
-// opens and again each time the guest leaves Pay.
-
-const subscribe = (onChange: () => void) => {
-  window.addEventListener("storage", onChange);
-  return () => window.removeEventListener("storage", onChange);
-};
-const localSnapshot = () => {
-  const t = pendingTicket();
-  return t ? `${t.placeId}\n${t.name ?? ""}` : "";
-};
-
-/** The ticket being filled in on this phone, re-read on every render. */
-export function usePendingTicket(): {
-  placeId: string;
-  name: string | null;
-} | null {
-  const local = useSyncExternalStore(subscribe, localSnapshot, () => "");
-  if (!local) return null;
-  const [placeId, name] = local.split("\n");
-  return { placeId, name: name || null };
-}
+// A bill the waiter sent: to review, then to pay at the place (MESITA-4823).
 
 export function PendingTicketBanner() {
   const pathname = usePathname() ?? "/";
   // /pay draws it in the page (OpenBillPanel); the bill's screens are it.
   const onPay = isAtRoute(pathname, CONSUMER_ROUTES.pay);
-  const getSupabase = useLazyBrowserSupabase();
-  // Read on every render, so a route change sees what Pay just wrote.
-  const local = useSyncExternalStore(subscribe, localSnapshot, () => "");
-  const [bill, setBill] = useState<{
-    tabId: string;
-    name: string | null;
-  } | null>(null);
-
-  useEffect(() => {
-    if (onPay) return;
-    let alive = true;
-    void apiListVisits(getSupabase())
-      .then((r) => {
-        const v = pickOpenGuestPayment(r.visits, Date.now());
-        if (alive) setBill(v ? { tabId: v.tab_id, name: v.place.name } : null);
-      })
-      .catch(() => {
-        // Offline: the phone's own ticket still shows.
-      });
-    return () => {
-      alive = false;
-    };
-  }, [onPay, getSupabase]);
-
-  if (onPay || !barShowsOn(pathname)) return null;
-  const [placeId, localName] = local ? local.split("\n") : [];
-  const href = bill
-    ? payBillPath(bill.tabId)
-    : placeId
-      ? payPlacePath(placeId)
-      : null;
-  if (!href) return null;
-  const name = (bill ? bill.name : localName) || null;
-  const what = bill ? "Waiting for the waiter" : "Bill in progress";
+  // MESITA-4823: one open bill, read when the app opens, each time the guest
+  // leaves Pay, and when the app comes back to the front.
+  const bill = useOpenBill(!onPay);
+  if (onPay || !barShowsOn(pathname) || !bill) return null;
+  const href = CONSUMER_ROUTES.payCode;
+  const name = bill.place.name;
+  const what =
+    bill.state === "sent" ? "Bill to review" : bill.quote ? `Pay ${money(bill.quote.outside_cents, bill.currency)}` : "Waiting for the waiter";
 
   return (
     <Link

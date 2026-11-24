@@ -47,7 +47,7 @@ import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiGetTab, type GuestTab, type GuestVisit, type TabRead } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
-import { payPlacePath, payReceiptPath, placePath } from "@/lib/consumer-route-contract";
+import { payCodePath, payReceiptPath, placePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { readCached } from "@/lib/screen-cache";
 import { toast } from "@/lib/toast";
@@ -361,7 +361,7 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
       <TimelinePanel steps={events.map(([at, label, value]) => ({ label, when: when(at), value }))} />
 
       <TicketActions
-        primary={{ label: "Pay here again", href: payPlacePath(tab.place.id) }}
+        primary={{ label: "Pay Bill", href: payCodePath(tab.place.id) }}
         secondary={{ label: "Open the place", href: placePath(tab.place.id) }}
       />
     </TicketPage>
