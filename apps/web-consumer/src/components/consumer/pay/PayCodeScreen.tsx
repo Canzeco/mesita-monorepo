@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { BadgePercent, Banknote, HandCoins, Loader2, ReceiptText, Wallet, XCircle } from "lucide-react";
+import { BadgePercent, Banknote, Coins, HandCoins, Loader2, ReceiptText, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -361,7 +361,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       {q.discount_cents > 0 ? (
         <MoneyRow className={BOX_TINT.discount} icon={<BadgePercent />} label={`${q.discount_bps / 100}% Discount`} value={`−${m(q.discount_cents)}`} />
       ) : null}
-      {q.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Your credits" value={`−${m(q.credit_cents)}`} /> : null}
+      {q.credit_cents > 0 ? <MoneyRow icon={<Coins />} label="Your credits" value={`−${m(q.credit_cents)}`} /> : null}
       {bill.tip_cents > 0 ? (
         <MoneyRow
           icon={<HandCoins />}

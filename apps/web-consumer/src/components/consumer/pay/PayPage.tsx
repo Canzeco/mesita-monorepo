@@ -4,7 +4,7 @@ import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CreditCard, type LucideIcon, QrCode, Wallet as WalletIcon } from "lucide-react";
+import { BadgePlus, ChevronRight, Coins, type LucideIcon, QrCode } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { money } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
@@ -175,9 +175,11 @@ const PENDING_ROW =
   "hover:bg-muted/40 flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left transition";
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
+// A plus badge (pay and get extra) and coins (Pato, 2026-11-24, MESITA-4843);
+// the wallet and the bank card before. The same marks everywhere.
 const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: WalletIcon, ink: "text-indigo-500" },
-  cards: { word: "Credits", icon: CreditCard, ink: "text-foreground" },
+  prepay: { word: "Prepay", icon: BadgePlus, ink: "text-indigo-500" },
+  cards: { word: "Credits", icon: Coins, ink: "text-foreground" },
   pay: { word: "Pay", icon: QrCode, ink: "text-neutral-950" },
 };
 
