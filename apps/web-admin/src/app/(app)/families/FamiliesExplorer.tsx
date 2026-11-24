@@ -31,7 +31,7 @@ export function matchesCategory(row: GoogleCategoryRow, query: string): boolean 
   return !q || `${row.label} ${row.slug} ${row.slug.replaceAll("_", " ")}`.toLowerCase().includes(q);
 }
 
-// Atlas (MESITA-2891): the thirty Mesita Families, the Google categories
+// Atlas (MESITA-2891): the twenty-five Mesita Families, the Google categories
 // side by side — allowed, and not allowed (MESITA-4680: Google's list from
 // code; the database stores only the allowed, MESITA-4576) — then the tag
 // catalog. There

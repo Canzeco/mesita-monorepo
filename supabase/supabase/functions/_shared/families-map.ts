@@ -3,7 +3,7 @@
 // the Google Categories that are NOT enabled on Mesita." · "Kill the Google
 // Categories vs Mesita Families matrix … Remove it. Delete it."
 //
-// So: the Mesita Families (the thirty the Description step picks from), every
+// So: the Mesita Families (the twenty-five the Description step picks from), every
 // Google category Mesita allows (`catalog_membership`, the allow-list since
 // MESITA-4576), every Google category it does not (MESITA-4680: Google's
 // Table A list kept in code, minus the allowed ones and Google's generic

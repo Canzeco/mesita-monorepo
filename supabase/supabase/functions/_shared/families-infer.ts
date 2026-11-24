@@ -27,7 +27,7 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
 /**
  * What every family means (MESITA-4237 started it for eight; MESITA-4238 gives
  * all 37 a line and tightened Family and Fun; MESITA-4571 cut the list to
- * thirty and both went). On 2026-11-17 Family sat on 83%
+ * thirty and both went; twenty-five since MESITA-4818). On 2026-11-17 Family sat on 83%
  * of places and Dinner on 76%: shown only a label, the model read Family as
  * "kids allowed" and Dinner as "open at night". Each line says what belongs
  * and, where the model strayed, the near-miss that does not. Keyed by slug,
@@ -37,8 +37,7 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
 export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   coffee: "a café or coffee bar — coffee is a main reason to go, including cafés that also serve breakfast or brunch",
   breakfast: "breakfast or brunch is a main meal — a morning place; not a taquería, grill or restaurant that merely opens early",
-  bakery: "a bakery or pastry shop — bread and pastries baked in house",
-  sweet: "dessert is the point — ice cream, gelato, cakes, churros, chocolate",
+  sweet: "dessert or baked goods are the point — ice cream, gelato, cakes, pastries, churros, chocolate, a bakery or pastry shop",
   healthy: "the menu is built around healthy food — salads, bowls, juices, vegan",
   quick_bite: "eat fast — counter service, street food, takeout",
   tacos: "a taquería, or tacos are the main dish",
@@ -51,9 +50,7 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   seafood: "the menu is seafood — mariscos, ceviche, fish, oysters",
   italian: "the menu is Italian — pasta, risotto, Italian dishes",
   japanese: "the menu is Japanese — sushi, ramen, izakaya dishes",
-  chinese: "the menu is Chinese — noodles, dumplings, dim sum",
-  asian: "another Asian cuisine — Korean, Thai, Vietnamese, Indonesian, pan-Asian",
-  indian: "the menu is Indian or South Asian",
+  asian: "an Asian cuisine other than Japanese — Chinese, Indian, Korean, Thai, Vietnamese, Indonesian, pan-Asian",
   arabic: "Middle Eastern or eastern Mediterranean — Lebanese, Turkish, Greek, kebab",
   european: "another European cuisine — Spanish, French, German, tapas",
   american: "American food — diner, barbecue joint, fries and shakes",
@@ -62,9 +59,7 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
   fun: "an activity a group does — bowling, arcades, karts, escape rooms, billiards, mini golf, rinks, water parks; not a lively restaurant or a beach club",
   casino: "a casino — slots and gaming tables are the draw",
-  night_out: "a late night out — lounges, rooftops, bars that turn into parties; not a restaurant that is merely open late",
-  nightclub: "a nightclub — a dance floor and DJs",
-  music: "live music is the draw — bands, concerts, jazz",
+  night_out: "a late night out — nightclubs with a dance floor and DJs, live-music venues, lounges, rooftops, bars that turn into parties; not a restaurant that is merely open late or has a band on weekends",
 };
 
 /** The FAMILY LIST block a prompt carries: `slug — Label`, plus its meaning. */
@@ -101,8 +96,8 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
     "place. Pick a family only when this place matches the meaning its FAMILY " +
     "LIST line gives and a guest browsing that family would be glad to find " +
     "it there. An amenity never earns a family: welcoming kids, serving " +
-    "alcohol, having music or being open late is not Bar, Music or " +
-    "Night. Cuisine and meal families (every cuisine, Breakfast, Coffee, " +
+    "alcohol, having music or being open late is not Bar or Night. " +
+    "Cuisine and meal families (every cuisine, Breakfast, Coffee, " +
     "Quick) describe what the place serves: give each one that truly applies; " +
     "Dinner only when its meaning fits. When unsure about a family, leave " +
     `it out — but always return at least one, the closest by meaning. ${count}`
@@ -117,8 +112,8 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
  */
 export const HINT_FAMILIES: ReadonlySet<string> = new Set([
   "tacos", "mexican", "sushi", "japanese", "italian", "pizza", "burgers",
-  "seafood", "steak", "chinese", "asian", "indian", "arabic", "european",
-  "american", "chicken", "coffee", "bakery", "breakfast",
+  "seafood", "steak", "asian", "arabic", "european",
+  "american", "chicken", "coffee", "breakfast",
 ]);
 
 /**

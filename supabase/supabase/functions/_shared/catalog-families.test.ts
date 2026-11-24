@@ -17,7 +17,7 @@ Deno.test("not social: no gym, court, studio, salon or barber sits in a family (
   }
 });
 
-Deno.test("thirty families: the retired rails hold no Google type (MESITA-4571, MESITA-4588)", () => {
+Deno.test("the retired rails hold no Google type (MESITA-4571, MESITA-4588)", () => {
   for (const t of RETIRED_RAIL_TYPES) {
     assertEquals(familiesForGoogleType(t), [], t);
   }
@@ -48,7 +48,7 @@ Deno.test("sixteen rails folded into their parent (MESITA-2888)", () => {
   assertEquals(familiesForGoogleType("kebab_shop"), ["quick_bite", "arabic"]);
   assertEquals(familiesForGoogleType("barbecue_restaurant"), ["dinner", "steak"]);
   assertEquals(familiesForGoogleType("ramen_restaurant"), ["japanese"]);
-  assertEquals(familiesForGoogleType("dumpling_restaurant"), ["chinese"]);
+  assertEquals(familiesForGoogleType("dumpling_restaurant"), ["asian"]);
   assertEquals(familiesForGoogleType("korean_restaurant"), ["dinner", "asian"]);
   assertEquals(familiesForGoogleType("thai_restaurant"), ["dinner", "asian"]);
   assertEquals(familiesForGoogleType("greek_restaurant"), ["dinner", "arabic"]);
@@ -67,7 +67,7 @@ Deno.test("a place's families are every family of its categories, none primary (
   ]);
   assertEquals(
     placeFamilies("cafe", ["cafe", "bakery", "bar", "ice_cream_shop"]),
-    ["coffee", "drinks", "breakfast", "sweet", "bakery"],
+    ["coffee", "drinks", "breakfast", "sweet"],
   );
   // The bare `restaurant` umbrella adds nothing.
   assertEquals(placeFamilies("breakfast_restaurant", ["breakfast_restaurant", "restaurant"]), ["breakfast"]);

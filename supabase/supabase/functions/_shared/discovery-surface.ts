@@ -261,7 +261,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
-      "A Google row must have a Google type of one of the thirty families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
+      "A Google row must have a Google type of one of the twenty-five families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
       "Guest bar: Google places under the Minimum Popularity (this box's, MESITA-3086) sort after the rest; none are removed; 0 is off. A pick of one is card ONE like any other. Mesita places and Locations never move; admin is unaffected (MESITA-2724).",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Mesi)"],
@@ -382,7 +382,6 @@ export function pipelinesUsingSource(source: DiscoverySourceKey): DiscoveryPipel
 export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji: string }[] = [
   { key: "coffee", label: "Coffee", emoji: "☕" },
   { key: "breakfast", label: "Breakfast", emoji: "🍳" },
-  { key: "bakery", label: "Bakery", emoji: "🥐" },
   { key: "sweet", label: "Dessert", emoji: "🍰" },
   { key: "healthy", label: "Healthy", emoji: "🥗" },
   { key: "quick_bite", label: "Quick", emoji: "⚡" },
@@ -396,9 +395,7 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "seafood", label: "Seafood", emoji: "🦐" },
   { key: "italian", label: "Italian", emoji: "🍝" },
   { key: "japanese", label: "Japanese", emoji: "🍱" },
-  { key: "chinese", label: "Chinese", emoji: "🥡" },
   { key: "asian", label: "Asian", emoji: "🍥" },
-  { key: "indian", label: "Indian", emoji: "🍛" },
   { key: "arabic", label: "Arabic", emoji: "🧆" },
   { key: "european", label: "European", emoji: "🥨" },
   { key: "american", label: "American", emoji: "🍟" },
@@ -408,6 +405,4 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "fun", label: "Fun", emoji: "🎯" },
   { key: "casino", label: "Casino", emoji: "🎰" },
   { key: "night_out", label: "Night", emoji: "🌙" },
-  { key: "nightclub", label: "Club", emoji: "🪩" },
-  { key: "music", label: "Music", emoji: "🎶" },
 ];

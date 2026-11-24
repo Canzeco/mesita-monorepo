@@ -1,6 +1,17 @@
-// The guest catalog is these thirty families. Undefined is the leftover
+// The guest catalog is these twenty-five families. Undefined is the leftover
 // and is not a rail. A type may sit in several families: a list, never a
 // primary and a secondary (MESITA-2808).
+//
+// TWENTY-FIVE (MESITA-4818, Pato 2026-11-23: "Think deeply. Compress list
+// into 25 families"). Live counts on 265 places picked the five thinnest
+// rails, each with a parent a guest already browses: Club (3 places) and
+// Music (1) fold into Night — one rail for everything after dinner; Chinese
+// (3) and Indian (3) fold into Asian — every Asian cuisine but Japanese;
+// Bakery (1) folds into Dessert — a bakery is a counter more than a table.
+// Sushi, Pizza, Burgers and Wings stay: each is a craving a guest names. Fun
+// and Casino stay: the early-deals call of MESITA-4588. Stored lists were
+// re-keyed to the parent in the same migration. Every paragraph below that
+// names Club, Music, Chinese, Indian or Bakery as a rail is history.
 //
 // THIRTY (MESITA-4571, Pato 2026-11-21: "I WANT ONLY 30 FAMILIES. COMPRESS
 // THE LIST OR REMOVE ITEMS.", then "think what makes sense for mesita"). A
@@ -106,14 +117,9 @@ export const CATALOG_FAMILY_SLUGS = [
   "pizza",
   "burgers",
   "arabic",
-  "chinese",
-  "indian",
   "chicken",
   "sweet",
   "night_out",
-  "bakery",
-  "nightclub",
-  "music",
   "fun",
   "casino",
 ] as const;
@@ -147,16 +153,11 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 18 },
   { slug: "burgers", label: "Burgers", emoji: "🍔", sort_order: 19 },
   { slug: "arabic", label: "Arabic", emoji: "🧆", sort_order: 20 },
-  { slug: "chinese", label: "Chinese", emoji: "🥡", sort_order: 21 },
-  { slug: "indian", label: "Indian", emoji: "🍛", sort_order: 22 },
-  { slug: "chicken", label: "Wings", emoji: "🍗", sort_order: 23 },
-  { slug: "sweet", label: "Dessert", emoji: "🍰", sort_order: 24 },
-  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 25 },
-  { slug: "bakery", label: "Bakery", emoji: "🥐", sort_order: 26 },
-  { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 27 },
-  { slug: "music", label: "Music", emoji: "🎶", sort_order: 28 },
-  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 29 },
-  { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 30 },
+  { slug: "chicken", label: "Wings", emoji: "🍗", sort_order: 21 },
+  { slug: "sweet", label: "Dessert", emoji: "🍰", sort_order: 22 },
+  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 23 },
+  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 24 },
+  { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 25 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -320,11 +321,11 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   breakfast: ["breakfast"],
   brunch: ["breakfast"],
   // Bakery · Dessert
-  bagel_shop: ["breakfast", "bakery", "quick_bite"],
-  bakery: ["bakery", "breakfast", "sweet"],
-  pastry_shop: ["bakery", "sweet", "breakfast"],
-  donut_shop: ["bakery", "sweet", "breakfast"],
-  cake_shop: ["bakery", "sweet"],
+  bagel_shop: ["breakfast", "quick_bite"],
+  bakery: ["sweet", "breakfast"],
+  pastry_shop: ["sweet", "breakfast"],
+  donut_shop: ["sweet", "breakfast"],
+  cake_shop: ["sweet"],
   dessert_restaurant: ["sweet"],
   dessert_shop: ["sweet"],
   ice_cream_shop: ["sweet"],
@@ -395,14 +396,14 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   ramen_restaurant: ["japanese"],
   ramen: ["japanese"],
   // Chinese · Asian · Indian
-  chinese_restaurant: ["chinese", "dinner"],
-  cantonese_restaurant: ["chinese", "dinner"],
-  dim_sum_restaurant: ["chinese", "dinner"],
-  dumpling_restaurant: ["chinese"],
-  chinese_noodle_restaurant: ["chinese"],
-  hot_pot_restaurant: ["chinese", "dinner"],
-  taiwanese_restaurant: ["chinese", "asian", "dinner"],
-  chinese: ["chinese", "dinner"],
+  chinese_restaurant: ["asian", "dinner"],
+  cantonese_restaurant: ["asian", "dinner"],
+  dim_sum_restaurant: ["asian", "dinner"],
+  dumpling_restaurant: ["asian"],
+  chinese_noodle_restaurant: ["asian"],
+  hot_pot_restaurant: ["asian", "dinner"],
+  taiwanese_restaurant: ["asian", "dinner"],
+  chinese: ["asian", "dinner"],
   noodle_shop: ["asian"],
   korean_restaurant: ["asian", "dinner"],
   korean_barbecue_restaurant: ["asian", "steak", "dinner"],
@@ -421,13 +422,13 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   burmese_restaurant: ["asian", "dinner"],
   tibetan_restaurant: ["asian", "dinner"],
   mongolian_barbecue_restaurant: ["asian", "steak", "dinner"],
-  indian_restaurant: ["indian", "dinner"],
-  north_indian_restaurant: ["indian", "dinner"],
-  south_indian_restaurant: ["indian", "dinner"],
-  pakistani_restaurant: ["indian", "dinner"],
-  bangladeshi_restaurant: ["indian", "dinner"],
-  sri_lankan_restaurant: ["indian", "dinner"],
-  indian: ["indian", "dinner"],
+  indian_restaurant: ["asian", "dinner"],
+  north_indian_restaurant: ["asian", "dinner"],
+  south_indian_restaurant: ["asian", "dinner"],
+  pakistani_restaurant: ["asian", "dinner"],
+  bangladeshi_restaurant: ["asian", "dinner"],
+  sri_lankan_restaurant: ["asian", "dinner"],
+  indian: ["asian", "dinner"],
   // Steak · Seafood
   steak_house: ["steak", "dinner"],
   barbecue_restaurant: ["steak", "dinner"],
@@ -514,10 +515,10 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   winery: ["drinks"],
   billiards: ["drinks", "fun"],
   // Night · Club · Music
-  night_club: ["nightclub", "night_out"],
-  dance_hall: ["nightclub", "night_out", "music"],
+  night_club: ["night_out"],
+  dance_hall: ["night_out"],
   karaoke: ["drinks", "night_out"],
-  live_music_venue: ["music", "night_out"],
+  live_music_venue: ["night_out"],
   comedy_club: ["night_out"],
   // Fun: what a group does with its hands (back with MESITA-4588)
   bowling_alley: ["fun"],

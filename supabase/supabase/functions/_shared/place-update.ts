@@ -158,7 +158,7 @@ export function buildPlaceUpdate(
     // An unknown slug is refused by the taxonomy trigger.
     update.tags = tags;
   }
-  // Mesita Families (MESITA-2893): the operator's 1–5 of the thirty. Validated
+  // Mesita Families (MESITA-2893): the operator's 1–5 of the twenty-five. Validated
   // against the live vocabulary here, so the 400 names the slug instead of the
   // trigger's bare "unknown family"; the handler writes them on place_profiles,
   // because the profiles view's INSTEAD OF trigger drops family_keys.

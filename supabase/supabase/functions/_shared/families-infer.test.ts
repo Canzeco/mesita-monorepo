@@ -21,16 +21,16 @@ const FAMILIES = [
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 4 },
   { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 5 },
   { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 6 },
-  { slug: "music", label: "Music", emoji: "🎶", sort_order: 7 },
-  { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 8 },
+  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 7 },
+  { slug: "sweet", label: "Dessert", emoji: "🍰", sort_order: 8 },
   { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 99 },
 ];
 
 Deno.test("pickFamilies: known slugs and salvaged labels, Undefined and junk dropped, at most seven", () => {
   assertEquals(pickFamilies(["coffee", "Bar", "undefined", "nope", "coffee"], FAMILIES), ["coffee", "drinks"]);
   assertEquals(
-    pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "music", "nightclub"], FAMILIES),
-    ["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "music"],
+    pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "night_out", "sweet"], FAMILIES),
+    ["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "night_out"],
   );
 });
 
@@ -75,7 +75,7 @@ Deno.test("familyVocabularyLines: a live family with no meaning still renders as
 // Family to family_restaurant, Bar to bar_and_grill, Dinner to every cuisine.
 Deno.test("HINT_FAMILIES: no venue or generic family is ever hinted", () => {
   const never = [
-    "drinks", "night_out", "nightclub", "music", "fun", "casino",
+    "drinks", "night_out", "fun", "casino",
     "dinner", "fancy", "healthy", "quick_bite", "sweet",
   ];
   assertEquals(never.filter((f) => HINT_FAMILIES.has(f)), []);
@@ -93,7 +93,7 @@ Deno.test("familyHintLine: cuisines pass, Dinner and Family never do", () => {
 // MESITA-4581: a stage's Atlas limit caps the pick and the prompt.
 Deno.test("pickFamilies and familiesRule obey a stage limit, never past seven", () => {
   assertEquals(pickFamilies(["coffee", "breakfast", "dinner", "drinks"], FAMILIES, 2), ["coffee", "breakfast"]);
-  assertEquals(pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "music", "nightclub"], FAMILIES, 99)?.length, 7);
+  assertEquals(pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "night_out", "sweet"], FAMILIES, 99)?.length, 7);
   assertEquals(familiesRule("create", 3).includes("never more than 3"), true);
   assertEquals(familiesRule("enrich", 5).includes("never more than 5"), true);
 });
