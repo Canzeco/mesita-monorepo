@@ -236,9 +236,8 @@ export function WalletSection({
         </p>
       ) : null}
 
-      {/* CARDS EDGE TO EDGE IN THE MENU'S BOX (MESITA-4842), 2px apart; 10px
-          in on white before (MESITA-4839). */}
-      <div className="flex flex-col gap-0.5">
+      {/* Boxes 8px in and 8px apart (MESITA-4851). */}
+      <div className="flex flex-col gap-2 p-2">
         {creditsState === "rows"
           ? cards.map((row) => {
               const gone = row.balance.place === null;
@@ -262,8 +261,8 @@ export function WalletSection({
           : null}
         {creditsState === "loading" ? (
           <>
-            <Skeleton className="h-14 w-full rounded-none" aria-hidden />
-            <Skeleton className="h-14 w-full rounded-none" aria-hidden />
+            <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
+            <Skeleton className="h-14 w-full rounded-xl" aria-hidden />
           </>
         ) : null}
         {/* ADD ANOTHER CARD, LAST (Pato, 2026-11-21, MESITA-4573: "in
@@ -272,7 +271,7 @@ export function WalletSection({
             themselves" dialog. With no card it is the tab's one row
             (MESITA-4765, D5). Not while the cards load. */}
         {creditsState !== "loading" ? (
-          <button type="button" onClick={() => setAddOpen(true)} className={cn(PAY_ROW, "bg-muted hover:bg-foreground/10")} data-wallet-add-card>
+          <button type="button" onClick={() => setAddOpen(true)} className={cn(PAY_ROW, "bg-muted rounded-xl hover:bg-foreground/10")} data-wallet-add-card>
             <span className={cn(PAY_THUMB, "bg-card text-foreground")} aria-hidden>
               <Plus className="h-4 w-4" strokeWidth={2.25} />
             </span>

@@ -1,18 +1,16 @@
 "use client";
 
-import { photoUrl } from "@mesita/place-profile";
 import { Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { PlacePhoto } from "./pay-common";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
-// A CARD, NOT A ROW (Pato, 2026-11-24, MESITA-4839: "credits must be more
-// visible. that looks like shit. try better"): the place's photo, repeated, under a dark
-// scrim, the name over the balance, a white Gift button at the right. 56px, Add Loyalty Card's height
-// (Pato, MESITA-4842: "make this way shorter") (MESITA-4838: "each credit card having a quick button to
-// gift"). The whole card opens the Loyalty Card; Gift is its own link over
-// it. A one-line row with a black pill before (MESITA-4573, 4586).
+// THE CARD AT THE LEFT, ITS GIFT BOX AT THE RIGHT (Pato, 2026-11-24,
+// MESITA-4851: "left pp, name, credits two lines, right gift box"): two boxes,
+// 56px, Add Loyalty Card's height. The card opens the Loyalty Card. The photo
+// repeated behind the words before (MESITA-4839..4843).
 
 export function PlaceActionRow({
   name,
@@ -27,7 +25,7 @@ export function PlaceActionRow({
   onOpen,
 }: {
   name: string;
-  /** The place picture. A missing one leaves the card black. */
+  /** The place picture. A missing one is the name's first letter. */
   photo?: string | null;
   /** The balance. */
   amount: string;
@@ -44,53 +42,41 @@ export function PlaceActionRow({
   onOpen?: () => void;
 }) {
   return (
-    <div
-      className={cn("bg-foreground relative isolate flex min-h-14 items-center overflow-hidden text-white", disabled && "opacity-60 grayscale")}
-      data-wallet-row
-      data-place-id={placeId}
-    >
-      {/* THE WHOLE PHOTO, REPEATED (Pato, 2026-11-24, MESITA-4840: "is okay if
-          you stretch the image or repeat the image"): as tall as the card, side
-          by side; one photo cropped to the card before. */}
-      {photo ? (
-        <span
-          className="absolute inset-0 -z-10 bg-left bg-repeat-x"
-          style={{ backgroundImage: `url(${JSON.stringify(photoUrl(photo, "card"))})`, backgroundSize: "auto 100%" }}
-          aria-hidden
-        />
-      ) : null}
-      <span className="absolute inset-0 -z-10 bg-gradient-to-r from-black/75 via-black/50 to-black/10" aria-hidden />
+    <div className={cn("flex items-stretch gap-2", disabled && "opacity-60 grayscale")} data-wallet-row data-place-id={placeId}>
       <button
         type="button"
         disabled={disabled}
         aria-label={disabled ? `${name}. ${subtitle ?? "Ask Mesita support to use it."}` : `${name}, ${amount} in credits`}
         onClick={() => onOpen?.()}
-        className="flex min-w-0 flex-1 flex-col items-start gap-0.5 px-3.5 py-1 text-left [text-shadow:0_1px_3px_rgb(0_0_0/0.8)] disabled:cursor-default"
+        className="bg-muted hover:bg-foreground/10 flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-1.5 text-left transition disabled:cursor-default"
         data-loyalty-card
       >
-        <span className="block max-w-full truncate text-sm leading-tight font-semibold">{name}</span>
-        {subtitle ? (
-          <span className="block text-sm leading-tight font-semibold">{subtitle}</span>
-        ) : (
-          <span className="block text-xl leading-tight font-semibold tabular-nums" data-loyalty-balance>
-            {amount}
-          </span>
-        )}
-        {pending && !disabled ? (
-          <span className="block text-xs leading-tight font-semibold text-emerald-400 tabular-nums" data-wallet-pending>
-            +{pending} pending <PendingEta at={pendingAt} />
-          </span>
-        ) : null}
+        <PlacePhoto place={{ photo, name }} className="h-10 w-10" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm leading-tight font-semibold">{name}</span>
+          {subtitle ? (
+            <span className="text-muted-foreground block text-sm leading-tight">{subtitle}</span>
+          ) : (
+            <span className="block truncate text-lg leading-tight font-semibold tabular-nums" data-loyalty-balance>
+              {amount}
+            </span>
+          )}
+          {pending && !disabled ? (
+            <span className="block text-xs leading-tight font-semibold text-emerald-700 tabular-nums" data-wallet-pending>
+              +{pending} pending <PendingEta at={pendingAt} />
+            </span>
+          ) : null}
+        </span>
       </button>
       {giftHref ? (
         <PushLink
           href={giftHref}
           aria-label={`Send a gift from ${name}`}
-          className="relative mr-3 flex h-10 shrink-0 items-center after:absolute after:-inset-y-0.5 after:inset-x-0 justify-center gap-2 rounded-xl bg-white px-4 text-base font-semibold text-neutral-950 hover:bg-white/90"
+          className="bg-foreground text-background hover:bg-foreground/85 flex min-h-14 w-24 max-[374px]:w-14 shrink-0 items-center justify-center gap-2 rounded-xl text-base font-semibold transition"
           data-card-gift
         >
           <Gift className="h-5 w-5" strokeWidth={2} aria-hidden />
-          Gift
+          <span className="max-[374px]:hidden">Gift</span>
         </PushLink>
       ) : null}
     </div>
