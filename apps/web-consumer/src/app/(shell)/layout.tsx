@@ -15,6 +15,7 @@ import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataG
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { Toaster } from "@/components/consumer/Toaster";
 import { PendingSignIntent } from "@/components/consumer/anonymous/PendingSignIntent";
+import { SuspendedScreen } from "@/components/consumer/SuspendedScreen";
 import { SignGateModal } from "@/components/consumer/anonymous/SignGateModal";
 import { AddCardModal } from "@/components/consumer/wallet/AddCardModal";
 import { LocationGate } from "@/components/consumer/LocationGate";
@@ -249,6 +250,7 @@ export default async function ConsumerShellLayout({
           <WelcomeModal />
           <SignGateModal />
           <AddCardModal />
+          <SuspendedScreen />
         </div>
       </ConsumerIdentityProvider>
       <Toaster />

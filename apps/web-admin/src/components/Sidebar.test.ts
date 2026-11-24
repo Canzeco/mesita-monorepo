@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ACTIVITY_NAV, CONFIGURATIONS_NAV, EXTRA_NAV, MANAGE_NAV } from "./Sidebar";
+import { ACTIVITY_NAV, CONFIGURATIONS_NAV, EXTRA_NAV, MANAGE_NAV, SECURITY_NAV } from "./Sidebar";
 
 const APP = join(__dirname, "..", "app", "(app)");
 
@@ -43,6 +43,13 @@ describe("Activity rail", () => {
     expect(new Set(hrefs).size).toBe(hrefs.length);
     for (const href of ["/logs", "/feedback"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
+  });
+});
+
+describe("Security rail", () => {
+  it("is exactly Suspensions (MESITA-4899)", () => {
+    expect(SECURITY_NAV.map((i) => [i.label, i.href])).toEqual([["Suspensions", "/security"]]);
+    expect(existsSync(join(APP, "security", "page.tsx"))).toBe(true);
   });
 });
 

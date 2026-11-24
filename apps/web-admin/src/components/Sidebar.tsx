@@ -13,6 +13,7 @@ import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
 import { MANAGE_RESERVATIONS_PARENT } from "@/app/(app)/manage-reservations/nav";
 import { FAMILIES_PARENT } from "@/app/(app)/families/nav";
+import { SECURITY_PARENT } from "@/app/(app)/security/nav";
 import { VIP_PARENT } from "@/app/(app)/vip/nav";
 import {
   CREATION_PARENT,
@@ -112,6 +113,11 @@ export const CONFIGURATIONS_NAV: NavItem[] = [
   PAYMENTS_PARENT,
 ];
 
+// Security — its own section by Pato's word (MESITA-4899: "a new section in
+// admin console called Security"): the rules on wrong waiter codes and who they
+// suspended.
+export const SECURITY_NAV: NavItem[] = [SECURITY_PARENT];
+
 // Activity — platform observability (MESITA-2745): the feed and logs.
 // Analytics left (MESITA-3848, Pato: "Kill this analytics page").
 // Feedback closes it (Pato, MESITA-3034: "feedback goes into activity"): what
@@ -128,6 +134,7 @@ const SIDEBAR_SECTIONS: {
 }[] = [
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
+  { id: "security", label: "Security", items: SECURITY_NAV },
   { id: "activity", label: "Activity", items: ACTIVITY_NAV },
   { id: "extra", label: "Extra", items: EXTRA_NAV },
 ];

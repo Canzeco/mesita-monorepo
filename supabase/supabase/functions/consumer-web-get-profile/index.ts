@@ -20,7 +20,7 @@ import {
 } from "../_shared/delete-history-free.ts";
 
 serveJson("consumer-web-get-profile", async (req) => {
-  const ctx = await requireConsumerRequest(req, { methods: ["GET", "POST"] });
+  const ctx = await requireConsumerRequest(req, { methods: ["GET", "POST"], suspendedOk: true });
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
   const userId = user.id;

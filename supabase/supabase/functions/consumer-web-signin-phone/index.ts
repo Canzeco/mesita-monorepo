@@ -19,7 +19,7 @@ const SIGNIN_SELECT =
   "id, code, full_name, first_name, last_name, phone, birth_year, sex, deleted_at";
 
 serveJson("consumer-web-signin-phone", async (req) => {
-  const ctx = await requireConsumerRequest(req);
+  const ctx = await requireConsumerRequest(req, { suspendedOk: true });
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
   const appMetadata = (user.raw.app_metadata ?? null) as Record<string, unknown> | null;

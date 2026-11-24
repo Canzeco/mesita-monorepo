@@ -721,6 +721,13 @@ verify_jwt = true
 [functions.admin-web-list-guests]
 verify_jwt = true
 
+# Admin › Security (MESITA-4899).
+[functions.admin-web-list-security]
+verify_jwt = true
+
+[functions.admin-web-reinstate-guest]
+verify_jwt = true
+
 [functions.admin-web-set-guest-standing]
 verify_jwt = true
 

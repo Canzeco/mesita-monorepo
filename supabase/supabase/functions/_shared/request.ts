@@ -63,7 +63,18 @@ export type ConsumerDoor = {
    *  its sign-in sheet. Without it the 401 is auth's own. */
   signIn?: string;
   methods?: readonly string[];
+  /** Open to a suspended guest (MESITA-4899): their own profile read, sign-in
+   *  and closing the account. */
+  suspendedOk?: boolean;
 };
+
+/** The 403 a suspended guest gets, or null. A failed read lets them through:
+ *  an outage here never locks every guest out. */
+async function refuseSuspended(ctx: OpenRequest, userId: string): Promise<Response | null> {
+  const { data, error } = await ctx.admin.from("guest_suspensions").select("id").eq("consumer_id", userId).is("reinstated_at", null).maybeSingle();
+  if (error) console.error(`[suspended] read: ${error.message}`);
+  return data ? json({ ok: false, code: "suspended", error: "This account is suspended. Write to support@mesita.ai." }, 403) : null;
+}
 
 export async function requireConsumerRequest(req: Request, door: ConsumerDoor = {}): Promise<UserRequest | Response> {
   const ctx = openRequest(req, door.methods);
@@ -71,7 +82,9 @@ export async function requireConsumerRequest(req: Request, door: ConsumerDoor = 
   const unauthorized = door.signIn === undefined
     ? undefined
     : json({ ok: false, code: "sign_in", error: door.signIn }, 401);
-  return await withUser(req, ctx, unauthorized);
+  const user = await withUser(req, ctx, unauthorized);
+  if (user instanceof Response || door.suspendedOk) return user;
+  return (await refuseSuspended(ctx, user.user.id)) ?? user;
 }
 
 /** A consumer-web-* read an anonymous visitor may also make (MESITA-4246):
@@ -84,7 +97,8 @@ export async function consumerOrAnonymousRequest(
   if (ctx instanceof Response) return ctx;
   const who = await classifyCaller(req, ctx.env);
   if (!who.ok) return who.response;
-  return { ...ctx, user: who.user };
+  const refused = who.user ? await refuseSuspended(ctx, who.user.id) : null;
+  return refused ?? { ...ctx, user: who.user };
 }
 
 // ─── business-web-* ─────────────────────────────────────────────────
