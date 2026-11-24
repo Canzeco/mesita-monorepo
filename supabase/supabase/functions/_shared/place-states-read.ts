@@ -79,7 +79,7 @@ export async function readPlaceStatesFacts(
     admin.from("place_payment_accounts").select(ACCOUNT_COLUMNS).in("place_id", ids),
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     admin.from("loyalty_cards_contracts").select("place_id").in("place_id", ids).is("ended_at", null),
-    admin.from("place_codes").select("place_id").in("place_id", ids).not("lookup_hash", "is", null),
+    admin.from("place_waiters").select("place_id").in("place_id", ids).is("removed_at", null),
     admin
       .from("place_fee_invoices")
       .select(FEE_INVOICE_COLUMNS)
@@ -101,7 +101,7 @@ export async function readPlaceStatesFacts(
     ["place_payment_accounts", accounts],
     ["place_payment_settings", settings],
     ["loyalty_cards_contracts", contracts],
-    ["place_codes", codes],
+    ["place_waiters", codes],
     ["place_fee_invoices", invoices],
     ["place_managers", managers],
     ["place_verification_requests", claims],

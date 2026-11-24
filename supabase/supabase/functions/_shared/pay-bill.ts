@@ -21,7 +21,8 @@ import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";
 import { isUuid } from "./place-id.ts";
 import { isProofToken, mintProofToken, payCodeUrl } from "./proof.ts";
 import { type AttemptRow, readAttemptById } from "./guest-attempt.ts";
-import { readStaffToken, staffDeviceHash, supabaseStaffStore, tabStaffJti } from "./staff.ts";
+import { staffDeviceHash } from "./staff.ts";
+import { checkWaiterToken, readWaiter, waiterOfToken } from "./waiter-code.ts";
 
 /** Minutes the guest has to answer, then the minutes they have to pay. */
 export const BILL_ANSWER_MIN = 15;
@@ -145,19 +146,21 @@ export function readCents(v: unknown, min: number): number | null {
 
 // ── Staff ───────────────────────────────────────────────────────────────────
 
-/** A current `s2` token of this place, or null: staff_code_needed. Answers the
- *  phone's hash (kept on the bill for the record). */
+/** The waiter whose current token this is, at this place, or null:
+ *  staff_code_needed. Answers the phone's hash (kept on the bill) too. */
 export async function billStaff(
   admin: SupabaseClient,
   serviceKey: string,
   body: Record<string, unknown>,
   nowMs: number,
-): Promise<{ placeId: string; keyHash: string } | null> {
+): Promise<{ placeId: string; keyHash: string; waiterId: string } | null> {
   const { place_id: placeId, staff_token: token } = body;
-  if (!isUuid(placeId) || typeof token !== "string" || token.length === 0 || token.length > 128) return null;
-  const keys = await supabaseStaffStore(admin).keys(placeId);
-  const jti = tabStaffJti(token, await readStaffToken(serviceKey, placeId, token, keys, nowMs));
-  return jti ? { placeId, keyHash: await staffDeviceHash(jti) } : null;
+  if (!isUuid(placeId) || typeof token !== "string" || token.length > 128) return null;
+  const waiterId = waiterOfToken(token);
+  const waiter = waiterId ? await readWaiter(admin, waiterId) : null;
+  if (!waiter || waiter.placeId !== placeId) return null;
+  const jti = await checkWaiterToken(serviceKey, waiter, token, nowMs);
+  return jti ? { placeId, keyHash: await staffDeviceHash(jti), waiterId: waiter.id } : null;
 }
 
 // ── The database ────────────────────────────────────────────────────────────

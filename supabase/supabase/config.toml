@@ -875,10 +875,8 @@ verify_jwt = true
 [functions.business-web-update-place-google]
 verify_jwt = true
 
-# The place code (MESITA-3226; on Settings since MESITA-3299, when the discount
-# product of MESITA-3202 left: its Rewards, Visits, visit code and staff close
-# functions are gone).
-[functions.business-web-set-place-code]
+# One 8-digit code per waiter (MESITA-4871).
+[functions.business-web-set-waiter]
 verify_jwt = true
 
 # Business › Payments (MESITA-3296): the Stripe account and the money switches.

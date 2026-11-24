@@ -67,11 +67,11 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     admin.rpc("wallet_balances", { p_consumer_id: userId, p_livemode: livemode }),
     admin.from("place_payment_accounts").select("place_id").eq("charges_enabled", true).eq("livemode", livemode).limit(5000),
     // The places where the waiter's charge can open (MESITA-3545).
-    admin.from("place_codes").select("place_id").not("lookup_hash", "is", null).limit(5000),
+    admin.from("place_waiters").select("place_id").is("removed_at", null).limit(5000),
   ]);
   if (balRes.error) return fail("balances", balRes.error.message);
   if (acctRes.error) return fail("accounts", acctRes.error.message);
-  if (codeRes.error) return fail("place_codes", codeRes.error.message);
+  if (codeRes.error) return fail("place_waiters", codeRes.error.message);
   const balances = (balRes.data ?? []) as Array<{ place_id: string; currency: string; spendable_cents: number; pending_cents: number }>;
   const charging = new Set(((acctRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
   const coded = new Set(((codeRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));

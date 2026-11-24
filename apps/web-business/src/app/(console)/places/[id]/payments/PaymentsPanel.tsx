@@ -1,7 +1,7 @@
 "use client";
 
 // Offers (MESITA-3296; the Place states of Main §10 since MESITA-3589).
-// FOUR BOXES SINCE MESITA-4766 (Instagram Stories removed; five under
+// FIVE BOXES SINCE MESITA-4871 (Waiter Codes); four since MESITA-4766 (Instagram Stories removed; five under
 // MESITA-4744, six under MESITA-4732), each a card with its own
 // anchor, which Monitor's "Turn on in Offers" links to:
 //   Credits Account    #credits-account    · Credits Agreement · Credits Balance
@@ -16,6 +16,7 @@
 //                                            Welcome Regular · Returning Regular ·
 //                                            Welcome VIP · Returning VIP (three
 //                                            picks each, Off included)
+//   Waiter Codes       #waiter-codes       · one 8-digit code per waiter, their tips
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -45,13 +46,14 @@ import {
   ArrowsClockwiseIcon,
   ConfettiIcon,
   CrownSimpleIcon,
+  HashIcon,
   ReceiptIcon,
   StripeLogoIcon,
   TicketIcon,
   WalletIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { Card } from "@/components/shell/Page";
-import { WaiterCodeRow } from "./WaiterCode";
+import { WaiterCodes } from "./WaiterCodes";
 import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -190,7 +192,6 @@ const CURRENCY_NAME: Record<string, string> = {
 };
 
 /** The waiter's charge (MESITA-3306) and the staff list (MESITA-3462). */
-const VISIT_ORIGIN = "https://service.mesita.ai";
 
 type VoucherKey = Extract<PaymentKey, `voucher_${string}`>;
 const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_");
@@ -319,8 +320,6 @@ export function PaymentsPanel({
   const { account, can_edit: canEdit, test_mode: testMode, fee } = initial;
   // The tier moves when the Credits Account flips here; refetched then.
   const [creditLimit, setCreditLimit] = useState<CreditLimit | null>(initial.credit_limit ?? null);
-  const [codeSet, setCodeSet] = useState(initial.code_set);
-  const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
   const ready = account.state === "ready";
   const stage: StripeStage = account.stage ?? (ready ? "connected" : account.state === "none" ? "none" : "onboarding");
@@ -760,11 +759,6 @@ export function PaymentsPanel({
               );
             })}
           </ul>
-          {/* THE WAITER CODE (MESITA-4827): waiters scan the guest's QR and
-              type it on every bill. */}
-          <ul className="divide-border border-border divide-y border-t" data-waiter-phones>
-            <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
-          </ul>
           {cashDue.length > 0 ? (
             <ul className="divide-border border-border divide-y border-t" data-cash-due>
               {cashDue.map((row) => (
@@ -794,11 +788,16 @@ export function PaymentsPanel({
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
             {discount
               ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
-              : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill."}{" "}
-            <a className="underline underline-offset-2" href={staffListUrl} target="_blank" rel="noreferrer">
-              Staff list
-            </a>
+              : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill."}
           </p>
+        </Card>
+      </div>
+
+      {/* WAITER CODES (MESITA-4871): one per waiter, so the tip has a name. */}
+      <div id="waiter-codes" className="scroll-mt-24">
+        <Card className={SECTION}>
+          {head(HashIcon, "Waiter Codes")}
+          <WaiterCodes placeId={placeId} initial={initial.waiters} currency={currency} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
 
