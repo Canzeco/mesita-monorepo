@@ -4,12 +4,12 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   (⌖) [ ⚲ Search places…   │ ✨ AI ]      two 40px controls
-//   [▦ Menu] [⭐ Popular] (○ Coffee) …      32px chips, floating
+//   [ ⚲ Search places…       │ ✨ AI ]      one 40px bar
+//   (⌖) [▦ Menu] [⭐ Popular] …             32px chips, floating
 //
 // AI IS THE BAR'S RIGHT END (Pato, 2026-11-23, MESITA-4799: "put the askai
-// button joined to the searchbar"; a separate pill since MESITA-3009): the
-// locate disc, then one pill holding the query and AI, which opens a popup
+// button joined to the searchbar"; a separate pill since MESITA-3009). LOCATE
+// IS LEFT OF MENU (MESITA-4800: "at the left of menu"). Row one is one pill holding the query and AI, which opens a popup
 // over Search (MESITA-4480). One token set: header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
@@ -77,9 +77,9 @@ export function SearchHeader({
   chipsHidden = false,
   children,
 }: {
-  /** The locate disc, left of the bar on row one. */
+  /** The locate disc, left of Menu on the chip row. */
   locate: ReactNode;
-  /** The query field; the bar takes what locate and AI leave. */
+  /** The query field; the bar takes what AI leaves. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -101,11 +101,10 @@ export function SearchHeader({
       className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
     >
-      {/* Row one: locate, then the bar with AI joined at its right end
+      {/* Row one: the bar with AI joined at its right end
           (MESITA-4799). No bottom padding: the chip row's pt-1 + py-2 is the
           12px under it (MESITA-3012). */}
-      <div className="flex min-w-0 items-center gap-3 px-3 pt-3 [&>*]:pointer-events-auto">
-        {locate}
+      <div className="flex min-w-0 items-center px-3 pt-3 [&>*]:pointer-events-auto">
         <div className={cn(SEARCH_BAR, "flex-1")}>
           {bar}
           {/* The sparkle and the short word "AI" (Pato, MESITA-4496). The
@@ -124,87 +123,90 @@ export function SearchHeader({
         </div>
       </div>
       <div className="relative" data-search-chip-band>
-        {chipsHidden ? null : (
-          // py-2 inside the scroller, not around it: its overflow would clip
-          // the chips' shadows. ONE 12px SPACING (Pato, MESITA-3012: "the
-          // distance across searchbar and filters and top screen is the
-          // same"): the screen top, between row one's controls, and bar to
-          // chips (this row's pt-1 + the scroller's py-2) are all 12px, the
-          // side gutter; chip to chip stays 8px.
-          <div className="flex min-w-0 items-center gap-3 pt-1 pl-3 [&>*]:pointer-events-auto">
+        {/* HIDDEN, NOT UNMOUNTED, while the bar queries: locate lives here and
+            would toast a refused location again on every remount. */}
+        {/* py-2 inside the scroller, not around it: its overflow would clip
+            the chips' shadows. 12px above the bar, below it (pt-1 + py-2) and
+            at the sides (MESITA-3012); every gap on this row is 8px. */}
+        <div
+          className={cn(
+            "flex min-w-0 items-center gap-2 pt-1 pl-3 [&>*]:pointer-events-auto",
+            chipsHidden && "hidden",
+          )}
+        >
+          {locate}
+          <button
+            type="button"
+            onClick={() => setSheetOpen(true)}
+            aria-label={filtered ? "Menu, a family is chosen" : "Menu"}
+            aria-haspopup="dialog"
+            className={cn(CHIP_SPECIAL, CHIP_OFF, "relative")}
+            data-search-filters
+          >
+            <LayoutGrid
+              className="h-4 w-4 shrink-0"
+              strokeWidth={HEADER_ICON_STROKE}
+              aria-hidden
+            />
+            <span>Menu</span>
+            {/* A family is chosen: a red dot says the list is filtered
+                (Pato, 2026-11-22, MESITA-4685). */}
+            {filtered ? (
+              <span
+                aria-hidden
+                className="bg-destructive ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
+                data-menu-filter-dot
+              />
+            ) : null}
+          </button>
+          <nav
+            aria-label="Families"
+            className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain py-2 pr-3"
+            data-search-chips
+          >
+            {/* Menu, Popular, then the families (Pato, MESITA-3198, undoing
+                MESITA-3195): Menu stays pinned, Popular scrolls with them. */}
+            {/* Nearby · Popular (MESITA-4592). */}
+            {/* NO SAVED ON SEARCH (Pato, 2026-11-23, MESITA-4786: "remove
+                saved from the search mode"): Home keeps its ❤️ Saved. */}
             <button
               type="button"
-              onClick={() => setSheetOpen(true)}
-              aria-label={filtered ? "Menu, a family is chosen" : "Menu"}
-              aria-haspopup="dialog"
-              className={cn(CHIP_SPECIAL, CHIP_OFF, "relative")}
-              data-search-filters
+              onClick={() => setMapSpecial("nearby")}
+              aria-pressed={special === "nearby"}
+              className={cn(CHIP, special === "nearby" ? CHIP_ON : CHIP_OFF)}
+              data-search-chip-nearby
             >
-              <LayoutGrid
-                className="h-4 w-4 shrink-0"
-                strokeWidth={HEADER_ICON_STROKE}
-                aria-hidden
-              />
-              <span>Menu</span>
-              {/* A family is chosen: a red dot says the list is filtered
-                  (Pato, 2026-11-22, MESITA-4685). */}
-              {filtered ? (
-                <span
-                  aria-hidden
-                  className="bg-destructive ring-card absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2"
-                  data-menu-filter-dot
-                />
-              ) : null}
+              <FamilyMark name="nearby" on={special === "nearby"} size={16} className={CHIP_MARK} />
+              <span>Nearby</span>
             </button>
-            <nav
-              aria-label="Families"
-              className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain py-2 pr-3"
-              data-search-chips
+            <button
+              type="button"
+              onClick={clearMapFamilies}
+              aria-pressed={everyFamily}
+              className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
+              data-search-chip-top
             >
-              {/* Menu, Popular, then the families (Pato, MESITA-3198, undoing
-                  MESITA-3195): Menu stays pinned, Popular scrolls with them. */}
-              {/* Nearby · Popular (MESITA-4592). */}
-              {/* NO SAVED ON SEARCH (Pato, 2026-11-23, MESITA-4786: "remove
-                  saved from the search mode"): Home keeps its ❤️ Saved. */}
-              <button
-                type="button"
-                onClick={() => setMapSpecial("nearby")}
-                aria-pressed={special === "nearby"}
-                className={cn(CHIP, special === "nearby" ? CHIP_ON : CHIP_OFF)}
-                data-search-chip-nearby
-              >
-                <FamilyMark name="nearby" on={special === "nearby"} size={16} className={CHIP_MARK} />
-                <span>Nearby</span>
-              </button>
-              <button
-                type="button"
-                onClick={clearMapFamilies}
-                aria-pressed={everyFamily}
-                className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
-                data-search-chip-top
-              >
-                <FamilyMark name="all" on={everyFamily} size={16} className={CHIP_MARK} />
-                <span>Popular</span>
-              </button>
-              {FILTERABLE_PLACE_FAMILIES.map((family) => {
-                const on = special === null && filters.familyKeys.includes(family.key);
-                return (
-                  <button
-                    key={family.key}
-                    type="button"
-                    // Picking the lit family again goes back to Popular.
-                    onClick={() => selectMapFamily(family.key)}
-                    aria-pressed={on}
-                    className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
-                  >
-                    <FamilyMark name={family.key} on={on} size={16} className={CHIP_MARK} />
-                    <span>{family.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        )}
+              <FamilyMark name="all" on={everyFamily} size={16} className={CHIP_MARK} />
+              <span>Popular</span>
+            </button>
+            {FILTERABLE_PLACE_FAMILIES.map((family) => {
+              const on = special === null && filters.familyKeys.includes(family.key);
+              return (
+                <button
+                  key={family.key}
+                  type="button"
+                  // Picking the lit family again goes back to Popular.
+                  onClick={() => selectMapFamily(family.key)}
+                  aria-pressed={on}
+                  className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
+                >
+                  <FamilyMark name={family.key} on={on} size={16} className={CHIP_MARK} />
+                  <span>{family.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
         {children ? (
           <div
             className={cn(

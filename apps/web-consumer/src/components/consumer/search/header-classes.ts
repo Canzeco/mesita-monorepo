@@ -1,14 +1,14 @@
 // Search header's one token set. NO BAND (Pato, 2026-11-23, MESITA-4799: "I
 // want to make the searchbar background transparent" … "put the askai button
 // joined to the searchbar"; MESITA-3019 had a white band, MESITA-3009 a
-// separate Ask AI): the map runs to the screen top, and locate, the bar and
+// separate Ask AI): the map runs to the screen top, and the bar, locate and
 // the chips are white floating pills with one shadow.
 //
 // The border stays as `border-transparent` so keyboard focus can darken it
 // without the control shifting a pixel.
 //
-//   (⌖) [ ⚲ Search places…      │ ✦ AI ]   ← HEADER_DISC · SEARCH_BAR (SearchBar + BAR_ACTION)
-//   [▦ Menu] (☆ Popular) (○ Coffee) …      ← CHIP_SPECIAL · CHIP + CHIP_ON / CHIP_OFF
+//   [ ⚲ Search places…          │ ✦ AI ]   ← SEARCH_BAR (SearchBar + BAR_ACTION)
+//   (⌖) [▦ Menu] (☆ Popular) …             ← CHIP_DISC · CHIP_SPECIAL · CHIP + CHIP_ON / CHIP_OFF
 //
 // Two heights: 40px controls, 32px chips (MESITA-2996). Pay's bar (BAR) and
 // Tickets (HEADER_PILL) sit on white, so they stay grey.
@@ -41,16 +41,11 @@ export const SEARCH_BAR = `${FLOAT} border-transparent focus-within:border-foreg
 /** Ask AI, the bar's right end: the full 40px tall, a hairline before it. */
 export const BAR_ACTION = `border-border hover:bg-muted focus-visible:bg-muted active:bg-muted flex shrink-0 items-center justify-center gap-1.5 border-l pr-4 pl-3 ${HEADER_TEXT} whitespace-nowrap outline-none transition-colors`;
 
-/** The locate disc: a 40px (MESITA-3022; was 48) floating white disc left of the bar, the bar's
- *  height (Pato, MESITA-3009: "location at the left"; right of the bar in
- *  MESITA-3006, under the chips in MESITA-3005). */
-export const HEADER_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
-
 /** A labelled 40px grey pill: Pay's Tickets shortcut. */
 export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-/** The Filters disc at the chip row's left: a chip's 32px, round, icon
- *  only (MESITA-3006). */
+/** Locate, left of Menu on the chip row: a chip's 32px, round, icon only
+ *  (MESITA-4800). */
 export const CHIP_DISC = `${FLOAT} border-transparent hover:bg-muted relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 export const CHIP = `flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 ${HEADER_TEXT} whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]`;
