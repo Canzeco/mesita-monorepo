@@ -43,6 +43,7 @@ import { MONITOR_COLUMNS, TABLE_KINDS, type TableKind } from "@/lib/monitor-colu
 import { CardBadge, CashBadge, CreditBadge, VisitBadge, VoucherBadge } from "./VoucherBadge";
 import type { Icon } from "@phosphor-icons/react";
 import { CoinsIcon, CreditCardIcon, ReceiptIcon, TicketIcon, UserCircleIcon, XIcon } from "@phosphor-icons/react/dist/ssr";
+import { attempt } from "@/lib/attempt";
 
 /** The row grid every Monitor list shares: face · text · amount. */
 export const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
@@ -239,7 +240,7 @@ export function MonitorList({
     if (!page.next || busy) return;
     setBusy(true);
     setError(null);
-    const r = await listMonitor(placeId, kind, filter, page.next);
+    const r = await attempt(listMonitor(placeId, kind, filter, page.next));
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setPage({ ...r.data, rows: [...page.rows, ...r.data.rows] });

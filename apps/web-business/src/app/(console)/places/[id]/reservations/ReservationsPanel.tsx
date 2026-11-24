@@ -20,6 +20,7 @@ import { Switch } from "@/components/ui/config";
 import { INPUT_BASE } from "@/components/ui/manage";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import { attempt } from "@/lib/attempt";
 
 const QUIET =
   "border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors disabled:opacity-40";
@@ -39,7 +40,7 @@ export function ReservationsPanel() {
   async function save(which: "switch" | "phone", patch: Parameters<typeof updatePlace>[0]) {
     setPending(which);
     setError(null);
-    const r = await updatePlace(patch);
+    const r = await attempt(updatePlace(patch));
     setPending(null);
     if (!r.ok) return setError(r.error);
     setPlace(r.data.place);

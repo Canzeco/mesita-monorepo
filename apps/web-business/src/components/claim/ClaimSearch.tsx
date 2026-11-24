@@ -29,6 +29,7 @@ import { AddPlaceDialog } from "./AddPlaceDialog";
 import { ClaimDialog } from "./ClaimDialog";
 import { INPUT_BASE } from "@/components/ui/manage";
 import { claimHref, placeTabHref } from "@/lib/routes";
+import { attempt } from "@/lib/attempt";
 
 const MIN_QUERY = 2;
 const SEARCH_DELAY_MS = 400;
@@ -83,7 +84,7 @@ export function ClaimSearch() {
     setBusy(true);
     setError(null);
     session.current ??= newSessionToken();
-    const r = await findPlaces({ q: query, sessionToken: session.current });
+    const r = await attempt(findPlaces({ q: query, sessionToken: session.current }));
     if (mine !== seq.current) return; // a newer search answered first
     setBusy(false);
     if (!r.ok) setError(r.error);
@@ -111,7 +112,7 @@ export function ClaimSearch() {
     if (!p.google_place_id || adding) return;
     setAdding(p.google_place_id);
     setAddError(null);
-    const r = await createPlace(p.google_place_id);
+    const r = await attempt(createPlace(p.google_place_id));
     if (!r.ok) {
       setAdding(null);
       setAddError((r.code && CREATE_ERRORS[r.code]) || r.error);
@@ -119,7 +120,7 @@ export function ClaimSearch() {
     }
     session.current = null;
     // The new place, with its listing phone, for the claim modal.
-    const found = await findPlaces({ placeId: r.data.placeId });
+    const found = await attempt(findPlaces({ placeId: r.data.placeId }));
     setAdding(null);
     setPicked(null);
     const hit = found.ok ? found.data[0] : null;

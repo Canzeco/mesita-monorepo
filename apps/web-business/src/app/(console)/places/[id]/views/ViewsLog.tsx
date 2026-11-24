@@ -21,6 +21,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { customerHref, customerLabel } from "@/lib/monitor";
 import { CHIP, FilterBanner } from "@/components/place-manage/MonitorList";
 import { cn } from "@/lib/utils";
+import { attempt } from "@/lib/attempt";
 
 const VERB: Record<PlaceViewEvent["kind"], string> = {
   viewed: "viewed",
@@ -139,7 +140,7 @@ export function ViewsLog({
     if (!next) return;
     setBusy(true);
     setError(null);
-    const r = await listPlaceViewsLog(placeId, next, customer);
+    const r = await attempt(listPlaceViewsLog(placeId, next, customer));
     setBusy(false);
     if (!r.ok) {
       setError(r.error);

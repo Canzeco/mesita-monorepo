@@ -32,6 +32,7 @@ import {
   MAX_PRICE_LEVEL,
   priceLevelName,
 } from "../place-price";
+import { attempt } from "@/lib/attempt";
 
 const DAYS = [
   "monday",
@@ -269,7 +270,8 @@ function locationAddress(place: AdminPlace): string {
   );
 }
 
-type DayHours = { closed: boolean; open: string; close: string };
+/** `more`: the day's later ranges (14:00–17:00, then 19:00–23:00). */
+type DayHours = { closed: boolean; open: string; close: string; more: { open: string; close: string }[] };
 // Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // admin-web-update-place does not accept it — Location renders read-only.
 type Form = {
@@ -306,8 +308,13 @@ function placeToForm(
     const ranges = v.hours?.[d];
     const first = Array.isArray(ranges) ? ranges[0] : undefined;
     hours[d] = first
-      ? { closed: false, open: first.open ?? "", close: first.close ?? "" }
-      : { closed: true, open: "", close: "" };
+      ? {
+          closed: false,
+          open: first.open ?? "",
+          close: first.close ?? "",
+          more: ranges!.slice(1).map((r) => ({ open: r.open ?? "", close: r.close ?? "" })),
+        }
+      : { closed: true, open: "", close: "", more: [] };
   }
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
@@ -359,7 +366,7 @@ function boxToPatch(
     for (const d of DAYS) {
       const h = f.hours[d];
       if (!h.closed && h.open && h.close)
-        hours[d] = [{ open: h.open, close: h.close }];
+        hours[d] = [{ open: h.open, close: h.close }, ...h.more];
     }
     return { id, hours };
   }
@@ -384,12 +391,15 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
   const { savePending, profile, setPlace } = usePlaceContext();
   // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
   const [resetting, setResetting] = useState<string | null>(null);
+  const [resetError, setResetError] = useState<string | null>(null);
   const owned = new Set(place.operator_fields ?? []);
   const resetField = async (field: OperatorField) => {
     setResetting(field);
-    const r = await updatePlace({ id: place.id, reset_fields: [field] });
+    setResetError(null);
+    const r = await attempt(updatePlace({ id: place.id, reset_fields: [field] }));
     setResetting(null);
     if (r.ok) setPlace((prev) => ({ ...prev, operator_fields: r.data.place.operator_fields ?? [] }));
+    else setResetError(r.error);
   };
   const resetControl = (field: OperatorField) =>
     owned.has(field) ? (
@@ -460,6 +470,13 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
     placeDirty,
     () => {
       const parts: Record<string, unknown>[] = [];
+      // A half-typed time would save the day as closed (MESITA-4900).
+      const half = dirtyTime
+        ? DAYS.find((d) => !form.hours[d].closed && [form.hours[d], ...form.hours[d].more].some((r) => !r.open || !r.close))
+        : undefined;
+      if (half) {
+        return { kind: "invalid" as const, error: `Set both times for ${half[0].toUpperCase()}${half.slice(1)}, or mark it closed.` };
+      }
       if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits, { familiesChanged }));
       if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
       if (dirtyChannels)
@@ -580,6 +597,11 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
               disabled={anyPending}
             />,
           ]}
+          {resetError ? (
+            <p role="alert" className="text-destructive text-sm">
+              {resetError}
+            </p>
+          ) : null}
         </div>
       </SectionCard>
 
@@ -652,6 +674,7 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
                   <div className="flex flex-1 flex-wrap items-center gap-2">
                     <input
                       type="time"
+                      aria-label={`${d} opens`}
                       value={h.open}
                       disabled={anyPending}
                       onChange={(e) => setDay(d, { open: e.target.value })}
@@ -660,11 +683,38 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
                     <span className="text-muted-foreground text-xs">–</span>
                     <input
                       type="time"
+                      aria-label={`${d} closes`}
                       value={h.close}
                       disabled={anyPending}
                       onChange={(e) => setDay(d, { close: e.target.value })}
                       className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
                     />
+                    {h.more.map((r, i) => (
+                      <span key={i} className="flex basis-full flex-wrap items-center gap-2">
+                        {(["open", "close"] as const).map((end) => (
+                          <input
+                            key={end}
+                            type="time"
+                            value={r[end]}
+                            disabled={anyPending}
+                            aria-label={`${d} ${end === "open" ? "opens" : "closes"}, shift ${i + 2}`}
+                            onChange={(e) =>
+                              setDay(d, { more: h.more.map((x, j) => (j === i ? { ...x, [end]: e.target.value } : x)) })
+                            }
+                            className="bg-muted/60 border-border/60 focus:border-ring/60 focus:bg-card focus:ring-ring/10 h-8 rounded-lg border px-2 text-sm tabular-nums outline-none transition focus:ring-4"
+                          />
+                        ))}
+                        <button
+                          type="button"
+                          disabled={anyPending}
+                          aria-label={`Remove ${d} shift ${i + 2}`}
+                          onClick={() => setDay(d, { more: h.more.filter((_, j) => j !== i) })}
+                          className="text-muted-foreground hover:text-foreground text-xs font-medium disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </span>
+                    ))}
                   </div>
                 )}
                 <button

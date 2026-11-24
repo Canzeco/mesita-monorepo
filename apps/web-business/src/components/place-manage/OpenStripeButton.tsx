@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { ArrowSquareOutIcon, StripeLogoIcon } from "@phosphor-icons/react/dist/ssr";
 import { openPaymentDashboard } from "@/lib/business-api";
+import { attempt } from "@/lib/attempt";
 
 export function OpenStripeButton({ placeId }: { placeId: string }) {
   const [busy, setBusy] = useState(false);
@@ -21,7 +22,7 @@ export function OpenStripeButton({ placeId }: { placeId: string }) {
         onClick={async () => {
           setBusy(true);
           setError(null);
-          const r = await openPaymentDashboard(placeId);
+          const r = await attempt(openPaymentDashboard(placeId));
           setBusy(false);
           if (r.ok) window.open(r.data.url, "_blank", "noopener,noreferrer");
           else setError(r.error);
