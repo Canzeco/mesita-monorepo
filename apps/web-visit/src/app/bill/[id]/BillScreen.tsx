@@ -21,6 +21,8 @@ import { BanknoteIcon, CoinsIcon, HandCoinsIcon, UserIcon, WalletIcon } from "@/
 // The tip is never picked for the guest: None until the waiter asks. The
 // waiter never reads the guest's name or balance. Every peso is the server's.
 
+/** From MX$5,000 Received asks once more (MESITA-4831): it has no undo. */
+const BIG_BILL_CENTS = 500_000;
 const DONE: BillState[] = ["paid", "cancelled", "expired"];
 /** Every 2 s while it moves, 5 s after 30 s still, 10 s after 3 min. */
 function nextDelay(stillMs: number): number {
@@ -39,6 +41,7 @@ export function BillScreen({ billId }: { billId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [checking, setChecking] = useState(false);
   const changedAt = useRef(0);
   const stamp = useRef("");
 
@@ -271,6 +274,22 @@ export function BillScreen({ billId }: { billId: string }) {
     </div>
   ) : null;
 
+  const receive = () => void run("received", (s) => closeBill(s, billId, "received")).then(() => setChecking(false));
+  const checkRow = checking ? (
+    <div className="pay-reject-confirm" role="group" aria-label="Did you receive the money?">
+      <p className="proof-line pay-reject-title">Did you receive {m(bill.outside_cents ?? 0)}?</p>
+      <p className="pay-final-line">This can&apos;t be undone here.</p>
+      <div className="yes-no">
+        <button type="button" className="verify-sign" disabled={busy !== null} onClick={receive}>
+          {busy === "received" ? "Confirming…" : "Yes, received"}
+        </button>
+        <button type="button" className="quiet" disabled={busy !== null} onClick={() => setChecking(false)}>
+          No
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   // COLLECT.
   if (bill.state === "accepted" || bill.state === "confirming") {
     const due = bill.outside_cents ?? 0;
@@ -302,12 +321,12 @@ export function BillScreen({ billId }: { billId: string }) {
           </ul>
         </section>
         {alert}
-        {cancelRow ?? (
+        {cancelRow ?? checkRow ?? (
           <div className="verify-actions" style={{ alignSelf: "stretch", marginTop: 12 }}>
             <button type="button" className="verify-reject" disabled={busy !== null || bill.state === "confirming"} onClick={() => setCancelling(true)}>
               Cancel
             </button>
-            <button type="button" className="verify-sign" disabled={busy !== null} onClick={() => void run("received", (s) => closeBill(s, billId, "received"))}>
+            <button type="button" className="verify-sign" disabled={busy !== null} onClick={() => (total >= BIG_BILL_CENTS ? setChecking(true) : receive())}>
               {busy === "received" || bill.state === "confirming" ? "Confirming…" : "Received"}
             </button>
           </div>

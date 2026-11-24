@@ -104,7 +104,7 @@ serveJson("business-web-get-payments", async (req) => {
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const placeRow = placeRes.place;
-  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
+  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).not("lookup_hash", "is", null).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")

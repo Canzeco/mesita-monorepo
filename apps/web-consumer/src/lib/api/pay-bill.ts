@@ -30,6 +30,8 @@ export type GuestBill = {
     outside_cents: number;
     cashback_bps: number;
     cashback_cents: number;
+    /** One bill's ceiling was reached. */
+    cashback_capped?: boolean;
   } | null;
 };
 

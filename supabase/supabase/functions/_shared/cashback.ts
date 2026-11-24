@@ -8,9 +8,8 @@
 // VIP for money is ONE SQL rule, consumer_is_vip_for_money (an invitation code,
 // or a verified Instagram over 5,000 followers; live counts real followers
 // only); this file asks it and never re-implements it. on the part not paid with credit (never the tip), Pending
-// 1 hour (3 until MESITA-4717), only where Loyalty Cards is On. No ceiling and
-// no once-a-day rule (Pato, 2026-11-23, MESITA-4728: "there is no ceiling for
-// the cashback amount"): a bill earns once, on every peso paid by card or cash. The SQL trigger pay_tabs_grant_cashback
+// 1 hour (3 until MESITA-4717), only where Loyalty Cards is On. At most MX$1,000
+// a bill (MESITA-4831) and no once-a-day rule (MESITA-4728): a bill earns once, on every peso paid by card or cash. The SQL trigger pay_tabs_grant_cashback
 // (20261123010000_cashback_mvp) is the one writer; this file reads and
 // validates the owner's lines and says what a bill would earn.
 
@@ -28,6 +27,8 @@ export const RETURNING_VIP_STEPS_BPS = [0, 1000, 2000] as const;
 export const WELCOME_VIP_STEPS_BPS = [0, 1000, 2000] as const;
 
 export const CASHBACK_WAIT_SEC = 60 * 60;
+/** MESITA-4831: the most one bill earns (SQL: visit_cashback_cap_cents). */
+export const CASHBACK_CAP_CENTS = 100_000;
 
 /** MESITA-4789: four lines. "welcome" is the stored key for Welcome Regular. */
 export type CashbackLine = "welcome" | "welcome_vip" | "returning" | "returning_vip";
@@ -168,11 +169,11 @@ export async function readIsVipForMoney(admin: SupabaseClient, consumerId: strin
 }
 
 /** What a bill earns: the rate on the part not paid with credit (no tip),
- *  rounded down, no ceiling (MESITA-4728). Pure (mirrors pay_tab_grant_cashback). */
+ *  rounded down, at most CASHBACK_CAP_CENTS a bill (MESITA-4831). Pure (mirrors pay_tab_grant_cashback). */
 export function cashbackCents(rates: CashbackRates, line: CashbackLine, earnCents: number): number {
   const bps = rateFor(rates, line);
   if (bps <= 0 || earnCents <= 0) return 0;
-  return Math.floor((earnCents * bps) / 10000);
+  return Math.min(Math.floor((earnCents * bps) / 10000), CASHBACK_CAP_CENTS);
 }
 
 /** The place's lines now (its row, else the defaults). */

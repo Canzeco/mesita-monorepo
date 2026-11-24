@@ -43,6 +43,8 @@ export type BillQuote = {
   outside_cents: number;
   cashback_bps: number;
   cashback_cents: number;
+  /** The bill reached the ceiling (MESITA-4831). */
+  cashback_capped?: boolean;
 };
 
 export type BillRow = {

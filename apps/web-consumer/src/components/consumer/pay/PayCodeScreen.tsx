@@ -65,6 +65,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const [busy, setBusy] = useState<"accept" | "decline" | "cancel" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // The waiter lost the bill's page: the QR again, for the accepted bill (MESITA-4831).
+  const [showAgain, setShowAgain] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [armedAt, setArmedAt] = useState(0);
   const following = useRef<string | null>(null);
@@ -133,7 +135,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   }, [getSupabase, take]);
 
   const busyBill = billNeedsGuest(bill);
-  const showing = !bill || bill.state === "open";
+  const rescan = showAgain && bill?.state === "accepted";
+  const showing = !bill || bill.state === "open" || rescan;
 
   useEffect(() => {
     const id = setTimeout(() => void mint(), 0);
@@ -183,6 +186,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   async function answer(action: "accept" | "decline" | "not_mine" | "cancel") {
     if (!bill || busy) return;
     setBusy(action === "not_mine" ? "decline" : action);
+    setShowAgain(false);
     setError(null);
     try {
       await apiAnswerBill(getSupabase(), {
@@ -245,7 +249,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   );
 
   // THE QR.
-  if (!bill || bill.state === "open") {
+  if (!bill || bill.state === "open" || rescan) {
     const typing = bill?.state === "open";
     const discount = here ? payPlaceDiscountBps(here) : 0;
     const back = here && discount === 0 ? payPlaceCashbackBps(here) : 0;
@@ -304,8 +308,12 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           ) : null}
         </PaySection>
       </>,
-      null,
-      1,
+      rescan ? (
+        <button type="button" className={QUIET_BUTTON_CLASS} onClick={() => setShowAgain(false)}>
+          Back to the bill
+        </button>
+      ) : null,
+      rescan ? 2 : 1,
     );
   }
 
@@ -363,7 +371,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       ) : null}
       <MoneyRow icon={<Banknote />} label="Pay at the place" value={m(q.outside_cents)} strong />
       {q.cashback_cents > 0 ? (
-        <MoneyRow className={BOX_TINT.cashback} icon={<BadgePercent />} label={`${q.cashback_bps / 100}% Cashback you get`} value={`+${m(q.cashback_cents)}`} />
+        <MoneyRow className={BOX_TINT.cashback} icon={<BadgePercent />} label={q.cashback_capped ? "Cashback you get (maximum)" : `${q.cashback_bps / 100}% Cashback you get`} value={`+${m(q.cashback_cents)}`} />
       ) : null}
     </PaySection>
   );
@@ -403,6 +411,17 @@ export function PayCodeScreen({ from }: { from: string | null }) {
               Waiting for the waiter to confirm · {left}
             </p>
           </>,
+          <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            className={cn(QUIET_BUTTON_CLASS, "h-11 w-auto px-5")}
+            onClick={() => {
+              setShowAgain(true);
+              void mint();
+            }}
+          >
+            Show my QR
+          </button>
           <button
             type="button"
             className="border-destructive/40 text-destructive hover:bg-destructive/5 bg-card h-11 self-center rounded-xl border px-5 text-sm font-semibold transition disabled:opacity-50"
@@ -410,7 +429,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
             onClick={() => setConfirmCancel(true)}
           >
             Cancel bill
-          </button>,
+          </button>
+          </div>,
           2,
         )}
         <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this bill">

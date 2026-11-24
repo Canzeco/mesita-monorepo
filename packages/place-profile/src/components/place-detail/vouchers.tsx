@@ -994,7 +994,7 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
     : [
         { Icon: Utensils, text: "Use your cashback to pay any bill at this place." },
         { Icon: InfinityIcon, text: "It never expires." },
-        { Icon: Wallet, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip." },
+        { Icon: Wallet, text: "The part of a bill you pay with credit earns no cashback, and neither does the tip. One bill earns $1,000 of cashback at most." },
       ];
   return (
     <HowItWorks

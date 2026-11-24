@@ -794,7 +794,7 @@ export function PaymentsPanel({
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
             {discount
               ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
-              : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later."}{" "}
+              : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill."}{" "}
             <a className="underline underline-offset-2" href={staffListUrl} target="_blank" rel="noreferrer">
               Staff list
             </a>

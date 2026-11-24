@@ -2,7 +2,7 @@
 // trigger mirrors (pay_tab_grant_cashback) and the owner's allowed inputs.
 // Four lines since MESITA-4789: Welcome Regular, Returning Regular, Welcome VIP, Returning VIP.
 import { assertEquals } from "jsr:@std/assert@1";
-import { CASHBACK_DEFAULTS, cashbackCents, cashbackLine, discountCents, maxCashbackBps, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
+import { CASHBACK_CAP_CENTS, CASHBACK_DEFAULTS, cashbackCents, cashbackLine, discountCents, maxCashbackBps, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
 
 Deno.test("cashback: four lines — the first bill is Welcome VIP or Regular, then Returning VIP or Regular (MESITA-4789)", () => {
   assertEquals(cashbackLine(true), "welcome");
@@ -104,4 +104,11 @@ Deno.test("visit discount: the rate on the printed bill, rounded down (pay_guest
   assertEquals(discountCents(33333, 500), 1666);
   assertEquals(discountCents(50000, 0), 0);
   assertEquals(discountCents(0, 1000), 0);
+});
+
+Deno.test("cashback: one bill earns MX$1,000 at most (MESITA-4831)", () => {
+  const rates = { ...CASHBACK_DEFAULTS, welcome_bps: 1000 };
+  assertEquals(cashbackCents(rates, "welcome", 1_000_000), CASHBACK_CAP_CENTS);
+  assertEquals(cashbackCents(rates, "welcome", 1_000_010), CASHBACK_CAP_CENTS);
+  assertEquals(cashbackCents(rates, "welcome", 10_000_000), CASHBACK_CAP_CENTS);
 });
