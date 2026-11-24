@@ -1,6 +1,6 @@
 "use client";
 
-import { SizedImg } from "@mesita/place-profile";
+import { photoUrl } from "@mesita/place-profile";
 import { Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
 // A CARD, NOT A ROW (Pato, 2026-11-24, MESITA-4839: "credits must be more
-// visible. that looks like shit. try better"): the place's photo under a dark
+// visible. that looks like shit. try better"): the place's photo, repeated, under a dark
 // scrim, its name at the top, the balance large at the bottom, a white Gift
 // button at the top right (MESITA-4838: "each credit card having a quick button to
 // gift"). The whole card opens the Loyalty Card; Gift is its own link over
@@ -49,7 +49,16 @@ export function PlaceActionRow({
       data-wallet-row
       data-place-id={placeId}
     >
-      {photo ? <SizedImg src={photo} size="card" alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" /> : null}
+      {/* THE WHOLE PHOTO, REPEATED (Pato, 2026-11-24, MESITA-4840: "is okay if
+          you stretch the image or repeat the image"): as tall as the card, side
+          by side; one photo cropped to the card before. */}
+      {photo ? (
+        <span
+          className="absolute inset-0 -z-10 bg-left bg-repeat-x"
+          style={{ backgroundImage: `url(${JSON.stringify(photoUrl(photo, "card"))})`, backgroundSize: "auto 100%" }}
+          aria-hidden
+        />
+      ) : null}
       <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/60 to-black/75" aria-hidden />
       <button
         type="button"
