@@ -32,8 +32,8 @@ type Proposal = { place_id: string; outcome: string; after: string[] | null };
 
 const HERE = new URL(".", import.meta.url).pathname;
 const CUISINE = [
-  "tacos", "mexican", "sushi", "japanese", "italian", "pizza", "burgers", "seafood", "steak",
-  "asian", "arabic", "european", "american", "chicken", "coffee", "breakfast",
+  "tacos", "sushi", "japanese", "italian", "pizza", "burgers", "seafood", "steak",
+  "asian", "arabic", "european", "american", "coffee", "breakfast", "brunch",
 ];
 const VENUE = new Set([
   "drinks", "night_out", "fun", "casino",

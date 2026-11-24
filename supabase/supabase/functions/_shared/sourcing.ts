@@ -52,9 +52,17 @@ export function placeFamilies(
   const all = new Set<FamilyKey>(own);
   for (const t of types ?? []) {
     if (IGNORED_SECONDARY_TYPES.has(t) || t === primaryType) continue;
-    for (const f of familiesForGoogleType(t)) all.add(f);
+    for (const f of familiesForGoogleType(t)) {
+      // A café typed `breakfast_restaurant` too is not a restaurant.
+      if (f !== "restaurants") all.add(f);
+    }
   }
   return CATALOG_FAMILY_SLUGS.filter((f) => all.has(f));
+}
+
+/** Restaurants is a fact of the main Google category (MESITA-4820). */
+export function isRestaurantType(primaryType: string | null | undefined): boolean {
+  return familiesForGoogleType(primaryType).includes("restaurants");
 }
 
 type GeoOrigin = { lat: number; lng: number };

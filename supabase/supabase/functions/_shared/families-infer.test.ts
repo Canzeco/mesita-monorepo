@@ -11,6 +11,7 @@ import {
   HINT_FAMILIES,
   mainGoogleCategory,
   pickFamilies,
+  settleRestaurants,
 } from "./families-infer.ts";
 import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 
@@ -21,7 +22,7 @@ const FAMILIES = [
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 4 },
   { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 5 },
   { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 6 },
-  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 7 },
+  { slug: "night_out", label: "Club", emoji: "🪩", sort_order: 7 },
   { slug: "sweet", label: "Dessert", emoji: "🍰", sort_order: 8 },
   { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 99 },
 ];
@@ -82,9 +83,9 @@ Deno.test("HINT_FAMILIES: no venue or generic family is ever hinted", () => {
 });
 
 Deno.test("familyHintLine: cuisines pass, Dinner and Family never do", () => {
-  const mexican = familyHintLine(["mexican_restaurant"], null);
-  assertEquals(mexican.includes("mexican"), true);
-  assertEquals(mexican.includes("dinner"), false);
+  const tacos = familyHintLine(["taco_restaurant"], null);
+  assertEquals(tacos.includes("tacos"), true);
+  assertEquals(tacos.includes("restaurants"), false);
   assertEquals(familyHintLine(["family_restaurant"], null).includes("family"), false);
   assertEquals(familyHintLine(["bar_and_grill"], null).includes("drinks"), false);
   assertEquals(familyHintLine([], null), "");
@@ -96,4 +97,14 @@ Deno.test("pickFamilies and familiesRule obey a stage limit, never past seven", 
   assertEquals(pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "casino", "night_out", "sweet"], FAMILIES, 99)?.length, 7);
   assertEquals(familiesRule("create", 3).includes("never more than 3"), true);
   assertEquals(familiesRule("enrich", 5).includes("never more than 5"), true);
+});
+
+// MESITA-4820: Restaurants is a fact of the main Google category.
+Deno.test("settleRestaurants: on every Google restaurant, off a café with a sharper family", () => {
+  assertEquals(settleRestaurants(["tacos"], "taco_restaurant"), ["restaurants", "tacos"]);
+  assertEquals(settleRestaurants(["restaurants"], "mexican_restaurant"), ["restaurants"]);
+  assertEquals(settleRestaurants(["restaurants", "coffee"], "cafe"), ["coffee"]);
+  assertEquals(settleRestaurants(["restaurants"], "cafe"), ["restaurants"]);
+  assertEquals(settleRestaurants(null, "restaurant"), null);
+  assertEquals(settleRestaurants(["a", "b", "c", "d", "e", "f", "g"], "bar_and_grill")?.length, 7);
 });

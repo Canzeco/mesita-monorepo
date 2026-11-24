@@ -1,4 +1,4 @@
-// Twenty-five guest families (MESITA-4818), plus Undefined last. Undefined is not a filter.
+// Twenty-five guest families (MESITA-4820), plus Undefined last. Undefined is not a filter.
 // Each guest family has one emoji. That mark is the rail title and the
 // same mark in the admin console. A place may wear more than one (MESITA-2749);
 // its families are a dictionary of its Google categories, never a model's
@@ -8,12 +8,13 @@
 // stay as stored.
 
 export type FamilyKey =
-  | "dinner"
+  | "restaurants"
   | "coffee"
   | "drinks"
-  | "quick_bite"
   | "breakfast"
-  | "mexican"
+  | "brunch"
+  | "dinner"
+  | "quick_bite"
   | "tacos"
   | "seafood"
   | "asian"
@@ -28,7 +29,6 @@ export type FamilyKey =
   | "pizza"
   | "burgers"
   | "arabic"
-  | "chicken"
   | "sweet"
   | "night_out"
   | "fun"
@@ -42,12 +42,13 @@ type PlaceFamily = {
 };
 
 export const PLACE_FAMILIES: PlaceFamily[] = [
-  { key: "dinner", label: "Dinner", emoji: "🍽️" },
+  { key: "restaurants", label: "Restaurants", emoji: "🍽️" },
   { key: "coffee", label: "Coffee", emoji: "☕" },
   { key: "drinks", label: "Bar", emoji: "🍻" },
-  { key: "quick_bite", label: "Quick", emoji: "⚡" },
   { key: "breakfast", label: "Breakfast", emoji: "🍳" },
-  { key: "mexican", label: "Mexican", emoji: "🇲🇽" },
+  { key: "brunch", label: "Brunch", emoji: "🥞" },
+  { key: "dinner", label: "Dinner", emoji: "🌙" },
+  { key: "quick_bite", label: "Quick", emoji: "⚡" },
   { key: "tacos", label: "Tacos", emoji: "🌮" },
   { key: "seafood", label: "Seafood", emoji: "🦐" },
   { key: "asian", label: "Asian", emoji: "🍥" },
@@ -62,9 +63,8 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "pizza", label: "Pizza", emoji: "🍕" },
   { key: "burgers", label: "Burgers", emoji: "🍔" },
   { key: "arabic", label: "Arabic", emoji: "🧆" },
-  { key: "chicken", label: "Wings", emoji: "🍗" },
   { key: "sweet", label: "Dessert", emoji: "🍰" },
-  { key: "night_out", label: "Night", emoji: "🌙" },
+  { key: "night_out", label: "Club", emoji: "🪩" },
   { key: "fun", label: "Fun", emoji: "🎯" },
   { key: "casino", label: "Casino", emoji: "🎰" },
   { key: "undefined", label: "Undefined", emoji: "·" },

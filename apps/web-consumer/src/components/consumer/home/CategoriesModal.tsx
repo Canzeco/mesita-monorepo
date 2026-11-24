@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { X } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { cn } from "@/lib/utils";
 
 // THE CATEGORIES MODAL (Pato, 2026-11-18, MESITA-4417: "for menu actually
 // open a modal covering full page"): Home's Menu tile opens every family
@@ -65,19 +64,14 @@ export function CategoriesModal({
             left, then the other three, then below all"): Home's `lead` in the
             first family column, a 1px upright line, then the specials in the
             last columns. Search has no lead: its specials stay centred. */}
+        {/* TOGETHER (Pato, 2026-11-23, MESITA-4820: "more together these 4"):
+            Social, its line and the specials sit side by side, centred. */}
         <div
-          className={cn(
-            "flex shrink-0 gap-x-0.5 px-1.5 pt-3 [&>button]:w-[calc((100%-0.5rem)/5)] [&>button]:shrink-0",
-            !lead && "justify-center",
-          )}
+          className="flex shrink-0 justify-center px-1.5 pt-3 [&>button]:w-16 [&>button]:shrink-0"
           data-places-menu-specials
         >
           {lead}
-          {lead ? (
-            <span aria-hidden className="flex flex-1 justify-center py-1">
-              <span className="bg-border w-px" />
-            </span>
-          ) : null}
+          {lead ? <span aria-hidden className="bg-border mx-1.5 my-1 w-px shrink-0" /> : null}
           {specials}
         </div>
         <hr className="border-border mx-5 mt-3 shrink-0" data-places-menu-divider />

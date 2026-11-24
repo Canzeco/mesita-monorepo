@@ -13,7 +13,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { PlaceFamily } from "./categories.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
-import { placeFamilies } from "./sourcing.ts";
+import { isRestaurantType, placeFamilies } from "./sourcing.ts";
 
 export const FAMILIES_MIN = 1;
 /** One number with the editor's cap and the trigger's literal (MESITA-2893). */
@@ -35,17 +35,16 @@ export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {
  * This map is the master; Docs › Atlas points here.
  */
 export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
+  restaurants: "a restaurant — Mesita adds this itself for every Google restaurant, so pick it only when no sharper family fits",
   coffee: "a café or coffee bar — coffee is a main reason to go, including cafés that also serve breakfast or brunch",
   breakfast: "breakfast or brunch is a main meal — a morning place; not a taquería, grill or restaurant that merely opens early",
   sweet: "dessert or baked goods are the point — ice cream, gelato, cakes, pastries, churros, chocolate, a bakery or pastry shop",
   healthy: "the menu is built around healthy food — salads, bowls, juices, vegan",
   quick_bite: "eat fast — counter service, street food, takeout",
-  tacos: "a taquería, or tacos are the main dish",
+  tacos: "a taquería, or tacos are the main dish; not every Mexican restaurant",
   burgers: "burgers are the main dish",
   pizza: "pizza is the main dish",
-  chicken: "wings or fried chicken are the main dish",
   sushi: "sushi or poke is the main dish",
-  mexican: "the menu is Mexican — taquerías, mariscos, fondas, cantinas with Mexican food and Mexican restaurants all count",
   steak: "a steakhouse or grill — beef cuts and barbecue are the point",
   seafood: "the menu is seafood — mariscos, ceviche, fish, oysters",
   italian: "the menu is Italian — pasta, risotto, Italian dishes",
@@ -53,13 +52,14 @@ export const FAMILY_MEANINGS: Readonly<Record<string, string>> = {
   asian: "an Asian cuisine other than Japanese — Chinese, Indian, Korean, Thai, Vietnamese, Indonesian, pan-Asian",
   arabic: "Middle Eastern or eastern Mediterranean — Lebanese, Turkish, Greek, kebab",
   european: "another European cuisine — Spanish, French, German, tapas",
-  american: "American food — diner, barbecue joint, fries and shakes",
+  american: "American food — diner, barbecue joint, wings or fried chicken, fries and shakes",
+  brunch: "weekend brunch is a main reason to go — chilaquiles, eggs, pancakes and mimosas at a sit-down table people book, or the place calls itself brunch; not every café or restaurant that serves breakfast",
   dinner: "a dinner destination — the evening meal is the occasion: bistros, steakhouses, trattorias, tasting menus, date-night places people book; not a casual or everyday restaurant that also serves at night, nor a café, counter, bar or beach club",
   fancy: "genuinely upscale — fine dining, a tasting menu, a dress code or special-occasion prices; not merely stylish, popular, well rated or at a nice hotel",
   drinks: "drinking is the point — a bar, cantina, brewery or wine bar; not a restaurant that serves beer",
   fun: "an activity a group does — bowling, arcades, karts, escape rooms, billiards, mini golf, rinks, water parks; not a lively restaurant or a beach club",
   casino: "a casino — slots and gaming tables are the draw",
-  night_out: "a late night out — nightclubs with a dance floor and DJs, live-music venues, lounges, rooftops, bars that turn into parties; not a restaurant that is merely open late or has a band on weekends",
+  night_out: "a club — a nightclub (antro) with a dance floor or DJs, a late-night party, or a place known for live bands; not a quiet lounge, rooftop or cocktail bar, nor a restaurant that is merely open late",
 };
 
 /** The FAMILY LIST block a prompt carries: `slug — Label`, plus its meaning. */
@@ -96,8 +96,8 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
     "place. Pick a family only when this place matches the meaning its FAMILY " +
     "LIST line gives and a guest browsing that family would be glad to find " +
     "it there. An amenity never earns a family: welcoming kids, serving " +
-    "alcohol, having music or being open late is not Bar or Night. " +
-    "Cuisine and meal families (every cuisine, Breakfast, Coffee, " +
+    "alcohol, having music or being open late is not Bar or Club. " +
+    "Cuisine and meal families (every cuisine, Breakfast, Brunch, Coffee, " +
     "Quick) describe what the place serves: give each one that truly applies; " +
     "Dinner only when its meaning fits. When unsure about a family, leave " +
     `it out — but always return at least one, the closest by meaning. ${count}`
@@ -111,9 +111,9 @@ export function familiesRule(stage: FamiliesStage, max: number = FAMILIES_MAX): 
  * Bar to `bar_and_grill` and Dinner to every sit-down cuisine, which would nudge the exact false positives this fixes.
  */
 export const HINT_FAMILIES: ReadonlySet<string> = new Set([
-  "tacos", "mexican", "sushi", "japanese", "italian", "pizza", "burgers",
+  "tacos", "sushi", "japanese", "italian", "pizza", "burgers",
   "seafood", "steak", "asian", "arabic", "european",
-  "american", "chicken", "coffee", "breakfast",
+  "american", "coffee", "breakfast", "brunch",
 ]);
 
 /**
@@ -175,6 +175,21 @@ export function mainGoogleCategory(
   return typeof category === "string" && category.trim() && category !== "undefined"
     ? category.trim()
     : null;
+}
+
+/**
+ * Restaurants, settled by code (MESITA-4820): on every place whose main Google
+ * category is a restaurant, beside the model's picks and past the stage's
+ * limit (never past seven); off any other place that has a sharper family.
+ */
+export function settleRestaurants(
+  picked: string[] | null,
+  mainCategory: string | null,
+): string[] | null {
+  if (!picked) return null;
+  const rest = picked.filter((f) => f !== "restaurants");
+  if (isRestaurantType(mainCategory)) return ["restaurants", ...rest].slice(0, FAMILIES_MAX);
+  return rest.length ? rest : picked;
 }
 
 /** Is this Google category enabled on Mesita? A failed read answers no. */

@@ -27,7 +27,7 @@ Deno.test("the retired rails hold no Google type (MESITA-4571, MESITA-4588)", ()
   );
   assertEquals(stillThere, []);
   // What stays a trip keeps its food and drink rails.
-  assertEquals(familiesForGoogleType("family_restaurant"), ["dinner"]);
+  assertEquals(familiesForGoogleType("family_restaurant"), ["restaurants"]);
   assertEquals(familiesForGoogleType("karaoke"), ["drinks", "night_out"]);
   assertEquals(familiesForGoogleType("comedy_club"), ["night_out"]);
   // Fun and Casino replaced Sports and Hookah (MESITA-4588).
@@ -36,31 +36,32 @@ Deno.test("the retired rails hold no Google type (MESITA-4571, MESITA-4588)", ()
   assertEquals(familiesForGoogleType("bowling_alley"), ["fun"]);
   assertEquals(familiesForGoogleType("casino"), ["casino"]);
   assertEquals(familiesForGoogleType("sports_bar"), ["drinks"]);
-  assertEquals(familiesForGoogleType("hookah_bar"), ["drinks", "night_out"]);
+  assertEquals(familiesForGoogleType("hookah_bar"), ["drinks"]);
 });
 
 Deno.test("sixteen rails folded into their parent (MESITA-2888)", () => {
-  assertEquals(familiesForGoogleType("brunch_restaurant"), ["breakfast"]);
+  assertEquals(familiesForGoogleType("brunch_restaurant"), ["restaurants", "breakfast", "brunch"]);
   assertEquals(familiesForGoogleType("ice_cream_shop"), ["sweet"]);
-  assertEquals(familiesForGoogleType("vegan_restaurant"), ["healthy"]);
-  assertEquals(familiesForGoogleType("sandwich_shop"), ["quick_bite"]);
-  assertEquals(familiesForGoogleType("chicken_wings_restaurant"), ["chicken"]);
-  assertEquals(familiesForGoogleType("kebab_shop"), ["quick_bite", "arabic"]);
-  assertEquals(familiesForGoogleType("barbecue_restaurant"), ["dinner", "steak"]);
-  assertEquals(familiesForGoogleType("ramen_restaurant"), ["japanese"]);
-  assertEquals(familiesForGoogleType("dumpling_restaurant"), ["asian"]);
-  assertEquals(familiesForGoogleType("korean_restaurant"), ["dinner", "asian"]);
-  assertEquals(familiesForGoogleType("thai_restaurant"), ["dinner", "asian"]);
-  assertEquals(familiesForGoogleType("greek_restaurant"), ["dinner", "arabic"]);
-  assertEquals(familiesForGoogleType("spanish_restaurant"), ["dinner", "european"]);
-  assertEquals(familiesForGoogleType("french_restaurant"), ["dinner", "european"]);
-  assertEquals(familiesForGoogleType("latin_american_restaurant"), ["dinner"]);
-  assertEquals(familiesForGoogleType("argentinian_restaurant"), ["dinner", "steak"]);
+  assertEquals(familiesForGoogleType("vegan_restaurant"), ["restaurants", "healthy"]);
+  assertEquals(familiesForGoogleType("sandwich_shop"), ["restaurants", "quick_bite"]);
+  assertEquals(familiesForGoogleType("chicken_wings_restaurant"), ["restaurants", "american"]);
+  assertEquals(familiesForGoogleType("kebab_shop"), ["restaurants", "quick_bite", "arabic"]);
+  assertEquals(familiesForGoogleType("barbecue_restaurant"), ["restaurants", "dinner", "steak"]);
+  assertEquals(familiesForGoogleType("ramen_restaurant"), ["restaurants", "japanese"]);
+  assertEquals(familiesForGoogleType("dumpling_restaurant"), ["restaurants", "asian"]);
+  assertEquals(familiesForGoogleType("korean_restaurant"), ["restaurants", "dinner", "asian"]);
+  assertEquals(familiesForGoogleType("thai_restaurant"), ["restaurants", "dinner", "asian"]);
+  assertEquals(familiesForGoogleType("greek_restaurant"), ["restaurants", "dinner", "arabic"]);
+  assertEquals(familiesForGoogleType("spanish_restaurant"), ["restaurants", "dinner", "european"]);
+  assertEquals(familiesForGoogleType("french_restaurant"), ["restaurants", "dinner", "european"]);
+  assertEquals(familiesForGoogleType("latin_american_restaurant"), ["restaurants"]);
+  assertEquals(familiesForGoogleType("argentinian_restaurant"), ["restaurants", "dinner", "steak"]);
 });
 
 Deno.test("a place's families are every family of its categories, none primary (MESITA-2808)", () => {
   // Order means nothing: the result is always in the catalog's family order.
   assertEquals(placeFamilies("pizza_restaurant", ["pizza_restaurant", "italian_restaurant", "restaurant", "food"]), [
+    "restaurants",
     "dinner",
     "italian",
     "pizza",
@@ -70,7 +71,7 @@ Deno.test("a place's families are every family of its categories, none primary (
     ["coffee", "drinks", "breakfast", "sweet"],
   );
   // The bare `restaurant` umbrella adds nothing.
-  assertEquals(placeFamilies("breakfast_restaurant", ["breakfast_restaurant", "restaurant"]), ["breakfast"]);
+  assertEquals(placeFamilies("breakfast_restaurant", ["breakfast_restaurant", "restaurant"]), ["restaurants", "breakfast"]);
   // A primary type in no family: no families at all.
   assertEquals(placeFamilies("gas_station", ["gas_station", "cafe"]), []);
   assertEquals(placeFamilies(null, ["cafe"]), []);

@@ -15,8 +15,8 @@ describe("family marks (MESITA-4782)", () => {
     }
   });
 
-  it("Search's nearby is Home's near; an unknown key wears Dinner's plate", () => {
+  it("Search's nearby is Home's near; an unknown key wears Restaurants' plate", () => {
     expect(familyMarkSrc("nearby")).toBe("/families/near.svg");
-    expect(familyMarkSrc("not_a_family")).toBe("/families/dinner.svg");
+    expect(familyMarkSrc("not_a_family")).toBe("/families/restaurants.svg");
   });
 });

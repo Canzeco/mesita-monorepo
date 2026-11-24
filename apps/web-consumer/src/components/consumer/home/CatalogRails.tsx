@@ -152,7 +152,7 @@ const SocialFeed = dynamic(
 // circles, 56px columns; the names stay 10px. THE EMOJI SMALLER (MESITA-4464:
 // "carrousel emojis are just toooo big"): 18px in the 44px circle.
 const CAT =
-  "flex w-14 shrink-0 flex-col items-center gap-0.5 pb-1 type-meta transition active:scale-[0.96]";
+  "flex min-w-14 shrink-0 flex-col items-center gap-0.5 pb-1 type-meta transition active:scale-[0.96]";
 // WHITE, BETWEEN TWO LINES, IN CIRCLES (Pato, 2026-11-18, MESITA-4416:
 // "border / families carousel (white background, fams in white circles,
 // selected circle black background) / border"): each emoji in a 40px white
@@ -643,7 +643,7 @@ export function CatalogRails() {
         }}
         aria-pressed={on}
         data-on={on ? "" : undefined}
-        className={cn(CAT, inMenu && "w-auto")}
+        className={cn(CAT, inMenu && "min-w-0")}
       >
         <span
           aria-hidden

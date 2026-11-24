@@ -34,6 +34,7 @@ import {
   familyVocabularyLines,
   isGoogleCategoryEnabled,
   mainGoogleCategory,
+  settleRestaurants,
   pickFamilies,
 } from "./families-infer.ts";
 import { pickZone, ZONE_RULE } from "./zone-infer.ts";
@@ -159,7 +160,13 @@ export async function synthesizeDoorProfile(
     const nameMax = ENRICH_FIELD_LIMITS.placeName?.max ?? 80;
     return {
       tags,
-      families: familiesToStore(pickFamilies(parsed.families, familyVocab, limits.families), enabled),
+      families: familiesToStore(
+        settleRestaurants(
+          pickFamilies(parsed.families, familyVocab, limits.families),
+          mainGoogleCategory(signals.googleTypes, null),
+        ),
+        enabled,
+      ),
       zone: pickZone(parsed.zone, signals.city),
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),

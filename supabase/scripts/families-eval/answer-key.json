@@ -16,7 +16,6 @@
   "healthy": 1.0,
   "italian": 0.5,
   "japanese": 1.0,
-  "mexican": 1.0,
   "night_out": 1.0,
   "pizza": 0.0,
   "quick_bite": 0.75,
@@ -89,13 +88,11 @@
    ],
    "category": "seafood_restaurant",
    "labels": [
-    "mexican",
     "seafood"
    ],
    "contested": [],
    "snapshot": [
     "seafood",
-    "mexican",
     "dinner",
     "drinks",
     "family"
@@ -182,7 +179,6 @@
    ],
    "category": "seafood_restaurant",
    "labels": [
-    "mexican",
     "seafood"
    ],
    "contested": [],
@@ -528,12 +524,10 @@
    ],
    "category": "bar_and_grill",
    "labels": [
-    "drinks",
-    "mexican"
+    "drinks"
    ],
    "contested": [],
    "snapshot": [
-    "mexican",
     "dinner",
     "drinks",
     "family"
@@ -621,14 +615,11 @@
     "restaurant"
    ],
    "category": "bar_and_grill",
-   "labels": [
-    "mexican"
-   ],
+   "labels": [],
    "contested": [
     "dinner"
    ],
    "snapshot": [
-    "mexican",
     "dinner",
     "drinks",
     "family"
@@ -734,7 +725,6 @@
    ],
    "category": "steak_house",
    "labels": [
-    "mexican",
     "steak"
    ],
    "contested": [],
@@ -872,7 +862,6 @@
    ],
    "category": "taco_restaurant",
    "labels": [
-    "mexican",
     "quick_bite",
     "tacos"
    ],
@@ -944,7 +933,6 @@
    ],
    "category": "taco_restaurant",
    "labels": [
-    "mexican",
     "quick_bite",
     "tacos"
    ],
