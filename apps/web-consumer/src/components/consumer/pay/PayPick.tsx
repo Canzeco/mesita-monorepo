@@ -114,10 +114,10 @@ export function PlaceList({
         // different buttons ... it must look like place selector"): one row
         // per place, one tap; plain columns, no boxes.
         <div data-pay-places>
-          <div className={cn(ROW_GRID[kind], "border-border bg-muted text-muted-foreground sticky top-14 z-10 h-9 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
+          <div className={cn(ROW_GRID[kind], "border-border bg-muted text-muted-foreground sticky top-14 z-10 border-b text-xs font-semibold", kind === "prepay" ? "h-11" : "h-9")} aria-hidden data-pay-head-row>
             <span className="pl-3.5">Place</span>
             {HEADS[kind].map((h) => (
-              <span key={h} className="text-center tabular-nums">
+              <span key={h} className={cn("text-center tabular-nums", kind === "prepay" && "text-foreground text-base max-[374px]:text-sm")}>
                 {h}
               </span>
             ))}
@@ -157,6 +157,8 @@ const ROW_GRID: Record<ListKind, string> = {
  *  own next bill gets. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
   const name = p.name ?? "A Mesita place";
+  // Which branch it is (Pato, 2026-11-24, MESITA-4848).
+  const address = kind === "prepay" ? p.address : null;
   const discount = payPlaceDiscountBps(p);
   const bps = discount || payPlaceCashbackBps(p);
   const offer = bps > 0 ? (discount > 0 ? "Discount" : "Cashback") : null;
@@ -164,7 +166,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
   const credits = p.available_cents > 0 ? money(p.available_cents, p.currency) : null;
   const spoken =
     kind === "prepay"
-      ? [name, ...bonuses.map((pct, i) => (pct === null ? null : `${HEADS.prepay[i]}, +${pct}% bonus`))]
+      ? [name, address, ...bonuses.map((pct, i) => (pct === null ? null : `${HEADS.prepay[i]}, +${pct}% bonus`))]
       : [name, credits ? `${credits} in credits` : null, offer ? `${bps / 100}% ${offer} on this bill` : null];
   return (
     <button
@@ -178,6 +180,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
         <PlacePhoto place={p} className={kind === "prepay" ? "h-9 w-9 max-[359px]:hidden" : "h-8 w-8 max-[359px]:hidden"} />
         <span className="min-w-0">
           <span className="line-clamp-2 text-sm leading-tight font-semibold">{name}</span>
+          {address ? <span className="text-muted-foreground mt-0.5 block truncate text-xs leading-tight">{address}</span> : null}
         </span>
       </span>
       {kind === "prepay" ? (
