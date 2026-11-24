@@ -417,7 +417,6 @@ export function BillScreen({ billId }: { billId: string }) {
     <BillEntry
       key={bill.state === "declined" ? `declined-${bill.version}` : "type"}
       start={bill.bill_cents ? { bill: bill.bill_cents, tip: bill.tip_cents } : undefined}
-      sendLabel="Send bill"
       busy={busy === "send"}
       error={error}
       top={

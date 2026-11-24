@@ -2,22 +2,21 @@
 
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
-import { closeBill, getBill, keepBillStaff, openBill, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
+import { Bones } from "@/components/Bones";
+import { closeBill, getBill, keepBillDraft, keepBillStaff, openBill, readBillDraft, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
-// /pay/<token> — the waiter scanned a guest's Mesita QR: Bill, Tip, then Code
-// (MESITA-4879): the place's 6 digits (MESITA-4904), then
-// whose QR it is, and Send bill. Nothing about the phone is kept.
+// /pay/<token> — the waiter scanned a guest's Mesita QR: the Code first
+// (MESITA-4916): the place's 6 digits (MESITA-4904), then whose QR it is; then
+// Bill, Tip and Send bill. Nothing about the phone is kept.
 
-type Found = { billId: string; staff: Staff; version: number; currency: string; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
-type Typed = { bill: number; tip: number };
+type Found = { billId: string; staff: Staff; version: number; name: string | null; photo: string | null; age: number | null; sex: "female" | "male" | null };
 
 export default function ScanPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const router = useRouter();
-  const [typed, setTyped] = useState<Typed | null>(null);
-  const [view, setView] = useState<"type" | "code" | "guest" | "ended" | "closed">("type");
+  const [start, setStart] = useState<{ bill: number; tip: number } | undefined>();
+  const [view, setView] = useState<"start" | "code" | "guest" | "type" | "ended" | "closed">("start");
   const [found, setFound] = useState<Found | null>(null);
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   const [askName, setAskName] = useState(false);
@@ -25,11 +24,20 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
 
   // THE GUEST WATCHES IT BEING TYPED (MESITA-4887): every 250 ms when it
   // changed, every five while it did not, one call at a time.
-  const typing = useRef<Typing>({ bill_cents: 0, tip_cents: 0, step: "bill" });
+  const typing = useRef<Typing>({ bill_cents: 0, tip_cents: 0, step: "code" });
   const onTyping = useCallback((bill_cents: number, tip_cents: number, step: "bill" | "tip") => {
     typing.current = { bill_cents, tip_cents, step };
   }, []);
-  const live = view !== "ended" && view !== "closed";
+  const billId = found?.billId ?? null;
+  const onType = useCallback((bill: number, tip: number, step: "bill" | "tip") => {
+    onTyping(bill, tip, step);
+    if (billId && bill > 0) keepBillDraft(billId, { bill, tip });
+  }, [billId, onTyping]);
+  useEffect(() => {
+    if (view === "code") typing.current = { bill_cents: 0, tip_cents: 0, step: "code" };
+    if (view === "guest") typing.current = { bill_cents: 0, tip_cents: 0, step: "bill" };
+  }, [view]);
+  const live = view === "code" || view === "guest" || view === "type";
   useEffect(() => {
     if (!live) return;
     let sent = "";
@@ -52,6 +60,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
 
   const go = (billId: string, staff: Staff) => {
     keepBillStaff(billId, staff);
+    keepBillDraft(billId, null);
     router.replace(`/bill/${billId}`);
   };
   const say = (r: "failed" | { error: string }) => {
@@ -87,30 +96,58 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     const now = await getBill(staff, opened.bill_id);
     if (now === "failed" || "refused" in now) return fail(now);
     setBusy(null);
-    // The guest already accepted a bill here: that one is collected first.
-    if (now.bill.state === "accepted" || now.bill.state === "confirming") {
+    // A bill already sent, accepted or over: its own screen, never typed again.
+    if (now.bill.state !== "open") {
       go(opened.bill_id, staff);
       return true;
     }
-    // A rescan finds the same bill, maybe already sent: send over its version.
-    setFound({ billId: opened.bill_id, staff, version: now.bill.version, currency: now.bill.currency, name: now.guest_name ?? null, photo: now.guest_photo, age: now.guest_age ?? null, sex: now.guest_sex ?? null });
+    setFound({ billId: opened.bill_id, staff, version: now.bill.version, name: now.guest_name ?? null, photo: now.guest_photo, age: now.guest_age ?? null, sex: now.guest_sex ?? null });
     setView("guest");
     return true;
   }
 
-  async function send() {
-    if (!found || !typed || busy) return;
+  // A place with codes off opens by itself (MESITA-4890); the keypad shows only
+  // where a code is needed, never because a call was lost.
+  const began = useRef(false);
+  useEffect(() => {
+    if (began.current) return;
+    began.current = true;
+    const id = setTimeout(() => void enter(null), 0);
+    return () => {
+      began.current = false;
+      clearTimeout(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function send(bill: number, tip: number) {
+    if (!found || busy) return;
     setBusy("send");
     setError(null);
-    const r = await sendBill(found.staff, { bill_id: found.billId, version: found.version, bill_cents: typed.bill, tip_cents: typed.tip });
+    const bill_tip = { bill_cents: bill, tip_cents: tip };
+    let at = found;
+    let r = await sendBill(at.staff, { bill_id: at.billId, version: at.version, ...bill_tip });
+    // Typed past its 15 minutes: a new one, sent once. A cancelled one stays so.
+    if (r !== "failed" && "refused" in r && r.code === "expired") {
+      const old = await getBill(at.staff, at.billId);
+      if (old !== "failed" && !("refused" in old) && old.bill.state === "expired") {
+        const next = await openBill(at.staff, { again_bill_id: at.billId });
+        const now = next === "failed" || "refused" in next ? next : await getBill(at.staff, next.bill_id);
+        if (now === "failed" || "refused" in now) return say(now);
+        at = { ...at, billId: now.bill.id, version: now.bill.version };
+        if (now.bill.state !== "open") return go(at.billId, at.staff);
+        setFound(at);
+        r = await sendBill(at.staff, { bill_id: at.billId, version: at.version, ...bill_tip });
+      }
+    }
     if (r === "failed") return say(r);
     if ("refused" in r) {
-      // Accepted or changed on another phone, or the code is needed again: the
-      // bill's own screen says it.
-      if (r.code === "accepted" || r.code === "stale" || r.code === "staff_code_needed") return go(found.billId, found.staff);
+      // Accepted, changed or over, or the code is needed again: the bill's own
+      // screen says it.
+      if (["accepted", "stale", "expired", "gone", "staff_code_needed"].includes(r.code)) return go(at.billId, at.staff);
       return say(r);
     }
-    go(found.billId, found.staff);
+    go(at.billId, at.staff);
   }
 
   async function no() {
@@ -143,17 +180,38 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       </main>
     );
   }
-  if (view === "guest" && found && typed) {
+  if (view === "start") {
+    return (
+      <main className="proof" data-scan="start">
+        {error ? (
+          <>
+            <p className="proof-status warn" role="alert">
+              {error}
+            </p>
+            <button type="button" style={{ marginTop: 16, alignSelf: "stretch" }} disabled={busy !== null} onClick={() => void enter(null)}>
+              Try again
+            </button>
+          </>
+        ) : (
+          <Bones label="Opening the bill" />
+        )}
+      </main>
+    );
+  }
+  if (view === "guest" && found) {
     return (
       <GuestCheck
         name={found.name}
         photo={found.photo}
         age={found.age}
         sex={found.sex}
-        total={moneyLabel(typed.bill + typed.tip, found.currency)}
-        busy={busy === "code" ? null : busy}
+        busy={busy === "no"}
         error={error}
-        onSend={() => void send()}
+        onYes={() => {
+          setError(null);
+          setStart(readBillDraft(found.billId));
+          setView("type");
+        }}
         onNo={() => void no()}
       />
     );
@@ -166,27 +224,16 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
         busy={busy === "code"}
         error={error}
         onCode={enter}
-        onBack={() => {
-          setError(null);
-          setView("type");
-        }}
       />
     );
   }
   return (
     <BillEntry
-      start={typed ?? undefined}
-      atTip={typed !== null}
-      sendLabel="Next"
-      onTyping={onTyping}
-      busy={busy === "code"}
+      start={start}
+      onTyping={onType}
+      busy={busy === "send"}
       error={error}
-      onSend={(bill, tip) => {
-        setTyped({ bill, tip });
-        typing.current = { bill_cents: bill, tip_cents: tip, step: "code" };
-        // A place with codes off goes straight to the guest (MESITA-4890).
-        void enter(null);
-      }}
+      onSend={(bill, tip) => void send(bill, tip)}
     />
   );
 }
