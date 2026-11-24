@@ -3,6 +3,10 @@
 // is one small store rather than Places' own state. `null` = the guest's
 // current location. Kept for this tab (sessionStorage), like the map filters.
 //
+// REMEMBERED ACROSS VISITS (MESITA-4558): the last choice is also kept in
+// localStorage, and stands in only when this tab chose nothing and the device
+// gave no location. A live fix wins over it; "Use my location" forgets it.
+//
 // Only the KEY is kept (`saved:<id>`, MESITA-2501): the pin and its name are
 // read from the saved list on every render, so an edit or a backfill moves
 // the header and the catalog at once, and a removed or unconfirmed entry
@@ -10,6 +14,7 @@
 // name, coordinates or a rectangle) is read for its key only.
 
 import { useMemo, useSyncExternalStore } from "react";
+import { useNoDeviceFix } from "@/lib/use-user-location";
 import { displayName, useSavedLocations, type SavedLocation } from "@/lib/saved-locations";
 
 export type ActiveLocation = {
@@ -21,10 +26,12 @@ export type ActiveLocation = {
 };
 
 const STORAGE_KEY = "mesita:active-location";
+const REMEMBERED_KEY = "mesita:remembered-location";
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
 let state: string | null = null;
+let remembered: string | null = null;
 let hydrated = false;
 
 export function savedLocationKey(id: string): string {
@@ -49,9 +56,19 @@ function read(): string | null {
   return null;
 }
 
+function readRemembered(): string | null {
+  try {
+    const key = window.localStorage.getItem(REMEMBERED_KEY);
+    return key?.startsWith("saved:") ? key : null;
+  } catch {
+    return null;
+  }
+}
+
 function ensureHydrated() {
   if (hydrated || typeof window === "undefined") return;
   state = read();
+  remembered = readRemembered();
   hydrated = true;
 }
 
@@ -60,12 +77,21 @@ function ensureHydrated() {
 export function setActiveLocation(key: string | null): void {
   ensureHydrated();
   state = key;
+  remembered = key;
   if (typeof window !== "undefined") {
     try {
       if (key) window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(key));
       else window.sessionStorage.removeItem(STORAGE_KEY);
     } catch {
       /* the choice still lives for this visit */
+    }
+  }
+  if (typeof window !== "undefined") {
+    try {
+      if (key) window.localStorage.setItem(REMEMBERED_KEY, key);
+      else window.localStorage.removeItem(REMEMBERED_KEY);
+    } catch {
+      /* not remembered past this tab */
     }
   }
   for (const l of listeners) l();
@@ -77,6 +103,11 @@ function subscribe(listener: Listener): () => void {
   return () => {
     listeners.delete(listener);
   };
+}
+
+function getRememberedKey(): string | null {
+  ensureHydrated();
+  return remembered;
 }
 
 export function getActiveLocationKey(): string | null {
@@ -102,7 +133,10 @@ export function resolveActiveLocation(
 }
 
 export function useActiveLocationKey(): string | null {
-  return useSyncExternalStore(subscribe, getActiveLocationKey, getServerSnapshot);
+  const chosen = useSyncExternalStore(subscribe, getActiveLocationKey, getServerSnapshot);
+  const last = useSyncExternalStore(subscribe, getRememberedKey, getServerSnapshot);
+  const noFix = useNoDeviceFix();
+  return chosen ?? (noFix ? last : null);
 }
 
 export function useActiveLocation(): ActiveLocation | null {
