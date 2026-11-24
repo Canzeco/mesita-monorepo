@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
 import { SexFace } from "./SexFace";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, User } from "lucide-react";
+import { Crown, Loader2, Plus, User } from "lucide-react";
+import { ALLOWED_AVATAR_ACCEPT } from "@/lib/avatar-upload";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -192,19 +194,68 @@ export function IdentityModules({
   avatarUrl,
   nameHref,
   guestClass,
+  addPhoto,
 }: {
   name: string;
   avatarUrl: string | null;
   nameHref: string;
   /** The Class badge beside the name. Absent: the name alone. */
   guestClass?: "vip" | "regular";
+  /** No photo yet: the circle is the picker (MESITA-4888). `previewUrl` is the
+   *  picked photo while it uploads. */
+  addPhoto?: { pick: (file: File | undefined) => void; uploading: boolean; previewUrl: string | null };
 }) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const adding = addPhoto && (!avatarUrl || addPhoto.uploading) ? addPhoto : null;
   // The photo, then the name with its Class. No Instagram (MESITA-4863).
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
           profile photo redirect me to profile subpage"): it opens the same
           Profile page as the name pill; the 72px photo is past the 44px floor. */}
+      {adding ? (
+        // NO PHOTO: A + THAT ADDS ONE (Pato, 2026-11-24, MESITA-4888: "bottom
+        // right add + … really easy and fast"): one tap on the circle opens the
+        // phone's own picker, the photo shows at once. Nothing else to open.
+        <>
+          <input
+            ref={fileInput}
+            type="file"
+            accept={ALLOWED_AVATAR_ACCEPT}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              adding.pick(file);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInput.current?.click()}
+            disabled={adding.uploading}
+            aria-label={adding.uploading ? "Adding your photo" : "Add your photo"}
+            className={cn(IDENTITY_RING_CLASS, "relative block", DOOR_HOVER_CLASS)}
+            data-identity-add-photo
+          >
+            <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
+              {adding.previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={adding.previewUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <DefaultAvatar className="h-full w-full" />
+              )}
+            </span>
+            <span className="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center" aria-hidden>
+              {adding.uploading ? null : <span className="absolute inset-1 animate-ping rounded-full bg-[#00D66F] opacity-60 motion-reduce:animate-none" />}
+              <span className="border-card relative flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-[#00D66F] text-neutral-950">
+                {adding.uploading ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={2.75} /> : <Plus className="h-4 w-4" strokeWidth={3} />}
+              </span>
+            </span>
+          </button>
+        </>
+      ) : (
       <PushLink
         href={nameHref}
         aria-label="Profile"
@@ -219,6 +270,7 @@ export function IdentityModules({
           )}
         </span>
       </PushLink>
+      )}
       <span className="flex w-full min-w-0 flex-col gap-2">
         {/* ONE BOX, THE CLASS A BADGE IN IT (Pato, 2026-11-24, MESITA-4864:
             "in the same text box, because having two boxes there just seems

@@ -16,12 +16,10 @@ import {
 } from "@/lib/api/profile";
 import {
   ALLOWED_AVATAR_ACCEPT,
-  uploadConsumerAvatar,
-  validateAvatarFile,
 } from "@/lib/avatar-upload";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { useAvatarUpload } from "@/lib/use-avatar-upload";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import {
@@ -212,8 +210,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const { pick: onPhotoPicked, uploading: uploadingPhoto, previewUrl } = useAvatarUpload();
 
   const displayAvatarUrl = previewUrl ?? profile.avatar_url ?? null;
 
@@ -229,38 +226,6 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
     const t = window.setTimeout(() => setSaved(false), SAVED_MS);
     return () => window.clearTimeout(t);
   }, [saved]);
-
-  async function onPhotoPicked(file: File | undefined) {
-    if (!file || uploadingPhoto) return;
-    const validationError = validateAvatarFile(file);
-    if (validationError) {
-      toast(validationError);
-      return;
-    }
-
-    const localPreview = URL.createObjectURL(file);
-    setPreviewUrl(localPreview);
-    setUploadingPhoto(true);
-    try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (userError || !user) {
-        throw new Error("Sign in again to change your photo.");
-      }
-      const publicUrl = await uploadConsumerAvatar(supabase, user.id, file);
-      await apiUpdateConsumerProfile(supabase, { avatar_url: publicUrl });
-      toast("Photo updated.");
-      setPreviewUrl(null);
-    } catch (e) {
-      setPreviewUrl(null);
-      toast(errMsg(e, "Couldn't upload your photo."));
-    } finally {
-      URL.revokeObjectURL(localPreview);
-      setUploadingPhoto(false);
-    }
-  }
 
   async function save() {
     if (!dirty || saving) return;
