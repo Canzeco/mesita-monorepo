@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(33);
+select plan(32);
 
 -- Guests: i invited later, r regular, e emulated-only (300 real, 6,000
 -- emulated), f real 6,000 followers, x exactly 5,000, t and u for codes.
@@ -29,8 +29,6 @@ select col_default_is('public', 'cashback_defaults', 'returning_vip_bps', '1000'
 select throws_ok(
   $$update public.cashback_defaults set returning_vip_bps = 500 where id$$,
   '23514', null, 'Returning VIP picks are Off, 10% or 20%');
-select col_default_is('public', 'place_cashback_settings', 'story_reward_cents', '0',
-  'the story reward is 0 and read by nothing new');
 
 -- ━━━ Who is VIP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

@@ -184,7 +184,6 @@ export type Database = {
           returning_bps: number
           returning_vip_bps: number
           small_bonus_bps: number
-          story_reward_cents: number
           updated_at: string
           updated_by: string | null
           welcome_bps: number
@@ -196,7 +195,6 @@ export type Database = {
           returning_bps?: number
           returning_vip_bps?: number
           small_bonus_bps?: number
-          story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
           welcome_bps?: number
@@ -208,7 +206,6 @@ export type Database = {
           returning_bps?: number
           returning_vip_bps?: number
           small_bonus_bps?: number
-          story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
           welcome_bps?: number
@@ -376,7 +373,6 @@ export type Database = {
       }
       consumers: {
         Row: {
-          appear_anonymous: boolean
           avatar_url: string | null
           birth_year: number | null
           birthday: string | null
@@ -394,7 +390,6 @@ export type Database = {
           instagram_followers_emulated: number | null
           instagram_handle: string | null
           instagram_handle_shown: boolean | null
-          instagram_is_private: boolean | null
           instagram_proved_at: string | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
@@ -418,10 +413,8 @@ export type Database = {
           vip_invitation_code_id: string | null
           vip_invited_at: string | null
           vip_partner_id: string | null
-          vip_until: string | null
         }
         Insert: {
-          appear_anonymous?: boolean
           avatar_url?: string | null
           birth_year?: number | null
           birthday?: string | null
@@ -439,7 +432,6 @@ export type Database = {
           instagram_followers_emulated?: number | null
           instagram_handle?: string | null
           instagram_handle_shown?: boolean | null
-          instagram_is_private?: boolean | null
           instagram_proved_at?: string | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
@@ -463,10 +455,8 @@ export type Database = {
           vip_invitation_code_id?: string | null
           vip_invited_at?: string | null
           vip_partner_id?: string | null
-          vip_until?: string | null
         }
         Update: {
-          appear_anonymous?: boolean
           avatar_url?: string | null
           birth_year?: number | null
           birthday?: string | null
@@ -484,7 +474,6 @@ export type Database = {
           instagram_followers_emulated?: number | null
           instagram_handle?: string | null
           instagram_handle_shown?: boolean | null
-          instagram_is_private?: boolean | null
           instagram_proved_at?: string | null
           instagram_sync_attempted_at?: string | null
           instagram_sync_count?: number
@@ -508,7 +497,6 @@ export type Database = {
           vip_invitation_code_id?: string | null
           vip_invited_at?: string | null
           vip_partner_id?: string | null
-          vip_until?: string | null
         }
         Relationships: [
           {
@@ -1070,7 +1058,6 @@ export type Database = {
           returning_bps: number
           returning_vip_bps: number
           small_bonus_bps: number
-          story_reward_cents: number
           updated_at: string
           updated_by: string | null
           welcome_bps: number
@@ -1082,7 +1069,6 @@ export type Database = {
           returning_bps?: number
           returning_vip_bps?: number
           small_bonus_bps?: number
-          story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
           welcome_bps?: number
@@ -1094,7 +1080,6 @@ export type Database = {
           returning_bps?: number
           returning_vip_bps?: number
           small_bonus_bps?: number
-          story_reward_cents?: number
           updated_at?: string
           updated_by?: string | null
           welcome_bps?: number
@@ -3945,7 +3930,6 @@ export type Database = {
       admin_set_guest_reservation_cap: {
         Args: { p_cap: number; p_consumer: string }
         Returns: {
-          appear_anonymous: boolean
           avatar_url: string | null
           birth_year: number | null
           birthday: string | null
@@ -3963,7 +3947,6 @@ export type Database = {
           instagram_followers_emulated: number | null
           instagram_handle: string | null
           instagram_handle_shown: boolean | null
-          instagram_is_private: boolean | null
           instagram_proved_at: string | null
           instagram_sync_attempted_at: string | null
           instagram_sync_count: number
@@ -3987,72 +3970,6 @@ export type Database = {
           vip_invitation_code_id: string | null
           vip_invited_at: string | null
           vip_partner_id: string | null
-          vip_until: string | null
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "consumers"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      admin_set_guest_standing: {
-        Args: {
-          p_actor: string
-          p_consumer: string
-          p_guest_class: string
-          p_note: string
-          p_note_set: boolean
-          p_partner: string
-          p_partner_set: boolean
-          p_plan: string
-          p_vip_until: string
-          p_vip_until_set: boolean
-        }
-        Returns: {
-          appear_anonymous: boolean
-          avatar_url: string | null
-          birth_year: number | null
-          birthday: string | null
-          code: string | null
-          created_at: string
-          deleted_at: string | null
-          first_name: string | null
-          full_name: string | null
-          guest_class: string | null
-          guest_class_note: string | null
-          guest_class_set_at: string | null
-          guest_class_set_by: string | null
-          id: string
-          instagram_followers_count: number | null
-          instagram_followers_emulated: number | null
-          instagram_handle: string | null
-          instagram_handle_shown: boolean | null
-          instagram_is_private: boolean | null
-          instagram_proved_at: string | null
-          instagram_sync_attempted_at: string | null
-          instagram_sync_count: number
-          instagram_sync_day: string | null
-          instagram_synced_at: string | null
-          instagram_verified_at: string | null
-          instagram_vip_checked_at: string | null
-          instagram_vip_status: string | null
-          last_name: string | null
-          pay_method: string | null
-          phone: string | null
-          plan: string
-          plan_cancel_at_period_end: boolean
-          plan_livemode: boolean | null
-          plan_paid_until: string | null
-          plan_stripe_subscription: string | null
-          reservation_cap_override: number | null
-          sex: string | null
-          social_private: boolean
-          use_instagram_photo: boolean
-          vip_invitation_code_id: string | null
-          vip_invited_at: string | null
-          vip_partner_id: string | null
-          vip_until: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -4079,24 +3996,6 @@ export type Database = {
       business_search_take: {
         Args: { p_account_id: string; p_cap: number }
         Returns: boolean
-      }
-      catalog_rank: {
-        Args: {
-          p_exponent: number
-          p_families: string[]
-          p_half_km: number
-          p_known_families: string[]
-          p_lat: number
-          p_lng: number
-          p_nearest?: boolean
-          p_premier_1: number
-          p_premier_2: number
-          p_repeat?: number
-          p_require_active: boolean
-          p_root: number
-          p_stars_power?: number
-        }
-        Returns: Json
       }
       catalog_rank_lanes: {
         Args: {
@@ -4718,18 +4617,6 @@ export type Database = {
       place_take_verification_send: {
         Args: { p_channel: string; p_consumer_id: string; p_place_id: string }
         Returns: string
-      }
-      place_ticket_desk: {
-        Args: {
-          p_before?: string
-          p_before_id?: string
-          p_before_rank?: number
-          p_kind: string
-          p_livemode: boolean
-          p_place_id: string
-          p_timezone: string
-        }
-        Returns: Json
       }
       place_transfer_owner: {
         Args: { p_place_id: string; p_to_manager_id: string }
