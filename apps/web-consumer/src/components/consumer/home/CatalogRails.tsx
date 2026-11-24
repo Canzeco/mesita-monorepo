@@ -353,8 +353,8 @@ export function CatalogRails() {
   if (rowAsk !== lastRowAsk) {
     setLastRowAsk(rowAsk);
     if (rowAsk === SAVED_CHIP) setChip(SAVED_CHIP);
-    // HOME OPENS ON A DRAW (MESITA-4758): the page sends ?row=near or
-    // ?row=all (or Social's address); the row opens with its pool.
+    // HOME OPENS ON NEARBY (MESITA-4808): the page sends ?row=near; a chip
+    // tapped from Social may send ?row=all. The row opens with its pool.
     if (rowAsk === NEAR_CHIP || rowAsk === ALL_CHIP) {
       setChip(rowAsk);
       setPoolChip(rowAsk);
