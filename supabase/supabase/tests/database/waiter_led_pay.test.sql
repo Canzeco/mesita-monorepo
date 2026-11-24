@@ -3,7 +3,7 @@
 -- nothing owed still takes both taps, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(87);
+select plan(92);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -179,6 +179,21 @@ update public.place_waiters set removed_at = now(), lookup_hash = null, code = n
 select is((select count(*)::int from public.place_waiter_list('00000000-0000-4000-8000-000000014823', false)), 0, 'a removed waiter leaves the list');
 select is((select removed from public.place_waiter_list('00000000-0000-4000-8000-000000024823', false) where name = 'Luis'), true, 'unless a tip is still theirs');
 select ok(not has_table_privilege('authenticated', 'public.place_waiters', 'select') and not has_function_privilege('authenticated', 'public.place_waiter_list(uuid, boolean, timestamptz)', 'execute'), 'clients never read waiters');
+
+-- ── A place starts with one Staff code (MESITA-4904) ──
+insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000034823', 'Staff Probe');
+insert into public.places (id, slug, state, content_state, currency)
+values ('00000000-0000-4000-8000-000000034823', 'mesita-4823-staff', 'active', 'generating', 'MXN');
+insert into public.place_managers (place_id, consumer_id, method, expires_at, role)
+values ('00000000-0000-4000-8000-000000034823', '00000000-0000-4000-8000-0000000a4823', 'review', 'infinity', 'owner');
+select is((select count(*)::int from public.place_waiters where place_id = '00000000-0000-4000-8000-000000034823' and name = 'Staff' and code ~ '^[0-9]{6}$'), 1, 'an owner starts with one Staff code');
+update public.place_managers set role = 'owner' where place_id = '00000000-0000-4000-8000-000000034823';
+select is((select count(*)::int from public.place_waiters where place_id = '00000000-0000-4000-8000-000000034823'), 1, 'and only one');
+update public.place_waiters set removed_at = now(), lookup_hash = null, code = null where place_id = '00000000-0000-4000-8000-000000034823';
+select public.place_staff_code_start('00000000-0000-4000-8000-000000034823');
+select is((select count(*)::int from public.place_waiters where place_id = '00000000-0000-4000-8000-000000034823' and removed_at is null), 0, 'a removed Staff code stays removed');
+select ok(not has_function_privilege('authenticated', 'public.place_staff_code_start(uuid)', 'execute'), 'clients never make one');
+select is((select count(*)::int from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000034823'), 0, 'it turns no payment on');
 
 select * from finish();
 rollback;

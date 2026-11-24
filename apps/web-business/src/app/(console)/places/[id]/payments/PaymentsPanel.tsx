@@ -813,7 +813,7 @@ export function PaymentsPanel({
       <div id="waiter-codes" className="scroll-mt-24">
         <Card className={SECTION}>
           {head(HashIcon, "Visit Checkout - Waiter Codes", {
-            line: line("One 6-digit code per waiter. They scan the guest's QR and type their code to send the bill."),
+            line: line("Staff scan the guest's QR and type a code to send the bill. One code is enough; add waiters to know whose tip it is."),
           })}
           <WaiterCodes placeId={placeId} initial={initial.waiters} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
         </Card>

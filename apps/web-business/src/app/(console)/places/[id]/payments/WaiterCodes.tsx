@@ -7,6 +7,8 @@
 // CODES ARE OPTIONAL AT DISCOUNT (Pato, MESITA-4890: "enable the mode of no
 // password, only for discounts … display a red warning"); saving Cashback turns
 // them on again, on the server.
+// ONE CODE IS ENOUGH (MESITA-4904): a place starts with one named Staff; a
+// waiter's own code is for tips by name.
 // Instant, not under Save changes: these are actions. The server refuses editors.
 
 import { useState } from "react";
@@ -175,7 +177,7 @@ export function WaiterCodes({
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={40}
-            placeholder="Waiter's name"
+            placeholder="Waiter's name (optional)"
             aria-label="Waiter's name"
             autoComplete="off"
             className="border-border bg-background h-10 min-w-0 flex-1 rounded-full border px-4"
