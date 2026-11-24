@@ -341,7 +341,7 @@ function OpenBillPanel({ bill }: { bill: GuestBill }) {
   const amount = bill.quote ? bill.quote.outside_cents : (bill.bill_cents ?? 0) + bill.tip_cents;
   return (
     <Link href={CONSUMER_ROUTES.payCode} className={PENDING_ROW} data-pay-open-bill>
-      <PlacePhoto place={{ photo: bill.place.photo_url, name: bill.place.name }} className="h-8 w-12 rounded-md" />
+      <PlacePhoto place={{ photo: bill.place.photo_url, name: bill.place.name }} className="h-8 w-8" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-semibold">{bill.place.name ?? "Your bill"}</span>
         <span className={PENDING_LINE} role="timer" aria-live="off" data-pay-open-bill-timer>

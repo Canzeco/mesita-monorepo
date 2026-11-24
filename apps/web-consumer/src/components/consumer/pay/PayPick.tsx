@@ -400,7 +400,7 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
       data-pay-pick-place
     >
       <span className="flex w-full items-start gap-3.5">
-        <PlacePhoto place={p} className="h-11 w-11 rounded-lg" />
+        <PlacePhoto place={p} className="h-11 w-11" />
         <span className="min-w-0 flex-1 pt-0.5">
           <span className="block truncate text-sm font-semibold">{name}</span>
           {p.address ? (
@@ -535,7 +535,7 @@ function RowsSkeleton({ boxes = 0, bare = false }: { boxes?: number; bare?: bool
         <Fragment key={i}>
           <div className="px-4 py-3">
             <div className="flex items-start gap-3.5">
-              <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
+              <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
               <div className="flex-1 pt-1">
                 <Skeleton className="h-4 w-40" />
                 <Skeleton className="mt-2 h-3 w-24" />
