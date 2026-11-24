@@ -97,7 +97,7 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { EFError } from "@/lib/api/_invoke";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { useMapFilters } from "@/lib/use-map-filters";
+import { useMapFilters, useNearbyPicks } from "@/lib/use-map-filters";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { useActiveLocation } from "@/lib/active-location";
@@ -320,18 +320,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       : null;
     // SAVED AND NEARBY, AS ON HOME (Pato, 2026-11-21, MESITA-4592). Saved:
     // the guest's saved places are the pins and the cards, wherever they
-    // are. Nearby: every family, nearest first.
+    // are. NEARBY IS POPULAR AT THE GUEST'S POINT (Pato, 2026-11-24,
+    // MESITA-4847: "nearby does the same as popular. the only difference is
+    // that nearby redirects you to the point you are"): the same places in
+    // the same order; nearest first before.
     if (special === "saved") {
       return withDistances(
         savedPlaceList(savedIds, readSavedPlacePreviews<Place>()).filter(catalogPlaceOnMesita),
         distanceCenter,
       );
-    }
-    if (special === "nearby") {
-      const nearest = [...nearby].sort(
-        (a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity),
-      );
-      return prependAnchorPlace(nearest, anchorRow);
     }
     return prependAnchorPlace(nearby, anchorRow);
   }, [nearby, anchor, createdPlaces, distanceCenter, special, savedIds]);
@@ -690,21 +687,24 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
   }, [askCamera, clearPendingReload, loadAt, location, locate]);
 
-  // NEARBY CENTRES ON THE GUEST (MESITA-4592): picking Nearby moves the map
-  // to the chosen location (else the device fix) and reloads there, once
-  // per pick.
-  const nearbyHere = chosen ?? location;
-  const nearbyKey = special === "nearby" && nearbyHere ? `${nearbyHere.lat},${nearbyHere.lng}` : null;
+  // NEARBY MOVES THE MAP TO WHERE THE GUEST IS (MESITA-4592, MESITA-4847), on
+  // every tap, a repeat too, and loads there again (Pato: "redirect me to me
+  // and load nearby again"); a later fix never moves it again. With no fix it
+  // goes to the chosen location, or asks for one.
+  const nearbyPicks = useNearbyPicks();
+  const nearbyServed = useRef(nearbyPicks);
   useEffect(() => {
-    if (!nearbyKey || !nearbyHere) return;
-    askCamera({ kind: "center", lat: nearbyHere.lat, lng: nearbyHere.lng });
-    if (catalogIsStale(lastFetchedCenter.current, nearbyHere)) {
-      clearPendingReload();
-      void loadAt(nearbyHere, boxAtSight(lastBoxRef.current, nearbyHere));
+    if (nearbyServed.current === nearbyPicks) return;
+    nearbyServed.current = nearbyPicks;
+    const here = location ?? chosen;
+    if (!here) {
+      recentreOnGuest();
+      return;
     }
-    // Once per pick and point: `nearbyKey` carries both.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nearbyKey]);
+    askCamera({ kind: "center", lat: here.lat, lng: here.lng });
+    clearPendingReload();
+    void loadAt(here, boxAtSight(lastBoxRef.current, here));
+  }, [nearbyPicks, location, chosen, recentreOnGuest, askCamera, clearPendingReload, loadAt]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {

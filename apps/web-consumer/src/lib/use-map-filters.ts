@@ -86,9 +86,23 @@ export function selectMapFamily(key: FamilyKey) {
 }
 
 /** Saved or Nearby (MESITA-4592): every family; a family pick or Popular
- *  clears it. */
+ *  clears it. Each Nearby tap, a repeat too, counts as a pick (MESITA-4847). */
 export function setMapSpecial(special: MapSpecial) {
-  patchMapFilters({ familyKeys: [], special });
+  if (special === "nearby") nearbyPicks += 1;
+  // The same empty list, so the tap itself never reloads where the map was.
+  patchMapFilters({ familyKeys: state.familyKeys.length ? [] : state.familyKeys, special });
+}
+
+let nearbyPicks = 0;
+
+/** How many times Nearby was tapped in this document: Search moves the map to
+ *  the guest on each one. */
+export function useNearbyPicks(): number {
+  return useSyncExternalStore(
+    subscribe,
+    () => nearbyPicks,
+    () => 0,
+  );
 }
 
 /** The Menu's pick (MESITA-4469): one family, or none for Popular.

@@ -57,6 +57,10 @@ export const CHIP = `flex h-8 shrink-0 items-center gap-1 rounded-full border px
  *  an outer ring: the selected chip focuses with an inset ring. */
 export const CHIP_ON =
   "border-primary bg-primary text-primary-foreground shadow-float focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-foreground";
+/** Menu while a family is chosen: the whole pill is red (Pato, 2026-11-24,
+ *  MESITA-4847: "instead of that little invisible dot"; a dot, MESITA-4685). */
+export const CHIP_FILTERED =
+  "border-destructive bg-destructive text-destructive-foreground shadow-float focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-destructive-foreground";
 /** An unpicked chip on the map: the floating white pill. */
 export const CHIP_OFF = `${FLOAT} border-transparent hover:bg-muted`;
 /** An unpicked chip inside a sheet (already on white): a grey fill. */
