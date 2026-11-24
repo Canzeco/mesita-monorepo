@@ -240,7 +240,10 @@ export function WalletSection({
           loyalty cards in white boxes inside the same giant black box"): the
           black frame shows between them; was one panel with hairlines
           (MESITA-4560). */}
-      <div className="flex flex-col gap-1.5 [&>*]:bg-card [&>*]:overflow-hidden [&>*]:rounded-xl">
+      {/* LIGHT GREY, NOT WHITE (Pato, 2026-11-23, MESITA-4810: "make the boxes
+          a bit gray, not fully white, only the selector white"). White while
+          loading, so the grey bones show. */}
+      <div className={cn("flex flex-col gap-1.5 [&>*]:overflow-hidden [&>*]:rounded-xl", creditsState === "loading" ? "[&>*]:bg-card" : "[&>*]:bg-muted")}>
         {creditsState === "rows"
           ? cards.map((row) => {
               const gone = row.balance.place === null;
@@ -274,7 +277,7 @@ export function WalletSection({
             (MESITA-4765, D5). Not while the cards load. */}
         {creditsState !== "loading" ? (
           <button type="button" onClick={() => setAddOpen(true)} className={PAY_ROW} data-wallet-add-card>
-            <span className={cn(PAY_THUMB, "bg-muted text-foreground")} aria-hidden>
+            <span className={cn(PAY_THUMB, "bg-card text-foreground")} aria-hidden>
               <Plus className="h-4 w-4" strokeWidth={2.25} />
             </span>
             <span className={cn(PAY_ROW_TEXT, "min-w-0 flex-1 truncate")}>Add Loyalty Card</span>
@@ -284,7 +287,8 @@ export function WalletSection({
       </div>
       <AddCreditsCardDialog open={addOpen} onClose={() => setAddOpen(false)} />
       {creditsState === "failed" ? (
-        <div className="p-3">
+        // Its own box: dark words would vanish on the black frame.
+        <div className="bg-muted mt-1.5 rounded-xl p-3">
           <EmptyState
             inline
             icon={WalletIcon}
