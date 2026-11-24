@@ -14,7 +14,7 @@ export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
   // The ranking breakdown for Overview's Score box (MESITA-3319).
   const scored = usePlaceScore(measured);
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, ready, actions, sheets, social } =
+  const { place, ready, actions, sheets } =
     useMemberPlaceActions(scored);
   // The route's own loading silhouette until the Wallet and reservation
   // reads are in, so the profile lands whole (MESITA-3803).
@@ -25,7 +25,6 @@ export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
         <PlaceDetailBody
           place={place}
           actions={actions}
-          social={social}
         />
       </PlaceDetailModalShell>
       {sheets}

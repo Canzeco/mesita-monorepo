@@ -20,7 +20,6 @@ import type {
   VoucherKey,
 } from "@mesita/place-profile";
 import { pickPayCard } from "@mesita/place-profile";
-import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiBuyVoucher,
@@ -40,10 +39,8 @@ import {
 import { RemoveSavedDialog } from "@/components/consumer/RemoveSavedDialog";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
-  apiPlaceActivity,
   apiTrackActivity,
   isMesitaPlaceId,
-  type PlaceActivity,
 } from "@/lib/api/activity";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
@@ -78,8 +75,8 @@ import { dropBoughtOffers } from "@/lib/catalog-modes";
 // pages (MESITA-4111); More is rows at the foot. The shared renderer stays
 // presentational.
 //
-// Social v1 (MESITA-2442): opening the profile records `viewed`; the line
-// under the title comes from consumer-web-list-place-likes. There is no
+// Social v1 (MESITA-2442): opening the profile records `viewed`. No "You liked
+// this" line: the heart alone says it (Pato, MESITA-4868). There is no
 // "I went" (MESITA-2567: Social is liked and viewed only).
 //
 // THE VIEW THAT STARTS ENRICH SHOWS IT (Pato, MESITA-2952: "return the
@@ -100,7 +97,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   ready: boolean;
   actions: PlaceActions;
   sheets: ReactNode;
-  social: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const router = useRouter();
@@ -296,7 +292,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     ready,
     actions,
     sheets,
-    social: activity.social,
   };
 }
 
@@ -672,15 +667,10 @@ function writeLastCard(user: string | null, cardId: string): void {
 }
 
 function usePlaceActivity(placeId: string): {
-  social: ReactNode;
   enriching: boolean;
 } {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
-  const [state, setState] = useState<{
-    placeId: string;
-    activity: PlaceActivity | null;
-  }>({ placeId, activity: null });
   // The place this page's view found mid-Enrich (MESITA-2952).
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
@@ -688,7 +678,6 @@ function usePlaceActivity(placeId: string): {
     if (!mesita) return;
     let cancelled = false;
     const supabase = getSupabase();
-    // Viewed first, so the guest's own open counts in the line it reads.
     // Where the view happened (MESITA-2853): the device fix, if any.
     void apiTrackActivity(supabase, {
       kind: "viewed",
@@ -698,28 +687,14 @@ function usePlaceActivity(placeId: string): {
       .then((tracked) => {
         if (!cancelled && tracked.enriching) setEnrichingId(placeId);
       })
-      .catch(() => {})
-      .then(() => apiPlaceActivity(supabase, placeId))
-      .then((activity) => {
-        if (!cancelled) setState({ placeId, activity });
-      })
-      .catch(() => {
-        /* no line is the empty state */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeId, mesita]);
 
-  const activity = state.placeId === placeId ? state.activity : null;
-  const social = activity?.line ? (
-    <SocialLine faces={activity.people} text={activity.line} />
-  ) : null;
-
-  // A Google-only card has no place row yet: no line.
   return {
-    social: mesita ? social : null,
     enriching: mesita && enrichingId === placeId,
   };
 }

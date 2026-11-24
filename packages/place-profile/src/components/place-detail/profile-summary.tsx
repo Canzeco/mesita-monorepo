@@ -41,14 +41,12 @@ export const PROFILE_FACTS_ROW_CLASS = "flex flex-wrap items-center gap-2";
 export function ProfileSummary({
   place,
   actions,
-  social,
   creating = false,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
   /** Social v1's line (MESITA-2442): who saved or saw, where
    *  Instagram shows "Followed by". */
-  social?: React.ReactNode;
   /** Mesita is creating this Google-only profile right now (MESITA-2307). */
   creating?: boolean;
 }) {
@@ -95,7 +93,7 @@ export function ProfileSummary({
     // ONE WHITE BAND, NO DIVIDING LINES (Pato, MESITA-2633: "remove the
     // lines dividing the profile. it looks like shit"; MESITA-2632's
     // hairline sections lived one night). Three groups: photo + the three
-    // counts, the facts (outlined boxes) and the social line, then the two
+    // counts, the facts (outlined boxes), then the two
     // action rows; 16px around the band and between groups, 8px between
     // items. Only buttons wear a fill (MESITA-2623).
     <section className={PROFILE_SUMMARY_BAND_CLASS}>
@@ -185,7 +183,6 @@ export function ProfileSummary({
         )}
       </ul>
 
-      {social ? <div data-slot="social">{social}</div> : null}
       </div>
 
       <div data-profile-section="actions">

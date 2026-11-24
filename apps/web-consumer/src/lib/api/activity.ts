@@ -56,14 +56,6 @@ export type ActivityFeedItem = {
   place: Place;
 };
 
-export type PlaceActivity = {
-  /** "Perdón and 3 others liked this" (likes only, MESITA-2594), or null. */
-  line: string | null;
-  people: ActivityPerson[];
-  total: number;
-  me: { saved: boolean };
-};
-
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -148,18 +140,6 @@ export async function apiListActivityFeed(
     },
   );
   return { items, next, ...(blocked ? { blocked } : {}) };
-}
-
-export async function apiPlaceActivity(
-  client: SupabaseClient,
-  placeId: string,
-): Promise<PlaceActivity> {
-  const { line, people, total, me } = await invokeEF<PlaceActivity>(
-    client,
-    "consumer-web-list-place-likes",
-    { place_id: placeId },
-  );
-  return { line, people, total, me };
 }
 
 export async function apiSavedActivity(

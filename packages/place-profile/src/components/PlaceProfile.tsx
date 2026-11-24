@@ -29,7 +29,6 @@ export function PlaceProfile({
   scrollLabel,
   actions,
   creating,
-  social,
   scrollRef,
   footer,
   hideMore = false,
@@ -41,9 +40,6 @@ export function PlaceProfile({
   actions?: PlaceActions;
   /** A Google-only profile being created (MESITA-2307). */
   creating?: PlaceCreatingView | null;
-  /** Social v1's line (MESITA-2442), under the chips like Instagram's
-   *  "Followed by". */
-  social?: React.ReactNode;
   /** The scroller's ref, so a host can keep its offset across a Back
    *  (MESITA-4379: the consumer's useKeptScroll). */
   scrollRef?: (el: HTMLDivElement | null) => void;
@@ -72,7 +68,6 @@ export function PlaceProfile({
           place={place}
           actions={actions}
           creating={creating}
-          social={social}
           footer={footer}
         />
       </div>
