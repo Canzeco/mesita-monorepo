@@ -55,6 +55,7 @@ import {
   type PlaceEnrichmentState,
 } from "../actions";
 import { isEnriching, listedFromState } from "../place-header-state";
+import { day } from "@/lib/format";
 import { isEnrichedPlace } from "@/lib/place-enriched";
 import { SectionCard } from "@/components/ui/manage";
 import { premierTierChip, stateBoolChip } from "@/lib/state-vocabulary";
@@ -124,7 +125,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
   // A liveness claim with no date reads as current however old it is, so the
   // row says when Google last told us.
   const operatingSeen = typeof place.business_state_at === "string"
-    ? new Date(place.business_state_at).toLocaleDateString()
+    ? day(place.business_state_at)
     : null;
   const operatingDetail = bizStatus === null
     ? "Google has not reported a business status for this listing yet."

@@ -181,6 +181,7 @@ function FamiliesModal({
             autoFocus
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
+            aria-label="Search families"
             placeholder="Search families…"
             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
           />

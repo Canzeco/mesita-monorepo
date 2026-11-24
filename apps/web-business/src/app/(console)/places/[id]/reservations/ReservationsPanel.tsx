@@ -43,7 +43,7 @@ export function ReservationsPanel() {
     const r = await attempt(updatePlace(patch));
     setPending(null);
     if (!r.ok) return setError(r.error);
-    setPlace(r.data.place);
+    setPlace((prev) => ({ ...prev, ...r.data.place }));
     if (which === "phone") setDraft("");
   }
 

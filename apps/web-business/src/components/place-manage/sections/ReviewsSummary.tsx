@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Star, X } from "lucide-react";
 import { SectionCard } from "@/components/ui/manage";
+import { day } from "@/lib/format";
 import { usePlaceContext } from "../PlaceContext";
 
 // Reviews: one box, Google Reviews, read-only (Pato, MESITA-3401: "just
@@ -229,7 +230,9 @@ function reviewDate(raw: string | null): string | null {
   if (!raw) return null;
   const t = Date.parse(raw);
   if (!Number.isFinite(t)) return raw;
-  return new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  // A date with no time is a calendar date, so it keeps its own day.
+  const iso = new Date(t).toISOString();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? day(iso, "UTC") : day(iso);
 }
 
 /** One review: stars, date, the quote clamped to three lines with More. */

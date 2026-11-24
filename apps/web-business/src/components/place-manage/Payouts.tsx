@@ -15,7 +15,8 @@ import { attempt } from "@/lib/attempt";
 
 const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
 
-function PayoutRow({ p, timezone }: { p: Payout; timezone: string }) {
+// Stripe's arrival_date is a calendar date at midnight UTC, never a place time.
+function PayoutRow({ p }: { p: Payout }) {
   return (
     <li className={ROW}>
       <span className="bg-muted text-muted-foreground grid size-8 place-items-center rounded-full">
@@ -25,7 +26,7 @@ function PayoutRow({ p, timezone }: { p: Payout; timezone: string }) {
         <span className="truncate font-medium">{p.bank ?? "Your bank"}</span>
         <span className="text-muted-foreground text-sm">
           {payoutStatus(p.status)}
-          {p.arrival_date ? ` · ${p.status === "paid" ? "Arrived" : "Arrives"} ${day(p.arrival_date, timezone)}` : ""}
+          {p.arrival_date ? ` · ${p.status === "paid" ? "Arrived" : "Arrives"} ${day(p.arrival_date, "UTC")}` : ""}
           {p.failure_message ? ` · ${p.failure_message}` : ""}
         </span>
       </div>
@@ -34,7 +35,7 @@ function PayoutRow({ p, timezone }: { p: Payout; timezone: string }) {
   );
 }
 
-export function Payouts({ placeId, timezone }: { placeId: string; timezone: string }) {
+export function Payouts({ placeId }: { placeId: string }) {
   const [answer, setAnswer] = useState<PayoutsAnswer | null>(null);
   const [rows, setRows] = useState<Payout[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +57,14 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
   async function older() {
     if (answer?.state !== "ok" || !answer.next || busy) return;
     setBusy(true);
+    setError(null);
     const r = await attempt(getPayouts(placeId, answer.next));
     setBusy(false);
     if (!r.ok) return setError(r.error);
+    if (r.data.state !== "ok") return setError(r.data.state);
+    const { payouts } = r.data;
     setAnswer(r.data);
-    if (r.data.state === "ok") setRows((all) => [...all, ...(r.data as { payouts: Payout[] }).payouts]);
+    setRows((all) => [...all, ...payouts]);
   }
 
   return (
@@ -72,7 +76,6 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
           ))}
         </ul>
       ) : null}
-      {error ? <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
       {answer?.state === "stripe_error" ? <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
       {answer?.state === "no_account" ? (
         <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">
@@ -89,11 +92,12 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
         ) : (
           <ul className="divide-border divide-y">
             {rows.map((p) => (
-              <PayoutRow key={p.id} p={p} timezone={timezone} />
+              <PayoutRow key={p.id} p={p} />
             ))}
           </ul>
         )
       ) : null}
+      {error ? <p className="text-muted-foreground px-5 py-4 text-sm sm:px-6">Stripe didn&apos;t answer. Try again.</p> : null}
       {answer?.state === "ok" && answer.next ? (
         <button
           type="button"

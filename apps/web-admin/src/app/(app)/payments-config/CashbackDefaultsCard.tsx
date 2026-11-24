@@ -3,7 +3,7 @@
 // Admin › Offers › Cashbacks (MESITA-4700, Pato: "Yes, editable"): the
 // defaults every place without its own saved lines reads. Three rates
 // (Welcome, Returning, and Returning VIP since MESITA-4766), two picks each
-// (no cap per bill since MESITA-4728), one Save through
+// (at most MX$1,000 a bill, MESITA-4831), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
 // win; this never touches them. MESITA-4775: and the default Visit Offer,
 // Discount (off the bill) or Cashback (credit back), for all three lines.
@@ -59,7 +59,7 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
     <SectionCard
       icon={<ArrowsClockwiseIcon aria-hidden />}
       title="Visit Offers"
-      subtitle="The defaults for every place that hasn't set its own on Business › Offers: one Visit Mechanic (Discount or Cashback) for the four rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, with no cap, 1 hour later. Mesita takes no fee."
+      subtitle="The defaults for every place that hasn't set its own on Business › Offers: one Visit Mechanic (Discount or Cashback) for the four rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, at most MX$1,000 a bill, 1 hour later. Mesita takes no fee."
     >
       {!draft ? (
         <Notice className="mt-4">Couldn&apos;t load the cashback defaults. Reload to edit them.</Notice>

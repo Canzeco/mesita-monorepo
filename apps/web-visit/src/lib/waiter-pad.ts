@@ -27,6 +27,13 @@ export function pressCode(code: string, key: Key): string {
 /** Nothing or zero typed is no tip. */
 export const tipOf = (text: string): number => readAmount(text) ?? 0;
 
+/** A percent of the bill, rounded to the cent. */
+export const percentTip = (billCents: number | null, pct: number): number => Math.round(((billCents ?? 0) * pct) / 100);
+
+/** A picked percent follows the bill; a typed tip stays as typed. */
+export const tipFor = (billCents: number | null, pct: number | null, text: string): number =>
+  pct === null ? tipOf(text) : percentTip(billCents, pct);
+
 /** A typed amount as it reads: "1,250.5" and the cents not typed yet. */
 export function amountParts(text: string): { typed: string; ghost: string } {
   if (text === "") return { typed: "", ghost: "0.00" };

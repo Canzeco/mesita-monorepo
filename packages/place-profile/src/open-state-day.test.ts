@@ -60,6 +60,22 @@ describe("the next opening names the day", () => {
     expect(s.closes_at).toBe("15:00");
   });
 
+  it("a 24h day followed by a 00:00 opening closes when the next day does", () => {
+    const hours = {
+      friday: [{ open: "18:00", close: "23:59" }],
+      saturday: [{ open: "00:00", close: "23:59" }],
+      sunday: [{ open: "00:00", close: "22:00" }],
+    };
+    at("2026-09-26T23:59:00"); // Saturday
+    expect(computeOpenState(hours, TZ)).toMatchObject({ open_now: true, closes_at: "22:00" });
+    at("2026-09-26T10:00:00");
+    expect(computeOpenState(hours, TZ).closes_at).toBe("tomorrow 22:00");
+    at("2026-09-25T20:00:00"); // Friday, two days before
+    expect(computeOpenState(hours, TZ).closes_at).toBe("Sun 22:00");
+    at("2026-09-27T12:00:00");
+    expect(computeOpenState(hours, TZ).closes_at).toBe("22:00");
+  });
+
   it("a week out says next", () => {
     expect(opensOnDay(7, 2, "08:30")).toBe("next Tue 08:30");
     expect(opensOnDay(0, 2, "08:30")).toBe("08:30");

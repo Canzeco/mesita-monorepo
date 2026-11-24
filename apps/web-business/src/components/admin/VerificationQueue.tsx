@@ -65,6 +65,7 @@ export function VerificationQueue({ pending }: { pending: PendingRequest[] }) {
               value={notes[r.id] ?? ""}
               onChange={(e) => setNotes((n) => ({ ...n, [r.id]: e.target.value }))}
               maxLength={500}
+              aria-label="Note to the guest"
               placeholder="Note to the guest (shown if you reject)"
               className={`${INPUT_BASE} h-9 px-3`}
             />

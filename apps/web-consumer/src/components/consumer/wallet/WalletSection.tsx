@@ -296,19 +296,3 @@ export function WalletSection({
     </div>
   );
 }
-
-/** A row's money (MESITA-4497): what is ready in plain bold, then each
- *  pending amount on its own grey line. No pill: Pay is the row's one black thing. */
-export function BalanceLines({ available, pending }: { available: string | null; pending: string[] }) {
-  if (!available && pending.length === 0) return null;
-  return (
-    <span className="mt-0.5 block text-sm leading-tight tabular-nums">
-      {available ? <span className="text-foreground block font-semibold">{available}</span> : null}
-      {pending.map((line, i) => (
-        <span key={i} className="text-muted-foreground block truncate">
-          {line}
-        </span>
-      ))}
-    </span>
-  );
-}

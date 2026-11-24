@@ -24,6 +24,8 @@ type Result<T> =
     ok: false;
     error: string;
     code?: string | null;
+    /** The EF's HTTP status, where a caller needs it. */
+    status?: number;
   };
 
 // ── Place load ───────────────────────────────────────────────────────────
@@ -207,10 +209,10 @@ export async function getPlaceAndRole(
     code_set?: boolean;
     can_sell?: boolean | null;
   }>("business-web-get-place", { place_id: placeId });
-  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  if (!r.ok) return { ok: false, error: r.error, code: r.code, status: r.status };
   const place = r.data.place ?? null;
   if (!place || place.id !== placeId) {
-    return { ok: false, error: "Place not found or not loadable." };
+    return { ok: false, error: "Place not found or not loadable.", status: 404 };
   }
   const profile = readProfile(r.data.profile);
   if (!profile) {

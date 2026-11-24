@@ -237,6 +237,7 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
 export function SearchRailOverlay({
   places,
   catalogLoading = false,
+  failed = false,
   selectedId,
   railScrollRef,
   onRailScroll,
@@ -247,6 +248,8 @@ export function SearchRailOverlay({
 }: {
   places: Place[];
   catalogLoading?: boolean;
+  /** The last load failed: an empty rail does not mean an empty area. */
+  failed?: boolean;
   selectedId: string | null;
   railScrollRef: RefObject<HTMLDivElement | null>;
   onRailScroll: () => void;
@@ -293,7 +296,7 @@ export function SearchRailOverlay({
           <div className={RAIL_ROW} data-search-rail-empty>
             <div className={RAIL_SCROLLER}>
               <div className={RAIL_PAGE}>
-                <AddPlaceButton onAdd={onAdd} empty filterLabel={filterLabel} />
+                <AddPlaceButton onAdd={onAdd} empty={!failed} filterLabel={filterLabel} />
               </div>
             </div>
           </div>

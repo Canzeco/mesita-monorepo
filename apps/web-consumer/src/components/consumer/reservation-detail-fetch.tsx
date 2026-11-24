@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarX } from "lucide-react";
+import { CalendarX, RotateCw } from "lucide-react";
 
 import { ReservationDetailBody } from "@/components/consumer/ReservationDetailBody";
 import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ReservationBodySkeleton } from "@/components/consumer/overlay/DetailSkeletons";
 import { apiListReservations } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/reservation-types";
@@ -16,18 +17,28 @@ import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 type State =
   | { state: "loading" }
   | { state: "found"; r: ReservationItem }
-  | { state: "missing" };
+  | { state: "missing" }
+  | { state: "failed" };
 
 // consumer-web-list-reservations has no get-by-id, so the detail surface pulls
 // the caller's full list once (scope "all") and finds the row. N is small — a
 // single account rarely holds more than a handful of bookings.
-function useReservationById(id: string): { state: State; reload: () => void } {
+function useReservationById(id: string): {
+  state: State;
+  reload: () => void;
+  retry: () => void;
+} {
   const supabase = useBrowserSupabase();
   const [state, setState] = useState<State>({ state: "loading" });
   // Bumped by the detail actions (cancel / reschedule) so the reservation's phase,
   // banner and available actions re-derive from the server, not from guesses.
   const [nonce, setNonce] = useState(0);
   const reload = useCallback(() => setNonce((n) => n + 1), []);
+  // Try again after a failed first read: the bones, then the answer.
+  const retry = useCallback(() => {
+    setState({ state: "loading" });
+    reload();
+  }, [reload]);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,7 +61,7 @@ function useReservationById(id: string): { state: State; reload: () => void } {
         // only a first read that fails has nothing to show.
         if (!cancelled) {
           setState((s) =>
-            s.state === "found" && s.r.id === id ? s : { state: "missing" },
+            s.state === "found" && s.r.id === id ? s : { state: "failed" },
           );
         }
       }
@@ -63,7 +74,7 @@ function useReservationById(id: string): { state: State; reload: () => void } {
   // While the place hasn't answered, read again every 10 s (MESITA-3619).
   usePollWhile(state.state === "found" && isAwaitingPlace(state.r.state), reload);
 
-  return { state, reload };
+  return { state, reload, retry };
 }
 
 function ReservationNotFound() {
@@ -83,6 +94,19 @@ function ReservationNotFound() {
   );
 }
 
+// The read failed: nothing is known about the reservation, so never "not found".
+function ReservationLoadFailed({ onRetry }: { onRetry: () => void }) {
+  return (
+    <EmptyState
+      icon={RotateCw}
+      title="Couldn't load this reservation"
+      description="Check your connection and try again."
+      action={{ label: "Try again", onClick: onRetry }}
+      className="min-h-full"
+    />
+  );
+}
+
 // Body for the hard-nav /reservation/[id] page — the page supplies its
 // own header around this.
 // WHILE THE ROW LOADS, THE RESERVATION'S SILHOUETTE (Pato, MESITA-2701: "the
@@ -91,10 +115,11 @@ function ReservationNotFound() {
 // so the route's placeholder hands straight over to this one and then to
 // the body. It was a centred spinner between the two.
 export function ReservationDetailFetcher({ id }: { id: string }) {
-  const { state, reload } = useReservationById(id);
+  const { state, reload, retry } = useReservationById(id);
   if (state.state === "loading") {
     return <ReservationBodySkeleton />;
   }
+  if (state.state === "failed") return <ReservationLoadFailed onRetry={retry} />;
   if (state.state === "missing") return <ReservationNotFound />;
   return <ReservationDetailBody r={state.r} onChanged={reload} />;
 }
@@ -104,17 +129,19 @@ export function ReservationDetailFetcher({ id }: { id: string }) {
 // name is null and the share square waits, as it does in the segment's
 // loading.tsx (ReservationSlideOverSkeleton), so the two are one frame.
 export function ReservationDetailModalClient({ id }: { id: string }) {
-  const { state, reload } = useReservationById(id);
+  const { state, reload, retry } = useReservationById(id);
   const placeName =
     state.state === "found"
       ? state.r.placeName
-      : state.state === "missing"
+      : state.state === "missing" || state.state === "failed"
         ? "your reservation"
         : null;
   return (
     <ReservationDetailModalShell placeName={placeName}>
       {state.state === "loading" ? (
         <ReservationBodySkeleton />
+      ) : state.state === "failed" ? (
+        <ReservationLoadFailed onRetry={retry} />
       ) : state.state === "missing" ? (
         <ReservationNotFound />
       ) : (

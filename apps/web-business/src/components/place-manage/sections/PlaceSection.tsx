@@ -141,7 +141,7 @@ function statNum(v: unknown): number | null {
 }
 
 function compactCount(n: number): string {
-  if (n < 1_000) return n.toLocaleString();
+  if (n < 1_000) return n.toLocaleString("en-US");
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   return `${(n / 1_000).toFixed(1)}K`;
 }
@@ -161,7 +161,7 @@ function ChannelStat({ channel, place }: { channel: keyof AdminPlace; place: Adm
     if (stars != null || count != null) {
       spoken = [
         stars != null ? `Google rating ${stars.toFixed(1)}` : null,
-        count != null ? `${count.toLocaleString()} reviews` : null,
+        count != null ? `${count.toLocaleString("en-US")} reviews` : null,
       ].filter(Boolean).join(", ");
       body = (
         <>
@@ -193,7 +193,7 @@ function ChannelStat({ channel, place }: { channel: keyof AdminPlace; place: Adm
   } else if (channel === "instagram_url" || channel === "facebook_url") {
     const n = statNum(channel === "instagram_url" ? place.instagram_followers_count : place.facebook_followers);
     if (n != null) {
-      spoken = `${channel === "instagram_url" ? "Instagram" : "Facebook"} followers: ${n.toLocaleString()}`;
+      spoken = `${channel === "instagram_url" ? "Instagram" : "Facebook"} followers: ${n.toLocaleString("en-US")}`;
       body = (
         <>
           <span className="text-foreground font-semibold">{compactCount(n)}</span>

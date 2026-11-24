@@ -9,7 +9,7 @@
 // the pin, a Location (a city, a region) the map and no button. Tapping a
 // row's body anchors the map (MESITA-1405); the button opens or creates.
 
-import { Map as MapIcon, MapPin, RotateCw, SearchX } from "lucide-react";
+import { Map as MapIcon, LogIn, MapPin, RotateCw, SearchX } from "lucide-react";
 import { premierLabel } from "@mesita/place-profile";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,7 @@ export function SearchResultsPanel({
   onAction,
   onClearSearch,
   onRetry,
+  onSignIn,
 }: {
   query: string;
   searching: boolean;
@@ -44,6 +45,9 @@ export function SearchResultsPanel({
   onClearSearch?: () => void;
   /** Re-run the same query after a failure. */
   onRetry?: () => void;
+  /** Set for a signed-out visitor, whose name search never leaves (the
+   *  anonymous gate): the panel asks them to sign in instead of "no match". */
+  onSignIn?: () => void;
 }) {
   const settled = !searching && query.trim().length >= 2;
 
@@ -84,7 +88,28 @@ export function SearchResultsPanel({
           </div>
         )}
 
-        {settled && !searchError && predictions.length === 0 && (
+        {settled && !searchError && predictions.length === 0 && onSignIn && (
+          <div className="flex flex-col items-center justify-center py-4 text-center">
+            <span className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-2xl">
+              <LogIn className="h-4 w-4" />
+            </span>
+            <p className="mt-2.5 text-sm font-semibold">
+              Sign in to search by name
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              Or clear the search to browse the map.
+            </p>
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="text-foreground border-border hover:bg-muted/60 mt-3 inline-flex h-9 items-center rounded-full border px-3.5 text-xs font-semibold transition active:scale-[0.98]"
+            >
+              Sign in
+            </button>
+          </div>
+        )}
+
+        {settled && !searchError && predictions.length === 0 && !onSignIn && (
           <div className="flex flex-col items-center justify-center py-4 text-center">
             <span className="bg-muted text-muted-foreground flex h-10 w-10 items-center justify-center rounded-2xl">
               <SearchX className="h-4 w-4" />
