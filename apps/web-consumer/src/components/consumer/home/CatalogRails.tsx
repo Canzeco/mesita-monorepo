@@ -252,10 +252,10 @@ export function homeTabOf(pathname: string): HomeTab {
  *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string; emoji: string }[] {
   return [
+    // Social before Saved (Pato, MESITA-4802; after it in MESITA-4758): the feed, not a pool.
+    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "😊" },
     // A HEART, AND THE WORD IS SAVED, never Favorites (Pato, MESITA-3718).
     { key: SAVED_CHIP, label: SAVED_LABEL, emoji: "❤️" },
-    // Social after Saved (MESITA-4758): the feed, not a pool.
-    { key: SOCIAL_CHIP, label: SOCIAL_LABEL, emoji: "😊" },
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
