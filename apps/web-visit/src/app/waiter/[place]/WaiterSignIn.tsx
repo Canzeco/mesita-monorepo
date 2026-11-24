@@ -91,7 +91,7 @@ export function WaiterSignIn({ placeId, scan }: { placeId: string; scan: string 
       <main className="proof pay-end" data-waiter={place}>
         <h1>{place === "gone" ? "This link doesn't work" : "Couldn't reach Mesita"}</h1>
         {place === "gone" ? (
-          <p className="proof-line">Ask the manager for the waiter link again.</p>
+          <p className="proof-line">Ask the owner for the waiter link again.</p>
         ) : (
           <button type="button" style={{ marginTop: 16 }} onClick={() => { setPlace(null); setTries((n) => n + 1); }}>
             Try again

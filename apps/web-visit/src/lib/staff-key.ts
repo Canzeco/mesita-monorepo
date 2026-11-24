@@ -45,6 +45,6 @@ export function rememberStaffPlace(place: StaffPlace) {
   try {
     localStorage.setItem(PLACES_KEY, JSON.stringify([place, ...readStaffPlaces().filter((p) => p.id !== place.id)].slice(0, 10)));
   } catch {
-    // Private mode: the manager's link is opened again next time.
+    // Private mode: the owner's link is opened again next time.
   }
 }

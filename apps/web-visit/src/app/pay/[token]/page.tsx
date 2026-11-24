@@ -8,7 +8,7 @@ import { Bones } from "@/components/Bones";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR (MESITA-4823). The QR
 // names no place: the phone's own place opens the bill. One place: straight
-// through. Several: the waiter picks. None: the manager's waiter link.
+// through. Several: the waiter picks. None: the owner's waiter link.
 
 export default function ScanPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -59,7 +59,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     return (
       <main className="proof pay-end" data-scan="unknown-phone">
         <h1>This phone isn&apos;t set up</h1>
-        <p className="proof-line">Ask the manager for the waiter link, open it once, then scan the guest&apos;s QR again.</p>
+        <p className="proof-line">Ask the owner for the waiter link, open it once, then scan the guest&apos;s QR again.</p>
       </main>
     );
   }
