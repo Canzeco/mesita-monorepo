@@ -37,7 +37,7 @@ export const PAY_ROW_TEXT = "text-foreground text-base font-semibold";
 export const PAY_ROW_META = "text-muted-foreground text-sm";
 
 /** The Wallet's two modals (MESITA-4846): `?tab=` names the open one, so the
- *  phone's Back closes it and Back from a place lands in it. */
+ *  phone's Back closes it. Back from a picked place lands on the page (MESITA-4896). */
 export const PAY_MODALS = ["prepay", "pay"] as const;
 export type PayModal = (typeof PAY_MODALS)[number];
 export function readPayModal(v: string | null | undefined): PayModal | null {
