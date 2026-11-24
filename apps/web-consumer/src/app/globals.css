@@ -211,6 +211,7 @@
   --fact-closed: oklch(0.577 0.245 27.325);
   --fact-distance: oklch(0.546 0.245 262.881);
   --fact-star: oklch(0.828 0.189 84.429);
+  --vip: #e9c46a; /* VIP gold, VIP only (MESITA-4877) */
   /* The $$ on a card (MESITA-2673): green-700, ~5:1 on white at 14px. */
   --fact-price: oklch(0.527 0.154 150.069);
   /* The discount (MESITA-3249, Pato: "make it more suave, more light, less
@@ -269,6 +270,7 @@
   --color-fact-closed: var(--fact-closed);
   --color-fact-distance: var(--fact-distance);
   --color-fact-star: var(--fact-star);
+  --color-vip: var(--vip);
   --color-fact-price: var(--fact-price);
   --color-border: var(--border);
   --color-input: var(--input);

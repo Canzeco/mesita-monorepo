@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, Check, ConciergeBell, Crown, PartyPopper, Sparkles, Ticket, Users } from "lucide-react";
+import { Camera, Check, ChevronRight, ConciergeBell, Crown, PartyPopper, Sparkles, Ticket, Users, type LucideIcon } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { IconChip, RowDivider, SettingsGroup, SettingsLinkRow } from "@/components/consumer/me/settings-rows";
+import { IconChip, SettingsGroup, SettingsLinkRow } from "@/components/consumer/me/settings-rows";
 import { MESITA_SUPPORT_EMAIL } from "@/lib/mesita-contact";
 import { Spinner } from "@/components/shared";
 import { InstagramVip } from "@/components/consumer/me/InstagramModal";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { apiFetchConsumerProfile, type ConsumerProfile } from "@/lib/api/profile";
 import { apiRedeemVipCode } from "@/lib/api/vip";
@@ -34,28 +35,69 @@ export function VipFrame({ children }: { children: ReactNode }) {
   return <MeScreen title="Class">{children}</MeScreen>;
 }
 
-// ONE CARD SAYS THE CLASS AND WHAT VIP GETS (Pato, 2026-11-24, MESITA-4864:
-// "make class easy"), then one way in below it.
-function ClassCard({ vip, reason }: { vip: boolean; reason: ConsumerProfile["vip_reason"] }) {
-  const why = !vip
-    ? "VIP gets a better rate on every bill, at places with VIP offers."
-    : reason === "code"
-      ? "You joined with an invitation code. You get each place's VIP rate on every bill."
-      : reason === "instagram"
-        ? "Your verified Instagram made you VIP. You get each place's VIP rate on every bill."
-        : "You get each place's VIP rate on every bill.";
+// CLASS IN COLOUR (Pato, 2026-11-24, MESITA-4877, /plan-design-review D3-D7).
+// The VIP card leads, black and gold: gold means VIP only (purple is Prepay,
+// green is Pay). The guest's own class is a line under it, then the ways in as
+// soft tinted boxes, dark ink on each.
+const GOLD = "text-vip";
+const INK = "text-foreground";
+
+/** The black and gold card. `profile` null = not read yet: the card alone,
+ *  never a status, so a VIP is never called Regular (D7). */
+function VipCard({ profile }: { profile: ConsumerProfile | null }) {
+  const vip = isVip(profile);
+  const name = profile?.first_name?.trim();
+  const how =
+    profile?.vip_reason === "code"
+      ? "You joined with an invitation code."
+      : profile?.vip_reason === "instagram"
+        ? "Your verified Instagram made you VIP."
+        : null;
   return (
-    <div className={cn("flex items-center gap-4 rounded-2xl p-5", vip ? "bg-foreground text-background" : "bg-card border-border border")} data-vip-status={vip ? "vip" : "regular"}>
-      <span className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", vip ? "bg-background text-foreground" : "bg-muted text-foreground")} aria-hidden>
-        <Crown className="h-7 w-7" strokeWidth={2} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-2xl leading-tight font-semibold">{vip ? "VIP" : "Regular"}</span>
-        <span className={cn("mt-1 block text-sm", vip ? "text-background/80" : "text-muted-foreground")} data-vip-why>
-          {why}
-        </span>
-      </span>
+    <div
+      className="bg-foreground flex min-h-44 flex-col justify-between gap-6 rounded-2xl p-5 text-white"
+      data-vip-status={profile ? (vip ? "vip" : "regular") : "unknown"}
+    >
+      <Crown className={cn("h-10 w-10", GOLD)} strokeWidth={1.75} aria-hidden />
+      <div>
+        <h2 className={cn("text-3xl leading-tight font-semibold", GOLD)}>{vip && name ? `${name}, VIP` : "VIP"}</h2>
+        <p className="mt-1 text-base text-white/85" data-vip-why>
+          {vip ? "You get each place's VIP rate on every bill." : "A better rate on every bill, at places with VIP offers."}
+        </p>
+        {vip && how ? <p className="mt-1 text-sm text-white/70">{how}</p> : null}
+      </div>
     </div>
+  );
+}
+
+/** One way to VIP: the whole tinted box is the link. */
+function WayBox({
+  href,
+  Icon,
+  title,
+  sub,
+  tone,
+  way,
+}: {
+  href: string;
+  Icon: LucideIcon;
+  title: string;
+  sub: string;
+  tone: string;
+  way: string;
+}) {
+  return (
+    <PushLink
+      href={href}
+      className={cn("flex min-h-32 min-w-0 flex-col justify-between gap-4 rounded-2xl p-4 transition hover:brightness-95", INK, tone)}
+      data-vip-way={way}
+    >
+      <Icon className="h-7 w-7" strokeWidth={2} aria-hidden />
+      <span className="min-w-0">
+        <span className="block text-base leading-tight font-semibold">{title}</span>
+        <span className="mt-0.5 block text-sm opacity-80">{sub}</span>
+      </span>
+    </PushLink>
   );
 }
 
@@ -75,24 +117,46 @@ export function VipModal() {
   const vip = isVip(profile);
   return (
     <VipFrame>
-      <div className="flex flex-col gap-4">
-        <ClassCard vip={vip} reason={profile?.vip_reason ?? null} />
-        {vip ? (
-          profile?.instagram_handle ? (
-            <SettingsGroup>
-              <SettingsLinkRow Icon={Instagram} tint="muted" href={CONSUMER_ROUTES.mePages.instagram} label="Instagram" sub={`@${profile.instagram_handle}`} />
-            </SettingsGroup>
-          ) : null
-        ) : (
-          <SettingsGroup title="Upgrade to VIP">
-            <SettingsLinkRow Icon={Instagram} tint="muted" href={CONSUMER_ROUTES.mePages.instagram} label="Upgrade with Instagram" sub="More than 5,000 followers" />
-            <RowDivider />
-            <SettingsLinkRow Icon={Ticket} tint="muted" href={CONSUMER_ROUTES.mePages.vipCode} label="Upgrade manually" sub="With an invitation code" />
-          </SettingsGroup>
-        )}
-        <SettingsGroup>
-          <SettingsLinkRow Icon={Users} tint="muted" href={CONSUMER_ROUTES.mePages.vipAgency} label="Bring your people" sub="Agencies, creators, promoters, hotels" />
-        </SettingsGroup>
+      <div className="flex flex-col gap-5">
+        <VipCard profile={profile ?? null} />
+        {profile && !vip ? (
+          <>
+            <p className="text-muted-foreground -mt-2 text-center text-sm">
+              You&apos;re <span className="text-foreground font-semibold">Regular</span> now
+            </p>
+            <section className="flex flex-col gap-3">
+              <h3 className="text-base font-semibold">Upgrade to VIP</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <WayBox href={CONSUMER_ROUTES.mePages.instagram} Icon={Instagram} title="Instagram" sub="More than 5,000 followers" tone="bg-[#FFD9E6]" way="instagram" />
+                <WayBox href={CONSUMER_ROUTES.mePages.vipCode} Icon={Ticket} title="Invitation code" sub="12 digits" tone="bg-[#FBE9B7]" way="code" />
+              </div>
+            </section>
+          </>
+        ) : null}
+        {profile && vip ? (
+          <>
+            <PushLink href={CONSUMER_ROUTES.home} className={cn(PRIMARY_BUTTON_CLASS, "flex items-center justify-center")} data-vip-explore>
+              Explore places
+            </PushLink>
+            {profile.instagram_handle ? (
+              <SettingsGroup>
+                <SettingsLinkRow Icon={Instagram} tint="muted" href={CONSUMER_ROUTES.mePages.instagram} label="Instagram" sub={`@${profile.instagram_handle}`} />
+              </SettingsGroup>
+            ) : null}
+          </>
+        ) : null}
+        <PushLink
+          href={CONSUMER_ROUTES.mePages.vipAgency}
+          className={cn("flex min-h-20 items-center gap-4 rounded-2xl bg-[#D6ECFF] p-4 transition hover:brightness-95", INK)}
+          data-vip-way="people"
+        >
+          <Users className="h-7 w-7 shrink-0" strokeWidth={2} aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-base leading-tight font-semibold">Bring your people</span>
+            <span className="mt-0.5 block text-sm opacity-80">Agencies, creators, promoters, hotels</span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+        </PushLink>
       </div>
     </VipFrame>
   );
@@ -150,7 +214,7 @@ export function VipCodePage() {
   return (
     <MeScreen title="Upgrade manually">
       {isVip(profile) ? (
-        <ClassCard vip reason={profile?.vip_reason ?? null} />
+        <VipCard profile={profile ?? null} />
       ) : (
         <form
           className="bg-card border-border flex flex-col gap-3 rounded-2xl border p-4"
