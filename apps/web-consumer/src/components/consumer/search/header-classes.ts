@@ -1,24 +1,17 @@
-// Search header's one token set. A WHITE TOP HEADER, FLOATING CHIPS (Pato,
-// MESITA-3019: "make a top header for the searchbar … location searchbar and
-// ask ai with white background, then the filters and categories actually
-// floating"). Row one sits in a white band with a 1px hairline under it, its
-// three controls grey-filled on the white (white on white would vanish). The
-// chip row under it stays floating white pills with a shadow over the map,
-// as MESITA-2996 made every control.
-//
-// THREE SEPARATE CONTROLS on row one (Pato, MESITA-3009: "return to the
-// three buttons: location at the left, searchbar, ask ai at the right, all
-// separated"; MESITA-2999 had put Ask AI and locate inside one long bar):
-// the 40px locate disc, the 40px search bar, and the 40px white Ask AI pill:
-// the sparkle mark and the words (MESITA-4007; MESITA-3991 had made it a
-// mark-only disc; a labelled pill from MESITA-3010). Under them the 32px chip row, opening with a white icon-only Filters disc (MESITA-3006). Two heights (MESITA-2996, reverses MESITA-2445).
+// Search header's one token set. NO BAND (Pato, 2026-11-23, MESITA-4799: "I
+// want to make the searchbar background transparent" … "put the askai button
+// joined to the searchbar"; MESITA-3019 had a white band, MESITA-3009 a
+// separate Ask AI): the map runs to the screen top, and locate, the bar and
+// the chips are white floating pills with one shadow.
 //
 // The border stays as `border-transparent` so keyboard focus can darken it
 // without the control shifting a pixel.
 //
-//   ┌ (⌖) [ ⚲ Search places…   ] (✦ Ask AI) ┐ ← HEADER_BAND: HEADER_DISC · BAR (SearchBar) · HEADER_PILL
-//   └────────────────────────────────────────┘
-//   (≡) (☆ Top) (○ Coffee) …   over the map    ← CHIP_DISC · CHIP + CHIP_ON / CHIP_OFF
+//   (⌖) [ ⚲ Search places…      │ ✦ AI ]   ← HEADER_DISC · SEARCH_BAR (SearchBar + BAR_ACTION)
+//   [▦ Menu] (☆ Popular) (○ Coffee) …      ← CHIP_SPECIAL · CHIP + CHIP_ON / CHIP_OFF
+//
+// Two heights: 40px controls, 32px chips (MESITA-2996). Pay's bar (BAR) and
+// Tickets (HEADER_PILL) sit on white, so they stay grey.
 //
 // A leaf module with no imports, so Home's header can adopt it later.
 
@@ -34,24 +27,26 @@ export const HEADER_ICON_STROKE = 2;
  *  before it barely read over a pale map). */
 export const FLOAT = "bg-card text-foreground shadow-float";
 
-/** Row one's white band across the top of the map, a 1px hairline under it
- *  (MESITA-3019), Home's header surface. */
-export const HEADER_BAND = "bg-card border-border border-b";
-
-/** A control inside the white band: a grey fill, no shadow. */
+/** A control on a white header (Pay): a grey fill, no shadow. */
 const IN_BAND = "bg-muted text-foreground border-transparent";
 
-/** The search bar: the grey pill in the band that holds the query field;
- *  typing darkens its border. */
+/** Pay's search bar: a grey pill on white; typing darkens its border. */
 export const BAR = `${IN_BAND} focus-within:border-foreground flex h-10 min-w-0 items-center gap-1 rounded-full border pr-1 pl-4 transition-colors`;
+
+/** Search's bar on the map: a white floating pill holding the query field
+ *  and, at its right end, Ask AI (MESITA-4799). `overflow-hidden` clips the
+ *  AI end to the pill's round corner. */
+export const SEARCH_BAR = `${FLOAT} border-transparent focus-within:border-foreground flex h-10 min-w-0 items-stretch overflow-hidden rounded-full border pl-4 transition-colors`;
+
+/** Ask AI, the bar's right end: the full 40px tall, a hairline before it. */
+export const BAR_ACTION = `border-border hover:bg-muted focus-visible:bg-muted active:bg-muted flex shrink-0 items-center justify-center gap-1.5 border-l pr-4 pl-3 ${HEADER_TEXT} whitespace-nowrap outline-none transition-colors`;
 
 /** The locate disc: a 40px (MESITA-3022; was 48) floating white disc left of the bar, the bar's
  *  height (Pato, MESITA-3009: "location at the left"; right of the bar in
  *  MESITA-3006, under the chips in MESITA-3005). */
-export const HEADER_DISC = `${IN_BAND} hover:bg-border flex h-10 w-10 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
+export const HEADER_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-/** A labelled 40px pill in the band: Ask AI (the sparkle and its words,
- *  MESITA-4007) and Pay's Tickets shortcut. */
+/** A labelled 40px grey pill: Pay's Tickets shortcut. */
 export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 /** The Filters disc at the chip row's left: a chip's 32px, round, icon
