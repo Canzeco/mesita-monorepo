@@ -153,8 +153,8 @@ export const CONSUMER_ROUTES = {
     // of anything priced — it stays (Pato, MESITA-2080).
     instagram: "/me/instagram",
     // BECOME VIP (Pato, 2026-11-23, MESITA-4766: "In order to be VIP, is
-    // either invitation code or 5000 followers on instagram"): the two ways
-    // in, a code field and Connect Instagram.
+    // either invitation code or 5000 followers on instagram"). Codes only
+    // since MESITA-4849: one code field.
     vip: "/me/vip",
     // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.

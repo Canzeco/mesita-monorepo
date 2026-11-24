@@ -8,7 +8,7 @@ import { isCardExpired, type PayCards } from "../../pay-cards";
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/format";
 import { VOUCHER_TONE, visitMechanismOf, visitTone, visitWord, type VisitMechanism } from "../../lib/offers";
-import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, VIP_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
+import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
@@ -235,16 +235,11 @@ function offerStatus(
   can: boolean,
   lock: GuestLock,
   reason: VoucherReason | undefined,
-  guest?: PlaceActions["guest"],
 ): InfoStatus {
-  // VIP ONLY (MESITA-4640): the bar, then the guest's own facts, objective,
-  // never "you need N more" (design review).
+  // VIP ONLY (MESITA-4640): who it is for.
   if (lock === "vip") {
-    // Any Instagram counts, public or private (MESITA-4659); an invitation
-    // code makes a VIP too (MESITA-4766).
-    const bar = `For VIP: an invitation code, or an Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`;
-    if (!guest?.instagramLinked || guest.instagramFollowers == null) return { ok: false, text: bar };
-    return { ok: false, text: `${bar} Yours: ${guest.instagramFollowers.toLocaleString("en-US")} followers.` };
+    // An invitation code is the only way in (MESITA-4849).
+    return { ok: false, text: "For VIP guests, by invitation code." };
   }
   if (can) {
     if (key === "voucher_welcome") return { ok: true, text: "Available. Once per guest at this place." };
@@ -405,7 +400,7 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
   return listedProducts().filter((p) => show(p.key) !== "hidden").map((p) => {
     const line = catalog[p.key];
     const can = buyable(p.key);
-    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key], guest);
+    const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key]);
     return {
       key: p.key,
       title: p.short,
@@ -1239,21 +1234,14 @@ function PrepaySection({
                 const can = !loading && buyable(p.key);
                 const bonus = bonusValue(p, line);
                 const blocked = !loading && !can;
-                const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key], actions?.guest).text : "";
+                const why = blocked ? offerStatus(p.key, false, guestLock(p.key), unavailable[p.key]).text : "";
                 const n = basket[p.key] ?? 0;
-                // ASK TO LINK (MESITA-4659): a VIP row locked because the
-                // guest has no verified Instagram offers "Link Instagram"
-                // where the stepper goes, when the host can open Me › Instagram.
-                const linkIg =
-                  blocked && guestLock(p.key) === "vip" && actions?.guest != null && !actions.guest.instagramLinked
-                    ? actions.onLinkInstagram
-                    : undefined;
                 // A PRODUCT ROW (Pato, 2026-11-22, MESITA-4647): left ONE
                 // green box, black "+10%" over "BONUS"; the name and the deal
                 // (no (i), MESITA-4804); − n + at the right. A blocked row says why,
                 // with a lock, and has no stepper.
                 return (
-                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-16 items-center gap-2.5 px-3 py-2", blocked && dim && !linkIg && "opacity-50")}>
+                  <li key={p.key} data-voucher={p.key} className={cn("flex min-h-16 items-center gap-2.5 px-3 py-2", blocked && dim && "opacity-50")}>
                     <span
                       className={cn(
                         BADGE,
@@ -1283,15 +1271,6 @@ function PrepaySection({
                     </span>
                     {can && co.live ? (
                       <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => onQty(p.key, v)} />
-                    ) : linkIg ? (
-                      <button
-                        type="button"
-                        onClick={linkIg}
-                        className="bg-foreground text-background flex h-9 shrink-0 items-center rounded-full px-3 text-sm font-semibold"
-                        data-offer-link-instagram
-                      >
-                        Link Instagram
-                      </button>
                     ) : null}
                   </li>
                 );

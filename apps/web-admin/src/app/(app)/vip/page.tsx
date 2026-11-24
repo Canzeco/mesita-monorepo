@@ -10,7 +10,7 @@ export default async function VipPage() {
     <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
         title="VIP"
-        description="Invitation codes and every VIP guest. A guest is VIP by a code you issue, or by an Instagram with more than 5,000 followers."
+        description="Invitation codes and every VIP guest. A guest is VIP by a code you issue. Instagram followers do not count until the DM bot proves who owns the account."
       />
       <VipClient
         initialCodes={res.ok ? res.codes : null}

@@ -662,14 +662,14 @@ select ok(
 select ok(
   (select generation_expression from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'guest_class') like '%> 5000%'
+      and column_name = 'guest_class') like '%vip_invited_at%'
     and (select generation_expression from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
-      and column_name = 'guest_class') not like '%instagram_is_private%'
+      and column_name = 'guest_class') not like '%instagram%'
     and (select column_default from information_schema.columns
     where table_schema = 'public' and table_name = 'consumers'
       and column_name = 'plan') like '''free''%',
-  'consumers.guest_class follows the more-than-5,000-follower rule (MESITA-4639), privacy does not count (MESITA-4659), and consumers.plan defaults to free (MESITA-2553)'
+  'consumers.guest_class is by invitation code only (MESITA-4849), and consumers.plan defaults to free (MESITA-2553)'
 );
 
 -- MESITA-4659: "Show my handle on Mesita" is nullable with no default (null =

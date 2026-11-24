@@ -2,7 +2,7 @@
 //
 // Manage › Guests (MESITA-2550, MESITA-2553; the page is gone since MESITA-3846).
 // Sets a guest's Plan (free or premium). Class is automatic since MESITA-3850
-// (a verified Instagram with more than 5,000 followers): a guestClass in the
+// (an invitation code, MESITA-4849): a guestClass in the
 // body is 400 class_automatic. It also sets the operator-only note on where a VIP came from, and for a VIP the
 // partner it came through and its last day (MESITA-2556; recorded, never
 // enforced, and no rate rides on either). One call to the

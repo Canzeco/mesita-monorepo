@@ -1,5 +1,5 @@
 // VIP (Pato, 2026-11-23, MESITA-4766: "BRING BACK VIP CUSTOMERS ... In order
-// to be VIP, is either invitation code or 5000 followers on instagram"). The
+// to be VIP, is either invitation code or 5000 followers on instagram"; codes only since MESITA-4849). The
 // server decides who is VIP (consumers.guest_class); the app only reads it,
 // formats the 12-digit invitation code and says what a redeem answered.
 // Plain module: no React, so tests read it without a renderer.

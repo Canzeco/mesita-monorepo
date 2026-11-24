@@ -7,8 +7,8 @@
 // 20 %. THREE LINES SINCE MESITA-4766 (Pato, 2026-11-23: "BRING BACK VIP CUSTOMERS.
 // REMOVE INSTAGRAM STORIES."): Welcome Everyone (the guest's first paid bill
 // here) Off · 10 · 20 %, Returning Regular (every later bill) Off · 5 · 10 %,
-// Returning VIP (every later bill of a VIP guest: invitation code or more than
-// 5,000 Instagram followers) Off · 10 · 20 %. No cap per bill (MESITA-4728).
+// Returning VIP (every later bill of a VIP guest: invitation code,
+// MESITA-4849) Off · 10 · 20 %. No cap per bill (MESITA-4728).
 // Voucher bonuses (MESITA-4764): Small 10 · 20 %, Medium 20 · 40 %, Big
 // 40 · 60 %. TWIN of supabase _shared/cashback.ts and money.ts
 // VOUCHER_BONUS_STEPS_BPS; the server refuses anything else.

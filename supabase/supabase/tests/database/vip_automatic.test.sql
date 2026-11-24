@@ -1,8 +1,6 @@
--- MESITA-3850 — VIP is automatic: a verified Instagram with more than 5,000
--- followers (MESITA-4639), or an invitation code again since MESITA-4766
--- (vip_back.test.sql); privacy stopped counting
--- (MESITA-4659 reverses MESITA-4263). The class follows the count both ways, no
--- one can write it, and the manual doors are closed.
+-- MESITA-3850, MESITA-4849 — VIP is by invitation code only: no Instagram
+-- count, real or emulated, makes a VIP. No one can write the class, and the
+-- manual doors are closed.
 
 begin;
 
@@ -49,13 +47,13 @@ select is(
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000b3850'),
   'regular',
-  'exactly 5,000 followers is Regular (MESITA-4639: more than)'
+  'exactly 5,000 followers is Regular'
 );
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000c3850'),
-  'vip',
-  '5,001 followers on a verified Instagram is VIP (MESITA-4639)'
+  'regular',
+  '5,001 followers on a verified Instagram is Regular (MESITA-4849)'
 );
 
 select is(
@@ -72,20 +70,20 @@ select is(
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000e3850'),
-  'vip',
-  'just over 5,000 verified followers is VIP (MESITA-3864)'
+  'regular',
+  'just over 5,000 verified followers is Regular (MESITA-4849)'
 );
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000f3850'),
-  'vip',
-  'a PRIVATE Instagram with more than 5,000 followers is VIP: privacy does not count (MESITA-4659)'
+  'regular',
+  '90,000 followers on a private Instagram is Regular (MESITA-4849)'
 );
 
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-000000103850'),
-  'vip',
-  'privacy not known is VIP over the bar too (MESITA-4659)'
+  'regular',
+  '90,000 followers, privacy not known, is Regular (MESITA-4849)'
 );
 
 update public.consumers set instagram_followers_count = 4000
@@ -93,7 +91,7 @@ update public.consumers set instagram_followers_count = 4000
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000c3850'),
   'regular',
-  'a sync below the bar makes a VIP Regular again'
+  'a follower sync never changes the class'
 );
 
 update public.consumers set instagram_followers_count = 7000
@@ -104,16 +102,16 @@ update public.consumers
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-0000000c3850'),
   'regular',
-  'disconnecting Instagram makes a VIP Regular again'
+  'disconnecting Instagram leaves the class Regular'
 );
 
--- MESITA-4662: the follower emulator's count stands in for the real one.
+-- The follower emulator (MESITA-4662) makes no VIP either.
 insert into public.consumers (id, instagram_handle, instagram_verified_at, instagram_followers_count, instagram_followers_emulated) values
   ('00000000-0000-4000-8000-000000124662', 'probe_4662', now(), 300, 5001);
 select is(
   (select guest_class from public.consumers where id = '00000000-0000-4000-8000-000000124662'),
-  'vip',
-  'an emulated 5,001 on a verified Instagram with 300 real followers is VIP (MESITA-4662)'
+  'regular',
+  'an emulated 5,001 on a verified Instagram with 300 real followers is Regular (MESITA-4849)'
 );
 
 select throws_ok(

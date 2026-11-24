@@ -12,7 +12,7 @@ import { moneyText } from "./pay.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, type VoucherBonusBps, voucherBonusCents, voucherFeeCents, currencyForCountry, voucherPriceCents } from "./money.ts";
 import { readCashbackRates, voucherBonusFrom } from "./cashback.ts";
 import type { MoneyCode } from "./money-codes.ts";
-import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, VIP_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
+import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
 import { readVipStanding, type VipGuestRow } from "./consumer-doc.ts";
@@ -348,7 +348,7 @@ export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string
   paused: { code: "paused", error: "Voucher sales are paused for a moment" },
   used: { code: "welcome_used", error: "You already had your Welcome voucher here" },
   needs_visit: { code: "needs_visit", error: "One each visit: pay a bill here by card to buy it again" },
-  not_vip: { code: "not_vip", error: "The VIP voucher needs an Instagram with more than 5,000 followers." },
+  not_vip: { code: "not_vip", error: "The VIP voucher is for guests with an invitation code." },
 };
 
 /** Why a voucher cannot be bought right now, or null when it can. */
@@ -389,18 +389,14 @@ export function vipCheckedAt(guest: VipGuest): number | null {
 }
 
 /** VIP's guest gate (MESITA-4640; MESITA-3550 before it): the VIP class
- *  (consumers.guest_class, generated: a verified Instagram with more than
- *  VIP_MIN_FOLLOWERS followers; privacy no longer counts, MESITA-4659), and a
+ *  (consumers.guest_class, generated: an invitation code, MESITA-4849), and a
  *  follower count read within VIP_CHECK_MAX_AGE_MS of `now` (409 vip_recheck:
  *  the Offers page Syncs, then buys). Null when the guest may buy it; any other
  *  voucher passes. One each new visit is the offer's (PER_VISIT_VOUCHERS). The
  *  409 carries the caller's own followers so the ticket can say why.
  *
- *  MESITA-4662, the follower emulator: guest_class counts an emulated count
- *  when one is set. `testMode` is !paymentsLivemode(). In test mode an
- *  emulated count is the count and is always fresh (no vip_recheck). In live
- *  mode it never counts: the real count decides (verified, more than
- *  VIP_MIN_FOLLOWERS), whatever guest_class says, then the hour as usual. */
+ *  MESITA-4662, the follower emulator: in test mode (!paymentsLivemode()) an
+ *  emulated count is always fresh (no vip_recheck). It never makes a VIP. */
 export function vipRefusal(
   voucher: MoneyVoucherKey,
   guest: VipGuest,
@@ -411,16 +407,13 @@ export function vipRefusal(
   const emulated = guest?.emulated ?? null;
   const emulating = emulated !== null && testMode;
   const followers = emulating ? emulated : guest?.followers ?? null;
-  const isVip = emulated !== null && !testMode
-    // Live money ignores the emulator: the real count, on a verified Instagram.
-    ? !!guest?.verified_at && (guest?.followers ?? 0) > VIP_MIN_FOLLOWERS
-    : guest?.guest_class === "vip";
+  const isVip = guest?.guest_class === "vip";
   if (!isVip) {
     return {
       ok: false,
       status: 409,
       code: "not_vip",
-      error: `The VIP voucher needs an Instagram with more than ${VIP_MIN_FOLLOWERS.toLocaleString("en-US")} followers.`,
+      error: REFUSAL_FOR.not_vip.error,
       followers,
     };
   }

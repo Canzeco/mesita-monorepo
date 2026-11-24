@@ -212,9 +212,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         },
       }
       : {}),
-    // "Link Instagram" on a VIP row without one (MESITA-4659): a push to Me ›
-    // Instagram; Back returns here.
-    onLinkInstagram: () => navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" }),
     // "How to become VIP" under Pay's Returning VIP line (MESITA-4766): only
     // for a signed-in guest the profile says is not VIP; a push to /me/vip.
     ...(profile && !isVip(profile)
