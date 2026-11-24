@@ -59,11 +59,10 @@ export function PayHeader({
       className="border-border bg-card sticky top-0 z-10 -mx-2 border-b"
       data-page-band
     >
-      {/* THE TILES' GRID (Pato, 2026-11-23, MESITA-4796: "the button at the
-          top must be 25% and 25% to clearly cover pay bill 50%"): the title in
-          the left half, the action filling the right half, on the same 8px
-          edges and 8px gap as Prepay | Pay Bill below. */}
-      <div className={action ? "grid min-h-11 grid-cols-2 items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
+      {/* The title takes its own width and the action the rest, so Gift and
+          Tickets have room between them (MESITA-4834). It was the tiles'
+          50/50 grid (MESITA-4796). */}
+      <div className={action ? "grid min-h-11 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 px-2 py-2" : "flex min-h-11 items-center px-3 py-2"}>
         <h1 className="flex min-h-11 min-w-0 items-center pl-2 text-xl font-semibold tracking-tight">
           <span className={title === "Mesita" ? HOME_WORDMARK_CLASS : "min-w-0 truncate"}>{title}</span>
         </h1>
