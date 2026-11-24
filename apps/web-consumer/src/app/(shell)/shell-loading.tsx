@@ -3,7 +3,7 @@ import { routeFor, type RouteId } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
-import { PayBillSkeleton } from "@/components/consumer/pay/PayPage";
+import { PayPickLoading } from "@/components/consumer/pay/PayPick";
 import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
 import InstagramLoading from "./me/instagram/loading";
@@ -72,7 +72,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   reservation: () => <ReservationPageLoading />,
   reservationReschedule: () => <ReservationPageLoading />,
   pay: () => <PayLoading />,
-  payPick: () => <PayBillSkeleton />,
+  payPick: () => <PayPickLoading />,
   payCode: () => <PayCodeLoading />,
   payPlace: () => <PayPlaceLoading />,
   payBill: () => <PayTabLoading />,

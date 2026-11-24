@@ -2,29 +2,31 @@
 
 import { Fragment, useState } from "react";
 import { MapPin, QrCode } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { useRouter } from "next/navigation";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { offerSlides, voucherPct } from "@mesita/place-profile/lib/offers";
-import { payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
+import { money, payPlaceCashbackBps, payPlaceDiscountBps, payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
+import { CONSUMER_ROUTES, payCodePath } from "@/lib/consumer-route-contract";
+import { goBack, navigateTo } from "@/lib/navigate";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
 import { cn } from "@/lib/utils";
-import { PlacePhoto } from "./pay-common";
+import { PlacePhoto, QUIET_BUTTON_CLASS } from "./pay-common";
 import { BOX_TINT, TicketHeader } from "./pay-flow";
 import { distanceText, type Loc, roundLocation, usePayLocation } from "./pay-location";
 import { usePayPlaces } from "./use-pay-places";
 
 // PAY BILL'S PLACE PICKER (Pato, 2026-11-17, MESITA-4232: "WHEN YOU CLICK
 // THAT BUTTON, THEN A MODAL APPEARS"; MESITA-4478: it rises from the bottom
-// over the wallet). It holds what was Pay's own box (MESITA-4204): a search
+// over the wallet; a page again since MESITA-4837). It holds what was Pay's own box (MESITA-4204): a search
 // bar always shown (MESITA-3725), then the places, every place the guest
 // holds credit at pinned first, then the nearest up to PLACES_SHOWN and
-// "Show all". A row opens that place's bill (/pay/place/<id>), which stays
-// a page. The location is asked here only, after a priming card, and only
-// while the sheet is open.
+// "Show all". A row opens the QR with that place over it
+// (/pay/code?from=). The location is asked here only, after a priming card.
 //
 // NO BOX (Pato, 2026-11-17, MESITA-4280: "why inside a box … just use a
 // searchbar and the places directly display separated by hr"): the search
@@ -45,24 +47,44 @@ import { usePayPlaces } from "./use-pay-places";
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
 
-export function PayPickSheet({
-  open,
-  onClose,
-  onPick,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onPick: (placeId: string) => void;
-}) {
+/** /pay/pick (Pato, 2026-11-24, MESITA-4837: "make the user to select a
+ *  place, not directly qr, even that the qr will be the same one ... he can
+ *  see number of current credits as well as expected cashback"): the place
+ *  first, then the same QR with that place over it. A place that is not
+ *  listed still gets the QR. */
+export function PayPickPage() {
+  const router = useRouter();
   return (
-    <LocalSheet open={open} onClose={onClose} from="bottom" fit ariaLabel="Where are you paying?">
-      {open ? <PayPickBody onPick={onPick} onClose={onClose} /> : null}
-    </LocalSheet>
+    <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-pay-pick-page>
+      <PlacePickBody
+        onPick={(id) => navigateTo(router, payCodePath(id), { motion: "drill" })}
+        onClose={() => goBack(router)}
+      />
+      <div className="border-border shrink-0 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <PushLink
+          href={CONSUMER_ROUTES.payCode}
+          className={cn(QUIET_BUTTON_CLASS, "flex items-center justify-center")}
+          data-pay-pick-any
+        >
+          My place isn&apos;t here
+        </PushLink>
+      </div>
+    </div>
   );
 }
 
-function PayPickBody({ onPick, onClose }: { onPick: (placeId: string) => void; onClose: () => void }) {
-  return <PlacePickBody onPick={onPick} onClose={onClose} />;
+/** The picker's shape while it loads. */
+export function PayPickLoading() {
+  const router = useRouter();
+  return (
+    <div className="bg-card flex h-full min-h-0 flex-1 flex-col">
+      <TicketHeader title="Where are you paying?" onClose={() => goBack(router)} />
+      <div className="px-4 pt-4 pb-2">
+        <Skeleton className="h-12 w-full rounded-xl" aria-hidden />
+      </div>
+      <RowsSkeleton boxes={2} bare />
+    </div>
+  );
 }
 
 /** /wallet/buy's prepay count: the closest places listed first (MESITA-4597). */
@@ -88,7 +110,7 @@ export function PlacePickBody({
   const phone = loc.state === "on" ? loc.at : null;
   const at = prepay ? (active ? roundLocation(active) : fix ? roundLocation(fix) : phone) : phone;
   const { places: all, failed, refresh } = usePayPlaces(at);
-  const boxes: BoxKind = prepay ? "vouchers" : "cashback";
+  const boxes: BoxKind = prepay ? "vouchers" : "mine";
   // MESITA-4698: Get Discounts lists the places with offers (Loyalty
   // Cards On). MESITA-4708: no card_ok fallback (a bill has no card part).
   const places = prepay && all ? all.filter((p) => payPlaceTabs(p).prepay) : all;
@@ -144,7 +166,7 @@ export function PlacePickBody({
             />
           </div>
         ) : (
-          <RowsSkeleton boxes={boxes === "cashback" ? 2 : 3} />
+          <RowsSkeleton boxes={boxes === "mine" ? 2 : 3} />
         )}
       </div>
       {/* PICK IS STEP 0 (Pato, 2026-11-21, MESITA-4635: "don't even mention
@@ -200,7 +222,7 @@ function PlaceList({
         <div className="px-5 py-3">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-            See places near you that take App Payments
+            See places near you
           </p>
           <div className="mt-3 flex gap-2">
             <Button className="min-h-11 flex-1 font-semibold" onClick={onUseLocation}>
@@ -222,7 +244,7 @@ function PlaceList({
       ) : null}
 
       {loc.state === "asking" && places.length === 0 ? (
-        <RowsSkeleton boxes={boxes === "cashback" ? 2 : 3} />
+        <RowsSkeleton boxes={boxes === "mine" ? 2 : 3} />
       ) : places.length === 0 ? (
         <div className="px-5 py-4">
           <EmptyState
@@ -230,8 +252,8 @@ function PlaceList({
             icon={MapPin}
             title={
               loc.state === "on"
-                ? "No place near you takes App Payments"
-                : "Turn on location to see places near you that take App Payments"
+                ? "No Mesita place near you"
+                : "Turn on location to see places near you"
             }
             description=""
           />
@@ -300,8 +322,8 @@ function Section({
 }
 
 /** Which offers a row previews (MESITA-4748): Prepay's vouchers, every kind
- *  on Explore Offers, or Pay Bill's Back lines (three since MESITA-4766). */
-type BoxKind = "vouchers" | "any" | "cashback";
+ *  on Explore Offers, or what this guest has and gets there (MESITA-4837). */
+type BoxKind = "vouchers" | "any" | "mine";
 type OfferBox = { top: string; bottom: string; tone: string; key: string };
 
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
@@ -314,6 +336,22 @@ const pesos = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
  *  the bonus. The vouchers' bonuses are the place's picks (MESITA-4764). Equal
  *  Welcome and Returning rates are one "Every bill" box. */
 export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
+  // WHAT TO EXPECT (MESITA-4837): the guest's credits here, then what their
+  // own next bill gets, in their own tier; nothing to say, no box.
+  if (kind === "mine") {
+    const discount = payPlaceDiscountBps(p);
+    const cashback = payPlaceCashbackBps(p);
+    return [
+      ...(p.available_cents > 0
+        ? [{ key: "credits", top: "Your credits", bottom: money(p.available_cents, p.currency), tone: BOX_TINT.prepay }]
+        : []),
+      ...(discount > 0
+        ? [{ key: "discount", top: "On this bill", bottom: `${discount / 100}% Discount`, tone: BOX_TINT.discount }]
+        : cashback > 0
+          ? [{ key: "cashback", top: "On this bill", bottom: `${cashback / 100}% Cashback`, tone: BOX_TINT.cashback }]
+          : []),
+    ];
+  }
   const o = p.offers;
   if (!o) return [];
   if (kind === "vouchers") {
@@ -323,8 +361,7 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       return {
         key: k,
         top: `$${pesos.format(pay)}`,
-        // MESITA-4795: the bonus and what the guest gets, for the row's right side.
-        bottom: `+${pct}% · Get $${pesos.format(Math.round((pay * (100 + pct)) / 100))}`,
+        bottom: `Get $${pesos.format(Math.round((pay * (100 + pct)) / 100))}`,
         tone: BOX_TINT.prepay,
       };
     });
@@ -335,23 +372,6 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
   // MESITA-4777: the words themselves, "Discount" or "Cashback".
   const word = discount ? "Discount" : "Cashback";
   const visitTint = discount ? BOX_TINT.discount : BOX_TINT.cashback;
-  if (kind === "cashback") {
-    // The four tiers (MESITA-4789): Welcome Regular · Returning Regular ·
-    // Welcome VIP · Returning VIP; a 0% line is Off and has no box. One rate
-    // on all four is one "Every bill" box.
-    const on = (pct: number | null | undefined) => (pct != null && pct > 0 ? pct : null);
-    const w = on(o.welcome_pct);
-    const r = on(o.returning_pct);
-    const wv = on(o.welcome_vip_pct !== undefined ? o.welcome_vip_pct : o.welcome_pct);
-    const v = on(o.returning_vip_pct);
-    if (w !== null && w === r && r === wv && wv === v) return [{ key: "every", top: "Every bill", bottom: `${w}% ${word}`, tone: visitTint }];
-    return [
-      ...(w !== null ? [{ key: "welcome", top: "Welcome Visit", bottom: `${w}% ${word}`, tone: visitTint }] : []),
-      ...(r !== null ? [{ key: "returning", top: "Returning Visit", bottom: `${r}% ${word}`, tone: visitTint }] : []),
-      ...(wv !== null ? [{ key: "welcome_vip", top: "VIP Welcome Visit", bottom: `${wv}% ${word}`, tone: visitTint }] : []),
-      ...(v !== null ? [{ key: "returning_vip", top: "VIP Returning Visit", bottom: `${v}% ${word}`, tone: visitTint }] : []),
-    ];
-  }
   // Explore Offers: one box per kind, Prepay · Pay, in offerSlides' words.
   const order: Record<string, number> = { prepay: 0, cashback: 1 };
   return offerSlides(o)
@@ -409,23 +429,13 @@ function PlaceRow({ p, onPick, boxes }: { p: PayPlace; onPick: (placeId: string)
         </span>
         {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
       </span>
-      {shown.length > 0 && boxes === "vouchers" ? (
-        // ONE ROW PER AMOUNT (Pato, 2026-11-23, MESITA-4795: "in prepay
-        // actually list the offers in 3 rows depending on the amount"):
-        // smallest first, the amount left, the bonus and what you get right.
-        <span className="mt-2 flex w-full flex-col gap-1.5" aria-hidden data-offer-boxes>
-          {shown.map((b) => (
-            <span key={b.key} className={cn("text-foreground flex min-w-0 items-center justify-between gap-3 rounded-lg px-2.5 py-2", b.tone)}>
-              <span className="truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
-              <span className="shrink-0 text-sm leading-tight font-semibold tabular-nums">{b.bottom}</span>
-            </span>
-          ))}
-        </span>
-      ) : shown.length > 0 ? (
+      {shown.length > 0 ? (
+        // ONE ROW OF EQUAL COLUMNS (Pato, 2026-11-24, MESITA-4837: "cleaner,
+        // in three columns same row"): Prepay's vouchers too; a row per
+        // amount before (MESITA-4795).
         // MESITA-4778 (Pato: "prepay box 50% and pay box 50% wide too"):
         // two boxes are halves, three are thirds; 14px words, shorter boxes.
-        // The visit tiers are always halves: "VIP Welcome Visit" needs it (MESITA-4806).
-        <span className={cn("mt-2 grid w-full gap-2", shown.length < 3 || boxes === "cashback" ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
+        <span className={cn("mt-2 grid w-full gap-2", shown.length < 3 ? "grid-cols-2" : "grid-cols-3")} aria-hidden data-offer-boxes>
           {shown.map((b) => (
             <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2.5 py-1.5", b.tone)}>
               <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { PayPage } from "@/components/consumer/pay/PayPage";
-import { isRouteId, payCodePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, isRouteId, payCodePath, payReceiptPath, payBillPath } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export default async function Page({ searchParams }: { searchParams: Search }) {
   if (isRouteId(place)) redirect(payCodePath(place));
   // ?tab=cards (MESITA-4765, D6): the Loyalty Cards tab the guest left. An
   // id there is an old bill reload, forwarded above.
-  // The place picker is gone (MESITA-4823): the QR names no place.
-  if (one(sp.pick) === "1") redirect(payCodePath());
+  // The old sheet's address: the picker is a page (MESITA-4837).
+  if (one(sp.pick) === "1") redirect(CONSUMER_ROUTES.payPick);
   return <PayPage tab={tab === "cards" ? "cards" : "offers"} />;
 }
