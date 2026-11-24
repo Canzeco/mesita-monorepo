@@ -189,7 +189,9 @@ const VISIT_NAME = {
  *  them its offer boxes (MESITA-4748). The row is the one button (D8): the
  *  boxes are a preview, read aloud in the row's label. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
-  const distance = p.distance_m !== null ? distanceText(p.distance_m) : null;
+  // NO DISTANCE IN PREPAY (Pato, 2026-11-24, MESITA-4841: "it doesn't matter.
+  // keep all the lines for name and address"): both take the whole width.
+  const distance = kind === "pay" && p.distance_m !== null ? distanceText(p.distance_m) : null;
   const name = p.name ?? "A Mesita place";
   const shown = offerBoxes(p, kind);
   const spoken = [name, distance, ...shown.map((b) => [b.top, kind === "prepay" && b.bottom.startsWith("+") ? `${b.bottom} Bonus` : b.bottom, b.bonus].filter(Boolean).join(" "))].filter(Boolean).join(", ");
@@ -207,9 +209,9 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
       <span className="bg-muted group-hover:bg-foreground/10 flex w-full items-start gap-3 rounded-lg p-2.5 transition-colors">
         <PlacePhoto place={p} className="h-11 w-11" />
         <span className="min-w-0 flex-1 pt-0.5">
-          <span className="block truncate text-sm font-semibold">{name}</span>
+          <span className={cn("text-sm font-semibold", kind === "prepay" ? "line-clamp-2" : "block truncate")}>{name}</span>
           {p.address ? (
-            <span className={cn("text-muted-foreground mt-0.5 text-sm", shown.length > 0 ? "block truncate" : "line-clamp-2")}>{p.address}</span>
+            <span className={cn("text-muted-foreground mt-0.5 text-sm", kind === "prepay" ? "line-clamp-2" : "block truncate")}>{p.address}</span>
           ) : null}
         </span>
         {distance ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm tabular-nums">{distance}</span> : null}
