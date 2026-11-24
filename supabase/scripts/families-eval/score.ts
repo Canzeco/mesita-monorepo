@@ -33,10 +33,10 @@ type Proposal = { place_id: string; outcome: string; after: string[] | null };
 const HERE = new URL(".", import.meta.url).pathname;
 const CUISINE = [
   "tacos", "mexican", "sushi", "japanese", "italian", "pizza", "burgers", "seafood", "steak",
-  "chinese", "asian", "indian", "arabic", "european", "american", "chicken", "coffee", "bakery", "breakfast",
+  "asian", "arabic", "european", "american", "chicken", "coffee", "breakfast",
 ];
 const VENUE = new Set([
-  "drinks", "night_out", "nightclub", "music", "fun", "casino",
+  "drinks", "night_out", "fun", "casino",
 ]);
 const BAR = { familyFP: 2, drinksFP: 5, dinnerFP: 6, precision: 0.85, dinnerRecall: 0.8, drinksRecall: 0.8 };
 

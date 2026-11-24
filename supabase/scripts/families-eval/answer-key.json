@@ -17,7 +17,6 @@
   "italian": 0.5,
   "japanese": 1.0,
   "mexican": 1.0,
-  "music": 1.0,
   "night_out": 1.0,
   "pizza": 0.0,
   "quick_bite": 0.75,
@@ -556,7 +555,6 @@
    "category": "bar",
    "labels": [
     "drinks",
-    "music",
     "night_out"
    ],
    "contested": [],

@@ -1,4 +1,4 @@
-// Place family law. The guest catalog is thirty families
+// Place family law. The guest catalog is twenty-five families
 // (catalog-families.ts); Undefined is last and is not a rail. A place's
 // families are its stored list (MESITA-2891), read here as the keys already
 // on the row, or through a dictionary passed in. The Atlas category twin that

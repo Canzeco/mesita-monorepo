@@ -1,9 +1,9 @@
-// Thirty guest families, plus Undefined last. Undefined is not a filter.
+// Twenty-five guest families (MESITA-4818), plus Undefined last. Undefined is not a filter.
 // Each guest family has one emoji. That mark is the rail title and the
 // same mark in the admin console. A place may wear more than one (MESITA-2749);
 // its families are a dictionary of its Google categories, never a model's
-// pick and never edited by hand (MESITA-2834). Six rails sit past the table
-// since MESITA-2888: Family, Fun, Cinema, Casino, Spa, Tourist.
+// pick and never edited by hand (MESITA-2834). Two rails sit past the table
+// since MESITA-4588: Fun and Casino.
 // One word each (MESITA-2760): the labels are words a guest says, the keys
 // stay as stored.
 
@@ -28,14 +28,9 @@ export type FamilyKey =
   | "pizza"
   | "burgers"
   | "arabic"
-  | "chinese"
-  | "indian"
   | "chicken"
   | "sweet"
   | "night_out"
-  | "bakery"
-  | "nightclub"
-  | "music"
   | "fun"
   | "casino"
   | "undefined";
@@ -67,14 +62,9 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "pizza", label: "Pizza", emoji: "🍕" },
   { key: "burgers", label: "Burgers", emoji: "🍔" },
   { key: "arabic", label: "Arabic", emoji: "🧆" },
-  { key: "chinese", label: "Chinese", emoji: "🥡" },
-  { key: "indian", label: "Indian", emoji: "🍛" },
   { key: "chicken", label: "Wings", emoji: "🍗" },
   { key: "sweet", label: "Dessert", emoji: "🍰" },
   { key: "night_out", label: "Night", emoji: "🌙" },
-  { key: "bakery", label: "Bakery", emoji: "🥐" },
-  { key: "nightclub", label: "Club", emoji: "🪩" },
-  { key: "music", label: "Music", emoji: "🎶" },
   { key: "fun", label: "Fun", emoji: "🎯" },
   { key: "casino", label: "Casino", emoji: "🎰" },
   { key: "undefined", label: "Undefined", emoji: "·" },

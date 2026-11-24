@@ -876,8 +876,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  31::bigint,
-  'place family catalog is thirty guest families plus Undefined (MESITA-4571)'
+  26::bigint,
+  'place family catalog is twenty-five guest families plus Undefined (MESITA-4818)'
 );
 
 select is(
@@ -888,9 +888,9 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chinese','indian','chicken','sweet','night_out','bakery','nightclub','music','fun','casino',
+  array['dinner','coffee','drinks','quick_bite','breakfast','mexican','tacos','seafood','asian','european','fancy','steak','japanese','american','healthy','italian','sushi','pizza','burgers','arabic','chicken','sweet','night_out','fun','casino',
         'undefined']::text[],
-  'family catalog order is the thirty guest rails, biggest first, Undefined last (MESITA-4430, MESITA-4571)'
+  'family catalog order is the twenty-five guest rails, biggest first, Undefined last (MESITA-4430, MESITA-4818)'
 );
 
 -- MESITA-2891: no category ↔ family dictionary. A place's Mesita Families
