@@ -208,18 +208,24 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             waits.
             ONE HEADER (Pato, 2026-11-23, MESITA-4727: "name and black box
             must be in the same part"): the card sits in the fixed white
-            header under the name row and its line (MESITA-4881). */}
+            header under the name row and its line (MESITA-4881).
+            ONE LINE (Pato, 2026-11-24, MESITA-4895: "this together looks like
+            shit", then option A): the word left, the amount right, so the
+            offers lead. 12px to the tabs, as between the tabs and the list;
+            the box touched the tabs before. */}
         {credit ? (
           <div
-            className="bg-foreground text-paper mx-4 mt-4 flex shrink-0 flex-col gap-1 rounded-2xl p-4"
+            className="bg-foreground text-paper mx-4 mt-4 flex shrink-0 flex-col gap-1 rounded-2xl px-4 py-3.5"
             role="group"
             aria-label={credit.label}
             data-offers-balance
           >
-            <span className="text-paper/70 text-sm font-semibold">Balance</span>
-            <span className="text-3xl leading-tight font-bold tabular-nums">{credit.ready}</span>
+            <span className="flex items-center justify-between gap-3">
+              <span className="text-paper/70 text-sm font-semibold">Balance</span>
+              <span className="min-w-0 truncate text-xl leading-tight font-bold tabular-nums">{credit.ready}</span>
+            </span>
             {credit.pending ? (
-              <span className="text-paper/70 truncate text-sm tabular-nums" data-offers-pending>
+              <span className="text-paper/70 truncate text-right text-sm tabular-nums" data-offers-pending>
                 {credit.pending}
               </span>
             ) : null}
@@ -230,7 +236,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
           BACKGROUNDS"): the grey page of MESITA-4196 is gone. */}
       <div
         ref={keep}
-        className="scrollbar-thin-dark bg-card flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4"
+        className="scrollbar-thin-dark bg-card flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-3"
       >
         <div className="flex flex-1 shrink-0 flex-col">
           <VouchersPane
