@@ -206,29 +206,36 @@ export function PayPage({
           className={cn(TILE, "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]")}
           data-prepay
         >
-          {/* THE NAME (Pato, 2026-11-23, MESITA-4753: "call the box Prepay &
-              Get Bonus"; the purple one stays Pay Bill): the words carry the
-              bonus, so the Get Bonus pill is gone. */}
+          {/* PREPAY AND PAY (Pato, 2026-11-24, MESITA-4830: "just call them
+              Prepay and Pay and below in little text explain"): one word, then
+              one small line; "Prepay & Get Bonus" | "Pay Bill" before
+              (MESITA-4753). */}
           <span className={cn(ICON_CIRCLE, "bg-neutral-950 text-white")} aria-hidden>
             {/* THE WALLET, Prepay's one mark (Pato, 2026-11-23, MESITA-4762: "i
                 don't like the icon for prepay"; the Offers Prepay tab's since
                 MESITA-4726). */}
-            <WalletIcon className="h-6 w-6" strokeWidth={2.25} />
+            <WalletIcon className="h-5 w-5" strokeWidth={2.25} />
           </span>
-          <span className={TILE_TITLE}>Prepay &amp; Get Bonus</span>
+          <span className={TILE_WORDS}>
+            <span className={TILE_TITLE}>Prepay</span>
+            <span className={TILE_LINE}>Pay ahead, get a bonus</span>
+          </span>
         </PushLink>
         {/* THE WAITER LEADS (MESITA-4823): Pay Bill is the guest's QR; no
             place is picked. */}
         <PushLink
           href={CONSUMER_ROUTES.payCode}
           className={cn(TILE, "bg-[#635BFF] text-white hover:bg-[#5249e6]")}
-          aria-label={bill ? "Pay your open bill" : "Pay Bill: show your QR to the waiter"}
+          aria-label={bill ? "Pay: your bill is open" : "Pay: show the waiter your QR"}
           data-pay-bill
         >
           <span className={ICON_CIRCLE} style={{ color: "#635BFF" }} aria-hidden>
-            <QrCode className="h-6 w-6" strokeWidth={2.25} />
+            <QrCode className="h-5 w-5" strokeWidth={2.25} />
           </span>
-          <span className={TILE_TITLE}>Pay Bill</span>
+          <span className={TILE_WORDS}>
+            <span className={TILE_TITLE}>Pay</span>
+            <span className={TILE_LINE}>{bill ? "Your bill is open" : "Show the waiter your QR"}</span>
+          </span>
         </PushLink>
       </div>
       {/* SEND GIFT LEFT FOR THE HEADER (MESITA-4780): the black full-width
@@ -300,7 +307,10 @@ export function PayPage({
 // TALLER, 8:5 (Pato, 2026-11-23, MESITA-4780: "make prepay and pay taller.
 // maybe fibonacci proportion of 8:5"): each tile is 8 wide by 5 tall.
 const TILE =
-  "flex aspect-[8/5] min-w-0 flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition active:scale-[0.99]";
+  "flex aspect-[8/5] min-w-0 flex-col items-center justify-center gap-1.5 rounded-2xl p-2 text-center transition active:scale-[0.99]";
+const TILE_WORDS = "flex max-w-full min-w-0 flex-col items-center";
+/** The small line under a tile's name (MESITA-4830). */
+const TILE_LINE = "max-w-full truncate text-xs leading-4";
 /** A tile's name: one baseline across the two. ONE SIZE (Pato, 2026-11-23,
  *  MESITA-4754: "standardize text size"): 16px semibold, the grey buttons'
  *  size (18px before). */
@@ -309,7 +319,7 @@ const TILE_TITLE = "text-lg leading-tight font-semibold"; // 18px: "a bit bigger
  *  a circle … with white background, and purple thing also inside a circle";
  *  /plan-design-review pick): 40px, the tile's ink on white, the Loyalty
  *  Card page's round buttons' look. The tiles grew 88 to 96px to hold it. */
-const ICON_CIRCLE = "flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"; // 48px: "a bit bigger" (MESITA-4793)
+const ICON_CIRCLE = "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white"; // 40px: room for the small line (MESITA-4830); 48px under MESITA-4793
 
 /** Pay Bill's shape while the open-bill read runs, so a bill that is open
  *  never flashes the black button first. */
