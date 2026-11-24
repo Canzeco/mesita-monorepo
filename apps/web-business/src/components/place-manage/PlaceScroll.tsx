@@ -16,7 +16,11 @@ export function PlaceScroll({ children, staff = false }: { children: React.React
       <div className={onProfile ? undefined : "hidden"} inert={!onProfile}>
         <ProfileTab staff={staff} />
       </div>
-      {children}
+      {/* ONE COLUMN, OFFERS' WIDTH (Pato, 2026-11-23, MESITA-4790: "make
+          organic visibility as wide as the others. the only thing that
+          remains full screen is the profile"): every page but Profile sits
+          in a centred max-w-3xl column. */}
+      <div className={onProfile ? undefined : "mx-auto w-full max-w-3xl"}>{children}</div>
     </div>
   );
 }
