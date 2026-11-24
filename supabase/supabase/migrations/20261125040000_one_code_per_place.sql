@@ -69,6 +69,7 @@ begin
   update public.pay_bills
      set status = 'sent', version = b.version + 1, bill_cents = p_bill_cents, tip_cents = p_tip_cents,
          quote = q, staff_key_hash = p_key_hash, waiter_id = p_waiter_id, waiter_name = p_waiter_name, updated_at = p_now,
+         received_version = null, received_at = null, received_key_hash = null, received_waiter_id = null,
          expires_at = p_now + make_interval(mins => greatest(least(coalesce(p_window_minutes, 15), 60), 5))
    where id = b.id returning * into b;
   return jsonb_build_object('ok', true, 'outcome', 'sent', 'version', b.version, 'expires_at', b.expires_at);
@@ -92,8 +93,8 @@ declare
 begin
   -- The name typed with the code, when the place asks for one (MESITA-4904). A waiter-led
   -- attempt's request id is its bill.
-  select b.waiter_id, b.waiter_name into v_waiter, v_waiter_name
-    from public.pay_bills b
+  select w.id, b.waiter_name into v_waiter, v_waiter_name
+    from public.pay_bills b join public.place_waiters w on w.id = b.waiter_id and not w.no_code
    where b.id = p_attempt.request_id and b.consumer_id = p_attempt.consumer_id and b.place_id = p_attempt.place_id;
   insert into public.pay_tabs (
     place_id, consumer_id, token_hash, status, currency, livemode,
