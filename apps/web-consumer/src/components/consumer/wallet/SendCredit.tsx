@@ -349,7 +349,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
             <button type="button" className={PRIMARY} onClick={() => setFresh(true)} data-send-credit-new>
               New gift
             </button>
-            <p className="text-muted-foreground text-center text-xs">Or send one that&apos;s waiting.</p>
+            <p className="text-muted-foreground text-center text-xs">Or view one that&apos;s waiting.</p>
           </div>
         }
       >
@@ -384,7 +384,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
                         shareable ? "bg-foreground text-paper" : "border-border bg-card border"
                       }`}
                     >
-                      {opening === l.gift_id ? "…" : shareable ? "Send" : "Take back"}
+                      {opening === l.gift_id ? "…" : shareable ? "View" : "Take back"}
                     </span>
                   </button>
                 </li>
