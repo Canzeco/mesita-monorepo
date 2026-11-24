@@ -63,7 +63,7 @@ Deno.test("familyVocabularyLines: a family with a meaning carries it, Undefined 
 // MESITA-4238: every family the model may pick carries a meaning, so no line
 // is a bare label the model can read its own way (Family as "kids allowed").
 Deno.test("FAMILY_MEANINGS: every catalog family has a meaning", () => {
-  const missing = CATALOG_FAMILY_SLUGS.filter((slug) => !FAMILY_MEANINGS[slug]?.trim());
+  const missing = CATALOG_FAMILY_SLUGS.filter((f) => f !== "restaurants").filter((slug) => !FAMILY_MEANINGS[slug]?.trim());
   assertEquals(missing, []);
 });
 
@@ -100,11 +100,11 @@ Deno.test("pickFamilies and familiesRule obey a stage limit, never past seven", 
 });
 
 // MESITA-4820: Restaurants is a fact of the main Google category.
-Deno.test("settleRestaurants: on every Google restaurant, off a café with a sharper family", () => {
+Deno.test("settleRestaurants: on every Google restaurant, from code alone", () => {
   assertEquals(settleRestaurants(["tacos"], "taco_restaurant"), ["restaurants", "tacos"]);
-  assertEquals(settleRestaurants(["restaurants"], "mexican_restaurant"), ["restaurants"]);
-  assertEquals(settleRestaurants(["restaurants", "coffee"], "cafe"), ["coffee"]);
-  assertEquals(settleRestaurants(["restaurants"], "cafe"), ["restaurants"]);
+  assertEquals(settleRestaurants(null, "mexican_restaurant", []), ["restaurants"]);
+  assertEquals(settleRestaurants(["coffee"], "cafe", ["coffee"]), ["coffee"]);
+  assertEquals(settleRestaurants(null, "cafe", []), null);
   assertEquals(settleRestaurants(null, "restaurant"), null);
   assertEquals(settleRestaurants(["a", "b", "c", "d", "e", "f", "g"], "bar_and_grill")?.length, 7);
 });

@@ -164,6 +164,7 @@ export async function synthesizeDoorProfile(
         settleRestaurants(
           pickFamilies(parsed.families, familyVocab, limits.families),
           mainGoogleCategory(signals.googleTypes, null),
+          parsed.families,
         ),
         enabled,
       ),

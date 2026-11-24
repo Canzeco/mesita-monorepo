@@ -209,6 +209,7 @@ async function fillAtlasProfileInner(
       pickedFamilies = settleRestaurants(
         pickFamilies(parsed.families, familyVocabulary, limits.families),
         mainGoogleCategory(saved.google_types, saved.category),
+        parsed.families,
       );
       zone = pickZone(parsed.zone, anchor.city);
     }

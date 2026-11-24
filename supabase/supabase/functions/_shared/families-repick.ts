@@ -336,7 +336,7 @@ export async function runRepick(
     if (skip) return { ...base, after: null, outcome: "skipped", reason: skip };
     const reply = await askModel(ctx.openaiKey, model, buildRepickMessages(p, familyLines, req.arm, familiesMax));
     const pick = (raw: unknown) =>
-      settleRestaurants(pickFamilies(raw, familyVocab, familiesMax), base.main_category);
+      settleRestaurants(pickFamilies(raw, familyVocab, familiesMax), base.main_category, raw);
     const verdict = classifyReply(reply, p.familyKeys, pick);
     if (!("after" in verdict)) {
       // A dry run still shows what the model proposed when it proposed the same list.
