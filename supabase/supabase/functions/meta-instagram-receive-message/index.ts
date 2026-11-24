@@ -102,6 +102,8 @@ async function handle(
     p_consumer_id: claim.consumer_id,
     p_handle: profile.handle,
     p_followers: profile.followers,
+    // The message is the proof (MESITA-4856).
+    p_proved: true,
   });
   if (verifyErr) {
     console.error("ig_verify_failed", verifyErr.message);

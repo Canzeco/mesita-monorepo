@@ -76,7 +76,7 @@ export function PrivacyLevels({
     if (saving) return;
     setOpen(false);
     if (next === level) return;
-    if (next === "instagram" && !profile.instagram_handle) {
+    if (next === "instagram" && !profile.instagram_proved_at) {
       navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });
       return;
     }
@@ -145,8 +145,8 @@ export function PrivacyLevels({
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-semibold">{l.title}</span>
                   <span className="text-muted-foreground type-label block">
-                    {l.level === "instagram" && !profile.instagram_handle
-                      ? `Connect your Instagram first. ${l.sub}`
+                    {l.level === "instagram" && !profile.instagram_proved_at
+                      ? `${profile.instagram_handle ? "Prove your Instagram is yours first." : "Connect your Instagram first."} ${l.sub}`
                       : l.sub}
                   </span>
                 </span>

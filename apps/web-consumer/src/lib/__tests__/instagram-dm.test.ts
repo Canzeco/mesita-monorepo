@@ -37,7 +37,6 @@ describe("connecting Instagram by message", () => {
     expect(PAGE).toContain("apiInstagramChannel(supabase)");
     expect(PAGE).toMatch(/channel\.channel === "dm" \? \(\s*<ConnectByMessage \/>\s*\) : \(\s*<ConnectLookup\b/);
     expect(PAGE).not.toContain("function ConnectModule");
-    expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
     // The off card connects by username (MESITA-3039), never by DM code.
     const off = PAGE.slice(PAGE.indexOf("function ConnectLookup"), PAGE.indexOf("export function ConnectCardSkeleton"));
     expect(off).not.toContain("apiStartInstagramDm");

@@ -34,6 +34,9 @@ export type ConsumerProfile = {
   // the card's "Updated …" is the later one. Optional (older EF payloads).
   instagram_verified_at?: string | null;
   instagram_synced_at?: string | null;
+  // MESITA-4856: when the guest proved the account is theirs; sharing needs
+  // it. Optional (older EF payloads).
+  instagram_proved_at?: string | null;
   // MESITA-4659: may other guests and places see the @handle? Only true
   // shows it; null (no choice recorded) and false hide it. Linking never
   // sets it. Optional (older EF payloads).
@@ -266,6 +269,20 @@ export function dmVerified(
 ): boolean {
   if (status.pending || !status.handle || !status.verifiedAt) return false;
   return Date.parse(status.verifiedAt) >= Date.parse(issuedAt);
+}
+
+// PROOF BY BIO (MESITA-4856, MESITA-2461's server): a one-time code the guest
+// puts in their Instagram bio and the server reads there.
+export async function apiStartInstagramProof(client: SupabaseClient, handle: string): Promise<string> {
+  const { code } = await invokeEF<{ code: string }>(client, "consumer-web-claim-instagram", {
+    action: "start",
+    handle,
+  });
+  return code;
+}
+
+export async function apiCheckInstagramProof(client: SupabaseClient): Promise<void> {
+  await invokeEF(client, "consumer-web-claim-instagram", { action: "check" });
 }
 
 // ─── Account deletion ────────────────────────────────────────────────────

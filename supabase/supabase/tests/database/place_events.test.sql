@@ -6,7 +6,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(23);
+select plan(24);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3219');
 insert into public.consumers (id, first_name, birth_year) values ('00000000-0000-4000-8000-0000000a3219', 'Probe', 1990);
@@ -149,6 +149,12 @@ select ok(
 );
 
 update public.consumers set instagram_handle_shown = true where id = '00000000-0000-4000-8000-0000000a3219';
+select ok(
+  (select public.consumer_social_level(c) = 'public' and public.place_shown_handle(c) is null
+     from public.consumers c where id = '00000000-0000-4000-8000-0000000a3219'),
+  'opted in without proof: not shared (MESITA-4856)'
+);
+update public.consumers set instagram_proved_at = now() where id = '00000000-0000-4000-8000-0000000a3219';
 select ok(
   (select bool_and(instagram_handle = 'probe.3219')
      from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219'))

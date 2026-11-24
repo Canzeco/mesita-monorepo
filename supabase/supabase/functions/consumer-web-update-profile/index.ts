@@ -34,7 +34,7 @@ import {
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, social_private, instagram_followers_emulated, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_proved_at, instagram_synced_at, social_private, instagram_followers_emulated, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -100,7 +100,7 @@ serveJson("consumer-web-update-profile", async (req) => {
   // and a caller may send only one of them (MESITA-1806).
   const existing = await admin
     .from("consumers")
-    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private, instagram_handle, instagram_verified_at, instagram_handle_shown")
+    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private, instagram_handle, instagram_verified_at, instagram_proved_at, instagram_handle_shown")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
