@@ -29,7 +29,7 @@
 // UNLIST WRITES 'paused', NOT 'archived'. Both sit outside the visible set, so
 // either would hide the place; paused is the reversible one and this is a
 // toggle. `archived` reads as terminal and is left to whatever eventually
-// handles real deletion.
+// handles real deletion: listing an archived place answers 409 deleted.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serveJson } from "../_shared/http.ts";

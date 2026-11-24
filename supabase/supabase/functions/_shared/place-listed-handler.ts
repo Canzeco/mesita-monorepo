@@ -9,7 +9,7 @@ import {
 import { readAdminPlace } from "./admin-place.ts";
 import { anonymousReviews } from "./anonymous-reviews.ts";
 import { writePlace } from "./place-doc.ts";
-import { isPlaceListed } from "./place-state.ts";
+import { isPlaceDeleted, isPlaceListed } from "./place-state.ts";
 import { recordAdminOperatorEvent } from "./admin-operator-events.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
 
@@ -62,6 +62,11 @@ export async function handleSetPlaceListed(req: Request, source: string): Promis
     if (!readBack.ok) return readBack.response;
     const place = withAnonymousReviews(readBack.place);
     return json({ ok: true, listed, state: currentState, place });
+  }
+
+  // A deleted place never comes back through this toggle (MESITA-4909).
+  if (listed && isPlaceDeleted(currentState)) {
+    return json({ ok: false, code: "deleted", error: "This place was deleted. Enable can't bring it back." }, 409);
   }
 
   const nextState = listed ? LISTED_STATE : UNLISTED_STATE;
