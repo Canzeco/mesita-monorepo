@@ -314,7 +314,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
           {band}
           {reconnecting}
           <p className="proof-line" role="status">
-            The guest pays part in cash
+            The guest pays part in cash or card
           </p>
           <p className="proof-amount">Collect {moneyLabel(due, tab.currency)}</p>
           <p className="proof-line">
@@ -335,7 +335,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
           >
             {codeField}
             <label className="field">
-              Cash received
+              Cash or card received
               <input
                 inputMode="decimal"
                 autoComplete="off"
