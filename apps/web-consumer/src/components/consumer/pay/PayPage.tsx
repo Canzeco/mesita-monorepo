@@ -218,24 +218,28 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 
 // The discount badge (Pato, MESITA-4859; a money badge for an hour) and
 // the QR, the same marks everywhere.
-const TILES: Record<PayModal, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay & Get Bonus", icon: BadgePercent, ink: "bg-white text-indigo-500" },
-  pay: { word: "Pay Bill", icon: QrCode, ink: "bg-neutral-950 text-white" },
+const TILES: Record<PayModal, { word: string; line: string; icon: LucideIcon; ink: string }> = {
+  prepay: { word: "Prepay", line: "Get big discount", icon: BadgePercent, ink: "bg-white text-indigo-500" },
+  pay: { word: "Pay Bill", line: "Get small discount", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** ONE LETTER SIZE for the three words (Pato, 2026-11-24,
  *  MESITA-4855: "prepay and pay and credits must be all same size"). */
 const MARK_WORD = "text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg";
 
-/** A tile, always in its own colour (MESITA-4842). */
+/** A tile, always in its own colour (MESITA-4842): its name, then what it
+ *  gets you, one line (Pato, MESITA-4869). */
 function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
-  const { word, icon: Icon, ink } = TILES[id];
+  const { word, line, icon: Icon, ink } = TILES[id];
   return (
     <button type="button" onClick={onClick} className={cn(PAY_TILE, PAY_FILL[id])} data-pay-tile={id}>
       <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
         <Icon className="h-6 w-6" strokeWidth={2.25} />
       </span>
-      <span className={MARK_WORD}>{word}</span>
+      <span className="flex flex-col items-center gap-0.5 text-center">
+        <span className={MARK_WORD}>{word}</span>
+        <span className="text-sm leading-tight font-medium max-[374px]:text-xs">{line}</span>
+      </span>
     </button>
   );
 }
