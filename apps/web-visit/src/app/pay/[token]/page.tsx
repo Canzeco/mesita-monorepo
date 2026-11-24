@@ -39,6 +39,11 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     // A rescan finds the same bill, maybe already sent: send over its version.
     const now = await getBill(staff, opened.bill_id);
     if (now === "failed" || "refused" in now) return fail(now);
+    // The guest already accepted a bill here: that one is collected first.
+    if (now.bill.state === "accepted" || now.bill.state === "confirming") {
+      keepBillStaff(opened.bill_id, staff);
+      return router.replace(`/bill/${opened.bill_id}`);
+    }
     const sent = await sendBill(staff, { bill_id: opened.bill_id, version: now.bill.version, bill_cents: billCents, tip_cents: tipCents });
     if (sent === "failed" || "refused" in sent) return fail(sent);
     keepBillStaff(opened.bill_id, staff);

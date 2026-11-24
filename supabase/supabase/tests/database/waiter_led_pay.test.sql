@@ -3,7 +3,7 @@
 -- nothing owed closes at Accept, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(47);
+select plan(54);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -60,6 +60,8 @@ select is((select v->>'outcome' from t where k='acc'), 'accepted', 'the guest ac
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='open'), '00000000-0000-4000-8000-0000000a4823', 2, repeat('5', 64))->>'outcome'), 'replayed', 'a second Accept is the same one');
 select is((select b.spendable_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', 'mxn', false) b), 0, 'Accept holds the credit');
 select is((public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='open'), '00000000-0000-4000-8000-000000014823', 2, 70000, 0, repeat('c', 64))->>'code'), 'accepted', 'an accepted bill is not edited');
+select is((public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('f', 64))->>'outcome'), 'accepted', 'a rescan finds the accepted bill');
+select is((public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('f', 64))->>'bill_id'), (select v->>'bill_id' from t where k='open'), 'the same bill');
 -- The owner changes the rate and turns Loyalty Cards off meanwhile.
 update public.place_cashback_settings set welcome_bps = 0, returning_bps = 0 where place_id = '00000000-0000-4000-8000-000000014823';
 update public.place_payment_settings set loyalty_cards = false where place_id = '00000000-0000-4000-8000-000000014823';
@@ -69,6 +71,14 @@ select is((select v->>'outcome' from t where k='close'), 'closed', 'the bill is 
 select is((select amount_cents from public.wallet_entries where tab_id = (select (v->>'tab_id')::uuid from t where k='close') and kind = 'cashback'), 3000, 'the cashback granted is the one the guest accepted');
 select is((select sum(amount_cents)::int from public.wallet_entries where consumer_id = '00000000-0000-4000-8000-0000000a4823' and kind = 'spend'), -30000, 'the credit is spent once');
 select is((public.pay_guest_close((select (v->>'attempt_id')::uuid from t where k='acc'))->>'outcome'), 'already', 'Received twice moves nothing');
+
+-- ── A refund takes the cashback back (MESITA-4831) ──
+insert into t select 'ref', public.wallet_refund_outside((select payment_id from public.guest_pay_attempts where id = (select (v->>'attempt_id')::uuid from t where k='acc')));
+select is((select v->>'status' from t where k='ref'), 'refunded', 'a cash bill refunds');
+select is((select v->>'credit_refunded_cents' from t where k='ref'), '30000', 'its credits come back');
+select is((select v->>'cashback_reversed_cents' from t where k='ref'), '3000', 'and the cashback it earned is taken back');
+select is((select b.pending_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', 'mxn', false) b), 0, 'the reversal lands with the Pending cashback');
+select is((select b.spendable_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', 'mxn', false) b), 30000, 'and never eats other credit');
 
 -- ── A discount, declined, then a second place ──
 insert into t select 'o2', public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));

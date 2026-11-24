@@ -3,7 +3,7 @@
 // The waiter code (MESITA-3226, Pato: "there they only set the fucking number";
 // on Payments since MESITA-3600, Pato: "move waiter code configuration to
 // Payments, not there"; its own section, last, since MESITA-3824). Six digits (MESITA-4827)
-// waiters type once per phone per 12 hours to send bills (MESITA-4823). Only a hash is kept, so it is never
+// waiters type on each bill (MESITA-4827); one made before that reads Not set. Only a hash is kept, so it is never
 // shown again and a forgotten one is replaced. The server refuses editors.
 
 import { useState } from "react";

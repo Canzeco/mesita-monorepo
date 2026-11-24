@@ -67,7 +67,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     admin.rpc("wallet_balances", { p_consumer_id: userId, p_livemode: livemode }),
     admin.from("place_payment_accounts").select("place_id").eq("charges_enabled", true).eq("livemode", livemode).limit(5000),
     // The places where the waiter's charge can open (MESITA-3545).
-    admin.from("place_codes").select("place_id").limit(5000),
+    admin.from("place_codes").select("place_id").not("lookup_hash", "is", null).limit(5000),
   ]);
   if (balRes.error) return fail("balances", balRes.error.message);
   if (acctRes.error) return fail("accounts", acctRes.error.message);

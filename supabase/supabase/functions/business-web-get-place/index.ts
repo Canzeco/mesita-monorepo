@@ -42,7 +42,7 @@ serveJson("business-web-get-place", async (req) => {
   const res = await buildPlaceOverview(admin, placeId, { internal: access.role === "superadmin" });
   if (!res.ok) return json({ ok: false, error: res.error }, res.status);
 
-  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
+  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).not("lookup_hash", "is", null).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
 
   const stripe = await stripeStateByPlace(admin, [placeId], boostLivemode());

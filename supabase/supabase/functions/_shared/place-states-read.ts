@@ -79,7 +79,7 @@ export async function readPlaceStatesFacts(
     admin.from("place_payment_accounts").select(ACCOUNT_COLUMNS).in("place_id", ids),
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     admin.from("loyalty_cards_contracts").select("place_id").in("place_id", ids).is("ended_at", null),
-    admin.from("place_codes").select("place_id").in("place_id", ids),
+    admin.from("place_codes").select("place_id").in("place_id", ids).not("lookup_hash", "is", null),
     admin
       .from("place_fee_invoices")
       .select(FEE_INVOICE_COLUMNS)

@@ -313,7 +313,7 @@ export async function voucherOffer(
     readPlaceBalance(admin, consumerId, place.id, currency, livemode),
     readWelcomeUsed(admin, consumerId, place.id),
     readPerVisitUsed(admin, consumerId, place.id),
-    admin.from("place_codes").select("place_id").eq("place_id", place.id).maybeSingle(),
+    admin.from("place_codes").select("place_id").eq("place_id", place.id).not("lookup_hash", "is", null).maybeSingle(),
     readCashbackRates(admin, place.id),
   ]);
   // A failed read reads no code: Offers never advertises 2% it cannot honour.
