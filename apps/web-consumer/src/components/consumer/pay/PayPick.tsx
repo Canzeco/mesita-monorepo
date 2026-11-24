@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { BAR } from "@/components/consumer/search/header-classes";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -52,15 +53,20 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex flex-col" data-pay-list={kind}>
-      {/* The whole row is the field (MESITA-4842), a hairline under it. */}
-      <div className="bg-card border-border sticky top-0 z-20 flex h-14 items-center border-b pr-1 pl-4" data-pay-pick-search>
-        <SearchBar
-          query={query}
-          showClear={query.length > 0}
-          onQueryChange={setQuery}
-          onClear={() => setQuery("")}
-          placeholder="Search a place"
-        />
+      {/* A grey pill in a white row (Pato, 2026-11-24, MESITA-4913: the plain
+          white row was "more pretty but not that obvious"). Still 56px: the
+          head row sticks at top-14. */}
+      <div className="bg-card border-border sticky top-0 z-20 flex h-14 items-center border-b px-2" data-pay-pick-search>
+        <div className={cn(BAR, "flex-1")}>
+          <SearchBar
+            query={query}
+            showClear={query.length > 0}
+            onQueryChange={setQuery}
+            onClear={() => setQuery("")}
+            placeholder="Search a place"
+            label="Search a place"
+          />
+        </div>
       </div>
       {loc.state === "prime" ? (
         <div className="border-border border-b px-3.5 py-3">
