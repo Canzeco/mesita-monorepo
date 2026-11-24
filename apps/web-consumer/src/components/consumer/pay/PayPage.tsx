@@ -444,7 +444,9 @@ export function PayPage({
           role="tabpanel"
           id={`pay-panel-${tab}`}
           aria-labelledby={`pay-tab-${tab}`}
-          className="bg-card overflow-hidden rounded-xl"
+          // Nearby Offers is one white panel; Loyalty Cards are white boxes of
+          // their own on the black (MESITA-4794).
+          className={tab === "cards" ? undefined : "bg-card overflow-hidden rounded-xl"}
           data-pay-panel={tab}
         >
           {/* Both stay mounted, so each read runs and the page paints whole
