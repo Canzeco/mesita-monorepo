@@ -3,25 +3,23 @@
 // GIFTS, ONE LIST (Pato, 2026-11-15, MESITA-4036: "Unify gifts events in and
 // out. Only one view of gift events"). Each gift is one row of Tickets' list.
 //
-// CALMER ROWS (MESITA-4053, Pato 2026-11-15: "put it inside a box … less
-// animation. you can just display two profile images and the place image
-// and with text indicate amounts … you don't need that super stupid arrow
-// … maybe just an icon … like gift little bubble near profile photos"):
+// THE OTHER TABS' ROW (Pato, 2026-11-24, MESITA-4911: "this looks like
+// shit"): one 48px mark, so every row starts on the same edge, two lines,
+// the money on the right. It drew two faces AND the place's photo, the
+// amount inside a sentence, and Take back on a line of its own:
 //
-//   (Pato)(Ana)🎁 [place]  You sent $3.00MX                        2h
-//                          Taken · Taquería Orinoco
+//   (place)🎁 Taquería Orinoco          $100.00
+//             Waiting for a friend · 1d  (Take back)
+//   (place)👤 Taquería Orinoco          −$200.00
+//             To Ana · 4d                  Taken
+//   (place)↩  Taquería Orinoco           $200.00    (quiet)
+//             Sent · 4d               Taken back
 //
-// The sender's and receiver's 40px photos overlap by 12px with an 18px black
-// gift bubble on them; the receiver is a dashed "?" while nobody took it.
-// A gift taken back has no receiver and never will (MESITA-4084, Pato
-// 2026-11-15: "why the ???? … it was taken back"): the sender's photo alone,
-// the money back with them, under an undo bubble.
-// Then the place's photo, the sentence, the state and the place under it,
-// the time on the right. No arrow, no struck amount, no motion beyond the tap highlight. The
-// rows sit in Tickets' list box (ActivityRows). MESITA-4036's row drew
-// sender → receiver with a big amount over an arrow. The row opens the
-// gift's own page, /me/tickets/gift/<giftId> (MESITA-4066), which draws this
-// picture larger; a receiver's credit still on hold reads "Taken · ready in
+// The badge is the other person's face, else the gift (an undo once taken
+// back). On a place's own Loyalty Card the mark is the person and the name
+// line says who. The row opens the gift's own page,
+// /me/tickets/gift/<giftId> (MESITA-4066), which keeps the two faces
+// (GiftFaces); a receiver's credit still on hold reads "Taken · ready in
 // 1 hr" (lib/gift-ticket.ts).
 
 import { Gift, Undo2 } from "lucide-react";
@@ -29,7 +27,7 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { money, type GiftPerson, type GiftTicket } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES, giftTicketPath } from "@/lib/consumer-route-contract";
-import { giftState } from "@/lib/gift-ticket";
+import { giftHoldUntil, giftState } from "@/lib/gift-ticket";
 import { timeAgo } from "@/lib/time-ago";
 import { cn } from "@/lib/utils";
 import { ActivityRows } from "./ActivityRow";
@@ -128,6 +126,59 @@ export function giftSentence(g: GiftTicket): string {
   return `${g.sender.name} sent ${amount}`;
 }
 
+/** The other person, from where the guest stands: null while nobody is. */
+function otherPerson(g: GiftTicket): GiftPerson | null {
+  if (!g.sender.you) return g.sender;
+  return g.status === "taken_back" ? null : g.recipient;
+}
+
+/** "To Ana", "From Ana", "Waiting for a friend", "Sent" (taken back). */
+function whoLine(g: GiftTicket): string {
+  if (!g.sender.you) return `From ${g.sender.name}`;
+  if (g.status === "open") return giftState(g).label;
+  return g.recipient && g.status === "claimed" ? `To ${g.recipient.name}` : "Sent";
+}
+
+const MARK = "bg-muted text-foreground flex h-12 w-12 items-center justify-center rounded-full object-cover";
+
+/** The row's one 48px mark: the place under the person's badge, or on the
+ *  place's own page the person alone. */
+function GiftMark({ g, showPlace }: { g: GiftTicket; showPlace: boolean }) {
+  const back = g.status === "taken_back";
+  const other = otherPerson(g);
+  const Icon = back ? Undo2 : Gift;
+  if (!showPlace) {
+    return other ? (
+      <span className="shrink-0">
+        <GiftFace person={other} size="h-12 w-12 text-base" />
+      </span>
+    ) : (
+      <span className={cn(MARK, "shrink-0", back && "text-muted-foreground")} aria-hidden>
+        <Icon className="h-5 w-5" />
+      </span>
+    );
+  }
+  return (
+    <span className="relative h-12 w-12 shrink-0" aria-hidden>
+      {g.place?.photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={g.place.photo} alt="" className={cn(MARK, back && "opacity-50 grayscale")} />
+      ) : (
+        <span className={MARK} />
+      )}
+      <span className="absolute -right-1 -bottom-1">
+        {other ? (
+          <GiftFace person={other} size="h-5 w-5 type-meta" />
+        ) : (
+          <span className="bg-card text-foreground ring-card flex h-5 w-5 items-center justify-center rounded-full ring-2">
+            <Icon className="h-3 w-3" strokeWidth={2.25} />
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
 export function GiftTicketRow({
   g,
   showPlace = true,
@@ -141,57 +192,58 @@ export function GiftTicketRow({
 }) {
   const state = giftState(g);
   const place = g.place?.name ?? "A Mesita place";
-  const who = (p: GiftPerson | null, none: string) =>
-    p ? (p.you ? "you" : p.name) : none;
-  const words = giftSentence(g);
+  const back = g.status === "taken_back";
+  const who = whoLine(g);
+  const ago = timeAgo(movedAt(g));
+  // "Taken · ready in 1 hr" is too long for the right column: it joins the
+  // grey line.
+  const held = giftHoldUntil(g) !== null;
+  const facts = [showPlace ? who : "", held ? state.label : "", ago];
+  const sign =
+    g.status !== "claimed" ? "" : g.sender.you ? "−" : g.recipient?.you ? "+" : "";
   // TAKE BACK ON THE ROW (MESITA-4324, Pato: "remove the waiting for a
-  // friend list … it must be expressed in the gift tickets"): a gift you
-  // sent that nobody took yet carries the small grey Take back on its own
-  // line under the words (MESITA-4816, it squeezed them). The pill is the link's
+  // friend list … it must be expressed in the gift tickets"), under the
+  // amount. The row's link is stretched behind the words, so the pill is its
   // sibling, never inside it (a link cannot hold a button).
   const canTakeBack = g.status === "open" && g.sender.you && onChanged !== undefined;
-  const ago = timeAgo(movedAt(g));
   return (
-    <li>
+    <li className="relative">
       <PushLink
         href={giftTicketPath(g.gift_id)}
-        aria-label={`Gift, ${money(g.amount_cents, g.currency)} at ${place}, from ${who(g.sender, "someone")}${g.status === "taken_back" ? "" : ` to ${who(g.recipient, "nobody yet")}`}, ${state.label}`}
-        className="hover:bg-muted/40 active:bg-muted/60 flex items-center gap-4 px-4 py-4 transition"
+        aria-label={`Gift, ${money(g.amount_cents, g.currency)} at ${place}, ${who}, ${state.label}`}
+        className="hover:bg-muted/40 active:bg-muted/60 absolute inset-0 transition"
         data-gift-ticket={g.status}
-      >
-        <GiftFaces g={g} />
-        {/* The place's photo only where the place is not the page (MESITA-4816). */}
-        {!showPlace ? null : g.place?.photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={g.place.photo}
-            alt=""
-            className="bg-muted h-12 w-12 shrink-0 rounded-xl object-cover"
-          />
-        ) : (
-          <span className="bg-muted h-12 w-12 shrink-0 rounded-xl" aria-hidden />
-        )}
+      />
+      <div className="pointer-events-none relative flex items-center gap-4 px-4 py-4">
+        <GiftMark g={g} showPlace={showPlace} />
+        {/* Lines wrap and the row grows; nothing truncates (MESITA-4343). */}
         <span className="min-w-0 flex-1">
-          <span className="block text-base font-semibold break-words tabular-nums">
-            {words}
+          <span className={cn("block text-base font-semibold break-words", back && "text-muted-foreground")}>
+            {showPlace ? place : who}
           </span>
-          {/* The state, then the place on
-              its own line: the row grows rather than cut a word (MESITA-4343,
-              Pato: "it's ok if tickets are a bit taller"). */}
-          <span className="mt-1 block text-sm break-words">
-            <span className={cn("font-semibold", GIFT_TONE[state.tone])}>{state.label}</span>
+          <span className="text-muted-foreground mt-1 block text-sm break-words tabular-nums">
+            {facts.filter(Boolean).join(" · ")}
           </span>
-          {showPlace ? (
-            <span className="text-muted-foreground mt-1 block text-sm break-words">{place}</span>
-          ) : null}
         </span>
-        <span className="text-muted-foreground shrink-0 self-start text-sm tabular-nums">{ago}</span>
-      </PushLink>
-      {canTakeBack ? (
-        <div className="-mt-1 flex justify-end px-4 pb-4">
-          <TakeBack g={g} onDone={onChanged} variant="pill" />
+        <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+          <span
+            className={cn(
+              "text-base font-semibold tabular-nums",
+              back ? "text-muted-foreground" : sign === "+" && "text-green-700",
+            )}
+          >
+            {sign}
+            {money(g.amount_cents, g.currency)}
+          </span>
+          {canTakeBack ? (
+            <div className="pointer-events-auto">
+              <TakeBack g={g} onDone={onChanged} variant="pill" />
+            </div>
+          ) : g.status === "open" || held ? null : (
+            <span className={cn("text-sm font-semibold", GIFT_TONE[state.tone])}>{state.label}</span>
+          )}
         </div>
-      ) : null}
+      </div>
     </li>
   );
 }
