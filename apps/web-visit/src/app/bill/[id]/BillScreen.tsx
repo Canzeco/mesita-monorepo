@@ -86,7 +86,7 @@ export function BillScreen({ billId }: { billId: string }) {
     let timer: ReturnType<typeof setTimeout>;
     const loop = async () => {
       if (document.visibilityState === "visible") await refresh();
-      if (alive) timer = setTimeout(() => void loop(), nextDelay(Date.now() - changedAt.current));
+      if (alive) timer = setTimeout(() => void loop(), nextDelay(changedAt.current === 0 ? 0 : Date.now() - changedAt.current));
     };
     void loop();
     const onShow = () => {
@@ -396,7 +396,10 @@ export function BillScreen({ billId }: { billId: string }) {
                   Cancel
                 </button>
                 {guestReady ? null : (
-                  <button type="button" className="wp-no" disabled={busy !== null} onClick={() => setEditing(true)}>
+                  <button type="button" className="wp-no" disabled={busy !== null} onClick={() => {
+                    setError(null);
+                    setEditing(true);
+                  }}>
                     Edit
                   </button>
                 )}

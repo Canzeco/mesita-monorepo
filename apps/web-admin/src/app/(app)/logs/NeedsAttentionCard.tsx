@@ -2,6 +2,7 @@
 
 import { AlertTriangle } from "lucide-react";
 import { Chip, SectionCard } from "@/components/admin-ui";
+import { formatDateTime } from "@/lib/format";
 import type { NeedsAttentionRow } from "../reservations-config/catalog";
 
 function whyAttention(row: NeedsAttentionRow): string {
@@ -53,7 +54,7 @@ export function NeedsAttentionCard({
               <Chip tone="danger">{row.state}</Chip>
               {row.is_test && <Chip>test</Chip>}
               <span className="text-muted-foreground text-xs">
-                {new Date(row.reserved_at).toLocaleString()}
+                {formatDateTime(row.reserved_at)}
               </span>
             </div>
             <p className="text-destructive text-xs font-medium">

@@ -79,6 +79,7 @@ export function AdminConfigClient({
         <div className="min-w-0 flex-1">
           <TextField
             type="email"
+            aria-label="Admin email"
             value={email}
             onChange={setEmail}
             onKeyDown={(e) => e.key === "Enter" && add()}
@@ -89,6 +90,7 @@ export function AdminConfigClient({
         </div>
         <div className="min-w-0 flex-1">
           <TextField
+            aria-label="Note"
             value={note}
             onChange={setNote}
             onKeyDown={(e) => e.key === "Enter" && add()}
@@ -149,7 +151,7 @@ export function AdminConfigClient({
                       ? "Can't remove the last admin"
                       : "Remove admin"
                 }
-                aria-label="Remove admin"
+                aria-label={`Remove admin ${a.email}`}
                 onClick={() => remove(a.email)}
               >
                 <Trash2 className="h-4 w-4" />

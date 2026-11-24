@@ -77,6 +77,8 @@ export function SinglePlaceClient({
   const [busy, setBusy] = useState<"find" | "create" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View | null>(null);
+  // The opening list is on its way (nothing is, with the empty query off).
+  const [listing, setListing] = useState(findCaps.emptyQuery);
   const [note, setNote] = useState<Note | null>(null);
   // The catalogue, read once per page life (and again after a Create).
   const [catalog, setCatalog] = useState<PlaceHit[] | null>(null);
@@ -162,7 +164,11 @@ export function SinglePlaceClient({
 
   useEffect(() => {
     findSeq.current += 1;
-    if (findCaps.emptyQuery) void findCatalogue();
+    if (findCaps.emptyQuery) {
+      void findCatalogue()
+        .catch((err) => setError(err instanceof Error ? err.message : String(err)))
+        .finally(() => setListing(false));
+    }
     // Mount only. The list loads without locking the field. Enter is the
     // deep search; an empty submit calls findCatalogue itself.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -401,7 +407,7 @@ export function SinglePlaceClient({
           </Notice>
         ) : null}
 
-        {view == null ? <Skeleton variant="table" label="Loading Mesita places" className="mt-4" /> : null}
+        {view == null && (listing || busy === "find") ? <Skeleton variant="table" label="Loading Mesita places" className="mt-4" /> : null}
 
         {view?.kind === "matches" ? (
           <FindResults

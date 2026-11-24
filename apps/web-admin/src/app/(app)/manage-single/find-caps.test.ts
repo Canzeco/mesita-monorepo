@@ -20,6 +20,6 @@ describe("Find's caps come from Word by Admin", () => {
     const client = read("SinglePlaceClient.tsx");
     expect(client).toContain("searchTextSource(query, findCaps.textCount)");
     expect(client).toContain("findCaps.autoCount > 0");
-    expect(client).toContain("if (findCaps.emptyQuery) void findCatalogue();");
+    expect(client).toContain("if (findCaps.emptyQuery) {\n      void findCatalogue()");
   });
 });

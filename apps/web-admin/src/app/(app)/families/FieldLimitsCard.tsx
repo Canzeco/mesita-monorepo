@@ -44,7 +44,7 @@ export function FieldLimitsCard({ limits }: { limits: FieldLimits }) {
       if (draft[r.field].create !== saved[r.field].create) patch[r.create] = draft[r.field].create;
       if (draft[r.field].enrich !== saved[r.field].enrich) patch[r.enrich] = draft[r.field].enrich;
     }
-    const res = await saveFieldLimits(patch);
+    const res = await saveFieldLimits(patch).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
     setPending(false);
     if (!res.ok) {
       setError(res.error);
