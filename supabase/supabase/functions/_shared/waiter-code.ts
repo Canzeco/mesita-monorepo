@@ -1,8 +1,8 @@
-// One 8-digit code per waiter (MESITA-4871). Mesita makes it on Business ›
-// Offers and shows it once; the waiter types it at service.mesita.ai on each
-// bill. The code alone names its place and its waiter (place_waiters
-// .lookup_hash, a keyed hash). It buys a token `w1.<exp>.<waiter>.<jti>.<mac>`
-// of 12 hours, signed over that hash: a new code or a removal ends it.
+// One 4-digit code per waiter (MESITA-4897), its place's own. Mesita makes it on
+// Business › Offers; the waiter types it at service.mesita.ai on each bill, and
+// the place is the guest's QR's. It buys a token `w1.<exp>.<waiter>.<jti>.<mac>`
+// of 12 hours, signed over place_waiters.lookup_hash, a random key: a new code
+// or a removal ends it.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
@@ -11,11 +11,11 @@ export const WAITER_NAME_MAX = 40;
 export const WAITERS_MAX = 100;
 const TOKEN_TTL_SEC = 12 * 60 * 60;
 
-/** Eight digits, or null. Spaces a person typed do not count. */
+/** Four digits, or null. Spaces a person typed do not count. */
 export function readWaiterCode(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const code = v.replace(/\s/g, "");
-  return /^\d{8}$/.test(code) ? code : null;
+  return /^\d{4}$/.test(code) ? code : null;
 }
 
 /** A waiter's name: 1 to 40 characters, one line; null otherwise. */
@@ -26,18 +26,17 @@ export function readWaiterName(v: unknown): string | null {
   return name.length >= 1 && [...name].length <= WAITER_NAME_MAX ? name : null;
 }
 
-/** Eight digits from the platform CSPRNG, no modulo bias. */
+/** Four digits from the platform CSPRNG, no modulo bias. */
 export function mintWaiterCode(): string {
-  const limit = Math.floor(0x100000000 / 100_000_000) * 100_000_000;
+  const limit = Math.floor(0x100000000 / 10_000) * 10_000;
   let n: number;
   do n = crypto.getRandomValues(new Uint32Array(1))[0]; while (n >= limit);
-  return String(n % 100_000_000).padStart(8, "0");
+  return String(n % 10_000).padStart(4, "0");
 }
 
-export async function lookupWaiterCode(serviceKey: string, code: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`waiter-code:${serviceKey}:${code}`));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+/** A new key for a waiter's tokens. */
+export const mintWaiterKey = () =>
+  [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
 function b64url(bytes: Uint8Array): string {
   let bin = "";

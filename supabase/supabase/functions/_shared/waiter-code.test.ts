@@ -1,13 +1,13 @@
-// Auth (MESITA-4871): a waiter's 8-digit code and its token.
-import { assert, assertEquals, assertNotEquals } from "jsr:@std/assert@1";
-import { checkWaiterToken, lookupWaiterCode, mintWaiterCode, mintWaiterToken, readWaiterCode, readWaiterName, waiterOfToken } from "./waiter-code.ts";
+// Auth (MESITA-4871): a waiter's 4-digit code and its token.
+import { assert, assertEquals } from "jsr:@std/assert@1";
+import { checkWaiterToken, mintWaiterCode, mintWaiterKey, mintWaiterToken, readWaiterCode, readWaiterName, waiterOfToken } from "./waiter-code.ts";
 
 const W = { id: "00000000-0000-4000-8000-000000004871", placeId: "00000000-0000-4000-8000-000000000001", lookupHash: "a".repeat(64) };
 const NOW = 1_790_000_000_000;
 
-Deno.test("a code is eight digits", () => {
-  assertEquals(readWaiterCode(" 1234 5678 "), "12345678");
-  for (const bad of ["123456", "1234567", "123456789", "1234567a", 12345678, null]) assertEquals(readWaiterCode(bad), null);
+Deno.test("a code is four digits", () => {
+  assertEquals(readWaiterCode(" 12 34 "), "1234");
+  for (const bad of ["123", "12345", "123a", "12345678", 1234, null]) assertEquals(readWaiterCode(bad), null);
   for (let i = 0; i < 50; i++) assert(readWaiterCode(mintWaiterCode()));
 });
 
@@ -16,8 +16,9 @@ Deno.test("a name is one line of 1 to 40 characters", () => {
   for (const bad of ["", "   ", "x".repeat(41), 5]) assertEquals(readWaiterName(bad), null);
 });
 
-Deno.test("the lookup hash is keyed", async () => {
-  assertNotEquals(await lookupWaiterCode("k1", "12345678"), await lookupWaiterCode("k2", "12345678"));
+Deno.test("a token key is 32 random bytes", () => {
+  assert(/^[0-9a-f]{64}$/.test(mintWaiterKey()));
+  assert(mintWaiterKey() !== mintWaiterKey());
 });
 
 Deno.test("a token is one waiter's, one place's, and ends with the code or in 12 hours", async () => {

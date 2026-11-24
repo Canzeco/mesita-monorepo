@@ -24,8 +24,8 @@ describe("the waiter's keypad", () => {
     expect(tipOf("0")).toBe(0);
     expect(tipOf("30.5")).toBe(3050);
   });
-  it("types eight digits, never more", () => {
-    expect([..."123456789"].reduce((c, k) => pressCode(c, k as Key), "")).toBe("12345678");
+  it("types four digits, never more", () => {
+    expect([..."123456789"].reduce((c, k) => pressCode(c, k as Key), "")).toBe("1234");
     expect(pressCode("12", ".")).toBe("12");
     expect(pressCode("12", "back")).toBe("1");
   });
