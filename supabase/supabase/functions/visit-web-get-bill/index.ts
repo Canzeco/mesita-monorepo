@@ -1,13 +1,13 @@
 // Supabase Edge Function — visit-web-get-bill
 //
 // MESITA-4823 (waiter-led pay): the waiter's poll. The guest's photo and first
-// name (MESITA-4878: the waiter checks it is their guest), and no credits
-// before the guest accepts.
+// name (MESITA-4878: the waiter checks it is their guest), and what to collect
+// from the moment the bill is sent (MESITA-4889).
 //
 // Body: { bill_id, place_id, staff_token }
 // Response: { ok: true, bill: { id, state, version, currency, bill_cents, tip_cents,
 //             discount_cents, credit_cents, outside_bill_cents, outside_cents,
-//             expires_at, test_mode }, place: { id, name }, guest_photo, guest_name }
+//             expires_at, test_mode, waiter_ready, took_cents }, place: { id, name }, guest_photo, guest_name }
 //   403 staff_code_needed · 404 gone
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

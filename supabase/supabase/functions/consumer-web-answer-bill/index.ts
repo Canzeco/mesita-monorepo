@@ -1,8 +1,9 @@
 // Supabase Edge Function — consumer-web-answer-bill
 //
 // MESITA-4823 (waiter-led pay): the guest's answer to the waiter's bill.
-//   accept    pay_bill_accept: holds the credits (or closes the bill when
-//             nothing is owed outside); the version is the one on screen
+//   accept    the guest's Pay (pay_bill_accept): holds the credits, and closes
+//             the bill when the waiter already tapped Receive (MESITA-4889);
+//             the version is the one on screen
 //   decline   back to the waiter, who fixes it; `not_mine` ends it and kills
 //             the QR that phone scanned
 //   cancel    an accepted bill, until the waiter's Received

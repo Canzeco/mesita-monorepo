@@ -772,14 +772,14 @@ export function PaymentsPanel({
               {cashDue.map((row) => (
                 <li key={row.attempt_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm sm:px-6">
                   <span>
-                    <span className="font-semibold">{moneyLabel(row.cash_cents, currency)}</span>
+                    <span className="font-semibold">{row.cash_cents > 0 ? moneyLabel(row.cash_cents, currency) : `${moneyLabel(row.credit_cents ?? 0, currency)} in credits`}</span>
                     <span className="text-muted-foreground"> · {row.guest_label} · {new Date(row.created_at).toLocaleString()}</span>
                   </span>
                   <button
                     type="button"
                     className={ACTION}
                     onClick={() => {
-                      const amount = moneyLabel(row.cash_cents, currency);
+                      const amount = row.cash_cents > 0 ? moneyLabel(row.cash_cents, currency) : `${moneyLabel(row.credit_cents ?? 0, currency)} in credits`;
                       if (!window.confirm(`Mark ${amount} received?`)) return;
                       void receiveGuestCash(placeId, row.attempt_id, row.cash_cents).then((r) => {
                         if (!r.ok) return setError(r.code === "amount_changed" ? "Amount changed. Refresh this list." : r.error);

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, XCircle } from "lucide-react";
+import { Check, Loader2, Lock, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -24,21 +24,22 @@ import { usePayPlaces } from "./use-pay-places";
 // general Mesita QR, never a place's; the waiter scans it and sends the bill;
 // this same screen becomes the bill:
 //
+// The steps read QR · Bill · Pay · Receipt since MESITA-4889.
 // FOUR VIEWS (MESITA-4883, Pato: "1. QR 2. Write Bill (observe in real time)
 // 3. Pay Bill 4. Receipt"; three under MESITA-4878):
 //   1 QR          "Show this to your waiter"; opened from a place, the guest's
 //                 credits and rate there and nothing more (MESITA-4881, Pato:
 //                 "don't overexplain here")
-//   2 Write Bill  the bill and the tip as the waiter types them, read every
-//                 half second; shown, never paid
-//   3 Pay Bill    what it comes to, Accept or Decline; then Pay $X at the place,
-//                 which only the waiter confirms
+//   2 Bill      the bill and the tip as the waiter types them, read every
+//                 300 ms; shown, never paid
+//   3 Pay         what it comes to and the handshake: the guest's Pay and the
+//                 waiter's Receive, in any order, then the receipt by itself
 //   4 Receipt   /pay/bill/<id>
 //   over       declined, cancelled or expired, and the QR again
 //
 // `from` (a place's Pay Bill) only says what the guest gets there; it is never
 // sent: the waiter's phone names the place. Credits are used to the maximum
-// and never pay the tip; the server works every number out, and Accept names
+// and never pay the tip; the server works every number out, and Pay names
 // the version on screen.
 
 /** While the waiter types (Pato, MESITA-4887: "maybe every 300ms"; the read's
@@ -52,6 +53,19 @@ const RENEW_MS = 60_000;
 /** A bill that just changed can't be accepted by a tap already on its way. */
 const REARM_MS = 1000;
 const CODE_KEY = "mesita.pay.code";
+
+/** One side of the handshake: a word and an icon, never colour alone. */
+function HandshakeSide({ who, ready }: { who: string; ready: boolean }) {
+  return (
+    <span className="flex w-20 flex-col items-center gap-1 text-center" data-handshake-side={who} data-ready={ready}>
+      <span className={cn("flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300", ready ? "border-[#00D66F] bg-[#00D66F] text-neutral-950" : "border-border text-muted-foreground border-dashed")} aria-hidden>
+        {ready ? <Check className="h-6 w-6" strokeWidth={3} /> : <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />}
+      </span>
+      <span className="text-sm font-semibold">{who}</span>
+      <span className={cn("text-xs", ready ? "font-semibold text-green-700" : "text-muted-foreground")}>{ready ? "Ready" : "Waiting"}</span>
+    </span>
+  );
+}
 
 /** An amount that moves as it is typed (MESITA-4886, Pato: "add an animation
  *  that is live"): a character that changed rises into place. */
@@ -130,7 +144,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       setNow(Date.now());
       const shown = b;
       if (billNeedsGuest(shown)) following.current = shown.id;
-      const key = `${shown ? `${shown.id}:${shown.state}:${shown.version}` : ""}:${t ? `${t.step}:${t.bill_cents}:${t.tip_cents}` : ""}`;
+      const key = `${shown ? `${shown.id}:${shown.state}:${shown.version}:${shown.waiter_ready === true}` : ""}:${t ? `${t.step}:${t.bill_cents}:${t.tip_cents}` : ""}`;
       if (key !== seen.current) {
         seen.current = key;
         changedAt.current = Date.now();
@@ -206,7 +220,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     const loop = async () => {
       const started = Date.now();
       if (document.visibilityState === "visible") await refresh();
-      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? FAST_MS : typingNow.current ? Math.max(TYPING_MS - (Date.now() - started), 0) : LIVE_MS);
+      if (alive.current) timer = setTimeout(() => void loop(), Date.now() - changedAt.current > 120_000 ? SLOW_MS : following.current ? (Date.now() - changedAt.current < 30_000 ? LIVE_MS : FAST_MS) : typingNow.current ? Math.max(TYPING_MS - (Date.now() - started), 0) : LIVE_MS);
     };
     timer = setTimeout(() => void loop(), LIVE_MS);
     const onVisible = () => {
@@ -274,7 +288,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         <StepBody className="min-h-0 flex-1">
           {misses >= 2 ? (
             <p className="text-muted-foreground text-sm" role="status">
-              No connection. If it stays, pay normally: nothing was used.
+              {bill?.state === "accepted" || bill?.state === "confirming" || bill?.waiter_ready ? "Checking… Don't pay again. Ask your waiter if it went through." : "No connection. If it stays, pay normally: nothing was used."}
             </p>
           ) : null}
           {body}
@@ -307,7 +321,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       </div>
     );
     return frame(
-      "Write Bill",
+      "Bill",
       <section className="flex min-h-fit flex-1 flex-col justify-center gap-4 py-4" data-write-bill={t.step}>
         <div className="flex flex-col items-center gap-1 text-center">
           <p className="mb-2 flex items-center gap-2 rounded-full bg-[#00D66F]/15 px-3 py-1 text-sm font-semibold">
@@ -318,8 +332,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
             Live
           </p>
           <p className="text-muted-foreground text-base" role="status">
-            {t.step === "bill" ? "Your waiter is writing your bill" : t.step === "tip" ? "Your waiter is writing the tip" : "Your waiter is about to send it"}
-            <LiveDots />
+            {t.step === "bill" ? "Your waiter is writing your bill" : t.step === "tip" ? "Your waiter is writing the tip" : "Your bill is ready"}
+            {t.step === "code" ? null : <LiveDots />}
           </p>
           <p className={cn("leading-tight font-bold tracking-tight tabular-nums", shown(t.bill_cents + t.tip_cents).length > 10 ? "text-4xl" : "text-5xl")}>
             <LiveAmount text={shown(t.bill_cents + t.tip_cents)} />
@@ -329,7 +343,15 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           {row("Bill", t.bill_cents, t.step === "bill", shown(0))}
           {row("Tip", t.tip_cents, t.step === "tip", t.step === "code" ? "No tip" : shown(0))}
         </dl>
-        <p className="text-muted-foreground text-center text-sm">You check it and accept it next. Nothing is paid yet.</p>
+        {/* THE WAITER'S CODE (Pato, 2026-11-24, MESITA-4889: "in a discreet way,
+            like waiter is authenticating, below tip"): that it is being typed,
+            never a digit nor how many. */}
+        <p className={cn("text-muted-foreground flex min-h-6 items-center justify-center gap-2 text-sm transition-opacity duration-500", t.step !== "code" && "opacity-0")} aria-hidden={t.step !== "code"} data-waiter-code>
+          <Lock className="h-4 w-4 animate-pulse motion-reduce:animate-none" aria-hidden />
+          Your waiter is entering their code
+          <LiveDots />
+        </p>
+        <p className="text-muted-foreground text-center text-sm">You check it and pay next. Nothing is paid yet.</p>
       </section>,
       <button type="button" className={QUIET_BUTTON_CLASS} onClick={() => setQrOver(true)}>
         Show my QR
@@ -411,6 +433,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const placeName = bill.place.name ?? "A Mesita place";
   const secs = Math.max(0, Math.ceil((Date.parse(bill.expires_at) - now) / 1000));
   const left = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+  const took = bill.took_cents ?? null;
   // OVER.
   if (bill.state === "cancelled" || bill.state === "expired" || bill.state === "declined" || !q) {
     const words =
@@ -422,8 +445,10 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         <p className="mt-2 text-base">{words}</p>
         <p className="text-muted-foreground mt-1 max-w-xs text-sm">
           {bill.state === "declined"
-            ? "Your waiter can fix it and send it again. It shows up here."
-            : "No credits were used. If you already paid, show this screen to the staff."}
+            ? "Your waiter can fix it and send it again. It shows up here." + (took !== null && took > 0 ? ` If you paid ${m(took)}, ask for it back.` : "")
+            : took !== null && took > 0
+                ? `No credits were used. Your waiter said they took ${m(took)}. Show them this screen.`
+                : "No credits were used. If you already paid, show this screen to the staff."}
         </p>
       </PaySection>,
       <Button size="lg" className="min-h-12 w-full text-base font-semibold" onClick={again}>
@@ -476,6 +501,22 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     </section>
   );
 
+  // THE HANDSHAKE (Pato, 2026-11-24, MESITA-4889: "a screen that waits for both
+  // sides to confirm, not sequential order, but just both sides to coincide").
+  const changed = took !== null && !bill.waiter_ready && took !== q.outside_cents;
+  const changedLine = changed ? (
+    <p className="shrink-0 text-center text-sm font-semibold text-amber-700" role="status">
+      The bill changed. Your waiter took {m(took)}; now it is {m(q.outside_cents)}.
+    </p>
+  ) : null;
+  const handshake = (
+    <div className="border-border flex shrink-0 items-center rounded-2xl border px-4 py-3" role="status" data-handshake>
+      <HandshakeSide who="You" ready={bill.state === "accepted"} />
+      <span className={cn("h-0.5 flex-1 rounded-full", bill.state === "accepted" || bill.waiter_ready ? "bg-[#00D66F]" : "bg-border")} aria-hidden />
+      <HandshakeSide who="Waiter" ready={bill.waiter_ready === true} />
+    </div>
+  );
+
   // CONFIRMING, or paid and on its way to the receipt.
   if (bill.state === "confirming" || bill.state === "paid") {
     return frame(
@@ -496,12 +537,14 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     return (
       <>
         {frame(
-          "Pay Bill",
+          "Pay",
           <>
             {ticket("Pay your waiter, cash or card")}
+            {handshake}
+            {changedLine}
             <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm tabular-nums">
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
-              Waiting for the waiter to confirm · {left}
+              Waiting for your waiter · {left}
             </p>
           </>,
           <div className="flex flex-wrap items-center justify-center gap-3">
@@ -540,11 +583,13 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     );
   }
 
-  // THE BILL: Accept or Decline.
+  // THE BILL: Pay or Decline. Their Pay closes it when the waiter is ready.
   return frame(
-    "Pay Bill",
+    "Pay",
     <>
       {ticket("You pay your waiter, cash or card")}
+      {handshake}
+      {changedLine}
       <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums">
         Answer in {left}
         <span aria-hidden>·</span>
@@ -553,7 +598,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         </button>
       </p>
     </>,
-    // Decline a third, Accept two thirds: one clear next step.
+    // Decline a third, Pay two thirds: one clear next step.
     <div className="grid grid-cols-[1fr_2fr] gap-2">
       <button type="button" className={QUIET_BUTTON_CLASS} disabled={busy !== null} onClick={() => void answer("decline")} data-bill-decline>
         {busy === "decline" ? <Spinner size="sm" label="Declining" /> : "Decline"}
@@ -563,10 +608,10 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         className="min-h-12 w-full rounded-2xl bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]"
         disabled={busy !== null || now < armedAt}
         onClick={() => void answer("accept")}
-        aria-label={nothingOwed ? `Accept, use ${m(q.credit_cents)} of credits` : `Accept, pay ${m(q.outside_cents)} here`}
+        aria-label={nothingOwed ? `Pay with ${m(q.credit_cents)} of credits` : `Pay ${m(q.outside_cents)} here`}
         data-bill-accept
       >
-        {busy === "accept" ? <Spinner size="sm" label="Accepting" /> : "Accept"}
+        {busy === "accept" ? <Spinner size="sm" label="Paying" /> : `Pay ${big}`}
       </Button>
     </div>,
     3,

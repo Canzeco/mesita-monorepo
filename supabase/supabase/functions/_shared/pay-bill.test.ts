@@ -8,6 +8,7 @@ const att = { status: "due" as const, charging_at: null, end_reason: null, expir
 const bill: BillRow = {
   id: "b", consumer_id: "c", place_id: "p", livemode: false, currency: "mxn", status: "sent", version: 1,
   bill_cents: 50000, tip_cents: 5000, attempt_id: null, expires_at: later, updated_at: before,
+  received_version: null, took_cents: null,
   quote: {
     mechanism: "cashback", line: "welcome", discount_bps: 0, discount_cents: 0, credit_cents: 20000, outside_bill_cents: 30000,
     tip_cents: 5000, outside_cents: 35000, cashback_bps: 1000, cashback_cents: 3000,
@@ -25,11 +26,20 @@ Deno.test("the attempt is the truth once accepted", () => {
   assertEquals(billState(acc, { ...att, status: "released", end_reason: "rejected" }, NOW), "cancelled");
 });
 
-Deno.test("the waiter reads no credits before the guest accepts", () => {
+Deno.test("the waiter reads what to collect once the bill is sent, never the cashback", () => {
+  const o = staffBillView({ ...bill, status: "open" }, null, NOW);
+  assertEquals([o.credit_cents, o.outside_cents], [0, null]);
   const v = staffBillView(bill, null, NOW);
-  assertEquals([v.credit_cents, v.outside_cents], [0, null]);
+  assertEquals([v.credit_cents, v.outside_cents], [20000, 35000]);
+  assertEquals("cashback_cents" in v, false);
   const a = staffBillView({ ...bill, status: "accepted" }, att, NOW);
   assertEquals([a.credit_cents, a.outside_cents], [20000, 35000]);
+});
+
+Deno.test("the waiter is ready only on the version on screen", () => {
+  assertEquals(staffBillView({ ...bill, received_version: 1 }, null, NOW).waiter_ready, true);
+  assertEquals(staffBillView({ ...bill, version: 2, received_version: 1 }, null, NOW).waiter_ready, false);
+  assertEquals(billState({ ...bill, status: "accepted" }, { ...att, ending_at: before }, NOW), "cancelled");
 });
 
 Deno.test("what opens a bill", () => {

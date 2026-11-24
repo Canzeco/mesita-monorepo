@@ -1,9 +1,9 @@
 -- MESITA-4823 — waiter-led pay: the quote equals what is written, Accept
 -- freezes the cashback and holds the credit, versions refuse stale answers,
--- nothing owed closes at Accept, releases free the credit.
+-- nothing owed still takes both taps, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(75);
+select plan(76);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -86,7 +86,7 @@ select is((public.pay_bill_decline((select (v->>'bill_id')::uuid from t where k=
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o2'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('6', 64))->>'code'), 'declined', 'a declined bill is not accepted');
 select is((public.pay_bill_decline((select (v->>'bill_id')::uuid from t where k='o2'), '00000000-0000-4000-8000-0000000a4823', 1, true)->>'ok'), 'true', 'Not my bill answers');
 
--- ── Nothing owed outside closes at Accept ──
+-- ── Nothing owed outside ──
 insert into public.wallet_purchases (id, consumer_id, place_id, amount_cents, currency, status, stripe_account_id,
                                      voucher, bonus_cents, application_fee_cents, stripe_checkout_session_id)
 values ('00000000-0000-4000-8000-0000000e4823', '00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000024823',
@@ -104,13 +104,14 @@ select is((public.pay_guest_claim_end((select (v->>'attempt_id')::uuid from t wh
 select is((public.pay_guest_finish_release((select (v->>'attempt_id')::uuid from t where k='a3'), 'cancelled')->>'outcome'), 'released', 'the bill is released');
 select is((select b.spendable_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000024823', 'mxn', false) b), 22000, 'the credit is free again');
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o3'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('a', 63) || '2')->>'code'), 'already_final', 'a released bill is over');
--- Nothing owed outside: Accept closes it.
+-- Nothing owed outside: both taps close it.
 insert into t select 'o4', public.pay_bill_open(null, (select (v->>'bill_id')::uuid from t where k='o3'), '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
 insert into t select 's4', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-000000024823', 0, 25000, 0, repeat('d', 64));
 insert into t select 'a4', public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('a', 63) || '3');
-select is((select v->>'status' from t where k='a4'), 'closed', 'credits cover everything and no tip: Accept closes the bill');
+select is((select v->>'status' from t where k='a4'), 'opening', 'credits cover everything and no tip: it still waits for the waiter (MESITA-4889)');
+select is((public.pay_bill_receive((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-000000024823', 1, repeat('d', 64), null)->>'outcome'), 'paid', 'whose Receive closes it');
 select is((select b.spendable_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000024823', 'mxn', false) b), 2000, 'the credit is spent');
-select is((select verified_key_hash from public.pay_tabs where id = (select (v->>'tab_id')::uuid from t where k='a4')), repeat('d', 64), 'the waiter who sent it is the one on record');
+select is((select verified_key_hash from public.pay_tabs where id = (select tab_id from public.guest_pay_attempts where id = (select (v->>'attempt_id')::uuid from t where k='a4'))), repeat('d', 64), 'the waiter who received it is the one on record');
 -- Credit changed between Send and Accept.
 insert into t select 'o5', public.pay_bill_open(repeat('7', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
 insert into t select 's5', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o5'), '00000000-0000-4000-8000-000000024823', 0, 10000, 0, repeat('d', 64));

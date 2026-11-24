@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { amountText, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGTH } from "@/lib/waiter-pad";
 
-// THE WAITER'S FIVE STEPS (MESITA-4879, Pato: "Bill Tip Code Charge (confirm)
+// THE WAITER'S FOUR STEPS since MESITA-4889 (Bill and Tip are one step, two
+// screens; five under MESITA-4879, Pato: "Bill Tip Code Charge (confirm)
 // Receipt … you first input code, then you send bill"), one thing per screen,
 // on keys drawn in the page (MESITA-4871):
 //
 //   Bill     the bill, before tip
 //   Tip      10 · 15 · 20% · Other; nothing is no tip
 //   Code     the waiter's own 8 digits, then whose QR it is; Send bill
-//   Charge   waiting for the guest, then how they pay and Received, asked twice
+//   Receive  the handshake: this tap and the guest's Pay, in any order
 //   Receipt  what was paid
 //
 // The tip is never picked for the guest.
@@ -19,10 +20,10 @@ import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGT
 const KEYS: Key[] = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"];
 const TIP_PCTS = [10, 15, 20] as const;
 
-export const WAITER_STEPS = ["Bill", "Tip", "Code", "Charge", "Receipt"] as const;
+export const WAITER_STEPS = ["Bill & Tip", "Code", "Receive", "Receipt"] as const;
 
 /** Where the waiter is; a picture, not buttons. */
-export function WaiterSteps({ at, onBack, busy }: { at: 1 | 2 | 3 | 4 | 5; onBack?: () => void; busy?: boolean }) {
+export function WaiterSteps({ at, onBack, busy }: { at: 1 | 2 | 3 | 4; onBack?: () => void; busy?: boolean }) {
   return (
     <div className="wp-head">
       {onBack ? (
@@ -116,7 +117,7 @@ export function CodeEntry({ busy, error, label, onCode, onBack }: { busy: boolea
   };
   return (
     <main className="wp" data-bill="code">
-      <WaiterSteps at={3} busy={busy} onBack={onBack} />
+      <WaiterSteps at={2} busy={busy} onBack={onBack} />
       <div className="wp-body">
         <h1 className="wp-title">Your waiter code</h1>
         <Code code={code} />
@@ -134,7 +135,7 @@ export function CodeEntry({ busy, error, label, onCode, onBack }: { busy: boolea
 export function GuestCheck({ name, photo, total, busy, error, onSend, onNo }: { name: string | null; photo: string | null; total: string; busy: "send" | "no" | null; error: string | null; onSend: () => void; onNo: () => void }) {
   return (
     <main className="wp" data-bill="guest">
-      <WaiterSteps at={3} />
+      <WaiterSteps at={2} />
       <div className="wp-body">
         <h1 className="wp-title">Is this your guest?</h1>
         <span className="wp-face" aria-hidden>
@@ -197,7 +198,7 @@ export function BillEntry({ start, busy, error, top, sendLabel, atTip, onTyping,
 
   return (
     <main className="wp" data-bill="type" data-step={step === 0 ? "bill" : "tip"}>
-      <WaiterSteps at={step === 0 ? 1 : 2} busy={busy} onBack={step > 0 ? () => setStep(0) : onLeave} />
+      <WaiterSteps at={1} busy={busy} onBack={step > 0 ? () => setStep(0) : onLeave} />
       {top}
       <div className="wp-body">
         <h1 className="wp-title">{step === 0 ? "How much is the bill?" : "Tip? Ask the guest"}</h1>

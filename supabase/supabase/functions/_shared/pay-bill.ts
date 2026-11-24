@@ -1,7 +1,8 @@
 // Waiter-led pay (MESITA-4823). The guest shows one general QR;
 // the waiter scans it on service.mesita.ai, types the bill and
-// the tip and sends; the guest accepts or declines; the rest is paid outside
-// Mesita; the waiter's Received spends the credits and grants the cashback.
+// the tip and sends. THE HANDSHAKE (MESITA-4889): the guest's Pay and the
+// waiter's Receive, in any order, on the same version; the second one spends
+// the credits and grants the cashback.
 //
 //   consumer-web-get-pay-code  pay_guest_code_set   the QR, and the guest's poll
 //   consumer-web-answer-bill   pay_bill_accept | pay_bill_decline | cancel
@@ -9,12 +10,13 @@
 //   visit-web-open-bill        pay_bill_open        the scan
 //   visit-web-send-bill        pay_bill_send        the bill, or an edit
 //   visit-web-get-bill         reads                the waiter's poll
-//   visit-web-close-bill       received | cancel
+//   visit-web-close-bill       receive | unreceive | cancel
 //
 // pay_bills is the proposal only. Once accepted, guest_pay_attempts is the
 // truth (guest-attempt.ts), and billState derives the state from it.
-// The waiter reads the guest's photo and first name (MESITA-4878), never their
-// balance: the credits used only once the guest accepted.
+// The waiter reads the guest's photo and first name (MESITA-4878) and, from the
+// moment the bill is sent, what to collect and the credits this bill uses (Pato,
+// MESITA-4889: "Build it"): they may tap first. Never the cashback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";
@@ -61,12 +63,16 @@ export type BillRow = {
   attempt_id: string | null;
   expires_at: string;
   updated_at: string;
+  /** The version the waiter tapped Receive on, before the guest paid. */
+  received_version: number | null;
+  /** What they said they took with it; outlives a change (MESITA-4889). */
+  took_cents: number | null;
 };
 
 const BILL_COLUMNS =
-  "id, consumer_id, place_id, livemode, currency, status, version, bill_cents, tip_cents, quote, attempt_id, expires_at, updated_at";
+  "id, consumer_id, place_id, livemode, currency, status, version, bill_cents, tip_cents, quote, attempt_id, expires_at, updated_at, received_version, took_cents";
 
-type AttemptFacts = Pick<AttemptRow, "status" | "charging_at" | "end_reason" | "expires_at" | "tab_id">;
+type AttemptFacts = Pick<AttemptRow, "status" | "charging_at" | "end_reason" | "expires_at" | "tab_id"> & { ending_at?: string | null };
 
 /** One truth: the bill until Accept, the attempt after. Pure. */
 export function billState(b: Pick<BillRow, "status" | "expires_at">, a: AttemptFacts | null, nowMs: number): BillState {
@@ -75,6 +81,7 @@ export function billState(b: Pick<BillRow, "status" | "expires_at">, a: AttemptF
     if (a.status === "closed") return "paid";
     if (a.status === "released") return a.end_reason === "expired" ? "expired" : "cancelled";
     if (a.charging_at) return "confirming";
+    if (a.ending_at) return "cancelled";
     return Date.parse(a.expires_at) <= nowMs ? "expired" : "accepted";
   }
   if (b.status === "open" || b.status === "sent") return Date.parse(b.expires_at) <= nowMs ? "expired" : b.status;
@@ -91,6 +98,8 @@ const view = (b: BillRow, a: AttemptFacts | null, nowMs: number) => ({
   expires_at: b.status === "accepted" && a ? a.expires_at : b.expires_at,
   updated_at: b.updated_at,
   test_mode: !b.livemode,
+  waiter_ready: b.status === "sent" && b.received_version === b.version,
+  took_cents: b.took_cents,
 });
 
 /** The guest's read: every number they accept. Pure. */
@@ -98,10 +107,10 @@ export function guestBillView(b: BillRow, a: AttemptFacts | null, nowMs: number)
   return { ...view(b, a, nowMs), quote: b.status === "open" ? null : b.quote, attempt_id: b.attempt_id, tab_id: a?.tab_id ?? null };
 }
 
-/** The waiter's read: no credit, no discount and no cashback before the
- *  guest accepts, so a bill is never a way to read a balance. Pure. */
+/** The waiter's read: what to collect and why, from the moment it is sent
+ *  (MESITA-4889). Never the cashback. Pure. */
 export function staffBillView(b: BillRow, a: AttemptFacts | null, nowMs: number) {
-  const q = b.status === "accepted" ? b.quote : null;
+  const q = b.status === "accepted" || b.status === "sent" ? b.quote : null;
   return {
     ...view(b, a, nowMs),
     discount_cents: q?.discount_cents ?? 0,

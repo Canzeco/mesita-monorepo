@@ -1,13 +1,19 @@
 // Supabase Edge Function — visit-web-close-bill
 //
-// MESITA-4823 (waiter-led pay): the waiter's Received on an accepted bill
-// (the credits are spent, the cashback granted), or Cancel until then. Any
-// phone signed in at the place may do either; a second tap moves nothing.
+// THE HANDSHAKE (MESITA-4889): the waiter's side of a bill. Any phone signed
+// in at the place; a second tap moves nothing.
+//   receive    pay_bill_receive, on the version on screen: closes the bill when
+//              the guest already paid, waits for them when not
+//   unreceive  takes that tap back, until the guest pays
+//   cancel     until both sides tapped
+//   received   an open page from before the handshake: accepted bills only
 //
-// Body: { bill_id, place_id, staff_token, action: received | cancel }
-// Response: { ok: true, outcome: received | already | confirming | cancelled }
+// Body: { bill_id, place_id, staff_token, action: receive | unreceive | cancel |
+//         received, version? (receive) }
+// Response: { ok: true, outcome: paid | ready | undone | cancelled | received |
+//             already | confirming }
 //   400 bad_request · 403 staff_code_needed | forbidden · 404 gone ·
-//   409 not_accepted | expired | already_final | charging
+//   409 stale (+version) | accepted | not_accepted | expired | already_final | charging
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
@@ -24,7 +30,10 @@ serveJson("visit-web-close-bill", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  if (!isUuid(body.bill_id) || (body.action !== "received" && body.action !== "cancel")) {
+  if (
+    !isUuid(body.bill_id) || !["receive", "unreceive", "received", "cancel"].includes(String(body.action)) ||
+    (body.action === "receive" && !Number.isInteger(body.version))
+  ) {
     return json({ ok: false, code: "bad_request", error: "That is not a bill" }, 400);
   }
 
@@ -47,6 +56,24 @@ serveJson("visit-web-close-bill", async (req) => {
         return json({ ok: false, code: out.code, error: out.code === "expired" ? "This bill expired. Send it again." : out.error }, out.status);
       }
       return json({ ok: true, outcome: out.outcome === "verified" ? "received" : out.outcome === "already_verified" ? "already" : "confirming" });
+    }
+
+    if (body.action === "receive" || body.action === "unreceive") {
+      const r = body.action === "receive"
+        ? await callTabRpc(admin, "pay_bill_receive", {
+          p_bill_id: bill.id,
+          p_place_id: staff.placeId,
+          p_version: body.version,
+          p_key_hash: staff.keyHash,
+          p_waiter_id: staff.waiterId,
+        })
+        : await callTabRpc(admin, "pay_bill_unreceive", { p_bill_id: bill.id, p_place_id: staff.placeId });
+      log(r.ok === true ? r.outcome : r.code);
+      if (r.ok !== true) {
+        const refusal = billRefusal(r);
+        return json(refusal.body, refusal.status);
+      }
+      return json({ ok: true, outcome: r.outcome });
     }
 
     let r: Record<string, unknown> = await callTabRpc(admin, "pay_bill_cancel", { p_bill_id: bill.id, p_place_id: staff.placeId });
