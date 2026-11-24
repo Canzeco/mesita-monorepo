@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { BAR } from "@/components/consumer/search/header-classes";
+import { LocationPicker } from "@/components/consumer/home/LocationPicker";
+import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -52,11 +54,11 @@ export function PlaceList({
   const shown =
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
-    <div className="flex flex-col" data-pay-list={kind}>
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
       {/* A grey pill in a white row (Pato, 2026-11-24, MESITA-4913: the plain
-          white row was "more pretty but not that obvious"). Still 56px: the
-          head row sticks at top-14. */}
-      <div className="bg-card border-border sticky top-0 z-20 flex h-14 items-center border-b px-2" data-pay-pick-search>
+          white row was "more pretty but not that obvious"). It stays put: only
+          the box's list scrolls. */}
+      <div className="bg-card flex h-14 shrink-0 items-center px-2" data-pay-pick-search>
         <div className={cn(BAR, "flex-1")}>
           <SearchBar
             query={query}
@@ -68,6 +70,12 @@ export function PlaceList({
           />
         </div>
       </div>
+      {/* THE CREDITS BOX'S FRAME, THE LOCATION ITS TITLE (Pato, 2026-11-24,
+          MESITA-4929, picked from four): what the places are sorted by. */}
+      <section className="bg-foreground mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col rounded-2xl px-1.5 pb-1.5" aria-label="Places" data-pay-list-box>
+      <LocationPicker list />
+      <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl">
+      <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {loc.state === "prime" ? (
         <div className="border-border border-b px-3.5 py-3">
           <p className="flex items-center gap-2 text-base font-semibold">
@@ -120,8 +128,8 @@ export function PlaceList({
         // per place, one tap; plain columns, no boxes.
         <div data-pay-places>
           {kind === "prepay" ? (
-            <div className={cn(PREPAY_GRID, "border-border bg-muted text-muted-foreground sticky top-14 z-10 h-11 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
-              <span className="pl-3.5">Place</span>
+            <div className={cn(PREPAY_GRID, "border-border bg-muted text-muted-foreground sticky top-0 z-10 h-11 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
+              <span className="pl-2.5">Place</span>
               {PREPAY_HEADS.map((h) => (
                 <span key={h} className="text-foreground text-center text-base tabular-nums max-[374px]:text-sm">
                   {h}
@@ -137,6 +145,9 @@ export function PlaceList({
           </div>
         </div>
       )}
+      </KeptScroll>
+      </div>
+      </section>
     </div>
   );
 }
@@ -191,7 +202,7 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
       className={cn(PREPAY_GRID, "hover:bg-muted/60 min-h-14 py-2 text-left transition-colors")}
       data-pay-pick-place
     >
-      <span className="flex min-w-0 items-center gap-2.5 pr-1 pl-3.5">
+      <span className="flex min-w-0 items-center gap-2 pr-1 pl-2.5">
         <PlacePhoto place={p} className="h-9 w-9 max-[359px]:hidden" />
         {/* The name alone, no address (Pato, 2026-11-24, MESITA-4861). */}
         <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
@@ -225,7 +236,7 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       type="button"
       onClick={() => onPick(p.place_id)}
       aria-label={[`Pay at ${name}`, p.address, bps > 0 ? `${bps / 100}% ${word}` : null].filter(Boolean).join(", ")}
-      className="hover:bg-muted/60 flex min-h-[72px] w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors max-[374px]:gap-2 max-[374px]:px-2.5"
+      className="hover:bg-muted/60 flex min-h-[72px] w-full items-center gap-3 px-2.5 py-2.5 text-left transition-colors max-[429px]:gap-2"
       data-pay-pick-place
     >
       <PlacePhoto place={p} className="h-12 w-12 max-[359px]:hidden" />

@@ -12,7 +12,6 @@ import { hasInAppBack, lastMoveWasTraverse, navigateTo, noteTraverse, replaceAdd
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { PlacePhoto } from "./pay-common";
 import { roundLocation, usePayLocation, type Loc } from "./pay-location";
-import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { useActiveLocation } from "@/lib/active-location";
 import { useUserLocation } from "@/lib/use-user-location";
 import { usePayPlaces } from "./use-pay-places";
@@ -154,10 +153,9 @@ function focusTitle(el: HTMLElement | null) {
 }
 
 /** A FULL-PAGE MODAL (Pato, 2026-11-24, MESITA-4846): from the bottom over the
- *  whole app, ✕ and its title, then Home's location box on the right (Pato,
- *  MESITA-4908: "put X at the left, and then mention current location at the
- *  right, as in home"), the place table under it, all white (Pato,
- *  MESITA-4852: "keep it clean"; the tile's colour before). A reload on it
+ *  whole app, its title and ✕ alone (Pato, MESITA-4929: "header must be only
+ *  header"; ✕ left and Home's location box right under MESITA-4908), then
+ *  PlaceList: the search and the places' black box, titled with the location. A reload on it
  *  shows it at once. */
 function PlaceModal({
   id,
@@ -175,19 +173,17 @@ function PlaceModal({
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel={word} fullScreen startShown={back}>
       <div className="border-border bg-card text-foreground shrink-0 border-b pt-[env(safe-area-inset-top)]" data-pay-modal={id}>
-        <div className="flex h-14 items-center gap-1 pr-2">
-          <button type="button" onClick={onClose} aria-label="Close" className="flex h-14 w-12 shrink-0 items-center justify-center">
-            <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
-          </button>
+        <div className="flex h-14 items-center gap-1 pr-1.5 pl-4">
           {/* Focus lands on the title, so no ring is drawn on ✕ at opening. */}
-          <h2 ref={focusTitle} tabIndex={-1} className="shrink-0 text-xl font-semibold outline-none">
+          <h2 ref={focusTitle} tabIndex={-1} className="min-w-0 flex-1 truncate text-xl font-semibold outline-none">
             {word}
           </h2>
-          <LocationPicker />
+          <button type="button" onClick={onClose} aria-label="Close" className="hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition">
+            <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+          </button>
         </div>
       </div>
-      {/* No bar over the table (Pato, 2026-11-24, MESITA-4845). */}
-      <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</KeptScroll>
+      {children}
     </LocalSheet>
   );
 }

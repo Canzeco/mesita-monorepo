@@ -78,7 +78,9 @@ export function headerLocation(
   return { label: locationLabel(active, hasFix, locating), off: false };
 }
 
-export function LocationPicker() {
+/** `list`: the title of Pay's black list box (Pato, 2026-11-24, MESITA-4929),
+ *  white on its black, centred; the header box everywhere else. */
+export function LocationPicker({ list = false }: { list?: boolean } = {}) {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const settled = useUserLocationSettled();
@@ -104,7 +106,11 @@ export function LocationPicker() {
         onClick={() => setPicking(true)}
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
-        className={cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)}
+        className={
+          list
+            ? "text-background focus-visible:ring-background flex h-12 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold outline-none transition hover:opacity-80 focus-visible:ring-2"
+            : cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)
+        }
         data-home-location
       >
         {off ? (
@@ -115,7 +121,7 @@ export function LocationPicker() {
         )}
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className={cn("h-4 w-4 shrink-0", off ? "text-destructive" : "text-muted-foreground")}
+          className={cn("h-4 w-4 shrink-0", list ? "opacity-70" : off ? "text-destructive" : "text-muted-foreground")}
           strokeWidth={2.25}
           aria-hidden
         />
