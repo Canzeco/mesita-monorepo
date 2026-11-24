@@ -3,6 +3,7 @@
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BadgePercent, Receipt as ReceiptIcon, Check, ChevronDown, CircleCheck, Clock, CreditCard, Crown, Gift, Info, Infinity as InfinityIcon, Lock, Minus, PartyPopper, Plus, QrCode, Repeat, Ticket, Utensils, Wallet, X, type LucideIcon } from "lucide-react";
+import { Instagram } from "../brand-icons";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -698,7 +699,7 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
 // make items smaller"): 64px, not 76px, so the name and its line keep room.
 const BADGE = "flex min-h-11 w-16 shrink-0 flex-col items-center justify-center rounded-xl py-1.5 tabular-nums";
 
-export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; who: string; bps: number; mech: VisitMechanism };
+export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; klass: "Regular Class" | "VIP Class"; who: string; bps: number; mech: VisitMechanism };
 
 /** The place's lines that earn (rate above Off): Welcome, Returning, then
  *  Returning VIP (MESITA-4766, Pato: "NOW THE PAY OFFERS ARE Welcome
@@ -712,10 +713,10 @@ export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
     [
       // FOUR TIERS IN PATO'S ORDER (2026-11-23, MESITA-4789), in the guest's
       // words (MESITA-4806); Business keeps Welcome Regular … Returning VIP.
-      { line: "welcome", title: "Welcome Visit", who: "Your first bill here", bps: cashback.welcome_bps, mech },
-      { line: "returning", title: "Returning Visit", who: "Every bill after your first", bps: cashback.returning_bps, mech },
-      { line: "welcome_vip", title: "VIP Welcome Visit", who: "Your first bill here", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
-      { line: "returning_vip", title: "VIP Returning Visit", who: "Every bill after your first", bps: cashback.returning_vip_bps ?? 0, mech },
+      { line: "welcome", title: "Welcome Visit", klass: "Regular Class", who: "Your first bill here", bps: cashback.welcome_bps, mech },
+      { line: "returning", title: "Returning Visit", klass: "Regular Class", who: "Every bill after your first", bps: cashback.returning_bps, mech },
+      { line: "welcome_vip", title: "Welcome Visit", klass: "VIP Class", who: "Your first bill here", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
+      { line: "returning_vip", title: "Returning Visit", klass: "VIP Class", who: "Every bill after your first", bps: cashback.returning_vip_bps ?? 0, mech },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }
@@ -749,15 +750,7 @@ export function youLine(cashback: PlaceCashback | null | undefined): CashbackLin
  *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
  *  guest's own marked Yours. Nothing to buy: a
  *  confirmed bill earns it, 1 hour later (MESITA-4717), with no minimum. */
-function CashbackPanel({
-  cashback,
-  onBecomeVip,
-  vipNote,
-}: {
-  cashback: PlaceCashback;
-  onBecomeVip?: () => void;
-  vipNote?: string | null;
-}) {
+function CashbackPanel({ cashback }: { cashback: PlaceCashback }) {
   const rows = cashbackRows(cashback);
   const you = youLine(cashback);
   if (rows.length === 0) return null;
@@ -768,7 +761,7 @@ function CashbackPanel({
           const mine = you === r.line;
           const why = lockedWhy(r.line, cashback?.line);
           return (
-            <li key={r.line} data-cashback={r.line} data-cashback-locked={why ? "" : undefined} className="flex min-h-16 flex-wrap items-center gap-2.5 px-3 py-2">
+            <li key={r.line} data-cashback={r.line} data-cashback-locked={why ? "" : undefined} className="flex min-h-16 items-center gap-2.5 px-3 py-2">
               <span className={cn(BADGE, why ? "bg-muted text-muted-foreground" : visitTone(r.mech))} aria-hidden>
                 <span className="text-base leading-none font-bold tracking-tight">{r.bps / 100}%</span>
                 <span className="mt-1 type-meta leading-none font-bold tracking-wide uppercase">{visitWord(r.mech)}</span>
@@ -777,42 +770,17 @@ function CashbackPanel({
                 <span className="flex min-w-0 items-center gap-1">
                   <span className={cn("truncate text-base font-semibold", why ? "text-muted-foreground" : "text-foreground")}>{r.title}</span>
                 </span>
-                {/* ONE SHORT LINE (Pato, 2026-11-23, MESITA-4812: "write the
-                    descriptions clearer and cleaner"): which bill it is for, or
-                    why it is locked. The name says VIP; when it lands is in How
-                    it works. */}
-                {why ? (
-                  // LOCKED, LIKE PREPAY'S VIP VOUCHER (MESITA-4791): a lock and the reason.
-                  <span className="text-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm font-semibold" data-cashback-why>
-                    <Lock className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} aria-hidden />
-                    <span className="truncate">{why}</span>
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground text-sm">{r.who}</span>
-                )}
+                {/* NAME OVER CLASS (Pato, 2026-11-24, MESITA-4872): "Welcome
+                    Visit / Regular Class". A lock when it is not this guest's;
+                    the Class says why, unless the first visit is already used. */}
+                <span className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-sm" data-cashback-class>
+                  {why ? <Lock className="text-foreground h-3.5 w-3.5 shrink-0" strokeWidth={2.5} role="img" aria-label={why} /> : null}
+                  <span className="truncate">{why === "Already used" ? `${r.klass} · Already used` : r.klass}</span>
+                </span>
               </span>
               {mine ? (
                 <span className="bg-foreground text-background shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold" data-cashback-mine>
                   You
-                </span>
-              ) : null}
-              {/* CONNECT INSTAGRAM TO UNLOCK (MESITA-4863): under the VIP line,
-                  only where the host knows the guest is not VIP. */}
-              {r.line === "returning_vip" && onBecomeVip ? (
-                <span className="-mt-1 flex basis-full flex-col items-start pl-[4.625rem]">
-                  {vipNote ? (
-                    <span className="text-muted-foreground text-sm" data-cashback-vip-note>
-                      {vipNote}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={onBecomeVip}
-                    className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-left text-sm font-semibold underline underline-offset-2"
-                    data-cashback-become-vip
-                  >
-                    Connect Instagram to unlock
-                  </button>
                 </span>
               ) : null}
             </li>
@@ -928,12 +896,12 @@ function TierTable({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashb
         </thead>
         <tbody>
           <tr>
-            <th scope="row" className="text-foreground text-left text-sm font-semibold">Regular guests</th>
+            <th scope="row" className="text-foreground text-left text-sm font-semibold">Regular Class</th>
             {cell("welcome")}
             {cell("returning")}
           </tr>
           <tr>
-            <th scope="row" className="text-foreground text-left text-sm font-semibold">VIP guests</th>
+            <th scope="row" className="text-foreground text-left text-sm font-semibold">VIP Class</th>
             {cell("welcome_vip")}
             {cell("returning_vip")}
           </tr>
@@ -1413,7 +1381,7 @@ function CheckoutSection({
       {loading ? (
         <BoneRows n={2} />
       ) : cashback && rows.length > 0 ? (
-        <CashbackPanel cashback={cashback} onBecomeVip={onBecomeVip} vipNote={vipNote} />
+        <CashbackPanel cashback={cashback} />
       ) : (
         // No cashback here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
@@ -1421,6 +1389,27 @@ function CheckoutSection({
         </p>
       )}
       {rows.length > 0 ? <PayHowItWorks rows={rows} guest={cashback?.line ?? null} /> : null}
+      {/* CONNECT INSTAGRAM, BELOW HOW IT WORKS (Pato, 2026-11-24, MESITA-4872:
+          "not the fourth offer"); in the VIP row under MESITA-4863. Only where a
+          VIP row shows and the host knows the guest is not VIP. */}
+      {onBecomeVip && rows.some((r) => r.klass === "VIP Class") ? (
+        <div className="flex shrink-0 flex-col items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onBecomeVip}
+            className="border-border bg-card text-foreground hover:bg-muted flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition"
+            data-cashback-become-vip
+          >
+            <Instagram className="h-[18px] w-[18px]" aria-hidden />
+            Connect Instagram to unlock VIP Class
+          </button>
+          {vipNote ? (
+            <p className="text-muted-foreground text-center text-sm" data-cashback-vip-note>
+              {vipNote}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
           just have shortcut to Go to Pay bill at the bottom, purple color"),
           sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
