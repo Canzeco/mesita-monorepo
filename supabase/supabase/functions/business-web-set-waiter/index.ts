@@ -2,8 +2,8 @@
 //
 // MESITA-4871: the waiters of a place, one 8-digit code each, so a bill and
 // its tip have a name. Mesita makes the code (an owner-typed one would read
-// "taken" and reveal another place's), shows it once and stores only a keyed
-// hash. The owner and Mesita staff only.
+// "taken" and reveal another place's), matched by a keyed hash, and kept for the
+// owner's screen (MESITA-4886). The owner and Mesita staff only.
 //
 // Body: { place_id, action: "add", name }
 //     | { place_id, action: "new_code" | "remove", waiter_id }
@@ -37,7 +37,7 @@ serveJson("business-web-set-waiter", async (req) => {
   if (action === "remove") {
     if (!isUuid(waiterId)) return gone();
     const { data, error } = await admin.from("place_waiters")
-      .update({ ...stamp, lookup_hash: null, removed_at: stamp.updated_at })
+      .update({ ...stamp, lookup_hash: null, code: null, removed_at: stamp.updated_at })
       .eq("id", waiterId).eq("place_id", placeId).is("removed_at", null).select("id, name").maybeSingle();
     if (error) return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);
     return data ? json({ ok: true, waiter_id: data.id, name: data.name }) : gone();
@@ -56,8 +56,8 @@ serveJson("business-web-set-waiter", async (req) => {
     const code = mintWaiterCode();
     const lookup_hash = await lookupWaiterCode(env.serviceKey, code);
     const q = action === "add"
-      ? admin.from("place_waiters").insert({ place_id: placeId, name, lookup_hash, ...stamp })
-      : admin.from("place_waiters").update({ lookup_hash, ...stamp }).eq("id", waiterId).eq("place_id", placeId).is("removed_at", null);
+      ? admin.from("place_waiters").insert({ place_id: placeId, name, lookup_hash, code, ...stamp })
+      : admin.from("place_waiters").update({ lookup_hash, code, ...stamp }).eq("id", waiterId).eq("place_id", placeId).is("removed_at", null);
     const { data, error } = await q.select("id, name").maybeSingle();
     if (!error) return data ? json({ ok: true, waiter_id: data.id, name: data.name, code }) : gone();
     if (error.code !== "23505") return json({ ok: false, error: `place_waiters: ${error.message}` }, 500);

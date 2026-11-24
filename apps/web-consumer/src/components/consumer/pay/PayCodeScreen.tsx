@@ -53,6 +53,32 @@ const RENEW_MS = 60_000;
 const REARM_MS = 1000;
 const CODE_KEY = "mesita.pay.code";
 
+/** An amount that moves as it is typed (MESITA-4886, Pato: "add an animation
+ *  that is live"): a character that changed rises into place. */
+function LiveAmount({ text, className }: { text: string; className?: string }) {
+  return (
+    <span className={cn("inline-flex tabular-nums", className)}>
+      <span className="sr-only">{text}</span>
+      {[...text].map((ch, i) => (
+        <span key={`${i}:${ch}`} className="animate-in fade-in slide-in-from-bottom-2 zoom-in-75 duration-200 motion-reduce:animate-none" aria-hidden>
+          {ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** Three dots that breathe while the waiter types. */
+function LiveDots() {
+  return (
+    <span className="ml-1 inline-flex items-end gap-1" aria-hidden>
+      {["", "[animation-delay:150ms]", "[animation-delay:300ms]"].map((d) => (
+        <span key={d} className={cn("bg-muted-foreground h-1.5 w-1.5 animate-bounce rounded-full motion-reduce:animate-none", d)} />
+      ))}
+    </span>
+  );
+}
+
 function keptCode(): PayCode | null {
   try {
     const c = JSON.parse(window.sessionStorage.getItem(CODE_KEY) ?? "null") as PayCode | null;
@@ -271,11 +297,11 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     const shown = (c: number) => money(c, here?.currency ?? "mxn");
     const t = typing ?? { bill_cents: 0, tip_cents: 0, step: "code" as const };
     const row = (label: string, cents: number, on: boolean, empty: string) => (
-      <div className={cn("flex items-center justify-between gap-3 rounded-2xl border px-4 py-4 transition", on ? "border-foreground" : "border-border")} data-write-bill-row={label}>
+      <div className={cn("flex items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-all duration-300", on ? "border-[#00D66F] bg-[#00D66F]/10" : "border-border")} data-write-bill-row={label}>
         <dt className={cn("text-base font-semibold", !on && "text-muted-foreground")}>{label}</dt>
         <dd className={cn("flex items-center gap-1 text-2xl font-bold tabular-nums", cents === 0 && "text-muted-foreground")}>
-          {cents > 0 ? shown(cents) : empty}
-          {on ? <span className="bg-foreground h-6 w-0.5 animate-pulse motion-reduce:animate-none" aria-hidden /> : null}
+          <LiveAmount text={cents > 0 ? shown(cents) : empty} />
+          {on ? <span className="h-7 w-0.5 animate-pulse rounded-full bg-[#00A85A] motion-reduce:animate-none" aria-hidden /> : null}
         </dd>
       </div>
     );
@@ -283,10 +309,20 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       "Write Bill",
       <section className="flex min-h-fit flex-1 flex-col justify-center gap-4 py-4" data-write-bill={t.step}>
         <div className="flex flex-col items-center gap-1 text-center">
+          <p className="mb-2 flex items-center gap-2 rounded-full bg-[#00D66F]/15 px-3 py-1 text-sm font-semibold">
+            <span className="relative flex h-2.5 w-2.5" aria-hidden>
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00D66F] opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#00A85A]" />
+            </span>
+            Live
+          </p>
           <p className="text-muted-foreground text-base" role="status">
             {t.step === "bill" ? "Your waiter is writing your bill" : t.step === "tip" ? "Your waiter is writing the tip" : "Your waiter is about to send it"}
+            <LiveDots />
           </p>
-          <p className={cn("leading-tight font-bold tracking-tight tabular-nums", shown(t.bill_cents + t.tip_cents).length > 10 ? "text-4xl" : "text-5xl")}>{shown(t.bill_cents + t.tip_cents)}</p>
+          <p className={cn("leading-tight font-bold tracking-tight tabular-nums", shown(t.bill_cents + t.tip_cents).length > 10 ? "text-4xl" : "text-5xl")}>
+            <LiveAmount text={shown(t.bill_cents + t.tip_cents)} />
+          </p>
         </div>
         <dl className="flex flex-col gap-2">
           {row("Bill", t.bill_cents, t.step === "bill", shown(0))}
@@ -402,36 +438,41 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const nothingOwed = q.outside_cents === 0;
   const big = m(nothingOwed ? q.credit_cents : q.outside_cents);
   const saved = q.discount_cents > 0 ? `You save ${m(q.discount_cents)}` : q.cashback_cents > 0 ? `You get ${m(q.cashback_cents)} cashback` : null;
-  const hero = (words: string) => (
-    <section className="flex min-h-fit flex-1 flex-col items-center justify-center gap-1 py-4 text-center [@media(max-height:740px)]:py-0" aria-label={`${words} ${m(q.outside_cents)}`} data-pay-bill-hero>
-      <PlacePhoto place={{ photo: bill.place.photo_url, name: placeName }} className="h-16 w-16 [@media(max-height:740px)]:h-11 [@media(max-height:740px)]:w-11" />
-      <p className="mt-1 max-w-full truncate text-base font-semibold">{placeName}</p>
-      {from && from !== bill.place.id ? <p className="text-muted-foreground text-sm">This bill is from {placeName}.</p> : null}
-      <p className="text-muted-foreground mt-2 text-base">{nothingOwed ? "Paid with your credits" : words}</p>
-      <p className={cn("leading-tight font-bold tracking-tight tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
-      {saved ? (
-        <p className={cn("mt-2 rounded-full px-3.5 py-1.5 text-sm font-semibold tabular-nums", q.discount_cents > 0 ? BOX_TINT.discount : BOX_TINT.cashback)} data-pay-bill-saved>
-          {saved}
-        </p>
-      ) : null}
-    </section>
-  );
   const line = (label: string, value: string, good = false) => (
-    <div className={cn("flex items-baseline justify-between gap-3", good ? "font-semibold text-green-700" : "text-muted-foreground")}>
-      <dt className="truncate">{label}</dt>
-      <dd className={cn("shrink-0", !good && "text-foreground")}>{value}</dd>
+    <div className={cn("flex min-h-11 items-center justify-between gap-3", good && "font-semibold text-green-700")}>
+      <dt className={cn("truncate", !good && "text-muted-foreground")}>{label}</dt>
+      <dd className={cn("shrink-0", !good && "font-semibold")}>{value}</dd>
     </div>
   );
-  const rows = (
-    <dl className="bg-muted/60 flex w-full shrink-0 flex-col gap-1.5 rounded-2xl px-4 py-3 text-left text-base tabular-nums" data-pay-bill-rows>
-      {line("Bill", m(bill.bill_cents ?? 0))}
-      {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
-      {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
-      {bill.tip_cents > 0
-        ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))
-        : null}
-      {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
-    </dl>
+  // ONE TICKET (Pato, 2026-11-24, MESITA-4886: "better design in those"): the
+  // black top is the Wallet's Balance card, the place and what the guest pays;
+  // its lines hang from it. The waiter's screen draws the same ticket.
+  const ticket = (words: string) => (
+    <section className="border-border w-full shrink-0 overflow-hidden rounded-3xl border text-left" aria-label={`${words} ${big}`} data-pay-bill-ticket>
+      <div className="bg-foreground text-background flex flex-col gap-4 px-5 pt-4 pb-5">
+        <div className="flex items-center gap-3">
+          <PlacePhoto place={{ photo: bill.place.photo_url, name: placeName }} className="h-11 w-11" />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-base font-semibold">{placeName}</span>
+            {from && from !== bill.place.id ? <span className="block truncate text-sm opacity-70">Not the place you opened</span> : null}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-base opacity-70">{nothingOwed ? "Paid with your credits" : words}</p>
+          <p className={cn("leading-tight font-bold tracking-tight tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
+          {saved ? <p className="mt-2 self-start rounded-full bg-[#00D66F] px-3 py-1 text-sm font-semibold text-neutral-950 tabular-nums" data-pay-bill-saved>{saved}</p> : null}
+        </div>
+      </div>
+      <dl className="divide-border bg-card divide-y px-5 py-1 text-base tabular-nums" data-pay-bill-rows>
+        {line("Bill", m(bill.bill_cents ?? 0))}
+        {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
+        {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
+        {bill.tip_cents > 0
+          ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))
+          : null}
+        {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
+      </dl>
+    </section>
   );
 
   // CONFIRMING, or paid and on its way to the receipt.
@@ -456,8 +497,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         {frame(
           "Pay Bill",
           <>
-            {hero("Pay your waiter, cash or card")}
-            {rows}
+            {ticket("Pay your waiter, cash or card")}
             <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm tabular-nums">
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
               Waiting for the waiter to confirm · {left}
@@ -503,9 +543,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   return frame(
     "Pay Bill",
     <>
-      {hero("You pay your waiter, cash or card")}
-      {rows}
-      <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums [@media(max-height:740px)]:-my-3">
+      {ticket("You pay your waiter, cash or card")}
+      <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums">
         Answer in {left}
         <span aria-hidden>·</span>
         <button type="button" className="min-h-11 font-semibold underline underline-offset-2" disabled={busy !== null} onClick={() => void answer("not_mine")}>

@@ -2,7 +2,8 @@
 
 // Waiter Codes (MESITA-4871, Pato: "add a section to add waiter codes … different
 // codes for different waiters in order to appropriately direct the tip"). One
-// 8-digit code per waiter, made by Mesita, shown once, only a hash kept. A bill
+// 8-digit code per waiter, made by Mesita, always shown to the owner (Pato,
+// MESITA-4886: "it's not a nuclear code. show it"). A bill
 // carries the waiter whose code sent it, so the table says whose tips are whose.
 // Instant, not under Save changes: these are actions. The server refuses editors.
 
@@ -31,7 +32,6 @@ export function WaiterCodes({
   const [waiters, setWaiters] = useState(initial);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
-  const [made, setMade] = useState<{ id: string; name: string; code: string } | null>(null);
 
   async function run(key: string, body: Parameters<typeof setWaiter>[1]) {
     if (busy) return null;
@@ -43,7 +43,8 @@ export function WaiterCodes({
       onError(r.error);
       return null;
     }
-    if (r.data.code) setMade({ id: r.data.waiter_id, name: r.data.name, code: r.data.code });
+    const { waiter_id: id, code } = r.data;
+    if (code) setWaiters((ws) => ws.map((w) => (w.id === id ? { ...w, code } : w)));
     return r.data;
   }
 
@@ -52,7 +53,7 @@ export function WaiterCodes({
     if (!r) return;
     setName("");
     setWaiters((ws) =>
-      [...ws, { id: r.waiter_id, name: r.name, removed: false, tips_24h_cents: 0, bills_24h: 0, tips_7d_cents: 0, bills_7d: 0 }].sort(
+      [...ws, { id: r.waiter_id, name: r.name, removed: false, tips_24h_cents: 0, bills_24h: 0, tips_7d_cents: 0, bills_7d: 0, code: r.code ?? null }].sort(
         (a, b) => Number(a.removed) - Number(b.removed) || a.name.localeCompare(b.name),
       ),
     );
@@ -61,8 +62,7 @@ export function WaiterCodes({
   async function remove(w: PlaceWaiter) {
     if (!window.confirm(`Remove ${w.name}? Their code stops working now.`)) return;
     if (!(await run(w.id, { action: "remove", waiter_id: w.id }))) return;
-    setMade((c) => (c?.id === w.id ? null : c));
-    setWaiters((ws) => (w.bills_7d > 0 ? ws.map((x) => (x.id === w.id ? { ...x, removed: true } : x)) : ws.filter((x) => x.id !== w.id)));
+    setWaiters((ws) => (w.bills_7d > 0 ? ws.map((x) => (x.id === w.id ? { ...x, removed: true, code: null } : x)) : ws.filter((x) => x.id !== w.id)));
   }
 
   const tips = (cents: number, bills: number) =>
@@ -76,28 +76,13 @@ export function WaiterCodes({
 
   return (
     <div className="text-sm" data-waiter-codes>
-      {made ? (
-        <div className="border-border bg-muted/50 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-5 py-4 sm:px-6" role="status">
-          <div className="min-w-0">
-            <p className="font-medium">{made.name}&apos;s code</p>
-            <p className="text-muted-foreground">Give it to them now. It won&apos;t be shown again.</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <p className="text-2xl font-semibold tracking-widest whitespace-nowrap tabular-nums">
-              {made.code.slice(0, 4)} {made.code.slice(4)}
-            </p>
-            <button type="button" className={QUIET} onClick={() => setMade(null)}>
-              Done
-            </button>
-          </div>
-        </div>
-      ) : null}
       {waiters.length > 0 ? (
         <div className="border-border overflow-x-auto border-t [scrollbar-width:thin]">
           <table className="w-full border-collapse">
             <thead>
               <tr className="text-muted-foreground border-border border-b text-xs">
                 <th scope="col" className={cn(CELL, "text-left font-semibold")}>Waiter</th>
+                {canEdit ? <th scope="col" className={cn(CELL, "text-left font-semibold")}>Code</th> : null}
                 <th scope="col" className={cn(CELL, "text-right font-semibold")}>Tips, 24 hours · bills</th>
                 <th scope="col" className={cn(CELL, "text-right font-semibold")}>Tips, 7 days · bills</th>
                 {canEdit ? <th scope="col" className={CELL} aria-label="Actions" /> : null}
@@ -110,6 +95,11 @@ export function WaiterCodes({
                     {w.name}
                     {w.removed ? <span className="font-normal"> · Removed</span> : null}
                   </th>
+                  {canEdit ? (
+                    <td className={cn(CELL, "text-base font-semibold tracking-wider tabular-nums select-all")}>
+                      {w.code ? `${w.code.slice(0, 4)} ${w.code.slice(4)}` : <span className="text-muted-foreground text-sm font-normal tracking-normal">{w.removed ? "—" : "Tap New code"}</span>}
+                    </td>
+                  ) : null}
                   <td className={cn(CELL, "text-right tabular-nums")}>{tips(w.tips_24h_cents, w.bills_24h)}</td>
                   <td className={cn(CELL, "text-right tabular-nums")}>{tips(w.tips_7d_cents, w.bills_7d)}</td>
                   {canEdit ? (
