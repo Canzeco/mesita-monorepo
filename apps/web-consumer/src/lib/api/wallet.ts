@@ -37,6 +37,10 @@ export type WalletEntry = {
   /** Which line paid a `cashback` entry (MESITA-4766, MESITA-4789): welcome ·
    *  welcome_vip · returning · returning_vip. Absent on other kinds and older reads. */
   reason?: string | null;
+  /** Card money returned on this entry's purchase so far (MESITA-4915); a
+   *  reversal's amount is the credit taken, bonus included. Absent when none
+   *  was, and from an older server. */
+  refunded_cents?: number;
 };
 
 export type WalletBalance = {

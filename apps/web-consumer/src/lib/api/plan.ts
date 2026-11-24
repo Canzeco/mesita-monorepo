@@ -16,8 +16,9 @@ export type GuestPlanView = {
   /** The end of the paid month (ISO), on a paid Pro. */
   paid_until: string | null;
   cancel_at_period_end: boolean;
-  /** Checkout's return: "paid" once Stripe says so. */
-  confirmed?: "paid" | "pending";
+  /** Checkout's return: "paid" once Stripe says so, "failed" when it never
+   *  will; absent when Stripe could not be read. */
+  confirmed?: "paid" | "pending" | "failed";
   /** The admin testing switch lifts every cap (MESITA-4393). Absent when
    *  the server could not read it, or before the EF carried it. */
   cap_lifted?: boolean;

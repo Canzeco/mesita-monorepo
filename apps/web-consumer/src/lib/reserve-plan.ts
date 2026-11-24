@@ -138,6 +138,8 @@ export type ReturnOutcome =
   | { kind: "paid" }
   /** Stripe has not settled: stay on the Pro step, Try again only. */
   | { kind: "pending" }
+  /** Stripe says it was not paid: the Pro step, free to try again. */
+  | { kind: "failed" }
   /** The payment read failed or said nothing: Pro step with an error. */
   | { kind: "check_failed" }
   /** Cancel or browser Back: the Pro step again, when Pro still helps. */
@@ -156,6 +158,8 @@ export function returnOutcome(args: {
     if (args.readFailed || !args.view) return { kind: "check_failed" };
     if (args.view.confirmed === "paid") return { kind: "paid" };
     if (args.view.confirmed === "pending") return { kind: "pending" };
+    if (args.view.confirmed === "failed")
+      return args.view.plan === "premium" ? { kind: "paid" } : { kind: "failed" };
     // No verdict (Stripe unreachable or not configured): trust the plan.
     return args.view.plan === "premium" ? { kind: "paid" } : { kind: "check_failed" };
   }

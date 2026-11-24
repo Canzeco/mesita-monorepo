@@ -193,7 +193,7 @@ function day(iso: string | null): string {
 }
 
 /** Checkout's return id (`?plan=cs_…`). It stays in the address until a read
- *  says paid: nothing else ties the payment to the guest (no webhook). */
+ *  says paid or failed: nothing else ties the payment to the guest (no webhook). */
 function sessionIdInUrl(): string | undefined {
   if (typeof window === "undefined") return undefined;
   return new URL(window.location.href).searchParams.get("plan") ?? undefined;
@@ -230,6 +230,14 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
           setNotice(
             "Your payment is still processing. Check back in a minute.",
           );
+        else if (v.confirmed === "failed") {
+          clearSessionId();
+          setNotice(null);
+          // An old return link on a guest who pays for Pro says nothing.
+          if (v.plan === "free") setError("Your payment didn't go through. Try again.");
+        } else if (sessionId && v.plan === "free") {
+          setError("Couldn't check your payment. Reload to try again.");
+        }
       },
       () => {
         if (live) setFailed(true);

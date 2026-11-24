@@ -165,6 +165,82 @@ export function subscriptionOfSession(session: Record<string, unknown>, consumer
   return null;
 }
 
+/** True for a Stripe object (Checkout session or subscription) that is this
+ *  guest's Pro, by the metadata planCheckoutParams writes on both. The
+ *  customer also pays Premier, so the customer alone never decides. */
+function isGuestPlan(obj: Record<string, unknown>, consumerId: string): boolean {
+  const meta = (obj.metadata ?? {}) as Record<string, unknown>;
+  return meta.mesita_kind === "guest_plan" && meta.consumer_id === consumerId;
+}
+
+/** A read subscription may be written to the row only when it is the one on
+ *  file, it pays now, or the row holds nothing it would undo: an old return
+ *  link must never replace a paid Pro or an operator's grant. */
+export function mayAdopt(row: PlanRow, subscriptionId: string, read: SubscriptionRead): boolean {
+  if (row.plan_stripe_subscription === subscriptionId || read.active) return true;
+  return !read.ended && !row.plan_stripe_subscription && row.plan !== "premium";
+}
+
+/** What Checkout's return means (MESITA-4915). `pending` only for the guest's
+ *  own session while it can still be paid; `failed` is terminal, and the app
+ *  forgets the id. `sub` is the session's subscription as Stripe has it now,
+ *  null when the session has none. */
+export function sessionOutcome(
+  session: Record<string, unknown>,
+  consumerId: string,
+  sub: Record<string, unknown> | null,
+  now: number,
+): "paid" | "pending" | "failed" {
+  if (session.mode !== "subscription" || session.client_reference_id !== consumerId) return "failed";
+  if (!isGuestPlan(session, consumerId)) return "failed";
+  if (session.status === "open") return "pending";
+  if (session.status !== "complete") return "failed";
+  if (!sub) return session.payment_status === "unpaid" ? "pending" : "failed";
+  if (readSubscription(sub, now).active) return "paid";
+  return sub.status === "incomplete" ? "pending" : "failed";
+}
+
+/** The guest's Pro subscription that is not over: a paying one first, then one
+ *  whose invoice can still be paid; null when Checkout may open. */
+export function blockingSubscription(
+  subs: Array<Record<string, unknown>>,
+  consumerId: string,
+  now: number,
+): { id: string; active: boolean; payUrl: string | null } | null {
+  const live = subs.filter((s) => typeof s.id === "string" && isGuestPlan(s, consumerId) && !ENDED.has(String(s.status ?? "")));
+  const pick = live.find((s) => readSubscription(s, now).active) ?? live[0];
+  if (!pick) return null;
+  const invoice = (pick.latest_invoice && typeof pick.latest_invoice === "object" ? pick.latest_invoice : {}) as Record<string, unknown>;
+  return {
+    id: pick.id as string,
+    active: readSubscription(pick, now).active,
+    payUrl: invoice.status === "open" && typeof invoice.hosted_invoice_url === "string" ? invoice.hosted_invoice_url : null,
+  };
+}
+
+/** Before a new Checkout: closes the guest's other open Pro Checkouts, so two
+ *  tabs cannot both pay, then reads the customer's subscriptions from Stripe.
+ *  In that order: a Checkout paid in between shows up as a subscription.
+ *  Throws when Stripe fails; nothing is sold then. */
+export async function findBlockingSubscription(
+  stripe: StripeCall,
+  customer: string,
+  consumerId: string,
+): Promise<ReturnType<typeof blockingSubscription>> {
+  const open = await stripe("GET", "checkout/sessions", { customer, status: "open", limit: 100 });
+  for (const s of (open.data ?? []) as Array<Record<string, unknown>>) {
+    if (typeof s.id !== "string" || !isGuestPlan(s, consumerId)) continue;
+    await stripe("POST", `checkout/sessions/${encodeURIComponent(s.id)}/expire`);
+  }
+  const subs = await stripe("GET", "subscriptions", {
+    customer,
+    status: "all",
+    limit: 100,
+    expand: ["data.latest_invoice"],
+  });
+  return blockingSubscription((subs.data ?? []) as Array<Record<string, unknown>>, consumerId, Date.now());
+}
+
 /** Checkout lives 30 minutes: a stale tab cannot pay later. */
 const CHECKOUT_TTL_SEC = 30 * 60;
 
