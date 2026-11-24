@@ -16,6 +16,9 @@ export type OfferSlide = {
    *  "Up to", so "10% Back", "30% Bonus". The place screen's Offers tile
    *  and the narrow cards read it; wide pills keep `pill`. */
   pillShort: string;
+  /** The place screen's chip: the word with its percent, the kind under it
+   *  (Pato, 2026-11-24, MESITA-4853): PAY 5% over DISCOUNT. */
+  stacked?: { top: string; under: string };
   /** The short word before the pill on Places 3.0's narrow card (MESITA-3671). */
   short: string;
   /** Read aloud in the button's label. */
@@ -199,12 +202,12 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       // one offer"): the guest's own line, else the highest one.
       void flat;
       const words = `${pct}% ${word}`;
-      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${word}`, spoken: `Pay, ${words.toLowerCase()}` }];
+      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${word}`, stacked: { top: `PAY ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
     }
     if (s.key === "prepay")
       // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
       // renderer's own "Up To" prefix (MESITA-4676) went: the words live here.
-      return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, pillShort: `${top[1]}% Bonus`, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
+      return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, pillShort: `${top[1]}% Bonus`, stacked: { top: `PREPAY ${top[1]}%`, under: "Bonus" }, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
     return sell.has(s.key) ? [s] : [];
   });
 }
