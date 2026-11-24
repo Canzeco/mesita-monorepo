@@ -27,11 +27,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cancelPremier, getPremier, startPremier, type BoostTier, type PlacePremier } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { day } from "@/lib/format";
+import { day, usd } from "@/lib/format";
 import { FREE_PLAN, FREE_VISIBILITY, LEVEL_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY, shownLevel, statusLine } from "@/lib/plans";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
 import { premierHref, returnUrl } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import { attempt } from "@/lib/attempt";
 
 const PLANS: Array<{ key: BoostTier; rank: number }> = [
   { key: "boost_2x", rank: 1 },
@@ -55,15 +56,6 @@ const REFUSED: Record<string, string> = {
   lost: "Your plan changed while you were choosing. Look again.",
   interval_retired: "Plans are yearly only now. Reload the page and choose again.",
 };
-
-/** "99 USD", "999 USD", "41.23 USD": the code after the number and never a
- *  "$", which reads as pesos in Mexico (Pato, MESITA-3919: "mention the actual
- *  price"). Whole dollars drop the cents. */
-function usd(cents: number): string {
-  const whole = cents % 100 === 0;
-  const n = (cents / 100).toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
-  return `${n} USD`;
-}
 
 // One grid for every row, so the columns line up. Stacked first (name and
 // price, then visibility and tag, then the action); five columns from 48rem
@@ -205,7 +197,7 @@ export function PremierPanel({
   const anyBusy = busy !== null;
 
   async function reload() {
-    const r = await getPremier(placeId);
+    const r = await attempt(getPremier(placeId));
     if (r.ok) setData(r.data);
     else {
       console.error("[premier] business-web-get-premier failed", { place_id: placeId, code: r.code ?? null });
@@ -218,10 +210,11 @@ export function PremierPanel({
   async function choose(tier: BoostTier) {
     setBusy(tier);
     setError(null);
-    const r = await startPremier({ placeId, tier, interval: "year", returnUrl: returnUrl(home) });
+    const r = await attempt(startPremier({ placeId, tier, interval: "year", returnUrl: returnUrl(home) }));
     if (!r.ok) {
       setBusy(null);
-      return setError({ row: tier, text: `${(r.code && REFUSED[r.code]) || r.error} Nothing was charged. Tap again.` });
+      return setError({ row: tier, text: // No code, no answer: it may have gone through, so it promises nothing.
+        r.code ? `${REFUSED[r.code] ?? r.error} Nothing was charged. Tap again.` : `${r.error} Reload to see your current plan before trying again.` });
     }
     // Stay busy while the browser leaves for Stripe Checkout.
     if (r.data.url) return window.location.assign(r.data.url);
@@ -235,7 +228,7 @@ export function PremierPanel({
     setBusy(row);
     setError(null);
     setArmed(null);
-    const r = await cancelPremier(placeId, row === "stop");
+    const r = await attempt(cancelPremier(placeId, row === "stop"));
     setBusy(null);
     if (!r.ok) return setError({ row, text: `${r.error} Reload to see your current plan before trying again.` });
     await reload();

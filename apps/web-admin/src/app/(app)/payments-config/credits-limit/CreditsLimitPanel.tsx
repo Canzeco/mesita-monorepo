@@ -64,6 +64,7 @@ export function tierText(tier: LimitPlace["tier_name"] | LimitPlace["tier"]): st
 function LimitEditor({
   cents,
   currency,
+  of,
   onSave,
   onClear,
   clearLabel = "Use default",
@@ -71,6 +72,8 @@ function LimitEditor({
 }: {
   cents: number | null;
   currency: string;
+  /** Whose limit, for a screen reader: the place, or the currency's default. */
+  of: string;
   onSave: (cents: number) => Promise<string | null>;
   onClear?: () => Promise<string | null>;
   clearLabel?: string;
@@ -98,14 +101,14 @@ function LimitEditor({
           spellCheck={false}
           value={draft}
           placeholder={placeholder}
-          aria-label={`Limit in ${currency}`}
+          aria-label={`${of}: limit in ${currency}`}
           onChange={setDraft}
           onKeyDown={(e) => {
             if (e.key === "Enter" && dirty && parsed !== null) run(() => onSave(parsed));
           }}
           className="w-36"
         />
-        <Button size="sm" pending={pending} disabled={!dirty} onClick={() => parsed !== null && run(() => onSave(parsed))}>
+        <Button size="sm" aria-label={`Save ${of}`} pending={pending} disabled={!dirty} onClick={() => parsed !== null && run(() => onSave(parsed))}>
           Save
         </Button>
         {onClear && cents !== null ? (
@@ -210,6 +213,7 @@ export function CreditsLimitPanel({
                           key={`${r.override_cents}`}
                           cents={r.override_cents}
                           currency={r.currency}
+                          of={r.place_name ?? r.place_id}
                           placeholder={fallback !== undefined && fallback !== null ? `${units(fallback)} · ${fallbackName}` : "No default"}
                           onSave={async (c) => after(await savePlaceLimit(r.place_id, c))}
                           onClear={async () => after(await savePlaceLimit(r.place_id, null))}
@@ -252,6 +256,7 @@ export function CreditsLimitPanel({
                       key={d.limit_cents}
                       cents={d.limit_cents}
                       currency={d.currency}
+                      of={`${d.currency} default`}
                       onSave={async (c) => after(await saveDefaultLimit(d.currency, c))}
                     />
                   </Td>

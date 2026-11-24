@@ -343,6 +343,7 @@ export function ReservationsPage() {
     <MeScreen
       title="Reservations"
       flush
+      bare
       // A CALENDAR SHORTCUT, TOP RIGHT (MESITA-4330, Pato: "top right, add
       // shortcut to go to calendar"): Back's white square with one plain
       // ink calendar icon, opening Me › Integrations › Calendar. Never the
@@ -359,7 +360,7 @@ export function ReservationsPage() {
       }
     >
       <div className={cn("flex min-h-0 flex-1 flex-col", FLUSH_ROWS)}>
-        <SubpageTabs
+        <TopMenu
           label="Upcoming or past reservations"
           tabs={RESERVATION_TABS}
           on={half}
@@ -442,7 +443,7 @@ export function TicketsPage() {
   // tickets. just a line sepaaraitng each ticket"): no page padding; the
   // board pins its strip and runs its rows full width.
   return (
-    <MeScreen title="Tickets" flush>
+    <MeScreen title="Tickets" flush bare>
       <TicketsBoard kind={kind} onPick={pick} />
     </MeScreen>
   );
@@ -602,8 +603,7 @@ export function TicketsBoard({
       ? "Couldn't load your payments. Visits shows your tables only."
       : null;
 
-  // THE PLACE PROFILE'S STRIP (MESITA-4322; icon pills MESITA-3993 before):
-  // four equal tabs, the chosen one blue. No counts, no intro.
+  // The one top menu (MESITA-4906). No counts, no intro.
   const edge = flush && !boxed;
   return (
     <div
@@ -617,7 +617,8 @@ export function TicketsBoard({
             : "gap-4",
       )}
     >
-      <TicketPills on={kind} onPick={onPick} flush={false} sticky={edge} pending={pending} />
+      {boxed ? <div className="pt-3" /> : null}
+      <TopMenu label="Kinds of ticket" tabs={TICKET_TABS} on={kind} onPick={onPick} sticky={edge} pending={pending} />
       {kind === "gifts" && ready && !failed && walletData ? (
         <GiftTickets gifts={walletData.gifts ?? []} showPlace={!placeId} onChanged={() => {
             wallet.reload();
@@ -783,131 +784,62 @@ function TicketList({
   );
 }
 
-/** A list page's subpages (MESITA-3889/3893): Home's Places | Social strip,
- *  equal tabs edge to edge under the header, white with a hairline, the
- *  chosen one bold ink over a 3px ink line as wide as its word, Home's since
- *  MESITA-4046 (MESITA-4047; a short 32px line in MESITA-4040, a full-width
- *  blue-600 bar before, Pato: "blue subpages navbar"). `on` null draws no
- *  line (the loading frame). */
-function SubpageTabs<K extends string>({
+/** THE ONE TOP MENU (Pato, 2026-11-24, MESITA-4906: "same idea of a top menu,
+ *  but different style"): Reservations' halves and Tickets' kinds, a grey rounded
+ *  bar of equal tabs, the chosen one black. An ink underline on one and a blue
+ *  one on the other before. `on` null is the loading frame: words in place,
+ *  none chosen. */
+function TopMenu<K extends string>({
   label,
   tabs,
   on,
   onPick,
+  sticky = false,
+  pending = {},
 }: {
   label: string;
   tabs: ReadonlyArray<{ kind: K; label: string; icon?: LucideIcon }>;
   on: K | null;
   onPick?: (k: K) => void;
+  /** Pinned to the scroller's top while the list scrolls (MESITA-4595). */
+  sticky?: boolean;
+  /** Pending tickets per tab: a dot on the word (MESITA-4623). */
+  pending?: Partial<Record<K, number>>;
 }) {
   return (
     <nav
       aria-label={label}
-      className="border-border bg-card flex shrink-0 border-b"
-      data-subpage-tabs
+      className={cn("bg-card border-border shrink-0 border-b px-3 pb-3", sticky && "sticky top-0 z-10")}
+      data-top-menu
     >
-      {tabs.map((t) => {
-        const chosen = on === t.kind;
-        return (
-          <button
-            key={t.kind}
-            type="button"
-            aria-current={chosen ? "page" : undefined}
-            onClick={onPick ? () => onPick(t.kind) : undefined}
-            disabled={!onPick}
-            className={cn(
-              // Home's strip, size for size (MESITA-4047 after MESITA-4046):
-              // 16px, every word semibold, the chosen one ink, the rest grey (MESITA-4447).
-              "flex flex-1 justify-center px-1 text-base whitespace-nowrap transition",
-              chosen ? "text-foreground font-semibold" : "text-muted-foreground font-semibold",
-            )}
-          >
-            <span className="relative flex items-center gap-1.5 py-3">
-              {t.icon ? (
-                <t.icon
-                  className="h-[18px] w-[18px] shrink-0"
-                  strokeWidth={chosen ? 2.5 : 2}
-                  aria-hidden
-                />
-              ) : null}
+      <div className="bg-muted grid auto-cols-fr grid-flow-col gap-1 rounded-2xl p-1">
+        {tabs.map((t) => {
+          const chosen = on === t.kind;
+          return (
+            <button
+              key={t.kind}
+              type="button"
+              aria-current={chosen ? "page" : undefined}
+              onClick={onPick ? () => onPick(t.kind) : undefined}
+              disabled={!onPick}
+              className={cn(
+                "flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl px-1 text-base font-semibold whitespace-nowrap transition max-[359px]:text-sm",
+                chosen ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.icon ? <t.icon className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden /> : null}
               {t.label}
-              {chosen ? (
+              {pending[t.kind] ? (
                 <span
-                  aria-hidden
-                  // Home's ink line: 3px, as wide as the icon and word, on
-                  // the strip's bottom hairline. Never blue.
-                  className="bg-foreground absolute inset-x-0 bottom-0 h-[3px] rounded-full"
+                  className={cn("h-2 w-2 shrink-0 rounded-full", t.kind === "vouchers" ? "bg-blue-500" : "bg-amber-400")}
+                  aria-label="pending"
+                  data-tab-pending
                 />
               ) : null}
-            </span>
-          </button>
-        );
-      })}
-    </nav>
-  );
-}
-
-/** Tickets' kinds as the place profile's strip (MESITA-4322, Pato: "a menu
- *  similar to the mesita profile … each item takes 25% and selected item is
- *  blue"; it was a scrolling row of icon pills, MESITA-3993): three equal
- *  tabs (four before MESITA-4623; a third each since MESITA-4776), a little icon and the word (icons back in MESITA-4324), white with a bottom hairline, the chosen one blue-600
- *  bold over a 3px blue-600 line, the rest muted (packages/place-profile
- *  PlaceTabBar, size for size). `on` null is the loading frame: words in
- *  place, none chosen. */
-function TicketPills({
-  on,
-  onPick,
-  flush = true,
-  sticky = false,
-  pending = {},
-}: {
-  /** Pending tickets per tab: a yellow dot on the word (MESITA-4623). */
-  pending?: Partial<Record<TicketTab, number>>;
-  on: TicketTab | null;
-  onPick?: (k: TicketTab) => void;
-  /** Runs to MeScreen's edges; false inside a card page's column. */
-  flush?: boolean;
-  /** Pinned to the scroller's top while the list scrolls (MESITA-4595). */
-  sticky?: boolean;
-}) {
-  return (
-    <nav
-      aria-label="Kinds of ticket"
-      // EQUAL COLUMNS, ONE LINE (Pato, MESITA-4414: "25% each"; three tabs
-      // since MESITA-4623, so a third each, MESITA-4776: "33% each").
-      className={cn("bg-card border-border grid shrink-0 grid-cols-3 border-b", flush && "-mx-5", sticky && "sticky top-0 z-10")}
-      data-ticket-pills
-    >
-      {TICKET_TABS.map((t) => {
-        const chosen = on === t.kind;
-        return (
-          <button
-            key={t.kind}
-            type="button"
-            aria-current={chosen ? "page" : undefined}
-            onClick={onPick ? () => onPick(t.kind) : undefined}
-            disabled={!onPick}
-            className={cn(
-              "-mb-px flex min-w-0 items-center justify-center gap-1 border-b-[3px] px-0 py-3 text-center type-body leading-normal tracking-wide whitespace-nowrap transition",
-              chosen
-                ? "border-blue-600 font-bold text-blue-600"
-                : "text-muted-foreground hover:text-foreground border-transparent font-semibold",
-            )}
-          >
-            {/* A little icon before each word (MESITA-4324, Pato: "is ok if
-                you add little icons in the four"). */}
-            <t.icon className="h-4 w-4 shrink-0" strokeWidth={chosen ? 2.5 : 2} aria-hidden />
-            {t.label}
-            {pending[t.kind] ? (
-              <span
-                className={cn("h-2 w-2 shrink-0 rounded-full", t.kind === "vouchers" ? "bg-blue-500" : "bg-amber-400")}
-                aria-label="pending"
-                data-tab-pending
-              />
-            ) : null}
-          </button>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }
@@ -927,12 +859,12 @@ export function MeListSkeleton({
   return (
     // Tickets (MESITA-4595) and Reservations (MESITA-4608) draw edge to
     // edge, their frames too: rows full width, a hairline between them.
-    <MeScreen title={title} flush={!!tabs}>
+    <MeScreen title={title} flush={!!tabs} bare={!!tabs}>
       <div className={cn("flex flex-col", tabs ? FLUSH_ROWS : "gap-4")}>
         {tabs === "tickets" ? (
-          <TicketPills on={null} flush={false} />
+          <TopMenu label="Kinds of ticket" tabs={TICKET_TABS} on={null} />
         ) : tabs ? (
-          <SubpageTabs label={title} tabs={RESERVATION_TABS} on={null} />
+          <TopMenu label={title} tabs={RESERVATION_TABS} on={null} />
         ) : null}
         <ActivityRowsSkeleton />
         <p role="status" className="sr-only">

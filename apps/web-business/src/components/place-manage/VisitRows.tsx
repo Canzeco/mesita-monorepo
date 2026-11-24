@@ -31,6 +31,7 @@ import { GuestAvatar } from "./GuestAvatar";
 import { CHIP, FilterBanner } from "./MonitorList";
 import { VisitBadge } from "./VoucherBadge";
 import { CaretDownIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
+import { attempt } from "@/lib/attempt";
 
 const n = (row: MonitorRow, k: string) => Number(row.payload[k] ?? 0);
 const isSplit = (row: MonitorRow) => row.payload.split === true;
@@ -160,7 +161,7 @@ export function VisitRows({
     if (!page.next || busy) return;
     setBusy(true);
     setError(null);
-    const r = await listMonitor(placeId, "visits", filter, page.next);
+    const r = await attempt(listMonitor(placeId, "visits", filter, page.next));
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setPage({ ...r.data, rows: [...page.rows, ...r.data.rows] });

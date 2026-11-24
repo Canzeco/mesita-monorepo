@@ -48,6 +48,7 @@ export function Screen({
   titleMark,
   paper = false,
   scrolls = false,
+  bare = false,
   footer,
 }: {
   title: string;
@@ -72,6 +73,9 @@ export function Screen({
   paper?: boolean;
   /** A paper screen that is meant to scroll: no overflow watch. */
   scrolls?: boolean;
+  /** No hairline under the header: the page's own top menu closes it
+   *  (MESITA-4906). */
+  bare?: boolean;
   /** The page's main button, in a white band under a hairline below the
    *  scroller, above the tab bar (MESITA-4052, Pato: "the button module or
    *  section must also have a hr line dividing stuff from white land"). */
@@ -99,6 +103,7 @@ export function Screen({
         lead={lead}
         titleMark={titleMark}
         action={action}
+        bare={bare}
       />
 
       <div
@@ -136,8 +141,10 @@ export function ScreenHeader({
   lead,
   titleMark,
   action,
+  bare = false,
 }: {
   title: string;
+  bare?: boolean;
   onBack: () => void;
   noBack?: boolean;
   lead?: React.ReactNode;
@@ -145,7 +152,7 @@ export function ScreenHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl bg-card")}>
+    <header className={cn("border-border sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 px-3 py-2 backdrop-blur-xl bg-card", !bare && "border-b")}>
       {lead ? (
         <span className="flex">{lead}</span>
       ) : noBack ? (

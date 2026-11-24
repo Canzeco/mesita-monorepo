@@ -4,12 +4,13 @@ import { useState } from "react";
 import { Bug, RefreshCw } from "lucide-react";
 import { Button, ChoicePill, Notice, SectionCard, Stat } from "@/components/admin-ui";
 import type { ActionResult } from "@/lib/action-result";
+import { formatDateTime } from "@/lib/format";
 import { getApifyUsage } from "./actions";
 import { APIFY_WINDOWS, type ApifyScraper, type ApifyUsage, type ApifyWindow } from "./apify-usage";
 
 const usd = (v: number | null, digits = 2) => (v === null ? "—" : `$${v.toFixed(digits)}`);
 const pct = (v: number | null) => (v === null ? "—" : `${Math.round(v * 100)}%`);
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
+const when = (iso: string | null) => (iso ? formatDateTime(iso) : "—");
 const secs = (v: number | null) =>
   v === null ? "—" : v >= 60 ? `${Math.floor(v / 60)}m ${Math.round(v % 60)}s` : `${v}s`;
 
@@ -93,7 +94,7 @@ export function ApifyUsagePanel({ initial }: { initial: ActionResult<{ usage: Ap
   async function load(next: ApifyWindow) {
     setDays(next);
     setLoading(true);
-    const r = await getApifyUsage(next);
+    const r = await getApifyUsage(next).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
     if (r.ok) {
       setUsage(r.usage);
       setError(null);
@@ -169,7 +170,7 @@ export function ApifyUsagePanel({ initial }: { initial: ActionResult<{ usage: Ap
                 ? ` · ${usage.other.runs} runs of other actors, ${usd(usage.other.spendUsd)}`
                 : ""}
               {usage.truncated ? " · more than 10,000 runs, oldest not counted" : ""}
-              {` · read ${new Date(usage.checkedAt).toLocaleString()}`}
+              {` · read ${formatDateTime(usage.checkedAt)}`}
             </p>
           </>
         ) : null}

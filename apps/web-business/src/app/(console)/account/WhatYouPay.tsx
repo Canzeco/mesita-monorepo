@@ -13,7 +13,9 @@ import { MapPin } from "lucide-react";
 import { listBilling, startPremier, stopMyPremier, type MySubscription } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { ACCOUNT, premierHref, returnUrl } from "@/lib/routes";
+import { day, usd } from "@/lib/format";
 import { PLAN_NAME } from "@/lib/plans";
+import { attempt } from "@/lib/attempt";
 
 
 const OUTCOME: Record<string, string> = {
@@ -21,16 +23,6 @@ const OUTCOME: Record<string, string> = {
   pending: "Your card is being confirmed. This page updates in a moment.",
   expired: "That checkout expired. Nothing changed.",
 };
-
-function usd(cents: number): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function day(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 export function WhatYouPay({
   initial,
@@ -49,7 +41,7 @@ export function WhatYouPay({
   const notice = outcome && OUTCOME[outcome] ? OUTCOME[outcome] : null;
 
   async function reload() {
-    const r = await listBilling();
+    const r = await attempt(listBilling());
     if (r.ok) setSubs(r.data.subscriptions);
     else setError(r.error);
     router.replace(ACCOUNT);
@@ -58,7 +50,7 @@ export function WhatYouPay({
   async function updateCard(sub: MySubscription) {
     setBusy(sub.id);
     setError(null);
-    const r = await startPremier({ placeId: sub.place_id, updateCard: true, returnUrl: returnUrl(ACCOUNT) });
+    const r = await attempt(startPremier({ placeId: sub.place_id, updateCard: true, returnUrl: returnUrl(ACCOUNT) }));
     setBusy(null);
     if (!r.ok) return setError(r.error);
     if (r.data.url) window.location.assign(r.data.url);
@@ -68,7 +60,7 @@ export function WhatYouPay({
     setBusy(sub.id);
     setError(null);
     setArmed(null);
-    const r = await stopMyPremier(sub.id);
+    const r = await attempt(stopMyPremier(sub.id));
     setBusy(null);
     if (!r.ok) return setError(r.error);
     await reload();

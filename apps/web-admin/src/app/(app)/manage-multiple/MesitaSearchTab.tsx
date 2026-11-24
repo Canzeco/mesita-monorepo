@@ -85,8 +85,11 @@ export function MesitaSearchTab({
     let after = resume ? cursor : null;
     let n = resume ? batches : 0;
     let tot = resume ? total : null;
+    let failed = false;
     if (!resume) {
       setPlaces([]);
+      setCursor(null);
+      setBatches(0);
       setTotal(null);
       setComplete(false);
       setPage(1);
@@ -98,6 +101,7 @@ export function MesitaSearchTab({
       while (n < MAX_BATCHES) {
         const r = await listPlacesBatch(after);
         if (!r.ok) {
+          failed = true;
           setStopped(r.error);
           break;
         }
@@ -112,10 +116,11 @@ export function MesitaSearchTab({
         if (!after) break;
       }
     } catch (err) {
+      failed = true;
       setStopped(err instanceof Error ? err.message : String(err));
     }
     // Sort once, after the last batch, so rows do not jump while loading.
-    const doneLoading = !after || n >= MAX_BATCHES;
+    const doneLoading = !failed && (!after || n >= MAX_BATCHES);
     if (doneLoading) {
       acc = [...acc].sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),

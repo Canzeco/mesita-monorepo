@@ -103,7 +103,12 @@ function timesFmt(x: number): string {
 // save from another tab since makes the server answer "Config changed,
 // reload".
 
-type Stamp = { get: () => string | null; set: (updatedAt: string | null) => void };
+type Stamp = {
+  get: () => string | null;
+  set: (updatedAt: string | null) => void;
+  /** One save at a time, so each reads the stamp the one before it wrote. */
+  queue: <T>(job: () => Promise<T>) => Promise<T>;
+};
 const PageStamp = createContext<Stamp | null>(null);
 
 export function DiscoverySaveScope({
@@ -115,10 +120,16 @@ export function DiscoverySaveScope({
 }) {
   const [stamp] = useState<Stamp>(() => {
     let seen = initialUpdatedAt;
+    let last: Promise<unknown> = Promise.resolve();
     return {
       get: () => seen,
       set: (updatedAt) => {
         seen = updatedAt;
+      },
+      queue: (job) => {
+        const next = last.then(job);
+        last = next.catch(() => undefined);
+        return next;
       },
     };
   });
@@ -145,10 +156,13 @@ type Editor = ReturnType<typeof useDiscoveryEditor>;
 function Save({ editor, dirty, slices }: { editor: Editor; dirty: boolean; slices: readonly DiscoverySlice[] }) {
   const { pending, ok, loadBlocked, error, updatedAt, saveWith, stamp } = editor;
   const save = () =>
-    saveWith(async (c) => {
-      const r = await updateDiscoveryConfig(c, [...slices], stamp ? stamp.get() : updatedAt);
-      if (r.ok) stamp?.set(r.updatedAt);
-      return r;
+    saveWith((c) => {
+      const write = async () => {
+        const r = await updateDiscoveryConfig(c, [...slices], stamp ? stamp.get() : updatedAt);
+        if (r.ok) stamp?.set(r.updatedAt);
+        return r;
+      };
+      return stamp ? stamp.queue(write) : write();
     });
   useUnsavedGuard(dirty);
   return (

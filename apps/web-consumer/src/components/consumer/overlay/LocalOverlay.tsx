@@ -62,15 +62,28 @@ function useLocalPresence(open: boolean, startShown = false) {
   return { mounted, shown };
 }
 
+// ESCAPE CLOSES THE TOP OVERLAY ONLY (MESITA-4908): the location dialog opens
+// over the Prepay sheet, and one key closed both.
+const escapeStack: object[] = [];
+
 function useEscape(active: boolean, onClose: () => void) {
+  const latest = useRef(onClose);
+  useEffect(() => {
+    latest.current = onClose;
+  }, [onClose]);
   useEffect(() => {
     if (!active) return;
+    const me = {};
+    escapeStack.push(me);
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && escapeStack.at(-1) === me) latest.current();
     }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [active, onClose]);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      escapeStack.splice(escapeStack.indexOf(me), 1);
+    };
+  }, [active]);
 }
 
 // Focus in, focus back (MESITA-2939). Opening an overlay used to leave

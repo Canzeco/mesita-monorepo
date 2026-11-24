@@ -11,6 +11,7 @@ import Link from "next/link";
 import { BankIcon } from "@phosphor-icons/react/dist/ssr";
 import { getPayouts } from "@/lib/business-api";
 import { day, money, payoutStatus, type Payout, type PayoutsAnswer } from "@/lib/monitor";
+import { attempt } from "@/lib/attempt";
 
 const ROW = "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-2.5 text-sm sm:px-5";
 
@@ -41,7 +42,7 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
 
   useEffect(() => {
     let live = true;
-    void getPayouts(placeId).then((r) => {
+    void attempt(getPayouts(placeId)).then((r) => {
       if (!live) return;
       if (!r.ok) return setError(r.error);
       setAnswer(r.data);
@@ -55,7 +56,7 @@ export function Payouts({ placeId, timezone }: { placeId: string; timezone: stri
   async function older() {
     if (answer?.state !== "ok" || !answer.next || busy) return;
     setBusy(true);
-    const r = await getPayouts(placeId, answer.next);
+    const r = await attempt(getPayouts(placeId, answer.next));
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setAnswer(r.data);

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { ArrowRight, Image as ImageIcon } from "lucide-react";
 import { Instagram } from "@/components/shared/SocialIcons";
 import { Switch, TextField } from "@/components/admin-ui";
@@ -8,6 +8,7 @@ import {
   MAX_GOOGLE_COLLECT,
   MAX_INSTAGRAM_COLLECT,
   MAX_SAVE_IMAGES,
+  clampFunnel,
   type CrenupSettings,
 } from "./crenup-guards";
 
@@ -26,6 +27,7 @@ export function ImageFunnel({
   pending: boolean;
   onPatch: (next: Partial<CrenupSettings>) => void;
 }) {
+  const settle = () => onPatch(clampFunnel(settings));
   const visionOff = !settings.imageVisionEnabled;
   return (
     <div className="space-y-3">
@@ -43,6 +45,7 @@ export function ImageFunnel({
           disabled={pending}
           ariaLabel="Instagram last newest posts to collect"
           onChange={(v) => onPatch({ gatherInstagramDepth: v })}
+          onSettle={settle}
         />
         <Step>rank by likes</Step>
         <FunnelNum
@@ -54,6 +57,7 @@ export function ImageFunnel({
           disabled={pending || visionOff}
           ariaLabel="Instagram posts to describe with vision"
           onChange={(v) => onPatch({ analyzeInstagramImages: v })}
+          onSettle={settle}
         />
       </SourceRow>
 
@@ -71,6 +75,7 @@ export function ImageFunnel({
           disabled={pending}
           ariaLabel="Google photos to collect"
           onChange={(v) => onPatch({ gatherGoogleImages: v })}
+          onSettle={settle}
         />
         <Step>already ranked</Step>
         <FunnelNum
@@ -82,6 +87,7 @@ export function ImageFunnel({
           disabled={pending || visionOff}
           ariaLabel="Google photos to describe with vision"
           onChange={(v) => onPatch({ analyzeGoogleImages: v })}
+          onSettle={settle}
         />
       </SourceRow>
 
@@ -98,6 +104,7 @@ export function ImageFunnel({
           disabled={pending}
           ariaLabel="Photos kept on the profile"
           onChange={(v) => onPatch({ saveTotalImages: v })}
+          onSettle={settle}
         />
         <label className="ml-auto flex items-center gap-2">
           <span className="text-sm font-medium">Vision</span>
@@ -163,6 +170,7 @@ function FunnelNum({
   disabled,
   ariaLabel,
   onChange,
+  onSettle,
 }: {
   label: string;
   suffix: string;
@@ -172,7 +180,11 @@ function FunnelNum({
   disabled: boolean;
   ariaLabel: string;
   onChange: (v: number) => void;
+  /** The field was left: the chain below it may follow. */
+  onSettle: () => void;
 }) {
+  // What is typed, until the field is left: an empty field is not 1.
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <label className="flex flex-col gap-1">
       <span className="text-muted-foreground type-eyebrow">
@@ -185,13 +197,19 @@ function FunnelNum({
           min={min}
           max={max}
           step={1}
-          value={String(value)}
+          value={draft ?? String(value)}
           disabled={disabled}
           aria-label={ariaLabel}
           onChange={(v) => {
+            setDraft(v);
             const raw = Number(v);
-            if (Number.isNaN(raw)) return;
+            if (v.trim() === "" || Number.isNaN(raw)) return;
             onChange(Math.max(min, Math.min(max, Math.round(raw))));
+          }}
+          onBlur={() => {
+            if (draft === null) return;
+            setDraft(null);
+            onSettle();
           }}
           className="w-20"
         />

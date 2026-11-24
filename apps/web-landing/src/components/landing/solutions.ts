@@ -18,7 +18,7 @@ export type Solution = {
 export const GUEST_SOLUTIONS: Solution[] = [
   {
     name: "Global Discovery",
-    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place five ways: type its name, browse what is near or popular in forty one-word families, read the map, ask Mesi in your own words, or see what people nearby are looking at.",
+    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place five ways: type its name, browse what is near or popular in 25 one-word families, read the map, ask Mesi in your own words, or see what people nearby are looking at.",
     ways: ["Name", "Catalog", "Map", "Deep", "Social"],
   },
   {
@@ -42,8 +42,8 @@ export const PLACE_SOLUTIONS: Solution[] = [
     body: "Get ad spots on Home and the Map, marked as an ad. See your level here and how it works.",
   },
   {
-    name: "Payments",
-    body: "Loyalty Cards, Cash Payments, App Payments, App Prepayments and the Stripe Account, and which of them are on at your place.",
+    name: "Offers",
+    body: "Discounts or credit back on the bill, prepaid vouchers, waiter codes, and the Credits and Stripe accounts behind them.",
   },
   {
     name: "Reservations",

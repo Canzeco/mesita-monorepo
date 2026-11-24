@@ -86,7 +86,7 @@ export function BillingTestClient() {
     setRunning((prev) => new Set([...prev, ...ids]));
     setError(null);
 
-    const res = await runApiHealthProbes(ids);
+    const res = await runApiHealthProbes(ids).catch((e) => ({ ok: false as const, error: e instanceof Error ? e.message : String(e) }));
 
     if (res.ok) {
       setResults((prev) => {
@@ -94,7 +94,7 @@ export function BillingTestClient() {
         for (const r of res.results) next[r.id] = r;
         return next;
       });
-      setCheckedAt(res.checkedAt);
+      if (sweep) setCheckedAt(res.checkedAt);
     } else {
       setError(res.error);
     }

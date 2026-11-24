@@ -12,7 +12,11 @@ import { repickFamilies, type RepickReply, type RepickRow } from "./actions";
 
 const RESUME_KEY = "mesita.repickFamilies.resume";
 
-type Resume = { runId: string; cursor: string; done: number };
+type Resume = { runId: string; cursor: string; done: number; total?: number };
+
+/** A call that never reaches the server is a failed batch, not a stuck card. */
+const repick = (body: Parameters<typeof repickFamilies>[0]): ReturnType<typeof repickFamilies> =>
+  repickFamilies(body).catch((e) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }));
 
 function readResume(): Resume | null {
   try {
@@ -104,7 +108,7 @@ export function RepickFamiliesCard() {
   async function dryRun() {
     setBusy(true);
     setError(null);
-    const r = await repickFamilies({ dryRun: true });
+    const r = await repick({ dryRun: true });
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setDry(r.data);
@@ -121,8 +125,8 @@ export function RepickFamiliesCard() {
     let runId = start?.runId;
     let done = start?.done ?? 0;
     for (;;) {
-      let r = await repickFamilies({ cursor, run_id: runId, batch: 5 });
-      if (!r.ok) r = await repickFamilies({ cursor, run_id: runId, batch: 5 });
+      let r = await repick({ cursor, run_id: runId, batch: 5 });
+      if (!r.ok) r = await repick({ cursor, run_id: runId, batch: 5 });
       if (!r.ok) {
         setError(`Batch at cursor ${cursor ?? "start"} failed twice: ${r.error}. Resume continues from here.`);
         break;
@@ -139,20 +143,26 @@ export function RepickFamiliesCard() {
         break;
       }
       cursor = r.data.next_cursor;
-      writeResume({ runId, cursor, done });
+      writeResume({ runId, cursor, done, total });
     }
     setBusy(false);
   }
 
   async function retryFailed() {
-    const ids = rows.filter((r) => r.outcome === "failed").map((r) => r.place_id).slice(0, 50);
+    const ids = rows.filter((r) => r.outcome === "failed").map((r) => r.place_id);
     if (!ids.length) return;
     setBusy(true);
-    const r = await repickFamilies({ place_ids: ids });
+    setError(null);
+    for (let i = 0; i < ids.length; i += 50) {
+      const r = await repick({ place_ids: ids.slice(i, i + 50) });
+      if (!r.ok) {
+        setError(r.error);
+        break;
+      }
+      const retried = new Map(r.data.rows.map((x) => [x.place_id, x]));
+      setRows((prev) => prev.map((x) => retried.get(x.place_id) ?? x));
+    }
     setBusy(false);
-    if (!r.ok) return setError(r.error);
-    const retried = new Map(r.data.rows.map((x) => [x.place_id, x]));
-    setRows((prev) => prev.map((x) => retried.get(x.place_id) ?? x));
   }
 
   const failed = rows.filter((r) => r.outcome === "failed");
@@ -169,7 +179,7 @@ export function RepickFamiliesCard() {
           Re-pick families
         </Button>
         {resume && !busy ? (
-          <Button tone="secondary" onClick={() => run(resume, undefined)}>
+          <Button tone="secondary" onClick={() => run(resume, resume.total)}>
             Resume run ({resume.done} done)
           </Button>
         ) : null}
