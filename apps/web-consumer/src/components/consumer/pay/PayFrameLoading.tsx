@@ -26,12 +26,12 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "bill" | "p
           <Skeleton className="aspect-[8/5] min-w-0 rounded-2xl" aria-hidden />
           <Skeleton className="aspect-[8/5] min-w-0 rounded-2xl" aria-hidden />
         </div>
-        {/* MESITA-4785: the third box, the switch on top and its rows below
+        {/* MESITA-4785: the third box (grey while loading, MESITA-4801), the switch on top and its rows below
             in the same card. */}
         <div className="mt-2 flex flex-1 flex-col pb-8">
-          <section className="bg-foreground rounded-2xl p-1.5 shadow-md">
+          <section className="bg-muted rounded-2xl p-1.5">
             <div className="pb-1.5">
-              <div className="bg-background/15 h-10 w-full animate-pulse rounded-xl" aria-hidden />
+              <div className="bg-foreground/10 h-10 w-full animate-pulse rounded-xl" aria-hidden />
             </div>
             <div className="bg-card overflow-hidden rounded-xl">
               <div className={SECTION_ROWS}>
