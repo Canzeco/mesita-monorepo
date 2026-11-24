@@ -459,7 +459,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       </button>
     </>,
     <div className="grid gap-2">
-      <Button size="lg" className="min-h-12 w-full text-base font-semibold" disabled={busy !== null || now < armedAt} onClick={() => void answer("accept")} data-bill-accept>
+      <Button size="lg" className="min-h-12 w-full bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]" disabled={busy !== null || now < armedAt} onClick={() => void answer("accept")} data-bill-accept>
         {busy === "accept" ? <Spinner size="sm" label="Accepting" /> : nothingOwed ? `Accept · use ${m(q.credit_cents)} credits` : `Accept · pay ${m(q.outside_cents)} here`}
       </Button>
       <button type="button" className={QUIET_BUTTON_CLASS} disabled={busy !== null} onClick={() => void answer("decline")} data-bill-decline>

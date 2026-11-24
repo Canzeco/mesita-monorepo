@@ -188,9 +188,9 @@ const PENDING_ROW =
 const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums";
 
 const TILES: Record<PayTab, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: WalletIcon, ink: "#008A48" },
-  cards: { word: "Credits", icon: CreditCard, ink: "#171717" },
-  pay: { word: "Pay", icon: QrCode, ink: "#635BFF" },
+  prepay: { word: "Prepay", icon: WalletIcon, ink: "text-indigo-500" },
+  cards: { word: "Credits", icon: CreditCard, ink: "text-foreground" },
+  pay: { word: "Pay", icon: QrCode, ink: "text-neutral-950" },
 };
 
 /** ONE SHAPE WITH ITS BOX (Pato, 2026-11-24, MESITA-4839: "top box must be
@@ -242,7 +242,8 @@ function WalletMenu({ tab, onTab }: { tab: PayTab; onTab: (t: PayTab) => void })
             className={cn(PAY_TILE, "relative", on ? cn("rounded-b-none", PAY_TAB_FILL[id]) : "bg-muted text-foreground hover:bg-foreground/10")}
             data-pay-tab={id}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white" style={{ color: ink }} aria-hidden>
+            {/* The exact green, black or purple in the disc; white on the chosen. */}
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", on ? cn("bg-white", ink) : PAY_TAB_FILL[id])} aria-hidden>
               <Icon className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <span className="text-base leading-tight font-semibold">{word}</span>

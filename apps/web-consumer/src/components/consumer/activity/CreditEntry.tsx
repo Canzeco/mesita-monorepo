@@ -373,7 +373,7 @@ export function CreditEntry({ placeId, entryKey }: { placeId: string; entryKey: 
           <TicketActions primary={loyaltyCard} />
         ) : b.spendable_cents > 0 ? (
           <TicketActions
-            primary={{ label: "Pay Bill", href: payCodePath(placeId) }}
+            primary={{ label: "Pay Bill", href: payCodePath(placeId), pay: true }}
             secondary={received ? undefined : loyaltyCard}
           />
         ) : (

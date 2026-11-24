@@ -1305,7 +1305,7 @@ function PrepaySection({
           2026-11-22, MESITA-4659; MESITA-4710, d2a): sticky at the bottom,
           the same lines whatever is picked — Pay, Bonus (green), then under a
           hairline the total, You get in 3 hours (MESITA-4717: all of it lands
-          together; MESITA-4669, Pato: "a bit confusing, add a line"). Then one black pill. Ready to charge with a saved
+          together; MESITA-4669, Pato: "a bit confusing, add a line"). Then one purple pill (MESITA-4840). Ready to charge with a saved
           card, it splits in half (MESITA-4669, Pato: "50% of button for the
           payment method, 50% right for the amount … pay x get y, even if a
           bit redundant"): the card on the left (a tap cycles cards, the old
@@ -1315,14 +1315,14 @@ function PrepaySection({
           nothing. The purple Go to Pay Bill moved to Checkout (MESITA-4710). */}
       {(() => {
         // NO COUNT UNTIL SOMETHING IS PICKED (Pato, 2026-11-23, MESITA-4763),
-        // BUT THE BLACK BUTTON STAYS (Pato, 2026-11-24, MESITA-4828: "keep the
+        // BUT THE BUTTON STAYS, PURPLE SINCE MESITA-4840 (Pato, 2026-11-24, MESITA-4828: "keep the
         // black button at the bottom but say select an offer"): an empty
         // basket draws the button alone, where a voucher can be bought.
         if (count === 0) {
           if (loading || !co.live || !products.some((p) => buyable(p.key))) return null;
           return (
             <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-offer-pay-bar>
-              <button type="button" disabled className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold" data-offer-select>
+              <button type="button" disabled className="flex h-12 w-full items-center justify-center rounded-full bg-[#635BFF] text-base font-semibold text-white opacity-60" data-offer-select>
                 Select an offer
               </button>
             </div>
@@ -1357,7 +1357,7 @@ function PrepaySection({
               </p>
             ) : null}
             {split && co.payCard && totals ? (
-              <div className="bg-foreground text-paper flex h-14 w-full items-stretch overflow-hidden rounded-full" data-offer-pay-split>
+              <div className="flex h-14 w-full items-stretch overflow-hidden rounded-full bg-[#635BFF] text-white" data-offer-pay-split>
                 <button
                   type="button"
                   disabled={!co.canChange}
@@ -1372,7 +1372,7 @@ function PrepaySection({
                   </span>
                   {co.canChange ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden /> : null}
                 </button>
-                <span className="bg-paper/25 my-3 w-px shrink-0" aria-hidden />
+                <span className="my-3 w-px shrink-0 bg-white/30" aria-hidden />
                 <button
                   type="button"
                   disabled={payDisabled}
@@ -1389,7 +1389,7 @@ function PrepaySection({
                 type="button"
                 disabled={payDisabled}
                 onClick={onPay}
-                className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-full text-base font-semibold disabled:opacity-60"
+                className="flex h-12 w-full items-center justify-center rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6] disabled:opacity-60"
                 data-offer-pay
               >
                 {locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
@@ -1439,7 +1439,7 @@ function CheckoutSection({
           <button
             type="button"
             onClick={onPay}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]"
             data-cashback-pay-bill
           >
             <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />

@@ -233,7 +233,7 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
             <span key={b.key} className={cn("text-foreground min-w-0 rounded-lg px-2 py-1.5", b.tone)}>
               <span className="block truncate text-sm leading-tight font-semibold tabular-nums">{b.top}</span>
               <span className="mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums">{b.bottom}</span>
-              {b.bonus ? <span className={cn("mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums", kind === "prepay" ? "text-emerald-700" : "text-foreground/70")}>{b.bonus}{kind === "prepay" ? <span className="max-[359px]:hidden"> Bonus</span> : null}</span> : null}
+              {b.bonus ? <span className={cn("mt-0.5 block truncate text-xs leading-tight font-semibold tabular-nums", kind === "prepay" ? "text-indigo-700" : "text-foreground/70")}>{b.bonus}{kind === "prepay" ? <span className="max-[359px]:hidden"> Bonus</span> : null}</span> : null}
             </span>
           ))}
         </span>
