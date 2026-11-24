@@ -10,7 +10,9 @@
 // Response: { ok: true, code: { url, expires_at } | null (only when minted),
 //             bill: { id, state, version, currency, bill_cents, tip_cents,
 //                     quote, expires_at, attempt_id, tab_id, test_mode,
-//                     place: { id, name, photo_url } } | null, server_time }
+//                     place: { id, name, photo_url } } | null,
+//             typing: { bill_cents, tip_cents, step } | null, server_time }
+//   typing (MESITA-4883): what the waiter is typing now, before a bill is sent.
 //   401 sign_in
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -20,7 +22,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 import { readWalletPlaces } from "../_shared/wallet.ts";
 import { callTabRpc } from "../_shared/tab.ts";
-import { guestBillView, hashPayCode, mintPayCode, readBill, readBillAttempt, readGuestActiveBill } from "../_shared/pay-bill.ts";
+import { guestBillView, hashPayCode, mintPayCode, readBill, readBillAttempt, readGuestActiveBill, readTyping } from "../_shared/pay-bill.ts";
 
 serveJson("consumer-web-get-pay-code", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
@@ -56,7 +58,9 @@ serveJson("consumer-web-get-pay-code", async (req) => {
         place: { id: found.bill.place_id, name: place?.name ?? null, photo_url: place?.photo ?? null },
       };
     }
-    return json({ ok: true, code, bill, server_time: new Date(nowMs).toISOString() });
+    const waiting = !bill || bill.state === "open" || bill.state === "cancelled" || bill.state === "expired" || bill.state === "paid";
+    const typing = waiting ? await readTyping(admin, user.id, nowMs) : null;
+    return json({ ok: true, code, bill, typing, server_time: new Date(nowMs).toISOString() });
   } catch (err) {
     return failWithRequestId("consumer-web-get-pay-code", "Couldn't load your QR. Try again.", err);
   }

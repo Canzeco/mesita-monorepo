@@ -3,7 +3,7 @@
 -- nothing owed closes at Accept, releases free the credit.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(71);
+select plan(75);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a4823'), ('00000000-0000-4000-8000-0000000b4823'), ('00000000-0000-4000-8000-0000000f4823');
@@ -141,6 +141,12 @@ select '00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-00000001
 select is((public.pay_bill_open(repeat('e', 63) || '1', null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('9', 64))->>'code'), 'too_many', 'a place opens 300 bills an hour at most');
 select ok(not has_function_privilege('authenticated', 'public.waiter_code_try(text, uuid, text, text, timestamptz)', 'execute'), 'guests never try a waiter code');
 select ok(not has_function_privilege('anon', 'public.waiter_code_try(text, uuid, text, text, timestamptz)', 'execute'), 'nor does anyone else');
+
+-- ── The bill as it is typed (MESITA-4883): display only ──
+select is((public.pay_guest_draft_set(repeat('e', 63) || '1', 50000, 5000, 'tip')->>'ok'), 'true', 'a holder of the live QR writes the draft');
+select is((select draft_bill_cents from public.pay_guest_codes where consumer_id = '00000000-0000-4000-8000-0000000b4823'), 50000, 'on that guest''s row');
+select is((public.pay_guest_draft_set(repeat('0', 64), 1, 0, 'bill')->>'code'), 'code_gone', 'an unknown QR writes nothing');
+select ok(not has_function_privilege('anon', 'public.pay_guest_draft_set(text, integer, integer, text, timestamptz)', 'execute'), 'clients never call it');
 
 -- ── The tip has a waiter (MESITA-4871) ──
 insert into public.consumers (id) select id from auth.users where id = '00000000-0000-4000-8000-0000000f4823';

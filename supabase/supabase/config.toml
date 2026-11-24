@@ -495,6 +495,10 @@ verify_jwt = true
 [functions.visit-web-sign-in]
 verify_jwt = false
 
+# MESITA-4883: what the waiter types, for the guest's screen; the live QR is the key.
+[functions.visit-web-type-bill]
+verify_jwt = false
+
 [functions.visit-web-open-bill]
 verify_jwt = false
 
