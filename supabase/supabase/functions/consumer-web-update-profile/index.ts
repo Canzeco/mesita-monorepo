@@ -27,11 +27,14 @@ import {
   parseSex,
   type UpdateProfileBody,
   notWritableKey,
+  privacyRefusal,
+  type SocialStanding,
+  socialFields,
   removedFieldResponse,
 } from "./update-profile-fields.ts";
 
 const CONSUMER_PROFILE_SELECT =
-  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_followers_emulated, guest_class, plan";
+  "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, use_instagram_photo, instagram_handle_shown, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, social_private, instagram_followers_emulated, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -97,13 +100,15 @@ serveJson("consumer-web-update-profile", async (req) => {
   // and a caller may send only one of them (MESITA-1806).
   const existing = await admin
     .from("consumers")
-    .select("id, code, deleted_at, first_name, last_name, avatar_url")
+    .select("id, code, deleted_at, first_name, last_name, avatar_url, birth_year, social_private, instagram_handle, instagram_verified_at, instagram_handle_shown")
     .eq("id", userId)
     .maybeSingle();
   if (existing.error) {
     return json({ ok: false, error: `consumer_read: ${existing.error.message}` }, 500);
   }
   if (isDeletedConsumer(existing.data)) return accountDeletedResponse();
+  const refused = privacyRefusal(body, existing.data as SocialStanding | null, birthYear);
+  if (refused) return refused;
   if (!existing.data) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const codeResult = await admin.rpc("generate_consumer_code");
@@ -170,5 +175,5 @@ serveJson("consumer-web-update-profile", async (req) => {
 
   // The saved row replaces the app's cached profile, so it carries the
   // emulator's availability too (MESITA-4662), as get-profile does.
-  return json({ ok: true, consumer: { ...update.row, emulator_available: !paymentsLivemode() } });
+  return json({ ok: true, consumer: { ...update.row, ...socialFields(update.row as unknown as SocialStanding), emulator_available: !paymentsLivemode() } });
 });

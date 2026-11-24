@@ -5,6 +5,7 @@ import { Camera, Check, ChevronDown } from "lucide-react";
 import { Skeleton, Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
+import { PrivacyLevels } from "@/components/consumer/me/PrivacyLevels";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { ME_BUTTON_CLASS } from "@/components/consumer/me/settings-rows";
 import {
@@ -434,6 +435,9 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
             <span className={ROW_LABEL_CLASS}>{FIELD_LABEL.birthYear}</span>
             <select
               value={birthYear ?? ""}
+              // A minor's year is what keeps them Private (MESITA-4850); the
+              // server refuses a change too.
+              disabled={profile.social_lock === "minor"}
               onChange={(e) =>
                 setBirthYear(e.target.value ? Number(e.target.value) : null)
               }
@@ -460,6 +464,8 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           </label>
         </div>
         {saveButton}
+        {/* MESITA-4850: the level shows and changes here. */}
+        <PrivacyLevels profile={profile} />
       </div>
     </MeScreen>
   );

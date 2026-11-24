@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
+import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { Spinner } from "@/components/shared";
@@ -319,7 +320,7 @@ export function WhyConnect({ live = true }: { live?: boolean }) {
           <span className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">See other people&apos;s Instagram</span>
             <span className="text-muted-foreground type-label block">
-              On Social, tap anyone to see their @handle. Only guests who connect see others&apos;.
+              On Social, tap anyone to see their @handle. Only guests who share theirs see others&apos;.
             </span>
           </span>
           {live ? <SeeStatus /> : null}
@@ -332,10 +333,11 @@ export function WhyConnect({ live = true }: { live?: boolean }) {
 const STATUS_CHIP = "bg-muted text-foreground shrink-0 self-center rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap tabular-nums";
 
 function SeeStatus() {
-  const { igConnected } = useConsumerIdentity();
+  // On only while the guest shares theirs (MESITA-4850): the server's rule.
+  const sharing = useConsumerProfile().data?.social_level === "instagram";
   return (
-    <span className={cn(STATUS_CHIP, igConnected && "bg-green-100 text-green-800")} data-why-connect-status="see">
-      {igConnected ? "On" : "Off"}
+    <span className={cn(STATUS_CHIP, sharing && "bg-green-100 text-green-800")} data-why-connect-status="see">
+      {sharing ? "On" : "Off"}
     </span>
   );
 }
@@ -423,7 +425,7 @@ export function ConnectedAccount({
   return (
     <SettingsGroup>
       <CurrentConnectionRow pending={pending} />
-      <HandleShownRow pending={pending} />
+      <ShareRow pending={pending} />
       <FollowerEmulatorBox pending={pending} />
       {asking ? (
         <div className="px-4 pt-1 pb-4">
@@ -1012,53 +1014,110 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   );
 }
 
-// SHOW MY HANDLE (Pato, 2026-11-22, MESITA-4659: "Guests choose whether to
-// share their handle, and Mesita displays it only when they explicitly opt
-// in"). It took the place of the Account privacy row (MESITA-4655): Mesita
-// treats every linked Instagram the same, public or private. A server fact,
-// consumers.instagram_handle_shown: only true shows the @handle to other
-// guests and places; null (no choice yet) and false hide it, so the switch is
-// off unless it is true. Linking never turns it on. The guest always sees
-// their own handle here.
-function HandleShownRow({ pending = false }: { pending?: boolean }) {
+// SHARE MY INSTAGRAM (MESITA-4850, over MESITA-4659's "Show my handle"): the
+// Public + Instagram level. Linking never turns it on. Until the guest has
+// answered for this handle (instagram_handle_shown null, also after a Change)
+// the card asks, showing how others would see them; after that it is a switch.
+// Not now writes false and never opens a Private profile. A guest under 18 or
+// with no year of birth is Private (the server's social_lock): no choice here.
+function ShareRow({ pending = false }: { pending?: boolean }) {
   const supabase = useBrowserSupabase();
+  const { igHandle: handle } = useConsumerIdentity();
   const { data, error } = useConsumerProfile();
   const [flipped, setFlipped] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const known = data != null || error != null;
-  const shown = flipped ?? data?.instagram_handle_shown === true;
+  const shown = flipped ?? data?.social_level === "instagram";
+  const off = !known || saving || pending;
 
-  const flip = () => {
-    if (!known || saving || pending) return;
-    const next = !shown;
+  const answer = (next: boolean) => {
+    if (off) return;
     setFlipped(next);
     setSaving(true);
-    apiUpdateConsumerProfile(supabase, { instagram_handle_shown: next })
+    apiUpdateConsumerProfile(
+      supabase,
+      next ? { social_level: "instagram" } : { instagram_handle_shown: false },
+    )
       .then(() => setFlipped(null))
       .catch((e) => {
-        setFlipped(!next);
+        setFlipped(null);
         toast.error(errMsg(e, "Couldn't change that."));
       })
       .finally(() => setSaving(false));
   };
+
+  if (data?.social_lock) {
+    return (
+      <p
+        className="text-muted-foreground type-label border-border/60 mx-4 mb-3 rounded-xl border p-3"
+        data-instagram-share="locked"
+      >
+        {data.social_lock === "minor"
+          ? "Profiles of guests under 18 are always private, so your Instagram never shows."
+          : "Add your year of birth in Profile to share your Instagram."}
+      </p>
+    );
+  }
+
+  if (data?.social_level && data.instagram_handle_shown == null && handle && !pending) {
+    return (
+      <div
+        className="border-border/60 mx-4 mb-3 flex flex-col gap-3 rounded-xl border p-3"
+        data-instagram-share="ask"
+      >
+        <p className="text-sm font-semibold">Share your Instagram to see theirs</p>
+        <div className="bg-muted flex items-center gap-3 rounded-xl p-3">
+          <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-full">
+            {data.avatar_url ? (
+              <SizedImg src={data.avatar_url} size="thumb" alt="" className="h-full w-full object-cover" />
+            ) : (
+              <DefaultAvatar className="h-full w-full" />
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold">
+              {data.first_name?.trim() || "Mesita member"} viewed a place
+            </span>
+            <span className="text-muted-foreground type-label block truncate">@{handle}</span>
+          </span>
+        </div>
+        <p className="text-muted-foreground type-label">
+          This is how other guests will see you. Only guests who share theirs see your full @handle, and your Instagram may show your full name. Change it anytime in Profile.
+        </p>
+        <Button type="button" className={ME_BUTTON_CLASS} disabled={off} onClick={() => answer(true)}>
+          Share my Instagram
+        </Button>
+        <button
+          type="button"
+          disabled={off}
+          onClick={() => answer(false)}
+          className={cn(QUIET_BUTTON_CLASS, "h-11 w-full rounded-xl text-sm font-semibold")}
+        >
+          Not now
+        </button>
+      </div>
+    );
+  }
 
   return (
     <button
       type="button"
       role="switch"
       aria-checked={shown}
-      disabled={!known || saving || pending}
-      onClick={flip}
+      disabled={off}
+      onClick={() => answer(!shown)}
       className="border-border/60 hover:bg-muted/60 mx-4 mb-3 flex w-[calc(100%-2rem)] items-center gap-3 rounded-xl border p-3 text-left transition disabled:opacity-60"
-      data-instagram-handle-shown={shown ? "on" : "off"}
+      data-instagram-share={shown ? "on" : "off"}
     >
       <IconChip>
         <AtSign className="h-[18px] w-[18px]" />
       </IconChip>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">Show my handle on Mesita</span>
+        <span className="block text-sm font-semibold">Share my Instagram</span>
         <span className="text-muted-foreground type-label block">
-          Your first name and photo always show. Off hides your @handle; your follower count still shows.
+          {shown
+            ? "Your first name, photo and @handle show, and you see other guests' Instagram."
+            : "Off: your name, photo and @handle never show, and others' stay hidden from you."}
         </span>
       </span>
       <Switch on={shown} />

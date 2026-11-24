@@ -404,6 +404,7 @@ export type Database = {
           plan_stripe_subscription: string | null
           reservation_cap_override: number | null
           sex: string | null
+          social_private: boolean
           use_instagram_photo: boolean
           vip_invitation_code_id: string | null
           vip_invited_at: string | null
@@ -445,6 +446,7 @@ export type Database = {
           plan_stripe_subscription?: string | null
           reservation_cap_override?: number | null
           sex?: string | null
+          social_private?: boolean
           use_instagram_photo?: boolean
           vip_invitation_code_id?: string | null
           vip_invited_at?: string | null
@@ -486,6 +488,7 @@ export type Database = {
           plan_stripe_subscription?: string | null
           reservation_cap_override?: number | null
           sex?: string | null
+          social_private?: boolean
           use_instagram_photo?: boolean
           vip_invitation_code_id?: string | null
           vip_invited_at?: string | null
@@ -3961,6 +3964,7 @@ export type Database = {
           plan_stripe_subscription: string | null
           reservation_cap_override: number | null
           sex: string | null
+          social_private: boolean
           use_instagram_photo: boolean
           vip_invitation_code_id: string | null
           vip_invited_at: string | null
@@ -4022,6 +4026,7 @@ export type Database = {
           plan_stripe_subscription: string | null
           reservation_cap_override: number | null
           sex: string | null
+          social_private: boolean
           use_instagram_photo: boolean
           vip_invitation_code_id: string | null
           vip_invited_at: string | null
@@ -4543,6 +4548,7 @@ export type Database = {
         Returns: {
           anonymous: boolean
           avatar_url: string
+          birth_year: number
           consumer_id: string
           created_at: string
           first_name: string
@@ -4555,6 +4561,7 @@ export type Database = {
           lng: number
           place_id: string
           plan: string
+          sex: string
         }[]
       }
       place_activity_history_by: {
@@ -4567,6 +4574,7 @@ export type Database = {
         Returns: {
           anonymous: boolean
           avatar_url: string
+          birth_year: number
           consumer_id: string
           created_at: string
           first_name: string
@@ -4577,6 +4585,7 @@ export type Database = {
           kind: string
           place_id: string
           plan: string
+          sex: string
         }[]
       }
       place_activity_people: {

@@ -7,11 +7,13 @@ import type { Place } from "./places";
 
 export type ActivityKind = "saved" | "viewed";
 
-/** A member as Social shows them: always by first name (MESITA-2612), with
- *  the full @handle when they verified Instagram and chose to show it
- *  (MESITA-4659); else no handle (`anonymous`, MESITA-2580). */
+/** A member as Social shows them (MESITA-4850): first name, photo and @handle
+ *  when they share their Instagram; else their approximate age and sex
+ *  ("Woman, mid 20s"), no photo, no handle (`anonymous`). */
 export type ActivityPerson = {
   name: string;
+  /** Adults only; null is undisclosed. Optional (older EF payloads). */
+  sex?: "female" | "male" | null;
   avatarUrl: string | null;
   /** The verified Instagram username, without "@" (MESITA-2590), or
    *  "per***" when handleLocked. */
@@ -33,9 +35,8 @@ export type ActivityPerson = {
    *  payloads read as none). */
   instagramBadge?: boolean;
   /** No handle on this row: a member without Instagram (MESITA-2580), a
-   *  view in the feed (MESITA-2594) or a hidden handle. The first name
-   *  still shows (MESITA-2612), and the face (MESITA-2608): photo, Class and
-   *  the Instagram flag; every profile is public (MESITA-4690). */
+   *  view in the feed (MESITA-2594) or a hidden handle. Age and sex
+   *  in words stand in for the name, and there is no photo (MESITA-4850). */
   anonymous: boolean;
 };
 

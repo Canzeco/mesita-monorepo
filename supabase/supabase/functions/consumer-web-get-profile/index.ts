@@ -8,6 +8,7 @@
 // service role, never calls another Edge Function.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { type SocialFacts, socialLevel, socialLock } from "../_shared/social-level.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { isCanonicalConsumerCode, writeConsumer } from "../_shared/consumer-doc.ts";
@@ -26,7 +27,7 @@ serveJson("consumer-web-get-profile", async (req) => {
   const userId = user.id;
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, use_instagram_photo, instagram_handle_shown, instagram_followers_emulated, instagram_is_private, guest_class, plan, vip_partner_id, vip_until, vip_invited_at, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, birth_year, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, use_instagram_photo, instagram_handle_shown, social_private, instagram_followers_emulated, instagram_is_private, guest_class, plan, vip_partner_id, vip_until, vip_invited_at, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -117,6 +118,9 @@ serveJson("consumer-web-get-profile", async (req) => {
     ok: true,
     consumer: {
       ...shown,
+      // MESITA-4850: the privacy level and why it is locked, if it is.
+      social_level: socialLevel(rest as unknown as SocialFacts),
+      social_lock: socialLock((rest as { birth_year?: number | null }).birth_year),
       vip_partner: vipPartner,
       // MESITA-4766: why this guest is VIP — an invitation code
       // (MESITA-4849); null for a Regular.

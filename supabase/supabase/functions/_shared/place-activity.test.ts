@@ -80,11 +80,16 @@ Deno.test("a viewer who does not show their Instagram gets masked handles", () =
 
 Deno.test("seesHandles: a verified Instagram and the viewer's own handle shown (MESITA-4659, MESITA-4690)", () => {
   const at = "2026-10-20T00:00:00Z";
-  assertEquals(seesHandles({ instagram_verified_at: at, instagram_handle_shown: true }), true);
+  const adult = { birth_year: 1990, social_private: false, instagram_verified_at: at, instagram_handle_shown: true };
+  assertEquals(seesHandles(adult), true);
   // Give to get: no choice (null) or a hidden handle sees masks.
-  assertEquals(seesHandles({ instagram_verified_at: at, instagram_handle_shown: null }), false);
-  assertEquals(seesHandles({ instagram_verified_at: at, instagram_handle_shown: false }), false);
-  assertEquals(seesHandles({ instagram_verified_at: null, instagram_handle_shown: true }), false);
+  assertEquals(seesHandles({ ...adult, instagram_handle_shown: null }), false);
+  assertEquals(seesHandles({ ...adult, instagram_handle_shown: false }), false);
+  assertEquals(seesHandles({ ...adult, instagram_verified_at: null }), false);
+  // Private, a minor, or no year: masks (MESITA-4850).
+  assertEquals(seesHandles({ ...adult, social_private: true }), false);
+  assertEquals(seesHandles({ ...adult, birth_year: new Date().getUTCFullYear() - 16 }), false);
+  assertEquals(seesHandles({ ...adult, birth_year: null }), false);
   assertEquals(seesHandles(null), false);
 });
 
@@ -179,6 +184,7 @@ Deno.test("toPerson carries no account id", () => {
     "isYou",
     "name",
     "plan",
+    "sex",
   ]);
   assertEquals(person.isYou, true);
 });
@@ -207,6 +213,7 @@ Deno.test("a row without a handle is named by first name, with a face but no han
   );
   assertEquals(anon, {
     name: "Sofia",
+    sex: null,
     avatarUrl: "https://x/y.jpg",
     handle: null,
     handleLocked: false,
@@ -236,13 +243,14 @@ Deno.test("a row without a handle is named by first name, with a face but no han
   assertEquals(toPerson(row({ instagram_badge: true }), "z").instagramBadge, true);
 });
 
-// MESITA-4246: an anonymous visitor sees a first name and Class, and the day.
-Deno.test("an anonymous visitor sees a first name and Class, nothing else", () => {
+// MESITA-4246: an anonymous visitor sees Class and the day.
+Deno.test("an anonymous visitor sees age, sex and Class, never a name (MESITA-4850)", () => {
   const p = anonymousPerson(
     row({ avatar_url: "https://x/y.jpg", guest_class: "vip", plan: "premium", instagram: true }),
   );
   assertEquals(p, {
-    name: "Perdón",
+    name: "Guest",
+    sex: null,
     avatarUrl: null,
     handle: null,
     handleLocked: false,

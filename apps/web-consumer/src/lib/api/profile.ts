@@ -7,6 +7,9 @@ import { PROFILE_KEY, writeCached } from "@/lib/screen-cache";
 
 // ─── Consumer profile ───────────────────────────────────────────────────────
 
+/** What other guests see of you (MESITA-4850). */
+export type SocialLevel = "private" | "public" | "instagram";
+
 export type ConsumerProfile = {
   id: string;
   code: string;
@@ -35,6 +38,10 @@ export type ConsumerProfile = {
   // shows it; null (no choice recorded) and false hide it. Linking never
   // sets it. Optional (older EF payloads).
   instagram_handle_shown?: boolean | null;
+  // MESITA-4850: the privacy level and why it cannot leave Private, if it
+  // cannot. The server decides both. Optional (older EF payloads).
+  social_level?: SocialLevel;
+  social_lock?: "minor" | "no_birth_year" | null;
   // MESITA-4662: the follower emulator (Stripe test mode only). A number
   // stands in for the real count in the Class; null = the real count.
   // emulator_available says whether the emulator box shows. Both optional
@@ -98,6 +105,11 @@ type ConsumerHandleShownPatch = {
   instagram_handle_shown: boolean;
 };
 
+// The privacy level on Me › Profile (MESITA-4850).
+type ConsumerSocialLevelPatch = {
+  social_level: SocialLevel;
+};
+
 // The follower emulator on Me › Instagram (MESITA-4662): a number in test
 // mode only (403 emulator_live otherwise); null is Reset to real.
 type ConsumerFollowersEmulatedPatch = {
@@ -111,6 +123,7 @@ export async function apiUpdateConsumerProfile(
     | ConsumerAvatarPatch
     | ConsumerInstagramPhotoPatch
     | ConsumerHandleShownPatch
+    | ConsumerSocialLevelPatch
     | ConsumerFollowersEmulatedPatch,
 ): Promise<ConsumerProfile> {
   const { consumer } = await invokeEF<{ consumer: ConsumerProfile }>(

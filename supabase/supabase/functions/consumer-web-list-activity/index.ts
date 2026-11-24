@@ -25,7 +25,7 @@
 // is already looking at the place). Who is named is unchanged.
 //
 // ANONYMOUS (MESITA-4246): no session, or the project key, reads one page
-// of the same feed with every person reduced to a first name and Class
+// of the same feed with every person reduced to age, sex and Class
 // (anonymousPerson) and every time to its day (coarseAt). A broken session
 // is a 401, never the anonymous view.
 //
@@ -43,9 +43,9 @@
 //   this function (MESITA-2946: MESITA-2853's eventKm let two readings from
 //   two spots triangulate a member).
 //
-// Who appears is the SQL's call (place_activity_visible: a verified Instagram,
-// not deleted; views too since MESITA-3051; every profile is public since
-// MESITA-4690), never this file's. The guest's own row counts like anyone's,
+// Who appears is the SQL's call (consumer_social_level, MESITA-4850: private
+// members and minors never; a name, photo and handle only at the instagram
+// level; else approximate age and sex), never this file's. The guest's own row counts like anyone's,
 // third person (MESITA-3051). What this file decides is whether the VIEWER
 // sees full handles (MESITA-2594, seesHandles): only with their own Instagram
 // verified and their own handle shown (MESITA-4659); otherwise every other

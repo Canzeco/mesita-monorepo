@@ -13,11 +13,11 @@ insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000b3213'),
   ('00000000-0000-4000-8000-0000000c3213');
 insert into public.consumers
-  (id, first_name, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, appear_anonymous, deleted_at)
+  (id, first_name, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, appear_anonymous, deleted_at, birth_year)
 values
-  ('00000000-0000-4000-8000-0000000a3213', 'Public', 'https://x.test/a.jpg', 'public_one', 1200, now(), false, null),
-  ('00000000-0000-4000-8000-0000000b3213', 'Private', 'https://x.test/b.jpg', 'private_one', 900, now(), false, null),
-  ('00000000-0000-4000-8000-0000000c3213', 'Closed', 'https://x.test/c.jpg', 'closed_one', 5, now(), false, now());
+  ('00000000-0000-4000-8000-0000000a3213', 'Public', 'https://x.test/a.jpg', 'public_one', 1200, now(), false, null, 1990),
+  ('00000000-0000-4000-8000-0000000b3213', 'Private', 'https://x.test/b.jpg', 'private_one', 900, now(), false, null, 1990),
+  ('00000000-0000-4000-8000-0000000c3213', 'Closed', 'https://x.test/c.jpg', 'closed_one', 5, now(), false, now(), 1990);
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000003213', 'Views Probe');
 insert into public.places (id, slug, state, content_state, currency)
