@@ -221,7 +221,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   }
   if (tab.credit_cents > 0) lines.push({ key: "credit", icon: <WalletIcon className="pay-icon" />, label: "Credits", value: money(tab.credit_cents) });
   if (card > 0) lines.push({ key: "card", icon: <SmartphoneIcon className="pay-icon" />, label: "By card", value: money(tab.card_bill_cents) });
-  if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: "Cash received", value: money(tab.cash_bill_cents) });
+  if (cash > 0) lines.push({ key: "cash", icon: <BanknoteIcon className="pay-icon" />, label: "Cash or card received", value: money(tab.cash_bill_cents) });
   if (tip > 0) lines.push({ key: "tip", icon: <HandCoinsIcon className="pay-icon" />, label: "Tip", value: money(tip) });
 
   return (
@@ -278,7 +278,7 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
                 mention to return money ... if digital, say you already
                 received the payment"). */}
             {cash > 0 ? (
-              <p className="pay-final-line">Give the guest back the {money(cash)} cash.</p>
+              <p className="pay-final-line">Give the guest back {money(cash)} if they already paid you.</p>
             ) : null}
             {tab.credit_cents + card > 0 ? (
               <p className="pay-final-line">
