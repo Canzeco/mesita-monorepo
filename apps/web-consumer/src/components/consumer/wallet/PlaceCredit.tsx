@@ -2,7 +2,7 @@
 
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, Clock3, Gift, QrCode, Store, Tag } from "lucide-react";
+import { ChevronRight, Clock3, Gift, QrCode, Store, Wallet as WalletIcon } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { offerSlides, SizedImg } from "@mesita/place-profile";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -45,7 +45,7 @@ const ROUND_GLYPH = "h-5 w-5";
 //   [mini Loyalty Card]     half the column, centred (MESITA-3802): the
 //                         place's photo and name, the server's amount (a
 //                         muted $0 when nothing is spendable yet), "Loyalty Card"
-//   (View Offers)(Pay Bill)(Send Gift)(View Place)  four round buttons, label
+//   (Prepay)(Pay Bill)(Send Gift)(View Place)  four round buttons, label
 //                         under (MESITA-4281); only Pay Bill purple; Add Funds
 //                         wears a +N% chip and hides when nothing is for sale;
 //                         Send Gift follows giftAction (hidden, dimmed, open)
@@ -184,6 +184,7 @@ export function PlaceCredit({
   const { card, balance } = row;
   const href = placeHref(row.placeSlug);
   const offers = useMemo(() => offerSlides(balance?.offers), [balance?.offers]);
+  const prepay = offers.find((o) => o.key === "prepay");
   // A balance whose place the server could not name: gone from Mesita.
   const gone = balance !== null && balance.place === null;
   const held = balance !== null && balance.spendable_cents < balance.available_cents;
@@ -318,28 +319,21 @@ export function PlaceCredit({
            card (MESITA-4116). Since MESITA-4281 the four are one bank row
            of round buttons. */
         <div className="mt-5 flex justify-around gap-1" data-loyalty-card-actions>
-          {/* OFFERS FIRST (Pato, 2026-11-23, MESITA-4815: "more natural"): get
-              credit, spend it, share it, then the place. */}
-          {offers.length > 0 ? (
+          {/* PREPAY FIRST, GREEN (Pato, 2026-11-23, MESITA-4816: "(Prepay)
+              (Pay Bill) (Send Gift) (View Place). and make prepay green";
+              View Offers before): get credit, spend it, share it, then the
+              place. Shown where a voucher is sold; every offer is the Offers
+              tile under the card. The wallet is Prepay's one mark. */}
+          {prepay ? (
             <PushLink
-              href={offerHref(href, offers[0], true)}
+              href={offerHref(href, prepay, true)}
               className={ROUND}
-              aria-label="View Offers"
-              data-loyalty-card-offer
+              data-loyalty-card-prepay
             >
-              <span className={cn(ROUND_FACE, "text-foreground bg-white")}>
-                {/* ONLY THE + (MESITA-4373, Pato: "don't mention the amount,
-                    only the plus icon is enough"); the bonus is on the Offers
-                    page. Undoes MESITA-4362/4366's number in the circle.
-                    "VIEW OFFERS" (Pato, 2026-11-21, MESITA-4582: "don't call
-                    the button add funds, call it View Offers. does the same
-                    as bottom box, its okay that redundancy"): the same door
-                    as the Offers tile under the card. */}
-                {/* A TAG, NOT A + (Pato, 2026-11-22, MESITA-4698: "call it View
-                    Offers but different icon"): offers, not adding funds. */}
-                <Tag className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
+              <span className={cn(ROUND_FACE, "bg-[#00D66F] text-neutral-950")}>
+                <WalletIcon className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
-              View Offers
+              Prepay
             </PushLink>
           ) : null}
           <PushLink

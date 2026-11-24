@@ -362,7 +362,7 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
       top: sl.lead,
       // "UP TO" ON PREPAY (Pato, 2026-11-23, MESITA-4795: "mention in prepay
       // Up to x% bonus"): the place's highest voucher bonus.
-      bottom: sl.key === "prepay" ? prepayUpTo(o) ?? sl.pillShort : sl.pillShort,
+      bottom: sl.key === "prepay" ? prepayUpTo(o) ?? sl.pillShort : payUpTo(o, word) ?? sl.pillShort,
       tone: sl.key === "prepay" ? BOX_TINT.prepay : visitTint,
     }));
 }
@@ -372,6 +372,15 @@ export function offerBoxes(p: PayPlace, kind: BoxKind): OfferBox[] {
 function prepayUpTo(o: NonNullable<PayPlace["offers"]>): string | null {
   const pcts = VOUCHERS_SHOWN.filter((k) => o.sell.includes(k)).map((k) => voucherPct(o, k));
   return pcts.length > 0 ? `Up to ${Math.max(...pcts)}% Bonus` : null;
+}
+
+/** "Up to N% Discount" or "Cashback" (Pato, 2026-11-23, MESITA-4816: "in pay
+ *  also mention up to x% discount"): the highest of the four visit lines;
+ *  null when the place has none on. */
+function payUpTo(o: NonNullable<PayPlace["offers"]>, word: string): string | null {
+  const lines = [o.welcome_pct, o.returning_pct, o.welcome_vip_pct, o.returning_vip_pct];
+  const top = Math.max(0, ...lines.map((n) => n ?? 0));
+  return top > 0 ? `Up to ${top}% ${word}` : null;
 }
 
 /** A place: photo, name, the address on one line and the distance; under

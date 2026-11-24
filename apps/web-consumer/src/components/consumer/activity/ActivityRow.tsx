@@ -125,19 +125,21 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
   const amount = t.money && t.sign ? `${t.sign}${t.big}` : t.big;
   const body = (
     <>
-      <span className="relative h-10 w-10 shrink-0 self-start">
+      {/* ROOMIER (Pato, 2026-11-23, MESITA-4816: "too compressed, if you need
+          more space, is okay"): 48px marks, 16px around; 40 and 12 before. */}
+      <span className="relative h-12 w-12 shrink-0 self-start">
         {t.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={t.photo}
             alt=""
             className={cn(
-              "h-10 w-10 rounded-full object-cover",
+              "h-12 w-12 rounded-full object-cover",
               t.dim && "opacity-50 grayscale",
             )}
           />
         ) : (
-          <span className="bg-muted block h-10 w-10 rounded-full" aria-hidden />
+          <span className="bg-muted block h-12 w-12 rounded-full" aria-hidden />
         )}
         {t.kind ? <KindBadge kind={t.kind} /> : null}
       </span>
@@ -156,17 +158,17 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
           {t.place}
         </span>
         {!t.money && t.big ? (
-          <span className="mt-0.5 block text-sm break-words tabular-nums">
+          <span className="mt-1 block text-sm break-words tabular-nums">
             {t.big}
           </span>
         ) : null}
         {t.line || t.when ? (
-          <span className="text-muted-foreground mt-0.5 block text-sm break-words tabular-nums">
+          <span className="text-muted-foreground mt-1 block text-sm break-words tabular-nums">
             {[t.line, t.when ? timeAgo(t.when) : ""].filter(Boolean).join(" · ")}
           </span>
         ) : null}
       </span>
-      <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+      <span className="flex shrink-0 flex-col items-end gap-1 text-right">
         {t.money ? (
           <span
             className={cn(
@@ -198,7 +200,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
   // NEVER A CUT WORD (MESITA-4343, Pato: "if not enough space, it's ok if
   // tickets are a bit taller … all the tickets in four sections"): lines
   // wrap and the row grows; nothing truncates.
-  const cls = cn("flex items-center gap-3 px-4 py-3", t.pending && "bg-amber-50", t.landing && "bg-blue-50");
+  const cls = cn("flex items-center gap-4 px-4 py-4", t.pending && "bg-amber-50", t.landing && "bg-blue-50");
   return (
     <li>
       {t.href ? (
@@ -221,7 +223,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         <div className={cls}>{body}</div>
       )}
       {t.action ? (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-4">
           <PushLink
             href={t.action.href}
             className="bg-foreground text-background flex h-11 items-center justify-center rounded-full text-sm font-semibold transition hover:opacity-90"
@@ -239,11 +241,11 @@ export function ActivityRowsSkeleton() {
   return (
     <div className={LIST_BOX_CLASS} aria-busy>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-3 px-4 py-3" aria-hidden>
-          <Skeleton className="h-10 w-10 rounded-full" />
+        <div key={i} className="flex items-center gap-4 px-4 py-4" aria-hidden>
+          <Skeleton className="h-12 w-12 rounded-full" />
           <div className="flex-1">
             <Skeleton className="h-4 w-40" />
-            <Skeleton className="mt-1.5 h-3 w-28" />
+            <Skeleton className="mt-2 h-3 w-28" />
           </div>
           <Skeleton className="h-4 w-14" />
         </div>
