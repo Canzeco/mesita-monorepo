@@ -21,6 +21,12 @@ import {
 export type TableKind = "visits" | "vouchers" | "gifts" | "payments";
 export const TABLE_KINDS: readonly MonitorKind[] = ["visits", "vouchers", "gifts", "payments"];
 
+/** What a bill collected: the printed bill less its visit discount, plus the
+ *  tip (MESITA-4770: cash + credit add up to bill - discount). */
+export function collectedCents(row: MonitorRow): number {
+  return n(row, "bill_cents") - n(row, "discount_cents") + n(row, "tip_cents");
+}
+
 export type Column<R> = {
   label: string;
   /** Right-aligned, tabular figures. */
@@ -63,7 +69,7 @@ export const MONITOR_COLUMNS: Record<TableKind, Column<MonitorRow>[]> = {
           ? money(n(r, "shares_total_cents"))
           : r.payload.bill_cents == null
             ? "—"
-            : money(n(r, "bill_cents") + n(r, "tip_cents")),
+            : money(collectedCents(r)),
     },
     // The credit this bill earned (MESITA-4698), from the bill's cashback entry.
     { label: "Cashback", numeric: true, text: (r) => dash(n(r, "cashback_cents")) },

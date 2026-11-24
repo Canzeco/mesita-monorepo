@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { apiListActivityFeed, SOCIAL_BLOCKED, type ActivityFeedItem, type SocialBlocked } from "@/lib/api/activity";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { Face, VERB, feedWho, shortAgo } from "@/components/consumer/home/SocialFeed";
@@ -26,6 +27,8 @@ type State =
 export function PlaceSocialList({ placeId }: { placeId: string }) {
   const supabase = useBrowserSupabase();
   const [state, setState] = useState<State>({ status: "loading" });
+  // Bumped by Try again: the read below runs once more.
+  const [tries, setTries] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -44,7 +47,7 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
     return () => {
       live = false;
     };
-  }, [supabase, placeId]);
+  }, [supabase, placeId, tries]);
 
   const loadMore = () => {
     if (state.status !== "ready" || !state.next || state.more) return;
@@ -72,9 +75,21 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
   if (state.status === "failed") {
     return (
       <div className={CARD}>
-        <p className="text-muted-foreground p-6 text-center text-sm" data-place-social="failed">
-          Couldn&apos;t load this place&apos;s activity.
-        </p>
+        <div className="flex flex-col items-center gap-4 p-6" data-place-social="failed">
+          <p className="text-muted-foreground text-center text-sm">
+            Couldn&apos;t load this place&apos;s activity.
+          </p>
+          <Button
+            type="button"
+            className="text-sm font-semibold active:scale-[0.98]"
+            onClick={() => {
+              setState({ status: "loading" });
+              setTries((n) => n + 1);
+            }}
+          >
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }

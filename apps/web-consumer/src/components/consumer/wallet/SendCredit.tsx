@@ -39,7 +39,7 @@ import { PaySection } from "@/components/consumer/pay/pay-flow";
 import { pressKey } from "@/lib/pay-keypad";
 import { GiftCardFace, GiftCardMini } from "./GiftCardFace";
 import { PlacePhotoMark } from "./PlaceCredit";
-import { useWallet } from "./use-wallet";
+import { type CreditRow, useWallet } from "./use-wallet";
 import { prepayReturnHref } from "./WalletPickers";
 
 // SENDING CREDIT TO A FRIEND (MESITA-3292; Pato, 2026-11-06: "word of mouth
@@ -76,12 +76,15 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
   const getSupabase = useLazyBrowserSupabase();
   const router = useRouter();
   const { wallet, credits, failed, reread } = useWallet();
-  const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [short, setShort] = useState(false);
-  const [link, setLink] = useState<{ url: string; cents: number; giftId?: string; reopened?: boolean } | null>(null);
+  const [link, setLink] = useState<{ url: string; cents: number; row: CreditRow; giftId?: string; reopened?: boolean } | null>(null);
+  // A packed gift keeps the card it came from: sending all the credit can drop
+  // the place from the next read, and the link must stay on screen.
+  const live = credits?.find((r) => r.placeId === placeId) ?? null;
+  const row = live ?? link?.row ?? null;
   // OPEN GIFTS FIRST (MESITA-4390, Pato: "if i click to create gift, but i
   // already have gift oepns, like show the prev list as a prev step … select
   // current and copy or just create new gift"): `fresh` is the guest's "New
@@ -138,6 +141,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
     );
   }
 
+  const card = row;
   const placeName = row.card.name;
   const currency = row.card.currency;
   const spendableCents = row.balance.spendable_cents ?? 0;
@@ -166,7 +170,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
       attempt.current = null;
       invalidateCached(WALLET_CACHE_KEY);
       reread();
-      if (r.token) setLink({ url: giftLink(r.token), cents: r.amount_cents, giftId: r.gift_id });
+      if (r.token) setLink({ url: giftLink(r.token), cents: r.amount_cents, row: card, giftId: r.gift_id });
       else {
         // A replay: the link went out on the first answer, which was lost.
         toast("Packed. It's waiting under Send Gift's open gifts.");
@@ -188,7 +192,7 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
     setOpening(giftId);
     try {
       const r = await apiGetGiftLink(getSupabase(), giftId);
-      if (r.token) setLink({ url: giftLink(r.token), cents, giftId, reopened: true });
+      if (r.token) setLink({ url: giftLink(r.token), cents, row: card, giftId, reopened: true });
       else toast("This gift's link can't be shown again. Take it back and pack a new one.");
     } catch (err) {
       toast.error(refusal(err, "Couldn't open this gift. Try again."));
@@ -204,7 +208,9 @@ export function SendCreditPage({ placeId }: { placeId: string }) {
     try {
       const r = await apiTakeBackCredit(getSupabase(), giftId);
       toast.success(`${money(r.amount_cents, r.currency)} is back in your balance.`);
-      setLink(null);
+      // Its card left the last read: back to the Loyalty Card, not the keypad.
+      if (live) setLink(null);
+      else done();
     } catch (err) {
       toast.error(refusal(err, "Couldn't take it back. Try again."));
     } finally {

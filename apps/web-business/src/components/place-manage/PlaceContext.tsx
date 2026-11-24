@@ -217,12 +217,16 @@ export function PlaceProvider({
         setSaveError(r.error);
         return;
       }
-      const next: AdminPlace = {
+      // Over the row on screen, never instead of it: the save answers the
+      // stored row, without the fields only the overview computes (scores).
+      const merge = (prev: AdminPlace): AdminPlace => ({
+        ...prev,
         ...r.data.place,
-        ...mergeReviewFoundFlags(place, r.data.place),
-      };
+        ...mergeReviewFoundFlags(prev, r.data.place),
+      });
+      const next = merge(place);
       for (const s of Object.values(savers.current)) s.onSaved(next);
-      setPlace(next);
+      setPlace(merge);
       if (r.data.familyStored) {
         setProfile({ ...profile, familyStored: r.data.familyStored });
       }

@@ -293,8 +293,11 @@ export function buyRefusalAction(code: string | null): BuyRefusalAction {
  *  answer, so the next tap starts a new request_id; anything else (no
  *  answer, 5xx, card_failed, stripe_unreachable, or in_progress: the same
  *  request is still charging) may have charged, so the
- *  retry carries the same one. */
-export function isDefinitiveRefusal(status: number | null, code: string | null): boolean {
+ *  retry carries the same one. card_failed ends the purchase before any
+ *  confirm, so on a request's first try it is definitive too (MESITA-4919);
+ *  after an unknown try it is not. */
+export function isDefinitiveRefusal(status: number | null, code: string | null, firstTry = false): boolean {
+  if (code === "card_failed" && firstTry) return true;
   if (code === "card_failed" || code === "stripe_unreachable" || code === "in_progress") return false;
   return status !== null && status >= 400 && status < 500;
 }

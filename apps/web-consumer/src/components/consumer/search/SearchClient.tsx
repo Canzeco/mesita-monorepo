@@ -68,6 +68,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { RotateCw } from "lucide-react";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { MapDot, Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
@@ -92,6 +93,8 @@ import {
   useCreatedPlaces,
   withCreatedPlaces,
 } from "@/lib/created-places";
+import { requestSignIn } from "@/lib/anonymous";
+import { useViewer } from "@/lib/identity-context";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -207,6 +210,7 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
 
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const supabase = useBrowserSupabase();
+  const viewer = useViewer();
   const userLocation = useUserLocation();
   const locating = useUserLocationLocating();
   const locationError = useUserLocationError();
@@ -600,6 +604,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (lastFetchedCenter.current) return;
     void loadAt(locationRef.current ?? chosen ?? MONTERREY_CENTER, null);
   }, [chosen, loadAt]);
+
+  // Try again after a failed load: the view on screen, or with no map the
+  // point that was asked for.
+  const retryCatalog = () => {
+    clearPendingReload();
+    const box = lastBoxRef.current;
+    const at = box ? viewportSight(box) : lastFetchedCenter.current;
+    if (at) void loadAt(at, box);
+  };
 
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: ViewportMeta) => {
@@ -1209,14 +1222,32 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
                   setSearching(true);
                   setSearchNonce((n) => n + 1);
                 }}
+                onSignIn={
+                  viewer === "anonymous" ? () => requestSignIn(null) : undefined
+                }
               />
             </div>
           )}
 
           {fetchError && (
-            <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
-              {fetchError}
-            </p>
+            <div className="flex flex-col items-center gap-2">
+              <p
+                className={cn(
+                  ERROR_BOX_CLASS,
+                  "w-full rounded-xl backdrop-blur",
+                )}
+              >
+                {fetchError}
+              </p>
+              <button
+                type="button"
+                onClick={retryCatalog}
+                className="text-foreground border-border bg-card hover:bg-muted inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition active:scale-[0.98]"
+              >
+                <RotateCw className="h-3.5 w-3.5" aria-hidden />
+                Try again
+              </button>
+            </div>
           )}
         </SearchHeader>
 
@@ -1252,6 +1283,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               FILTERABLE_PLACE_FAMILIES.find((f) => f.key === filters.familyKeys[0])?.label ?? null
             }
             catalogLoading={catalogLoading}
+            failed={fetchError !== null}
             selectedId={railSelectedId}
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}

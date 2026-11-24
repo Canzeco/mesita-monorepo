@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 
-const FAMILIES = ["Tacos", "Mexican", "Night"];
+const FAMILIES = ["Restaurants", "Tacos", "Dinner"];
 
 // The three UVPs in the first view, in Pato's words (MESITA-4193): one per
 // guest product in `solutions.ts`, same order. Discounts is Discounted

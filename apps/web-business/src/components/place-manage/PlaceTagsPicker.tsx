@@ -187,6 +187,7 @@ function TagsModal({
             autoFocus
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
+            aria-label="Search tags"
             placeholder="Search tags…"
             className="placeholder:text-muted-foreground flex-1 bg-transparent text-sm outline-none"
           />

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { amountText, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
-import { amountParts, type Key, pressAmount, pressCode, tipOf, WAITER_CODE_LENGTH } from "@/lib/waiter-pad";
+import { amountParts, type Key, percentTip, pressAmount, pressCode, tipFor, WAITER_CODE_LENGTH } from "@/lib/waiter-pad";
 
 // THE WAITER'S FOUR STEPS since MESITA-4916 (Pato, 2026-11-24: "before anything,
 // input the actual 6 digits code: 1. Code 2. Bill 3. Confirm 4. Receipt"; the
@@ -208,14 +208,18 @@ export type BillEntryProps = {
 export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }: BillEntryProps) {
   const [step, setStep] = useState(0);
   const [bill, setBill] = useState(start?.bill ? amountText(start.bill) : "");
-  const [tip, setTip] = useState(start?.tip ? amountText(start.tip) : "");
+  // A tip is a picked percent, which follows the bill, or typed.
+  const [picked, setPicked] = useState<number | null>(() =>
+    start?.tip ? (TIP_PCTS.find((p) => percentTip(start.bill, p) === start.tip) ?? null) : null,
+  );
+  const [typed, setTyped] = useState(start?.tip && picked === null ? amountText(start.tip) : "");
   const [other, setOther] = useState(false);
   const tipAt = useRef(0);
   const billCents = readAmount(bill);
-  const tipCents = tipOf(tip);
+  const tipCents = tipFor(billCents, picked, typed);
+  const tip = picked === null ? typed : tipCents > 0 ? amountText(tipCents) : "";
   const m = (c: number) => moneyLabel(c, "USD");
-  const pct = (p: number) => Math.round(((billCents ?? 0) * p) / 100);
-  const picked = other || tipCents === 0 ? null : (TIP_PCTS.find((p) => pct(p) === tipCents) ?? null);
+  const pct = (p: number) => percentTip(billCents, p);
   const typing = other || (tipCents > 0 && picked === null);
   const ready = !busy && billCents !== null;
 
@@ -257,7 +261,8 @@ export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }
                   aria-pressed={picked === p}
                   onClick={() => {
                     setOther(false);
-                    setTip(picked === p ? "" : amountText(pct(p)));
+                    setTyped("");
+                    setPicked(picked === p ? null : p);
                   }}
                 >
                   <b>{p}%</b>
@@ -270,7 +275,8 @@ export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }
                 aria-pressed={typing}
                 onClick={() => {
                   setOther(true);
-                  if (!typing) setTip("");
+                  if (!typing) setTyped("");
+                  setPicked(null);
                 }}
               >
                 <b>Other</b>
@@ -293,7 +299,8 @@ export function BillEntry({ start, busy, error, top, onTyping, onSend, onLeave }
           // A key over a picked percent starts a new amount.
           const fresh = picked !== null;
           setOther(true);
-          setTip((t) => pressAmount(fresh ? "" : t, k));
+          setPicked(null);
+          setTyped((t) => pressAmount(fresh ? "" : t, k));
         }}
         onEnter={go}
       />

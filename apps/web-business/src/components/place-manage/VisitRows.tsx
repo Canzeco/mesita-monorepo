@@ -3,7 +3,7 @@
 // Visits as expandable rows (MESITA-4732, design review 2026-11-23: "Visits is
 // expandable rows, not a table"). A closed row reads guest · time · status ·
 // total, with a short "$X in credit" line when credit paid part of the bill;
-// opening it shows the bill's breakdown (bill, tip, card, cash, credit,
+// opening it shows the bill's breakdown (bill, discount, tip, card, cash, credit,
 // cashback), the ticket and the visit's id, and a chip to the guest. No
 // payment chips: a visit's bill is paid by credit or cash, which Payments
 // (card charges only) does not list. Same data, filters (?id=, ?customer=) and Older
@@ -20,11 +20,13 @@ import {
   NOUN,
   rowStatus,
   shortId,
+  signedMoney,
   when,
   type MonitorFilter,
   type MonitorPage,
   type MonitorRow,
 } from "@/lib/monitor";
+import { collectedCents } from "@/lib/monitor-columns";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { GuestAvatar } from "./GuestAvatar";
@@ -36,11 +38,11 @@ import { attempt } from "@/lib/attempt";
 const n = (row: MonitorRow, k: string) => Number(row.payload[k] ?? 0);
 const isSplit = (row: MonitorRow) => row.payload.split === true;
 
-/** The closed row's total: the bill plus the tip, or the shares' sum on a
+/** The closed row's total: the bill less its discount plus the tip, or the shares' sum on a
  *  split bill; nothing yet while the bill is not in. */
 function total(row: MonitorRow): string {
   if (isSplit(row)) return money(n(row, "shares_total_cents"));
-  return row.payload.bill_cents == null ? "No bill yet" : money(n(row, "bill_cents") + n(row, "tip_cents"));
+  return row.payload.bill_cents == null ? "No bill yet" : money(collectedCents(row));
 }
 
 function status(row: MonitorRow): string {
@@ -74,12 +76,13 @@ function Breakdown({ row }: { row: MonitorRow }) {
   return (
     <dl className="flex flex-col">
       <Line label="Bill" value={billed ? money(n(row, "bill_cents")) : "—"} />
+      {n(row, "discount_cents") > 0 ? <Line label="Discount" value={signedMoney(-n(row, "discount_cents"))} /> : null}
       <Line label="Tip" value={part("tip_cents")} />
       {n(row, "card_cents") > 0 ? <Line label="Card" value={part("card_cents")} /> : null}
       <Line label="Cash" value={part("outside_cents")} />
       <Line label="Credit" value={part("credit_cents")} />
       <Line label="Cashback earned" value={part("cashback_cents")} muted />
-      <Line label="Total" value={billed ? money(n(row, "bill_cents") + n(row, "tip_cents")) : "—"} strong />
+      <Line label="Total" value={billed ? money(collectedCents(row)) : "—"} strong />
     </dl>
   );
 }

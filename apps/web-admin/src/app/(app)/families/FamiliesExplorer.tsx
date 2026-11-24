@@ -95,7 +95,7 @@ function FamiliesList({ families }: { families: FamilyRow[] }) {
     <SectionCard
       title="Mesita Families"
       right={<Count n={families.length} />}
-      subtitle="What the Description step picks from, carefully: about four on Create, about six after Enrich, never more than seven. Each family's meaning is what the model reads."
+      subtitle="What the Description step picks from, carefully, within the Limits above. Each family's meaning is what the model reads."
     >
       <ul className="mt-4 divide-y divide-border">
         {families.map((family) => (

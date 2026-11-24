@@ -96,6 +96,44 @@ function isAllDay(r: HourRange): boolean {
   return parseMinutes(r.open) === 0 && (c === 0 || (c != null && c >= 1439));
 }
 
+/** Does a shift run to the end of its day (23:59, 24:00 or 00:00)? */
+function reachesMidnight(close: number): boolean {
+  return close === 0 || close >= 1439;
+}
+
+// When an open shift really closes: a shift that runs to midnight followed by
+// one that opens at 00:00 is one shift, so the next day's closing counts, as
+// far as the chain goes. "" = it never closes. A closing a day or more away
+// names its day, as opens_at does. `continues` = the first midnight is no
+// closing.
+function trueClosing(
+  h: Record<string, unknown>,
+  dayIdx: number,
+  nowMin: number,
+  shift: HourRange,
+): { continues: boolean; at: string } {
+  let cur = shift;
+  let days = 0;
+  for (;;) {
+    const c = parseMinutes(cur.close) ?? 0;
+    if (!reachesMidnight(c)) break;
+    const next = arr<HourRange>(h[WEEK_KEYS[(dayIdx + days + 1) % 7]]).find(
+      (r) => parseMinutes(r.open) === 0 && parseMinutes(r.close) != null,
+    );
+    if (!next) break;
+    days += 1;
+    if (days >= 7) return { continues: true, at: "" };
+    cur = next;
+  }
+  const o = parseMinutes(cur.open) ?? 0;
+  const c = parseMinutes(cur.close) ?? 0;
+  // Closing at or before its own opening is the next day's clock.
+  const ahead = days + (c <= o ? 1 : 0);
+  const at = cur.close ?? "";
+  const far = ahead * 1440 + c - nowMin >= 1440;
+  return { continues: days > 0, at: far ? opensOnDay(ahead, dayIdx, at) : at };
+}
+
 /** The place's own numeric range, or "" — the chip falls back to price_level. */
 export function derivePriceRange(row: Row): string {
   const raw = str(row.price_range);
@@ -171,9 +209,12 @@ export function computeOpenState(
     const o = parseMinutes(r.open);
     const c = parseMinutes(r.close);
     if (o == null || c == null) continue;
-    const within = c > o ? nowMin >= o && nowMin < c : nowMin >= o; // overnight
+    const closing = trueClosing(h, dayIdx, nowMin, r);
+    const within = c > o && !closing.continues
+      ? nowMin >= o && nowMin < c
+      : nowMin >= o; // overnight
     if (within) {
-      return { open_now: true, opens_at: "", closes_at: r.close ?? "" };
+      return { open_now: true, opens_at: "", closes_at: closing.at };
     }
     if (o > nowMin && (!nextOpen || o < nextOpen.min)) {
       nextOpen = { min: o, at: r.open ?? "" };

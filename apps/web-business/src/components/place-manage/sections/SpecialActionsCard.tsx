@@ -105,7 +105,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
       setBusy(null);
       setConfirmDisable(false);
       if (!r.ok) return setNote({ key, ok: false, text: r.error });
-      setPlace(r.data);
+      setPlace((prev) => ({ ...prev, ...r.data }));
       setNote({ key, ok: true, text: next ? "Enabled. Guests can find it again." : "Disabled. Guests no longer see it." });
     });
   }
