@@ -9,8 +9,8 @@ import { CodeBoxes } from "@/app/tab/[token]/CodeBoxes";
 import { Bones } from "@/components/Bones";
 
 // The waiter's phone, ready (MESITA-4823). Not signed in: the 4-digit waiter
-// code. Signed in: "Scan the guest's Mesita QR" with the phone's camera, or
-// the six digits under it when the camera can't. Only the 12-hour staff token
+// code. Signed in: "Scan the guest's Mesita QR" with the phone's camera.
+// Only the 12-hour staff token
 // is kept, never the code.
 
 type Place = { id: string; name: string | null; hasCode: boolean };
@@ -20,7 +20,6 @@ export function WaiterSignIn({ placeId, scan }: { placeId: string; scan: string 
   const [place, setPlace] = useState<Place | "gone" | "failed" | null>(null);
   const [staff, setStaff] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [digits, setDigits] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tries, setTries] = useState(0);
@@ -40,7 +39,7 @@ export function WaiterSignIn({ placeId, scan }: { placeId: string; scan: string 
     };
   }, [placeId, scan, tries]);
 
-  async function open(token: string, by: { token: string } | { code: string }) {
+  async function open(token: string, by: { token: string }) {
     const r = await openBill({ place_id: placeId, staff_token: token }, by);
     if (r === "failed") return setError("Couldn't reach Mesita. Try again.");
     if ("refused" in r) {
@@ -48,7 +47,6 @@ export function WaiterSignIn({ placeId, scan }: { placeId: string; scan: string 
         keepStaff(placeId, null, null);
         setStaff(null);
       }
-      setDigits("");
       return setError(r.error);
     }
     router.push(`/bill/${r.bill_id}?place=${encodeURIComponent(placeId)}`);
@@ -128,25 +126,7 @@ export function WaiterSignIn({ placeId, scan }: { placeId: string; scan: string 
     <main className="proof" data-waiter="ready">
       <h1>{place.name ?? "A Mesita place"}</h1>
       <p className="proof-line">Scan the guest&apos;s Mesita QR with this phone&apos;s camera.</p>
-      <form
-        style={{ alignSelf: "stretch", marginTop: 24 }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (busy || digits.length !== 6) return;
-          setBusy(true);
-          setError(null);
-          void open(staff, { code: digits }).finally(() => setBusy(false));
-        }}
-      >
-        <label className="field">
-          Or type the 6 digits under it
-          <input inputMode="numeric" autoComplete="off" maxLength={7} placeholder="000000" value={digits} onChange={(e) => setDigits(e.target.value.replace(/\D/g, "").slice(0, 6))} />
-        </label>
-        {alert}
-        <button type="submit" style={{ minHeight: 56 }} disabled={busy || digits.length !== 6}>
-          {busy ? "Opening…" : "Open the bill"}
-        </button>
-      </form>
+      {alert}
     </main>
   );
 }

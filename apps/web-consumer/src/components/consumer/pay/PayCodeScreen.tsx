@@ -24,7 +24,7 @@ import { usePayPlaces } from "./use-pay-places";
 // general Mesita QR, never a place's; the waiter scans it and sends the bill;
 // this same screen becomes the bill:
 //
-//   QR         "Show this to your waiter", six digits under it
+//   QR         "Show this to your waiter"; no digits under it (MESITA-4826)
 //   bill       what it comes to; Accept or Decline
 //   accepted   Pay $X at the place; only the waiter confirms it
 //   paid       the receipt (/pay/bill/<id>)
@@ -297,11 +297,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
               )}
             </div>
           </div>
-          {code ? (
-            <p className="text-2xl font-semibold tracking-widest tabular-nums" aria-label={`Code ${code.short.split("").join(" ")}`}>
-              {code.short.slice(0, 3)} {code.short.slice(3)}
-            </p>
-          ) : null}
           {code && places?.some((p) => p.test_mode) ? (
             <a href={code.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground text-xs font-semibold underline">
               Open as waiter (test)
