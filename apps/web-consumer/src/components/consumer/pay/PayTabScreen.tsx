@@ -141,7 +141,9 @@ export function PayTabScreen({ start }: { start: TabStart }) {
                 replaceAddress(payBillPath(id));
               }}
               onWaiterCode={setFormPlaceId}
-              onDone={leave}
+              // Done lands on Pay itself, never the list to pay again (Pato,
+              // MESITA-4892: "redirect me to the MAIN pay page").
+              onDone={() => navigateTo(router, CONSUMER_ROUTES.pay, { replace: true, motion: "none" })}
               onPayAgain={(placeId) =>
                 navigateTo(router, payPlacePath(placeId), { replace: true })
               }

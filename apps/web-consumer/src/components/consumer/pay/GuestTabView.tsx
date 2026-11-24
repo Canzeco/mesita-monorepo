@@ -299,6 +299,13 @@ export function GuestTabView({
                 label={`Cashback · ${readyWords(back, now)}`}
                 value={`+${money(back.amount_cents, back.currency)}`}
               />
+            ) : back !== undefined && tab.visit_mechanism !== "discount" && discount === 0 ? (
+              // MESITA-4892: a bill that earned none says so, and why.
+              <MoneyRow
+                icon={<BadgePercent />}
+                label={tab.cash_bill_cents === 0 && tab.credit_cents > 0 ? "Cashback · none on credits" : "Cashback"}
+                value={m(0)}
+              />
             ) : null}
             <MoneyRow
               icon={<PenLine />}
