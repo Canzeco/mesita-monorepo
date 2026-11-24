@@ -4,8 +4,9 @@
 // member number or Instagram handle matches `q`, with their Class and Plan
 // (MESITA-2553) and who last set the class. Closed accounts are left out.
 // Also every VIP partner (MESITA-2556), for the partner choice on a VIP row,
-// and the newest VIP invitation codes (MESITA-3540; null when that read failed).
-// MESITA-4766: `{ vipOnly: true }` lists only VIP guests, each with why
+// and the VIP invitation codes: every unused one and the newest used or
+// revoked (MESITA-3540, MESITA-4912; null when that read failed).
+// MESITA-4766: `{ vipOnly: true }` lists every VIP guest, newest VIP first, each with why
 // (vipReason, vipCodeLast4), real and emulated followers and paidAsVip (the
 // live money rule, consumer_is_vip_for_money).
 // Read-only; super-admin only.
@@ -21,7 +22,7 @@ import {
   toGuestRow,
 } from "../_shared/guest-standing.ts";
 import { loadVipPartners } from "../_shared/vip-partners.ts";
-import { loadVipCodes, readVipGuestFacts, VIP_GUEST_EXTRA_SELECT, type VipGuestFacts, type VipGuestRaw } from "../_shared/vip-codes.ts";
+import { loadVipCodes, readAllPages, readVipGuestFacts, VIP_GUEST_EXTRA_SELECT, type VipGuestFacts, type VipGuestRaw } from "../_shared/vip-codes.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("admin-web-list-guests", async (req) => {
@@ -35,20 +36,34 @@ serveJson("admin-web-list-guests", async (req) => {
   // client filter over a capped page).
   const vipOnly = body.vipOnly === true;
 
-  let query = admin
-    .from("consumers")
-    .select(vipOnly ? `${GUEST_ROW_SELECT}, ${VIP_GUEST_EXTRA_SELECT}` : GUEST_ROW_SELECT)
-    .is("deleted_at", null);
-  if (filter) query = query.or(filter);
-  if (vipOnly) query = query.or("vip_invited_at.not.is.null,guest_class.eq.vip");
-  const { data, error } = await query
-    .order("created_at", { ascending: false })
-    .limit(GUEST_LIST_LIMIT);
-  if (error) {
-    return json({ ok: false, error: `list_failed: ${error.message}` }, 500);
+  const list = () => {
+    let query = admin
+      .from("consumers")
+      .select(vipOnly ? `${GUEST_ROW_SELECT}, ${VIP_GUEST_EXTRA_SELECT}` : GUEST_ROW_SELECT)
+      .is("deleted_at", null);
+    if (filter) query = query.or(filter);
+    return query;
+  };
+  let rows: RawGuest[];
+  if (vipOnly) {
+    try {
+      // All of them: a VIP past a cap could never be removed (MESITA-4912).
+      rows = await readAllPages<RawGuest>((from, to) =>
+        list().or("vip_invited_at.not.is.null,guest_class.eq.vip")
+          .order("vip_invited_at", { ascending: false, nullsFirst: false })
+          .order("id")
+          .range(from, to) as unknown as PromiseLike<{ data: RawGuest[] | null; error: { message: string } | null }>
+      );
+    } catch (err) {
+      return json({ ok: false, error: `list_failed: ${err instanceof Error ? err.message : String(err)}` }, 500);
+    }
+  } else {
+    const { data, error } = await list().order("created_at", { ascending: false }).limit(GUEST_LIST_LIMIT);
+    if (error) {
+      return json({ ok: false, error: `list_failed: ${error.message}` }, 500);
+    }
+    rows = (data ?? []) as RawGuest[];
   }
-
-  const rows = (data ?? []) as RawGuest[];
 
   // Who set each VIP: one batched lookup. A failure degrades to no email and
   // never fails the list.
