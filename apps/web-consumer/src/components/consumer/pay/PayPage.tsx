@@ -218,8 +218,8 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 
 // The discount badge and the QR, the same marks everywhere (MESITA-4844).
 const TILES: Record<PayModal, { word: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Prepay", icon: BadgePercent, ink: "bg-white text-indigo-500" },
-  pay: { word: "Pay", icon: QrCode, ink: "bg-neutral-950 text-white" },
+  prepay: { word: "Prepay & Get Bonus", icon: BadgePercent, ink: "bg-white text-indigo-500" },
+  pay: { word: "Pay Bill", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** A tile, always in its own colour (MESITA-4842). */
@@ -230,7 +230,7 @@ function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
       <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", ink)} aria-hidden>
         <Icon className="h-6 w-6" strokeWidth={2.25} />
       </span>
-      <span className="text-xl leading-tight font-semibold">{word}</span>
+      <span className="text-base leading-tight font-semibold max-[374px]:text-sm min-[430px]:text-lg">{word}</span>
     </button>
   );
 }
