@@ -238,7 +238,7 @@ function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
       </span>
       <span className="flex flex-col items-center gap-0.5 text-center">
         <span className={MARK_WORD}>{word}</span>
-        <span className="text-sm leading-tight font-medium max-[374px]:text-xs">{line}</span>
+        <span className="text-sm leading-tight max-[374px]:text-xs">{line}</span>
       </span>
     </button>
   );
