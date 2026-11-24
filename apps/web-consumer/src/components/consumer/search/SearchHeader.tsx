@@ -4,12 +4,12 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   [ ⚲ Search places…       │ ✨ AI ]      one 48px bar
+//   [ ⌖ │ ⚲ Search places…   │ ✨ AI ]      one 48px bar
 //   [▦ Menu] [⭐ Popular] (○ Coffee) …      32px chips, floating
 //
 // AI IS THE BAR'S RIGHT END (Pato, 2026-11-23, MESITA-4799: "put the askai
 // button joined to the searchbar"; a separate pill since MESITA-3009). LOCATE
-// IS AT THE MAP'S BOTTOM RIGHT, not here (MESITA-4811). Row one is one pill holding the query and AI, which opens a popup
+// IS THE BAR'S LEFT END (MESITA-4814: "joined with no spaces"). Row one is one pill holding the query and AI, which opens a popup
 // over Search (MESITA-4480). One token set: header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
@@ -72,11 +72,14 @@ const CHIP_MARK = "shrink-0";
 
 
 export function SearchHeader({
+  locate,
   bar,
   chipsHidden = false,
   children,
 }: {
-  /** The query field; the bar takes what AI leaves. */
+  /** Locate, the bar's left end. */
+  locate: ReactNode;
+  /** The query field; the bar takes what locate and AI leave. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -98,12 +101,13 @@ export function SearchHeader({
       className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
     >
-      {/* Row one: the bar with AI joined at its right end
-          (MESITA-4799). No bottom padding: the chip row's pt-1 + py-2 is the
+      {/* Row one: the bar, locate joined at its left end and
+          AI at its right (MESITA-4814). No bottom padding: the chip row's pt-1 + py-2 is the
           12px under it (MESITA-3012). */}
       <div className="flex min-w-0 items-center px-3 pt-3 [&>*]:pointer-events-auto">
         <div className={cn(SEARCH_BAR, "flex-1")}>
-          {bar}
+          {locate}
+          <div className="flex min-w-0 flex-1 pr-1 pl-3">{bar}</div>
           {/* The sparkle and the short word "AI" (Pato, MESITA-4496). The
               accessible name stays Ask AI. Opens the popup (MESITA-4480). */}
           <button

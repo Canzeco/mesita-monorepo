@@ -270,7 +270,7 @@ export function SearchMap({
           onCameraMoveStart={onCameraMoveStart}
           onLiveViewport={onLiveViewport}
         />
-        {!mapReady && <MapLoadingVeil />}
+        {!mapReady && <MapLoadingVeil onGiveUp={handleMapReady} />}
       </APIProvider>
       {mapReady && <SearchMapReticle searching={searching} />}
     </div>
@@ -356,8 +356,15 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
 // same MapVeil search/loading.tsx draws, so the route's skeleton hands over
 // without a move (MESITA-2701). Renders nothing once the SDK reports a load
 // failure — an error state must never sit under an eternal skeleton.
-function MapLoadingVeil() {
+// IT ALWAYS LIFTS (MESITA-4814): a reused map may not report its tiles again,
+// so 1.5s after the SDK is up it goes; the canvas under it is green too.
+function MapLoadingVeil({ onGiveUp }: { onGiveUp: () => void }) {
   const status = useApiLoadingStatus();
+  useEffect(() => {
+    if (status !== APILoadingStatus.LOADED) return;
+    const t = setTimeout(onGiveUp, 1500);
+    return () => clearTimeout(t);
+  }, [status, onGiveUp]);
   if (
     status === APILoadingStatus.FAILED ||
     status === APILoadingStatus.AUTH_FAILURE

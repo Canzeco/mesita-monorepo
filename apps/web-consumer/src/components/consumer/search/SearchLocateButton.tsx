@@ -6,12 +6,12 @@ import { LocateFixed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
-import { MAP_DISC, HEADER_ICON_STROKE } from "./header-classes";
+import { BAR_LOCATE, HEADER_ICON, HEADER_ICON_STROKE } from "./header-classes";
 
-// The map's location control: a 48px floating disc at the map's BOTTOM RIGHT,
-// over the cards, where Google Maps keeps it and a thumb reaches (Pato,
-// 2026-11-23, MESITA-4811: "think of 5 different designs and pick the best";
-// left of Menu for an hour, MESITA-4800). It wears the "my location" target and
+// The map's location control: the search bar's LEFT END, joined, as AI is its
+// right (Pato, 2026-11-23, MESITA-4814: "i don't like at all the map …
+// floating, put at the left of the searchbar but joined with no spaces";
+// floating at the bottom right under MESITA-4811). It wears the "my location" target and
 // nothing else, ink on white (MESITA-3004 took off MESITA-3000/3003's blue
 // tint), always ink, located or not (Pato, MESITA-3010: "location instead of
 // blue use black"; MESITA-2454 turned it the map's blue once a fix was held). No
@@ -55,13 +55,13 @@ export function SearchLocateButton({
               : "Use my location"
       }
       className={cn(
-        MAP_DISC,
-        "disabled:hover:bg-card disabled:opacity-60",
+        BAR_LOCATE,
+        "disabled:hover:bg-card [&:disabled>svg]:opacity-60",
       )}
     >
       <LocateFixed
         className={cn(
-          "h-5 w-5 shrink-0",
+          HEADER_ICON,
           locating && "animate-pulse",
           blocked && "text-destructive",
         )}
