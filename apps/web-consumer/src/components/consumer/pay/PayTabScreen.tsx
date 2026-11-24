@@ -1,32 +1,25 @@
 "use client";
 
-import { payModalPath } from "./pay-sections";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONSUMER_ROUTES,
-  payPlacePath,
+  payCodePath,
   payReceiptPath,
   payBillPath,
 } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
-import { GuestPayScreen } from "./GuestPayScreen";
 import { PayHeadContext, TicketHeader, type PayHead } from "./pay-flow";
 import { PayForm } from "./PayForm";
 import { writeOpenTabId } from "./pay-common";
 import { TabView, type TabStart } from "./TabView";
 import { usePayPlaces } from "./use-pay-places";
 
-// THE BILL AT THE TABLE (MESITA-3564, TabView.tsx), at two addresses
-// (MESITA-3614):
-//
-//   /pay/place/<placeId>   the door: opens (or reuses) the guest's bill there, then
-//                    rewrites the address to the bill's own. The table QR's
-//                    /pay?place=, the place screen's Pay and the Wallet's
-//                    "Pay here" all come through it.
-//   /pay/bill/<id>    the bill itself; a reload shows the same bill.
+// THE BILL AT THE TABLE (MESITA-3564, TabView.tsx), at /pay/bill/<id> (a
+// reload shows the same bill) and /pay/join/<token> (a friend's share).
+// /pay/place/<placeId> is a door to the QR, /pay/code (MESITA-4823).
 //
 // Back and Done land where the guest came from (goBack), or on the Pay list
 // when the bill was opened from outside the app. "Waiter gave you a code?"
@@ -47,7 +40,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
         }
       : null;
   });
-  const { places, failed, refresh } = usePayPlaces(at);
+  const { places, refresh } = usePayPlaces(at);
   const [formPlaceId, setFormPlaceId] = useState<string | null>(null);
   const formPlace =
     formPlaceId && places
@@ -102,33 +95,6 @@ export function PayTabScreen({ start }: { start: TabStart }) {
               onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
               onRefresh={refresh}
             />
-          ) : start.kind === "place" ? (
-            // MESITA-3709: the guest pays alone; the waiter verifies after.
-            <GuestPayScreen
-              placeId={start.placeId}
-              places={places}
-              placesFailed={failed}
-              getSupabase={getSupabase}
-              onPaid={(id) =>
-                navigateTo(router, payBillPath(id), { replace: true })
-              }
-              onOpenPlace={(id) =>
-                navigateTo(router, payPlacePath(id), { replace: true })
-              }
-              onChoosePlace={() =>
-                navigateTo(router, payModalPath("pay"), {
-                  replace: true,
-                })
-              }
-              onLeavePay={() =>
-                navigateTo(router, CONSUMER_ROUTES.pay, {
-                  replace: true,
-                  motion: "none",
-                })
-              }
-              registerBack={registerBack}
-              registerClose={registerClose}
-            />
           ) : (
             <TabView
               start={start}
@@ -145,7 +111,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
               // MESITA-4892: "redirect me to the MAIN pay page").
               onDone={() => navigateTo(router, CONSUMER_ROUTES.pay, { replace: true, motion: "none" })}
               onPayAgain={(placeId) =>
-                navigateTo(router, payPlacePath(placeId), { replace: true })
+                navigateTo(router, payCodePath(placeId), { replace: true })
               }
               placeFor={(id) => places?.find((p) => p.place_id === id) ?? null}
               registerBack={registerBack}

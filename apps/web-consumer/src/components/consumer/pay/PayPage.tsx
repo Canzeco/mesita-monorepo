@@ -111,6 +111,7 @@ export function PayPage({
           <Tile id="prepay" onClick={() => openModal("prepay")} />
           <Tile
             id="pay"
+            line={bill ? "See your bill" : undefined}
             onClick={() => (bill ? navigateTo(router, CONSUMER_ROUTES.payCode, { motion: "drill" }) : openModal("pay"))}
           />
         </div>
@@ -228,7 +229,7 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 // the QR, the same marks everywhere.
 const TILES: Record<PayModal, { word: string; line: string; icon: LucideIcon; ink: string }> = {
   prepay: { word: "Prepay", line: "Get bonus", icon: Percent, ink: "bg-white text-indigo-500" },
-  pay: { word: "Pay", line: "Show to waiter", icon: QrCode, ink: "bg-neutral-950 text-white" },
+  pay: { word: "Pay Bill", line: "Pick your place", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** ONE LETTER SIZE for the three words (Pato, 2026-11-24,
@@ -237,7 +238,7 @@ const MARK_WORD = "text-base leading-tight font-semibold max-[374px]:text-sm min
 
 /** A tile, always in its own colour (MESITA-4842): its name, then what it
  *  gets you, one line (Pato, MESITA-4869). */
-function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
+function Tile({ id, line: own, onClick }: { id: PayModal; line?: string; onClick: () => void }) {
   const { word, line, icon: Icon, ink } = TILES[id];
   return (
     <button type="button" onClick={onClick} className={cn(PAY_TILE, PAY_FILL[id])} data-pay-tile={id}>
@@ -246,7 +247,7 @@ function Tile({ id, onClick }: { id: PayModal; onClick: () => void }) {
       </span>
       <span className="flex flex-col items-center gap-0.5 text-center">
         <span className={MARK_WORD}>{word}</span>
-        <span className="text-sm leading-tight max-[374px]:text-xs">{line}</span>
+        <span className="text-sm leading-tight max-[374px]:text-xs">{own ?? line}</span>
       </span>
     </button>
   );

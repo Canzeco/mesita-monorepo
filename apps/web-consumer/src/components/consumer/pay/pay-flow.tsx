@@ -1,22 +1,17 @@
 "use client";
 
 import { createContext, useContext, useEffect } from "react";
-import { SizedImg } from "@mesita/place-profile";
-import { Check, ChevronLeft, MapPin, X } from "lucide-react";
+import { Check, ChevronLeft, X } from "lucide-react";
 import { STRIP_STEPS, type StripAt } from "@/lib/guest-pay-stages";
-import { useRouter } from "next/navigation";
-import type { PayPlace } from "@/lib/api/wallet";
 import { Button } from "@/components/ui/button";
 import { Panel } from "@/components/shared/Panel";
 import { Spinner } from "@/components/shared/Spinner";
-import { goBack } from "@/lib/navigate";
 import { cn } from "@/lib/utils";
 
 // THE GUEST-LEAD PAY FLOW'S SHARED PIECES (MESITA-3861, Pato's "14. Payments
-// Flow Guest-Lead"): the place across the top (Open), the X in the corner,
-// the rows card, the three state colours, the Not paid reasons, the header
-// title and the steps strip. The screens are GuestPayScreen (Bill) and
-// GuestTabView (Show waiter, Confirming, Receipt, Not paid).
+// Flow Guest-Lead"): the rows card, the three state colours, the Not paid reasons, the header
+// title and the steps strip. The screens are PayCodeScreen (QR, Bill,
+// Payment) and GuestTabView (Show waiter, Confirming, Receipt, Not paid).
 
 /** State colours, used only for state, always with an icon and words. */
 export const GOOD = "text-green-700";
@@ -27,11 +22,6 @@ export const BAD = "text-red-700";
 /** An offer's tint under black ink (MESITA-4777): Prepay green, Discount
  *  red, Cashback blue; offers.ts holds the solid tones. */
 export const BOX_TINT = { prepay: "bg-[#635BFF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#00D66F]/15" } as const;
-
-/** "350 m" / "2.4 km". */
-export function distanceText(m: number): string {
-  return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`;
-}
 
 /** Why a bill ended unpaid, in one line (money rules, Not paid copy). */
 export const NOT_PAID_REASON: Record<string, string> = {
@@ -44,73 +34,6 @@ export const NOT_PAID_REASON: Record<string, string> = {
   hold_released: "Your bank released the card hold.",
   cancelled: "You cancelled this bill.",
 };
-
-/** The X at the top left, beside the title in the header (MESITA-3880).
- *  It closes and keeps the ticket; cancelling is its own button (MESITA-3908). */
-export function CloseX({ onClick, label = "Cancel", light = false }: { onClick: () => void; label?: string; light?: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition",
-        light ? "bg-black/40 text-white hover:bg-black/55" : "hover:bg-muted text-foreground",
-      )}
-      data-pay-x
-    >
-      <X className="h-6 w-6" aria-hidden />
-    </button>
-  );
-}
-
-/** The X while a bill loads (MESITA-3997): the same X the loaded steps
- *  show, so the header never swaps a boxed Back for it. It just leaves. */
-export function PayLeaveX() {
-  const router = useRouter();
-  return <CloseX onClick={() => goBack(router)} label="Close" />;
-}
-
-/** OPEN: the place the guest is at, large across the top: its photo, its
- *  name, a MapPin and the distance. Tapping the name opens the search. Off
- *  greys the photo and says so. */
-export function PlaceHero({
-  place,
-  off,
-  onChoose,
-  compact = false,
-}: {
-  place: PayPlace;
-  off: boolean;
-  onChoose: () => void;
-  compact?: boolean;
-}) {
-  return (
-    <div className={cn("bg-muted relative w-full shrink-0 overflow-hidden rounded-2xl", compact ? "h-24" : "h-36")} data-pay-hero>
-      {place.photo ? (
-        <SizedImg src={place.photo} size="card" alt="" className={cn("absolute inset-0 h-full w-full object-cover", off && "grayscale")} />
-      ) : null}
-      <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-black/10" aria-hidden />
-      {off ? (
-        <span className="absolute top-3 left-3 rounded-full bg-white px-3 py-1 text-sm font-semibold text-neutral-900" data-pay-off>
-          Off
-        </span>
-      ) : null}
-      <button
-        type="button"
-        onClick={onChoose}
-        className="absolute inset-x-0 bottom-0 flex flex-col items-start px-4 pb-3 text-left text-white"
-        aria-label={`${place.name ?? "This place"}. Choose another place`}
-      >
-        <span className="max-w-full truncate text-xl font-semibold">{place.name ?? "A Mesita place"}</span>
-        <span className="flex items-center gap-1 text-sm text-white/85">
-          <MapPin className="h-4 w-4" aria-hidden />
-          {place.distance_m !== null ? distanceText(place.distance_m) : "Tap to choose another place"}
-        </span>
-      </button>
-    </div>
-  );
-}
 
 /** One row of a rows card: an icon, a label, the amount on the right. */
 export function MoneyRow({
@@ -205,7 +128,7 @@ export function TicketHeader({ title, onBack, onClose, closeLabel = "Close" }: {
 }
 
 /** THE STEPS, AT THE BOTTOM (MESITA-4600; five since MESITA-4613):
- *  "1 Bill · 2 Show waiter · 3 Receipt" (MESITA-4813; Pick is step 0, MESITA-4635)
+ *  "QR · Bill · Payment · Receipt" (MESITA-4928; Pick is step 0, MESITA-4635)
  *  in one row, a thin bar under each, done and current in ink, the current
  *  one semibold, the rest grey. A picture, not buttons: ← steps back.
  *  `at` "done" (the Receipt) lights all of them, a check on the last.

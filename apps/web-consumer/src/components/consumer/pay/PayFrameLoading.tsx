@@ -1,5 +1,5 @@
 import { Screen } from "@/components/consumer/nav/Screen";
-import { GuestPayLoading } from "./GuestPayScreen";
+import { GuestPayLoading } from "./GuestPayLoading";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { PayHeader } from "./PayHeader";
 import { TicketsShortcut } from "./TicketsShortcut";

@@ -25,7 +25,7 @@ import { type PadKey, pressKey, readTip } from "@/lib/pay-keypad";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
-import { GuestPayLoading } from "./GuestPayScreen";
+import { GuestPayLoading } from "./GuestPayLoading";
 import { GuestTabView } from "./GuestTabView";
 import { LiveClock } from "./LiveClock";
 import { ShareCard, SplitButton } from "./SplitWithFriends";
@@ -79,7 +79,6 @@ type TipChoice = "waiter" | (typeof TIP_PERCENTS)[number] | "other" | null;
 
 
 export type TabStart =
-  | { kind: "place"; placeId: string }
   | { kind: "tab"; tabId: string }
   | { kind: "join"; joinToken: string };
 
@@ -179,9 +178,7 @@ export function TabView({
   // secret is never stored on the device).
   useEffect(() => {
     let cancelled = false;
-    if (start.kind === "place") {
-      void open(start.placeId);
-    } else if (start.kind === "join") {
+    if (start.kind === "join") {
       void apiJoinTab(getSupabase(), start.joinToken)
         .then((j) => {
           if (!cancelled) switchTo(j.share_tab_id);
@@ -304,7 +301,7 @@ export function TabView({
 
   const reconnecting = failures >= 2;
   const placeName = tab?.place.name ?? "this place";
-  const tabPlaceId = tab?.place.id ?? (start.kind === "place" ? start.placeId : null);
+  const tabPlaceId = tab?.place.id ?? null;
   // Mesita isn't answering and nothing is paid yet: the waiter's code door.
   const usualWay =
     failures >= USUAL_WAY_AFTER && tabPlaceId && canUseCode(tabPlaceId) && (status === "waiting_bill" || status === "billed") ? (
@@ -342,8 +339,7 @@ export function TabView({
           className="mt-auto w-full text-base font-semibold"
           onClick={() => {
             setOpenFailed(false);
-            if (start.kind === "place") void open(start.placeId);
-            else window.location.reload();
+            window.location.reload();
           }}
         >
           Try again
@@ -368,7 +364,7 @@ export function TabView({
   }
 
   if (status === "waiting_bill") {
-    const placeId = tab?.place.id ?? (start.kind === "place" ? start.placeId : null);
+    const placeId = tab?.place.id ?? null;
     return (
       <Shell testMode={tab?.test_mode ?? false}>
         <QrScreen
