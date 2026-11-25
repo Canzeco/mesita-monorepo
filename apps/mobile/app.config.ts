@@ -40,7 +40,8 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: variant.id,
     supportsTablet: false,
-    infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    // Each screen says its own status bar (statusBarStyle): the photo's is light.
+    infoPlist: { ITSAppUsesNonExemptEncryption: false, UIViewControllerBasedStatusBarAppearance: true },
   },
   android: {
     package: variant.id,
@@ -61,6 +62,7 @@ const config: ExpoConfig = {
             "./assets/fonts/Inter_400Regular.ttf",
             "./assets/fonts/Inter_500Medium.ttf",
             "./assets/fonts/Inter_600SemiBold.ttf",
+            "./assets/fonts/Outfit_700Bold.ttf",
           ],
         },
         android: {
@@ -72,6 +74,10 @@ const config: ExpoConfig = {
                 { path: "./assets/fonts/Inter_500Medium.ttf", weight: 500 },
                 { path: "./assets/fonts/Inter_600SemiBold.ttf", weight: 600 },
               ],
+            },
+            {
+              fontFamily: "Outfit",
+              fontDefinitions: [{ path: "./assets/fonts/Outfit_700Bold.ttf", weight: 700 }],
             },
           ],
         },

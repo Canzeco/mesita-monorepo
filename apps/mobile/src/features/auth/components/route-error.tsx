@@ -10,5 +10,5 @@ export function RouteError({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => {
     report(error, { route });
   }, [error, route]);
-  return <ErrorState message="Something went wrong on this screen." onRetry={() => void retry()} />;
+  return <ErrorState message="This screen didn't load. Try again." onRetry={() => void retry()} />;
 }

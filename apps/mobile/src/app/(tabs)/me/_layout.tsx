@@ -8,7 +8,7 @@ export default function MeLayout() {
   const { member } = useGate();
   return (
     <Stack screenOptions={headerOptions}>
-      <Stack.Screen name="index" options={{ title: "Me" }} />
+      <Stack.Screen name="index" options={{ title: "Me", headerShown: member, statusBarStyle: member ? "dark" : "light" }} />
       <Stack.Protected guard={member} redirectTo="/sign-in">
         {ME_PAGES.map((name) => (
           <Stack.Screen key={name} name={name} />

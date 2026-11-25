@@ -3,7 +3,8 @@ import { join } from "node:path";
 
 import { consumerSchema } from "./api";
 import { readLink } from "./links";
-import { authMessage, callingPrefix, gateOf, SIGNED_OUT, toE164, type Profile, type Session } from "./model";
+import { COUNTRIES, countryOf } from "./countries";
+import { authMessage, gateOf, SIGNED_OUT, toE164, type Profile, type Session } from "./model";
 import { isAppPath, ME_PAGES, ROUTE_GROUPS } from "./routes";
 
 const ANA: Profile = {
@@ -49,8 +50,8 @@ test("a profile keeps only what it can read", () => {
 });
 
 test("a phone number is sent whole or not at all", () => {
-  expect(callingPrefix("MX")).toBe("+52 ");
-  expect(callingPrefix("ZZ")).toBe("+52 ");
+  expect(COUNTRIES[0][0]).toBe("MX");
+  expect(countryOf("MX")).toMatchObject({ dial: "52", flag: "🇲🇽" });
   expect(toE164("+52 55 1234 5678")).toBe("+525512345678");
   expect(toE164("+1 (415) 555-0100")).toBe("+14155550100");
   for (const bad of ["55 1234 5678", "+52 55", "+52 1 55 1234 5678", "", "+", "+0012345678"]) expect(toE164(bad)).toBeNull();

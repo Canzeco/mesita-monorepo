@@ -5,28 +5,34 @@ import * as Updates from "expo-updates";
 
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { PermissionState } from "@/components/permission-state";
 import { setSession } from "@/features/auth";
 import { CodeScreen } from "@/features/auth/screens/code-screen";
 import { pageUrl } from "@/features/auth/screens/open-screen";
 import { PhoneScreen } from "@/features/auth/screens/phone-screen";
 import { SuspendedScreen } from "@/features/auth/screens/suspended-screen";
+import { WelcomeScreen } from "@/features/auth/screens/welcome-screen";
 import { applyUpdate, UpdateView } from "@/features/auth/screens/update-screen";
+import { SearchScreen } from "@/features/discovery/screens/search-screen";
 import { HomeView, type HomeState } from "@/features/discovery/screens/home-screen";
+import { chipsFor } from "@/features/discovery/families";
 import { MeView, type MeState } from "@/features/settings/screens/me-screen";
 
 const nothing = () => undefined;
 const error = { kind: "error" as const, message: "No.", offline: false, requestId: "r1" };
-const place = { id: "a", name: "Pinto", category: "Bar", photo: null, isAd: true };
+const place = {
+  id: "a", slug: null, name: "Pinto", category: "Bar", photo: null, priceLevel: 2, rating: 4.4, reviews: 583,
+  hours: null, timezone: null, zone: null, distanceKm: 0.1, isPremier: true, isAd: true,
+};
 
 const home: HomeState[] = [
-  { kind: "loading" }, { kind: "no-location" }, { kind: "empty" }, error, { ...error, offline: true },
+  { kind: "loading" }, { kind: "no-location" }, { kind: "empty" }, { kind: "nothing-saved" }, error, { ...error, offline: true },
   { kind: "places", places: [place] },
 ];
 test.each(home)("Home: $kind", async (state) => {
   const view = await render(
-    <HomeView state={state} location={{ lat: 1, lng: 2, name: "Roma" }} refreshing={false} onRefresh={nothing}
-      onEnd={nothing} onOpenPlace={nothing} onChooseLocation={nothing} />,
+    <HomeView state={state} location="Roma" chips={chipsFor(true)} chip="near" onChip={nothing}
+      isSaved={() => true} onSave={nothing} onShare={nothing} refreshing={false} onRefresh={nothing} onEnd={nothing}
+      onOpenPlace={nothing} onChooseLocation={nothing} onMenu={nothing} onWelcome={nothing} />,
   );
   expect(view.toJSON()).not.toBeNull();
 });
@@ -37,7 +43,7 @@ const me: MeState[] = [
   { kind: "profile", profile, lastUpdated: null }, { kind: "profile", profile, lastUpdated: 1 },
 ];
 test.each(me)("Me: $kind", async (state) => {
-  const view = await render(<MeView state={state} onSignIn={nothing} onRetry={nothing} onSignOut={nothing} />);
+  const view = await render(<MeView state={state} signIn={<EmptyState title="Sign" />} onRetry={nothing} onSignOut={nothing} />);
   expect(view.toJSON()).not.toBeNull();
 });
 
@@ -52,9 +58,10 @@ test("sign-in, suspended and the shared states", async () => {
     <PhoneScreen key="1" onSent={nothing} />,
     <CodeScreen key="2" phone="+52" onWrongNumber={nothing} />,
     <SuspendedScreen key="3" />,
-    <EmptyState key="4" message="None." />,
+    <EmptyState key="4" title="None." />,
     <ErrorState key="5" message="No." />,
-    <PermissionState key="6" message="Why." />,
+    <WelcomeScreen key="6" onSignIn={nothing} onBrowse={nothing} />,
+    <SearchScreen key="7" onHome={nothing} />,
   ]) {
     expect((await render(screen)).toJSON()).not.toBeNull();
   }

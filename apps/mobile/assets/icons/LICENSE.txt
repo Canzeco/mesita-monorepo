@@ -1,0 +1,1 @@
+The icons are from Lucide (lucide-static 1.80.0), ISC License, Copyright (c) Lucide Contributors. mark.svg and premier.svg are Mesita's.

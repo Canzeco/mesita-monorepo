@@ -8,7 +8,9 @@ type Props = TextInputProps & { label: string; error?: string | null };
 export function Field({ label, error, ...input }: Props) {
   return (
     <View style={styles.field}>
-      <Text role="label">{label}</Text>
+      <Text role="tag" tone="muted">
+        {label}
+      </Text>
       <TextInput
         accessibilityLabel={label}
         placeholderTextColor={colors.muted}
@@ -30,16 +32,16 @@ export function FieldError({ children }: { children: string }) {
 }
 
 const styles = StyleSheet.create({
-  field: { gap: space.sm },
+  field: { gap: space.xs },
   input: {
-    ...type.body,
-    minHeight: 48,
+    ...type.small,
+    minHeight: 44,
     paddingHorizontal: space.md,
     color: colors.ink,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.control,
+    borderRadius: radius.field,
   },
   wrong: { borderColor: colors.danger },
 });

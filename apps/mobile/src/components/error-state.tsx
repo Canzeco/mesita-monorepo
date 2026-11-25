@@ -1,19 +1,24 @@
 import { StyleSheet, View } from "react-native";
 
-import { Button } from "@/components/button";
+import { EmptyState } from "@/components/empty-state";
 import { Text } from "@/components/text";
 import { space } from "@/theme";
 
-type Props = { message: string; offline?: boolean; requestId?: string | null; onRetry?: () => void };
+type Props = { title?: string; message: string; offline?: boolean; requestId?: string | null; onRetry?: () => void };
 
 /** What failed and Try again. The request id ties the screen to a log line. */
-export function ErrorState({ message, offline = false, requestId, onRetry }: Props) {
+export function ErrorState({ title = "Something went wrong", message, offline = false, requestId, onRetry }: Props) {
   return (
-    <View style={styles.box} testID={offline ? "offline-state" : "error-state"}>
-      <Text style={styles.text}>{offline ? "No connection" : message}</Text>
-      {onRetry ? <Button label="Try again" onPress={onRetry} /> : null}
+    <View style={styles.page}>
+      <EmptyState
+        icon={offline ? "rotate-cw" : "compass"}
+        title={offline ? "No connection" : title}
+        message={offline ? undefined : message}
+        action={onRetry ? { label: "Try again", onPress: onRetry } : undefined}
+        testID={offline ? "offline-state" : "error-state"}
+      />
       {requestId ? (
-        <Text role="caption" tone="muted" style={styles.text} selectable>
+        <Text role="caption" tone="muted" style={styles.id} selectable>
           {requestId}
         </Text>
       ) : null}
@@ -21,7 +26,4 @@ export function ErrorState({ message, offline = false, requestId, onRetry }: Pro
   );
 }
 
-const styles = StyleSheet.create({
-  box: { flex: 1, justifyContent: "center", gap: space.lg, padding: space.xl },
-  text: { textAlign: "center" },
-});
+const styles = StyleSheet.create({ page: { flex: 1 }, id: { padding: space.lg, textAlign: "center" } });

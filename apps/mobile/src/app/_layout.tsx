@@ -1,6 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { SplashScreen, Stack, useRouter, type Href } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import { useEffect, type ComponentProps } from "react";
 
 import { headerOptions } from "@/components/header";
@@ -16,16 +15,16 @@ export const unstable_settings = { anchor: "(tabs)" };
 startReporting();
 void SplashScreen.preventAutoHideAsync();
 
+// The web's floating window over the dimmed screen.
+const WINDOW = { headerShown: false, presentation: "transparentModal", animation: "fade" } as const;
+
 const OPTIONS: Record<RootRoute, ComponentProps<typeof Stack.Screen>["options"]> = {
   "(tabs)": { headerShown: false },
-  location: {
-    title: "Location",
-    presentation: "formSheet",
-    sheetAllowedDetents: [0.5, 1],
-    sheetGrabberVisible: true,
-  },
+  categories: WINDOW,
+  location: WINDOW,
+  welcome: WINDOW,
   open: { title: "Mesita" },
-  "sign-in": { headerShown: false, presentation: "modal" },
+  "sign-in": { headerShown: false, presentation: "modal", statusBarStyle: "light" },
   update: { headerShown: false },
   suspended: { headerShown: false },
   onboarding: { title: "About you", headerBackVisible: false, gestureEnabled: false },
@@ -40,7 +39,6 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <LocationProvider>
-        <StatusBar style="dark" />
         <Root />
       </LocationProvider>
     </QueryClientProvider>

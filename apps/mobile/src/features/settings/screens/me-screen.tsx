@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Alert, StyleSheet } from "react-native";
 
 import { Button } from "@/components/button";
@@ -5,7 +6,6 @@ import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
 import { Row } from "@/components/row";
 import { Screen } from "@/components/screen";
-import { SignInInvite } from "@/components/sign-in-invite";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { signOut, useMyProfile, useSession, type Profile } from "@/features/auth";
@@ -18,8 +18,9 @@ export type MeState =
   | { kind: "error"; message: string; offline: boolean; requestId: string | null }
   | { kind: "profile"; profile: Profile; lastUpdated: number | null };
 
-/** Me: who I am, and the way out. Its pages arrive with step 5. */
-export function MeScreen({ onSignIn }: { onSignIn: () => void }) {
+/** Me: who I am, and the way out. Its pages arrive with step 5. Signed out,
+ *  the tab is Sign: `signIn` fills it. */
+export function MeScreen({ signIn }: { signIn: ReactNode }) {
   const member = useSession().guestId !== null;
   const profile = useMyProfile();
   const copy = useErrorCopy(profile.error);
@@ -41,16 +42,16 @@ export function MeScreen({ onSignIn }: { onSignIn: () => void }) {
       { text: "Sign out", style: "destructive", onPress: () => void signOut() },
     ]);
 
-  return <MeView state={state()} onSignIn={onSignIn} onRetry={() => void profile.refetch()} onSignOut={askSignOut} />;
+  return <MeView state={state()} signIn={signIn} onRetry={() => void profile.refetch()} onSignOut={askSignOut} />;
 }
 
-type ViewProps = { state: MeState; onSignIn: () => void; onRetry: () => void; onSignOut: () => void };
+type ViewProps = { state: MeState; signIn: ReactNode; onRetry: () => void; onSignOut: () => void };
 
 const clock = (at: number) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-export function MeView({ state, onSignIn, onRetry, onSignOut }: ViewProps) {
+export function MeView({ state, signIn, onRetry, onSignOut }: ViewProps) {
   if (state.kind === "anonymous") {
-    return <SignInInvite message="Your reservations and your profile live here." onSignIn={onSignIn} />;
+    return signIn;
   }
   return (
     <Screen>

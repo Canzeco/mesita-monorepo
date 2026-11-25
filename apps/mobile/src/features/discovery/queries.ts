@@ -1,30 +1,47 @@
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { fillCatalog, rankCatalog, resolveLocation, suggestLocations, type CatalogRank } from "./api";
+import { useSession } from "@/features/auth";
+
+import {
+  fillCatalog,
+  listSaved,
+  rankCatalog,
+  recordShare,
+  resolveLocation,
+  setSaved,
+  suggestLocations,
+  type CatalogRank,
+  type SavedPlaces,
+} from "./api";
+import { questionOf, type ChipKey } from "./families";
 import { pageIds, uniquePlaces, type ActiveLocation, type CatalogPlace, type Point } from "./model";
 
 export const discoveryKeys = {
   all: ["discovery"] as const,
-  catalog: (point: Point | null) => ["discovery", "catalog", point?.lat ?? null, point?.lng ?? null] as const,
+  catalog: (point: Point | null, chip: ChipKey) =>
+    ["discovery", "catalog", point?.lat ?? null, point?.lng ?? null, chip] as const,
+  saved: (guestId: string | null) => ["discovery", "saved", guestId] as const,
   locations: (input: string) => ["discovery", "locations", input] as const,
 };
 
 type Page = { rank: CatalogRank; places: CatalogPlace[] };
 type PageParam = { page: number; rank: CatalogRank | null };
 
-export function useCatalog(location: ActiveLocation | null) {
+export function useCatalog(location: ActiveLocation | null, chip: ChipKey) {
+  const question = questionOf(chip);
   const query = useInfiniteQuery({
-    queryKey: discoveryKeys.catalog(location),
-    enabled: location !== null,
+    queryKey: discoveryKeys.catalog(location, chip),
+    enabled: location !== null && chip !== "saved",
     initialPageParam: { page: 0, rank: null } as PageParam,
     queryFn: async ({ pageParam, signal }): Promise<Page> => {
       const point = location as Point;
       if (!pageParam.rank) {
-        const rank = await rankCatalog(point, signal);
+        const rank = await rankCatalog(point, question, signal);
         return { rank, places: rank.places };
       }
       const { rank, page } = pageParam;
-      return { rank, places: await fillCatalog(point, rank, pageIds(rank.order, rank.places.length, page), signal) };
+      const fill = pageIds(rank.order, rank.places.length, page);
+      return { rank, places: await fillCatalog(point, question, rank, fill, signal) };
     },
     getNextPageParam: (last, _pages, { page }): PageParam | undefined =>
       pageIds(last.rank.order, last.rank.places.length, page + 1).length > 0
@@ -32,6 +49,43 @@ export function useCatalog(location: ActiveLocation | null) {
         : undefined,
   });
   return { ...query, places: uniquePlaces(query.data?.pages.map((p) => p.places) ?? []) };
+}
+
+export function useSaved() {
+  const { guestId } = useSession();
+  return useQuery({
+    queryKey: discoveryKeys.saved(guestId),
+    queryFn: ({ signal }) => listSaved(signal),
+    enabled: guestId !== null,
+  });
+}
+
+/** Save or unsave: shown at once, put back if it fails, then re-read. */
+export function useToggleSaved() {
+  const { guestId } = useSession();
+  const client = useQueryClient();
+  const key = discoveryKeys.saved(guestId);
+  return useMutation({
+    mutationFn: ({ place, on }: { place: CatalogPlace; on: boolean }) => setSaved(place.id, on),
+    onMutate: async ({ place, on }) => {
+      await client.cancelQueries({ queryKey: key });
+      const before = client.getQueryData<SavedPlaces>(key);
+      client.setQueryData<SavedPlaces>(key, withSaved(before, place, on));
+      return { before };
+    },
+    onError: (_err, _vars, context) => client.setQueryData(key, context?.before),
+    onSettled: () => client.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function withSaved(saved: SavedPlaces | undefined, place: CatalogPlace, on: boolean): SavedPlaces {
+  const ids = (saved?.ids ?? []).filter((id) => id !== place.id);
+  const places = (saved?.places ?? []).filter((p) => p.id !== place.id);
+  return on ? { ids: [place.id, ...ids], places: [place, ...places] } : { ids, places };
+}
+
+export function useRecordShare() {
+  return useMutation({ mutationFn: recordShare });
 }
 
 /** `sessionToken` groups one search's keystrokes for Google's billing. */

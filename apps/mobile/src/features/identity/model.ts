@@ -51,3 +51,9 @@ export function wasSaved(profile: Profile, d: Details): boolean {
     profile.birthYear === d.birthYear
   );
 }
+
+/** The years the picker offers, newest first: never one under the age floor. */
+export function birthYears(now: Date = new Date()): string[] {
+  const newest = now.getFullYear() - MIN_AGE;
+  return Array.from({ length: 87 }, (_, i) => String(newest - i));
+}
