@@ -19,15 +19,24 @@ const FIX_MS = 10_000;
 /** The phone's place now; with no fix in ten seconds (indoors, a phone that
  *  never got one), the last it knew. Throws when there is neither. */
 export async function findDevice(): Promise<Location.LocationObject> {
+  const request = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+  // A simulator often delivers the fix just after the first wait. Keep the
+  // same request; a second call starts over and misses it.
+  const first = await firstOf(request, FIX_MS);
+  if (first) return first;
+  const last = await Location.getLastKnownPositionAsync();
+  if (last) return last;
+  const late = await firstOf(request, FIX_MS);
+  if (late) return late;
+  throw new Error("no location");
+}
+
+function firstOf<T>(pending: Promise<T | null>, ms: number): Promise<T | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const slow = new Promise<null>((done) => {
-    timer = setTimeout(() => done(null), FIX_MS);
+    timer = setTimeout(() => done(null), ms);
   });
-  const now = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
-  const found = (await Promise.race([now, slow])) ?? (await Location.getLastKnownPositionAsync());
-  clearTimeout(timer);
-  if (!found) throw new Error("no location");
-  return found;
+  return Promise.race([pending, slow]).finally(() => clearTimeout(timer));
 }
 
 const HERE = "Current location";
