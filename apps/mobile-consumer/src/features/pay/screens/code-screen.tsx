@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
@@ -53,7 +54,11 @@ export function CodeScreen({ placeId, onClose }: { placeId: string; onClose: () 
       <Text role="heading">{payable ? "Your bill" : "Show this to your waiter"}</Text>
       {bill?.place.name ? <Text role="strong">{bill.place.name}</Text> : null}
       {payable ? <Text role="title">{money(cents, bill.currency)}</Text> : null}
-      {!payable && read.data?.code ? <Text role="code" selectable>{read.data.code.url}</Text> : null}
+      {!payable && read.data?.code ? (
+        <View accessibilityLabel="Your Mesita QR" style={styles.qr}>
+          <QRCode value={read.data.code.url} size={240} color={colors.ink} backgroundColor={colors.paper} />
+        </View>
+      ) : null}
       {read.isError ? <Text role="body" tone="muted">The code did not load.</Text> : null}
       {note ? <Text role="body" tone="danger">{note}</Text> : null}
     </Screen>
@@ -62,4 +67,5 @@ export function CodeScreen({ placeId, onClose }: { placeId: string; onClose: () 
 
 const styles = StyleSheet.create({
   actions: { gap: space.sm, backgroundColor: colors.paper },
+  qr: { alignSelf: "center", marginTop: space.lg, backgroundColor: colors.paper, padding: space.md },
 });
