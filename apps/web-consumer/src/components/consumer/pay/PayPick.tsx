@@ -413,7 +413,7 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
         {hit.secondaryText ? <span className="text-muted-foreground block truncate text-sm">{hit.secondaryText}</span> : null}
       </span>
       {onMesita ? null : (
-        <span className="bg-muted text-muted-foreground shrink-0 rounded-xl px-2 py-1.5 text-center text-[11px] leading-tight font-semibold" data-pay-not-on-mesita>
+        <span className="type-label bg-muted text-muted-foreground shrink-0 rounded-xl px-2 py-1.5 text-center leading-tight font-semibold" data-pay-not-on-mesita>
           Not on
           <br />
           Mesita
