@@ -19,6 +19,15 @@ export const colors = {
 
   prepay: "#635bff",
   onPrepay: "#ffffff",
+  /** Prepay bonus circles, darker as the percent rises. */
+  bonus60: "#352cb8",
+  bonus20: "#bdb9ff",
+  bonusLow: "#e6e4ff",
+  /** Pay percent boxes, darker as the percent rises. */
+  pay10: "#85edb6",
+  payLow: "#d3f8e2",
+  /** Pay's Accepts Credits Yes, the web's blue box. */
+  creditsYes: "#bfdbfe",
   pay: "#00d66f",
   onPay: "#0a0a0a",
 
