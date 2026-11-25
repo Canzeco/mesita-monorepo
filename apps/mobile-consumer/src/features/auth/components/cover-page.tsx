@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/icon";
@@ -13,7 +13,8 @@ type Props = {
   children: ReactNode;
   footer?: string;
   onClose?: () => void;
-  /** On a tab: the photo ends above the bar, as the web's does. */
+  /** On a tab: the photo ends above the bar, as the web's does. Android's bar
+   *  already takes its own room. */
   aboveBar?: boolean;
 };
 
@@ -21,7 +22,7 @@ type Props = {
 export function CoverPage({ children, footer, onClose, aboveBar = false }: Props) {
   const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.ground, aboveBar && { paddingBottom: insets.bottom }]}>
+    <View style={[styles.ground, aboveBar && Platform.OS === "ios" && { paddingBottom: insets.bottom }]}>
       <PhotoCover>
         <ScrollView
           keyboardShouldPersistTaps="handled"
