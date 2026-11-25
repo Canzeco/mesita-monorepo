@@ -23,21 +23,24 @@ type Props = {
 export function CoverPage({ children, footer, onClose, aboveBar = false }: Props) {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
-  // iPhone's scroller makes its own room; Android's does not.
-  const above = Platform.OS === "android" && keyboard > 0 ? keyboard + insets.bottom : 0;
+  // The Sign tab sits above the bar. A raised keyboard replaces that inset:
+  // the bar's padding must not wipe the keyboard's, or the button stays covered.
+  const rest = aboveBar && Platform.OS === "ios" ? insets.bottom : 0;
+  const above = keyboard > 0 ? keyboard + (Platform.OS === "android" ? insets.bottom : 0) : rest;
   // The form ends the page: with the keyboard up, its field and button show.
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   useEffect(() => {
-    if (above > 0) requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
-  }, [above]);
+    if (keyboard <= 0) return;
+    const id = requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: false }));
+    return () => cancelAnimationFrame(id);
+  }, [keyboard]);
   return (
-    <View style={[styles.ground, { paddingBottom: above }, aboveBar && Platform.OS === "ios" && { paddingBottom: insets.bottom }]}>
+    <View style={[styles.ground, { paddingBottom: above }]}>
       <PhotoCover>
         <ScrollView
           ref={scroller}
-          onContentSizeChange={() => above > 0 && scroller.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() => keyboard > 0 && scroller.current?.scrollToEnd({ animated: false })}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets
           contentContainerStyle={[styles.page, { paddingTop: insets.top, paddingBottom: aboveBar ? 0 : insets.bottom }]}
         >
           <View style={styles.top}>

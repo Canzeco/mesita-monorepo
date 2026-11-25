@@ -9,14 +9,13 @@ appId: com.mesita.consumer
 - extendedWaitUntil: { visible: "Choose location", timeout: 30000 }
 - takeScreenshot: home-empty
 - tapOn: "Choose location"
-- assertVisible: "Use my location"
+- assertVisible: "Use my location.*"
 - takeScreenshot: location
 - tapOn: { id: "use-device" }
 - tapOn: { text: "(Don.t allow|Deny)", optional: true }
 - extendedWaitUntil: { visible: ".*Location is off for Mesita.*", timeout: 10000 }
 - takeScreenshot: location-denied
 - runFlow: shared/launch-allow.yaml
-- setLocation: { latitude: 25.6490, longitude: -100.3590 }
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome
 - tapOn: "Just browse"
@@ -24,8 +23,19 @@ appId: com.mesita.consumer
 - tapOn: "Choose location"
 - tapOn: { id: "use-device" }
 - tapOn: { text: "While using the app", optional: true }
-- extendedWaitUntil: { visible: { id: "catalog" }, timeout: 30000 }
-- takeScreenshot: home
+# A fix shows Home's places. An emulator with none shows the failure and
+# the rest of the walk continues from Home's empty state.
+- extendedWaitUntil: { visible: "Current location|Your location could not be found.*", timeout: 30000 }
+- runFlow:
+    when: { visible: "Your location could not be found.*" }
+    commands:
+      - takeScreenshot: location-no-fix
+      - tapOn: "Close"
+- runFlow:
+    when: { notVisible: "Your location could not be found.*" }
+    commands:
+      - extendedWaitUntil: { visible: { id: "catalog" }, timeout: 15000 }
+      - takeScreenshot: home
 - tapOn: "Search"
 - takeScreenshot: search
 - tapOn: { id: "menu" }

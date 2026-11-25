@@ -1,6 +1,11 @@
 # A fresh app with location allowed: each phone has its own word.
+# The fix is set before launch. An Android emulator that gets it afterwards
+# still reports that the location could not be found.
 appId: com.mesita.consumer
 ---
+- setLocation:
+    latitude: 25.6490
+    longitude: -100.3590
 - runFlow:
     when: { platform: iOS }
     commands:
