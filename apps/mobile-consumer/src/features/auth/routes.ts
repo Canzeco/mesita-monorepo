@@ -6,7 +6,7 @@ export const ROUTE_GROUPS = {
   update: ["update"],
   suspended: ["suspended"],
   onboarding: ["onboarding"],
-  everyone: ["(tabs)", "categories", "location", "open", "place"],
+  everyone: ["(tabs)", "categories", "location", "open", "place", "reserve", "reservations"],
   anonymousOnly: ["sign-in", "welcome"],
   membersOnly: [],
 } as const satisfies Record<string, readonly string[]>;
@@ -17,7 +17,7 @@ export type RootRoute = (typeof ROUTE_GROUPS)[keyof typeof ROUTE_GROUPS][number]
 export const ME_PAGES: readonly string[] = [];
 
 /** The addresses a link may open, as patterns. */
-const PATHS = [/^\/$/, /^\/search$/, /^\/me$/, /^\/location$/, /^\/open$/, /^\/sign-in$/, /^\/place\/add$/, /^\/place\/[^/]+$/, /^\/place\/[^/]+\/(menu|contact|report)$/];
+const PATHS = [/^\/$/, /^\/search$/, /^\/me$/, /^\/location$/, /^\/open$/, /^\/sign-in$/, /^\/place\/add$/, /^\/place\/[^/]+$/, /^\/place\/[^/]+\/(menu|contact|report)$/, /^\/reserve\/[^/]+$/, /^\/reservations$/, /^\/reservations\/[^/]+$/, /^\/reservations\/[^/]+\/reschedule$/];
 
 export function isAppPath(path: string): boolean {
   const bare = path.split(/[?#]/)[0].replace(/(.)\/$/, "$1");
