@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 
 /** Which Off tile of the pinned row was tapped (MESITA-3583; Reserve ·
  *  Offers since MESITA-4151). */

@@ -1,4 +1,4 @@
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 
 const SIZE = {
   sm: "h-4 w-4 border-2",

@@ -4,7 +4,8 @@ import type React from "react";
 import { Star, type LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
-import { cn, firstInitial } from "../../lib/format";
+import { cn } from "../../lib/cn";
+import { firstInitial } from "../../lib/format";
 import {
   PLACE_FIGURE_CLASS,
   PLACE_OUTLINE_CHIP_CLASS,

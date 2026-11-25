@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 import { PLACE_BONE_CLASS } from "../lib/ui";
 import { PlaceMarks } from "./PlaceMarks";
 

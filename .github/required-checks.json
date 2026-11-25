@@ -11,6 +11,7 @@
   "web-landing · lint · typecheck · test · build",
   "web-business · lint · typecheck · test · build",
   "web-visit · lint · typecheck · test · build",
+  "mobile · lint · typecheck · test · export",
   "place-profile · typecheck · test",
   "render · test"
 ]

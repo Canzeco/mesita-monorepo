@@ -1,4 +1,4 @@
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 import { premierLabel } from "../premier";
 
 // THE SEAL ALONE (Pato, MESITA-3420: "just red or/and green bubble. don't

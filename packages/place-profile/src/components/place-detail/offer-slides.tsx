@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import type { OfferSlide } from "../../lib/offers";
 
 export { offerSlides, offersLabel, type OfferInput, type OfferSlide } from "../../lib/offers";

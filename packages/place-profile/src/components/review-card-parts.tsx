@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 
 // Google's yellow for the earned stars, a pale grey for the rest (Pato,
 // MESITA-2916: "use yellow here ... all gray just feels weird"). The empty

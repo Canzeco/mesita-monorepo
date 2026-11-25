@@ -18,7 +18,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import { mesitaRowState } from "../../lib/mesita-row";
 import { reserveTimes } from "../../lib/reserve-times";
 import { OfferTrack, offersLabel, ROW_TICK_MS, ROW_TICKS_PER_CHANGE, useOfferSlide, type OfferSlide } from "./offer-slides";

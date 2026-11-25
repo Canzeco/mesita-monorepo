@@ -3,16 +3,17 @@ name: shared
 # The money modules the place screen and the Edge Functions both run
 # (moneyState, the money codes; the Pay split left with the bill's card part,
 # MESITA-4708) have one source in _shared and a generated
-# copy in packages/place-profile (MESITA-3302). This fails a PR whose copy
-# drifted from its source.
+# copy in packages/place-profile (MESITA-3302). The phone app carries copies of
+# those two and of the pure place-profile modules it uses (MESITA-4930). This
+# fails a PR whose copy drifted from its source.
 on:
   push:
     branches: [main]
     paths:
       - "supabase/supabase/functions/_shared/money-state.ts"
       - "supabase/supabase/functions/_shared/money-codes.ts"
-      - "packages/place-profile/src/money-state.ts"
-      - "packages/place-profile/src/money-codes.ts"
+      - "packages/place-profile/src/**"
+      - "apps/mobile/src/generated/**"
       - "scripts/sync-shared.ts"
       - "deno.json"
       - ".github/workflows/shared.yml"
@@ -39,8 +40,8 @@ jobs:
             shared:
               - 'supabase/supabase/functions/_shared/money-state.ts'
               - 'supabase/supabase/functions/_shared/money-codes.ts'
-              - 'packages/place-profile/src/money-state.ts'
-              - 'packages/place-profile/src/money-codes.ts'
+              - 'packages/place-profile/src/**'
+              - 'apps/mobile/src/generated/**'
               - 'scripts/sync-shared.ts'
               - 'deno.json'
               - '.github/workflows/shared.yml'

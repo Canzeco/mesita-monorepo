@@ -1,4 +1,4 @@
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 
 export function CarouselPillDots({
   count,

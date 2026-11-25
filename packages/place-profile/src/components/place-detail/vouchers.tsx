@@ -7,7 +7,7 @@ import { Instagram } from "../brand-icons";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import { VOUCHER_TONE, visitMechanismOf, visitTone, visitWord, type VisitMechanism } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";

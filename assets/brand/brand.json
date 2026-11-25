@@ -190,6 +190,9 @@
       "web-consumer",
       "web-landing",
       "web-business"
+    ],
+    "native": [
+      "mobile"
     ]
   },
   "appIcons": {

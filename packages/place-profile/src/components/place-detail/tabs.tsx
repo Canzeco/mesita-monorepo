@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 
 // The KEYS are addresses (and map to places.products); only the LABELS are
 // the words a guest reads. "Menu" (Pato, MESITA-3318, 2026-11-06: "call

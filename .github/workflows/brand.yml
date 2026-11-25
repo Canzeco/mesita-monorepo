@@ -9,6 +9,7 @@ on:
       - "apps/*/src/app/icon.svg"
       - "apps/*/src/components/brand/**"
       - "apps/*/public/brand/**"
+      - "apps/mobile/src/generated/brand.ts"
       - "scripts/sync-brand.ts"
       - "deno.json"
       - ".github/workflows/brand.yml"
@@ -38,6 +39,7 @@ jobs:
               - 'apps/*/src/app/icon.svg'
               - 'apps/*/src/components/brand/**'
               - 'apps/*/public/brand/**'
+              - 'apps/mobile/src/generated/brand.ts'
               - 'scripts/sync-brand.ts'
               - 'deno.json'
               - '.github/workflows/brand.yml'
