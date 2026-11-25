@@ -78,10 +78,10 @@ export function headerLocation(
   return { label: locationLabel(active, hasFix, locating), off: false };
 }
 
-/** `list`: Pay's Current location bar, its own black bar. The header box
- *  everywhere else. Pay's lists do not show it (MESITA-4969): Home's location
- *  is the one they use. */
-export function LocationPicker({ list = false }: { list?: boolean } = {}) {
+/** `list`: Pay's Current location bar, its own black bar. `wide`: the same
+ *  control full width, inside Pay's Filters (MESITA-4971). The header box
+ *  everywhere else. */
+export function LocationPicker({ list = false, wide = false }: { list?: boolean; wide?: boolean } = {}) {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const settled = useUserLocationSettled();
@@ -108,9 +108,14 @@ export function LocationPicker({ list = false }: { list?: boolean } = {}) {
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
         className={
-          list
-            ? "bg-foreground text-background focus-visible:ring-background flex h-12 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-base font-semibold outline-none transition hover:opacity-80 focus-visible:ring-2"
-            : cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)
+          wide
+            ? cn(
+                "flex h-12 w-full min-w-0 items-center gap-2 rounded-2xl border border-transparent px-4 text-base font-semibold outline-none transition",
+                off ? HOME_LOCATION_OFF_CLASS : "bg-muted text-foreground hover:bg-border",
+              )
+            : list
+              ? "bg-foreground text-background focus-visible:ring-background flex h-12 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-base font-semibold outline-none transition hover:opacity-80 focus-visible:ring-2"
+              : cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)
         }
         data-home-location
       >
