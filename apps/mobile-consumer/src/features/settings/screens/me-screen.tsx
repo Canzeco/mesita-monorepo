@@ -20,7 +20,21 @@ export type MeState =
 
 /** Me: who I am, and the way out. Its pages arrive with step 5. Signed out,
  *  the tab is Sign: `signIn` fills it. */
-export function MeScreen({ signIn }: { signIn: ReactNode }) {
+export function MeScreen({
+  signIn,
+  onProfile,
+  onClass,
+  onNotifications,
+  onSettings,
+  onDelete,
+}: {
+  signIn: ReactNode;
+  onProfile: () => void;
+  onClass: () => void;
+  onNotifications: () => void;
+  onSettings: () => void;
+  onDelete: () => void;
+}) {
   const member = useSession().guestId !== null;
   const profile = useMyProfile();
   const copy = useErrorCopy(profile.error);
@@ -42,14 +56,36 @@ export function MeScreen({ signIn }: { signIn: ReactNode }) {
       { text: "Sign out", style: "destructive", onPress: () => void signOut() },
     ]);
 
-  return <MeView state={state()} signIn={signIn} onRetry={() => void profile.refetch()} onSignOut={askSignOut} />;
+  return (
+    <MeView
+      state={state()}
+      signIn={signIn}
+      onRetry={() => void profile.refetch()}
+      onSignOut={askSignOut}
+      onProfile={onProfile}
+      onClass={onClass}
+      onNotifications={onNotifications}
+      onSettings={onSettings}
+      onDelete={onDelete}
+    />
+  );
 }
 
-type ViewProps = { state: MeState; signIn: ReactNode; onRetry: () => void; onSignOut: () => void };
+type ViewProps = {
+  state: MeState;
+  signIn: ReactNode;
+  onRetry: () => void;
+  onSignOut: () => void;
+  onProfile?: () => void;
+  onClass?: () => void;
+  onNotifications?: () => void;
+  onSettings?: () => void;
+  onDelete?: () => void;
+};
 
 const clock = (at: number) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-export function MeView({ state, signIn, onRetry, onSignOut }: ViewProps) {
+export function MeView({ state, signIn, onRetry, onSignOut, onProfile, onClass, onNotifications, onSettings, onDelete }: ViewProps) {
   if (state.kind === "anonymous") {
     return signIn;
   }
@@ -70,6 +106,15 @@ export function MeView({ state, signIn, onRetry, onSignOut }: ViewProps) {
         </Card>
       ) : null}
       <Button kind="secondary" label="Sign out" onPress={onSignOut} testID="sign-out" />
+      {state.kind === "profile" ? (
+        <Card>
+          <Row label="Profile" onPress={onProfile} />
+          <Row label="Your class" onPress={onClass} />
+          <Row label="Notifications" onPress={onNotifications} />
+          <Row label="Settings" onPress={onSettings} />
+          <Row label="Delete account" onPress={onDelete} />
+        </Card>
+      ) : null}
       <Text role="caption" tone="muted" selectable>{`${variant} · ${updateId} · contract ${CONTRACT}`}</Text>
     </Screen>
   );
