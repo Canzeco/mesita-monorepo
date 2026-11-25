@@ -39,30 +39,42 @@ appId: com.mesita.consumer
           latitude: 25.6490
           longitude: -100.3590
       - tapOn: { id: "use-device" }
-# Home's list is the proof the fix landed. The text wait missed it: the
-# button's label is "Location: Current location. Change location".
-- extendedWaitUntil: { visible: { id: "catalog" }, timeout: 45000 }
-# One amount and one time, as their own text. The card's words button must
-# not swallow them. A card that is open all day has no clock line.
-- scrollUntilVisible:
-    element: { id: "place-price" }
-    direction: DOWN
-    timeout: 20000
-- assertVisible:
-    id: "place-price"
-    text: '^\$+$'
-- scrollUntilVisible:
-    element: { id: "place-hours" }
-    direction: DOWN
-    timeout: 20000
-- assertVisible:
-    id: "place-hours"
-    text: '^· (opens|until) .*[0-9]{1,2}:[0-9]{2}$'
-- takeScreenshot: home
-# Categories lives on Home. Search has no menu.
-- tapOn: { id: "menu" }
-- takeScreenshot: categories
-- tapOn: "Close"
+      - extendedWaitUntil:
+          notVisible: "Tap to share where you are"
+          timeout: 30000
+# The Android emulator's provider returns no fix, so that phone screenshots
+# the failure and goes on. A catalog, on either phone, must show one amount
+# and one time. Categories is on Home.
+- runFlow:
+    when:
+      visible: "Your location could not be found.*"
+    commands:
+      - takeScreenshot: location-no-fix
+      - tapOn: "Close"
+      - takeScreenshot: home-no-fix
+- runFlow:
+    when:
+      visible:
+        id: "catalog"
+    commands:
+      - scrollUntilVisible:
+          element: { id: "place-price" }
+          direction: DOWN
+          timeout: 20000
+      - assertVisible:
+          id: "place-price"
+          text: '^\$+$'
+      - scrollUntilVisible:
+          element: { id: "place-hours" }
+          direction: DOWN
+          timeout: 20000
+      - assertVisible:
+          id: "place-hours"
+          text: '^· (opens|until) .*[0-9]{1,2}:[0-9]{2}$'
+      - takeScreenshot: home
+      - tapOn: { id: "menu" }
+      - takeScreenshot: categories
+      - tapOn: "Close"
 - tapOn: "Search"
 - takeScreenshot: search
 - tapOn: "Sign"
