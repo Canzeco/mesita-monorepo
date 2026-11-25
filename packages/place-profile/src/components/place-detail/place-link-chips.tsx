@@ -5,7 +5,7 @@ import { SquareArrowOutUpRight } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import {
   PLACE_BUTTON_CLASS,
   PLACE_BUTTON_ICON_CLASS,

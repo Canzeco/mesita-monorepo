@@ -246,6 +246,8 @@ export const TARGETS: Target[] = [
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false, budget: 104 },
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false, budget: 144 },
   { label: "apps/web-visit", dir: join(repoRoot, "apps", "web-visit"), quickstart: false, budget: 60 },
+  // The phone app: the layer rule, the commands, the nevers (MESITA-4930).
+  { label: "apps/mobile", dir: join(repoRoot, "apps", "mobile"), quickstart: false },
   // The deploy path, the ACL and the RLS rules no test pins.
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 351 },
   // The reservation agents' generated mirror (MESITA-3972).

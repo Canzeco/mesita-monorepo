@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 import { ChevronDown, MessageSquare } from "lucide-react";
 

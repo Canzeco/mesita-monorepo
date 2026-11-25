@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, Heart, Link2, Phone, Tags } from "lucide-react";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 
 import type { ComponentType } from "react";
 import type { PlaceActions } from "../../actions";

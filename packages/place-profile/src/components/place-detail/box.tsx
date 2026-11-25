@@ -3,7 +3,7 @@
 import type React from "react";
 import type { LucideIcon } from "lucide-react";
 
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import { PLACE_META_CLASS, PLACE_TITLE_CLASS } from "../../lib/ui";
 
 // ── Box primitive ───────────────────────────────────────────────────────

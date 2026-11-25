@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, Info, Utensils } from "lucide-react";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS, PLACE_EMPTY_ICON_CLASS } from "../../lib/ui";
 
 import type { PlaceActions } from "../../actions";

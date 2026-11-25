@@ -2,7 +2,7 @@
 
 import { FlaskConical } from "lucide-react";
 
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 import { TEST_BAND_TEXT } from "../lib/test-band";
 
 // THE ONE BAND EVERY MONEY SURFACE WEARS WHILE STRIPE IS IN TEST MODE

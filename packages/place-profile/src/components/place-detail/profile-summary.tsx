@@ -6,7 +6,8 @@ import { Banknote, Clock, MapPin, Navigation, Star, Tag, UserStar, Users } from 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
-import { cn, formatCompactCount, formatDistanceKm, formatRating } from "../../lib/format";
+import { cn } from "../../lib/cn";
+import { formatCompactCount, formatDistanceKm, formatRating } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
 
 import { profileChannelStats } from "./channel-stats";

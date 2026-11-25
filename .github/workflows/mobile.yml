@@ -1,0 +1,59 @@
+name: mobile
+
+# The guest app for iPhone and Android (apps/mobile). One required check:
+# everything that can be proven without a device. Builds and device flows are
+# Expo Workflows (apps/mobile/.eas/workflows).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/mobile/**"
+      - ".github/workflows/mobile.yml"
+      - ".github/actions/pnpm-check/**"
+  # Every PR runs this workflow; the `changes` job decides whether the check
+  # has anything to do.
+  pull_request: {}
+
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: detect mobile changes
+    runs-on: ubuntu-latest
+    outputs:
+      mobile: ${{ steps.filter.outputs.mobile }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            mobile:
+              - 'apps/mobile/**'
+              - '.github/workflows/mobile.yml'
+              - '.github/actions/pnpm-check/**'
+
+  # SKIPPED when the PR touches nothing above, which merges. If `changes`
+  # fails, its output is empty, not 'false', and the check runs.
+  mobile:
+    name: mobile · lint · typecheck · test · export
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.mobile != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/pnpm-check
+        with:
+          dir: apps/mobile
+          scripts: lint typecheck test export
+      # Every package is at the version this Expo SDK pins.
+      - name: expo install --check
+        working-directory: apps/mobile
+        run: pnpm exec expo install --check
+      # Calls the network, so it reports and never blocks.
+      - name: expo-doctor
+        working-directory: apps/mobile
+        continue-on-error: true
+        run: pnpm dlx expo-doctor

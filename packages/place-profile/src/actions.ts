@@ -2,6 +2,9 @@ import type { MouseEvent, ReactNode } from "react";
 
 import type { PlaceDetail, VoucherKey } from "./place-detail";
 import type { PayCards } from "./pay-cards";
+import type { RewardsSection } from "./rewards-section";
+
+export type { RewardsSection };
 
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
@@ -118,9 +121,3 @@ export function inertButtonProps(live: boolean): {
     onClick: (event) => event.preventDefault(),
   };
 }
-
-/** Why the Offers sheet opened (MESITA-3412): Prepay and the Wallet at
- *  `prepayment`, the Home offer button's special slides at `special`
- *  (MESITA-3467). Both show the same one section; "payment" went
- *  with the Payments card (MESITA-4062). */
-export type RewardsSection = "prepayment" | "special" | "cashback";

@@ -10,6 +10,7 @@
 //   app globals.css          = generated BRAND-TOKENS block between the markers;
 //                              everything outside the markers is the app's own.
 //   app components/brand/*   = FULLY GENERATED logo components.
+//   app generated/brand.ts   = FULLY GENERATED typed values for the native app.
 //   app public/brand/*.svg   = FULLY GENERATED copies of the canonical assets.
 //
 // Why generate instead of sharing a package: the monorepo has NO root pnpm
@@ -64,7 +65,7 @@ type Brand = {
     clearSpace: number;
     minSize: Record<string, number>;
   };
-  targets: { web: string[] };
+  targets: { web: string[]; native: string[] };
   appIcons: Record<string, string>;
 };
 
@@ -497,6 +498,17 @@ for (const [app, tile] of Object.entries(brand.appIcons)) {
       `    { width: 64, height: 64 },\n` +
       `  );\n` +
       `}\n`,
+  );
+}
+
+// ── 5. native ──────────────────────────────────────────────────────────────
+// The phone app has no CSS: it reads the one value it uses (Notion Docs › Apps
+// › A2 §9, the pink colors the mark and nothing else) from a typed module.
+for (const app of brand.targets.native) {
+  await write(
+    `apps/${app}/src/generated/brand.ts`,
+    `// ${FILE_NOTICE}\n\n` +
+      `export const BRAND = { pink: "${PINK}" } as const;\n`,
   );
 }
 

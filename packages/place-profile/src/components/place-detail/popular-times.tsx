@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Users } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 
 import { Box } from "./box";
 

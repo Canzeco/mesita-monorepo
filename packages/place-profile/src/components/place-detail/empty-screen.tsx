@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Store, type LucideIcon } from "lucide-react";
-import { cn } from "../../lib/format";
+import { cn } from "../../lib/cn";
 import {
   PLACE_EMPTY_ICON_CLASS,
   PLACE_SCREEN_TITLE_CLASS,

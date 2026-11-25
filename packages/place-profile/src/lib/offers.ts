@@ -2,7 +2,7 @@
 // state and its tests read them without a renderer. The beat and the moving
 // track are components/place-detail/offer-slides.tsx.
 
-import type { RewardsSection } from "../actions";
+import type { RewardsSection } from "../rewards-section";
 import type { MoneyVoucherKey } from "../money-state";
 
 /** One offer on the moving button (MESITA-3467). */

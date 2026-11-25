@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Box } from "./place-detail/box";
 import { PLACE_BODY_CLASS } from "../lib/ui";
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 
 // The place's Presentation card. English only (Mesita core). Spanish TMS is
 // later (MESITA-939) — do not show a second language here.

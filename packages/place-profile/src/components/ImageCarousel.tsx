@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { SizedImage } from "./SizedPhoto";
-import { cn } from "../lib/format";
+import { cn } from "../lib/cn";
 import {
   CarouselPillDots,
   CarouselSlideCounter,

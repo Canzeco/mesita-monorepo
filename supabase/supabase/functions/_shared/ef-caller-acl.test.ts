@@ -35,7 +35,8 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
  */
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
-  consumer: ["web-consumer"],
+  // MESITA-4930: the phone app is the guest's second client.
+  consumer: ["web-consumer", "mobile"],
   // MESITA-3103: the place's own console is back, on real data.
   business: ["web-business"],
   // MESITA-3240: service.mesita.ai closes a visit, with no sign-in.
@@ -86,7 +87,9 @@ async function* walkSourceFiles(dir: URL): AsyncGenerator<string> {
       dir,
     );
     if (entry.isDirectory) {
-      if (entry.name === "node_modules" || entry.name === ".next") continue;
+      // `generated`: copies sync-shared writes into the phone app, whose comments
+      // name other actors' functions (MESITA-4930).
+      if (["node_modules", ".next", "generated"].includes(entry.name)) continue;
       yield* walkSourceFiles(child);
     } else if (/\.(ts|tsx)$/.test(entry.name)) {
       yield await Deno.readTextFile(child);
