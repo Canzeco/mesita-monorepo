@@ -100,17 +100,21 @@ export function MeView({ state, signIn, onRetry, onSignOut, onProfile, onClass, 
           <Text role="title">{[state.profile.firstName, state.profile.lastName].filter(Boolean).join(" ")}</Text>
           <Row label="Phone" value={state.profile.phone ?? undefined} />
           <Row label="Class" value={state.profile.isVip ? "VIP" : "Regular"} />
-          <Row label="Profile" onPress={onProfile} />
-          <Row label="Your class" onPress={onClass} />
-          <Row label="Notifications" onPress={onNotifications} />
-          <Row label="Settings" onPress={onSettings} />
-          <Row label="Delete account" onPress={onDelete} />
           {state.lastUpdated ? (
             <Text role="caption" tone="muted">{`Last updated ${clock(state.lastUpdated)}`}</Text>
           ) : null}
         </Card>
       ) : null}
       <Button kind="secondary" label="Sign out" onPress={onSignOut} testID="sign-out" />
+      {state.kind === "profile" ? (
+        <Card>
+          <Row label="Profile" onPress={onProfile} />
+          <Row label="Your class" onPress={onClass} />
+          <Row label="Notifications" onPress={onNotifications} />
+          <Row label="Settings" onPress={onSettings} />
+          <Row label="Delete account" onPress={onDelete} />
+        </Card>
+      ) : null}
       <Text role="caption" tone="muted" selectable>{`${variant} · ${updateId} · contract ${CONTRACT}`}</Text>
     </Screen>
   );
