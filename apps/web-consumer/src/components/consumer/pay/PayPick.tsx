@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { ChevronRight, MapPin, QrCode, X } from "lucide-react";
+import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { BAR } from "@/components/consumer/search/header-classes";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -26,6 +28,89 @@ import type { Loc } from "./pay-location";
 
 type ListKind = "prepay" | "pay";
 
+/** One choice of what the list shows. All is the default. */
+type ShowId = "all" | "bonus" | "voucher_200" | "voucher_1000" | "voucher_5000" | "discount" | "cashback" | "credits";
+
+const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
+
+const PREPAY_SHOWS: { id: ShowId; label: string }[] = [
+  { id: "all", label: "All places" },
+  { id: "bonus", label: "With a bonus" },
+  { id: "voucher_200", label: "Sells $200" },
+  { id: "voucher_1000", label: "Sells $1,000" },
+  { id: "voucher_5000", label: "Sells $5,000" },
+];
+
+const PAY_SHOWS: { id: ShowId; label: string }[] = [
+  { id: "all", label: "All places" },
+  { id: "discount", label: "Discount" },
+  { id: "cashback", label: "Cashback" },
+  { id: "credits", label: "Accepts credits" },
+];
+
+function passesShow(p: PayPlace, kind: ListKind, show: ShowId): boolean {
+  if (show === "all") return true;
+  if (kind === "prepay") {
+    if (show === "bonus") return VOUCHERS_SHOWN.some((k) => Boolean(p.offers?.sell.includes(k) && voucherPct(p.offers, k) > 0));
+    if (show === "voucher_200" || show === "voucher_1000" || show === "voucher_5000") {
+      return Boolean(p.offers?.sell.includes(show) && voucherPct(p.offers, show) > 0);
+    }
+    return false;
+  }
+  if (show === "discount") return payPlaceDiscountBps(p) > 0;
+  if (show === "cashback") return payPlaceDiscountBps(p) === 0 && payPlaceCashbackBps(p) > 0;
+  if (show === "credits") return p.credits_ok === true;
+  return false;
+}
+
+/** Filters, the same modal on Prepay and Pay: location, then what to show. */
+function ListFilters({
+  kind,
+  open,
+  show,
+  onShow,
+  onClose,
+}: {
+  kind: ListKind;
+  open: boolean;
+  show: ShowId;
+  onShow: (id: ShowId) => void;
+  onClose: () => void;
+}) {
+  const options = kind === "prepay" ? PREPAY_SHOWS : PAY_SHOWS;
+  return (
+    <LocalDialog open={open} onClose={onClose} ariaLabel="Filters" fit>
+      <div className="border-border flex h-14 shrink-0 items-center border-b pr-1.5 pl-5">
+        <h2 className="flex-1 text-base font-semibold">Filters</h2>
+        <button type="button" onClick={onClose} aria-label="Close" className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl">
+          <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+        </button>
+      </div>
+      <div className="flex flex-col gap-5 px-5 py-4">
+        <section className="flex flex-col gap-2">
+          <h3 className="text-muted-foreground text-sm font-semibold">Location</h3>
+          <LocationPicker wide />
+        </section>
+        <section className="flex flex-col gap-1">
+          <h3 className="text-muted-foreground px-1 text-sm font-semibold">Show</h3>
+          {options.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => onShow(o.id)}
+              aria-pressed={show === o.id}
+              className={cn("flex h-12 w-full items-center justify-between rounded-xl px-3 text-left text-base font-semibold", show === o.id && "bg-muted")}
+            >
+              {o.label}
+              <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", show === o.id ? "bg-foreground" : "border-border border")} aria-hidden />
+            </button>
+          ))}
+        </section>
+      </div>
+    </LocalDialog>
+  );
+}
+
 export function PlaceList({
   kind,
   places: all,
@@ -47,31 +132,46 @@ export function PlaceList({
   onPick: (placeId: string) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [show, setShow] = useState<ShowId>("all");
   const q = fold(query.trim());
   const places = all && kind === "prepay" ? all.filter((p) => payPlaceTabs(p).prepay) : all;
-  const matches = (places ?? []).filter((p) => !q || fold(p.name ?? "").includes(q));
+  const matches = (places ?? []).filter((p) => (!q || fold(p.name ?? "").includes(q)) && passesShow(p, kind, show));
   const shown =
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
-      {/* THE SEARCH, THEN THE LIST (Pato, 2026-11-25, MESITA-4969: no location
-          control here). Home's location already sorts the places. A place that
-          is not in the rows is found by typing. It stays put: only the list
-          scrolls. A hairline under the chrome (MESITA-4961) separates it from
-          the first place. */}
-      {/* NO SIDE MARGIN (Pato, 2026-11-25, MESITA-4970). The pill and the list
-          run to the modal's edges. */}
+      {/* SEARCH, THEN FILTERS, THEN THE LIST (Pato, 2026-11-25, MESITA-4971).
+          The search takes three quarters; Filters is the right quarter and
+          opens the location and what the list shows. Edge to edge
+          (MESITA-4970). Only the list scrolls. */}
       <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b pt-2 pb-3">
-        <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
-          <SearchBar
-            query={query}
-            showClear={query.length > 0}
-            onQueryChange={setQuery}
-            onClear={() => setQuery("")}
-            placeholder="Search a place"
-            label="Search a place"
-          />
+        <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-2">
+          <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={setQuery}
+              onClear={() => setQuery("")}
+              placeholder="Search a place"
+              label="Search a place"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+            className={cn(
+              "flex h-12 min-w-0 items-center justify-center rounded-2xl px-2 text-sm font-semibold transition",
+              show === "all" ? "bg-muted text-foreground hover:bg-border" : "bg-foreground text-background",
+            )}
+            data-pay-filters
+          >
+            Filters
+          </button>
         </div>
+        <ListFilters kind={kind} open={filtersOpen} show={show} onShow={setShow} onClose={() => setFiltersOpen(false)} />
         {/* Pay's instruction (MESITA-4967). The rows are the selector; this
             box only says so. */}
         {kind === "pay" ? (
@@ -128,7 +228,9 @@ export function PlaceList({
               : "No Mesita place near you"}
         </p>
       ) : shown.length === 0 ? (
-        <p className="text-muted-foreground px-3.5 py-4 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
+        <p className="text-muted-foreground px-3.5 py-4 text-sm">
+          {q ? <>No place matches &ldquo;{query.trim()}&rdquo;</> : "No place matches this filter"}
+        </p>
       ) : (
         // A PLACE TABLE (Pato, 2026-11-24, MESITA-4844: "this looks like three
         // different buttons ... it must look like place selector"): one row
@@ -166,8 +268,6 @@ function fold(v: string): string {
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 }
-
-const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
 /** Prepay's columns (Pato, 2026-11-24, MESITA-4845), a › ending every row
  *  (MESITA-4848). */

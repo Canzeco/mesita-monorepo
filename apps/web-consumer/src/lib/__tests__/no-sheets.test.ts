@@ -94,6 +94,9 @@ const DIALOG_ALLOWLIST = [
   "components/consumer/wallet/AddCreditsCardDialog.tsx",
   // Privacy's three levels (MESITA-4854, decision: Pato asked for a modal).
   "components/consumer/me/PrivacyLevels.tsx",
+  // Prepay and Pay filters (MESITA-4971, decision: Pato asked for a modal
+  // over the place list, not a route): location and what to show.
+  "components/consumer/pay/PayPick.tsx",
 ];
 
 export type OverlayImport = { name: string; line: number; reexport: boolean };
