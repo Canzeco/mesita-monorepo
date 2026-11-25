@@ -6,8 +6,8 @@ export const ROUTE_GROUPS = {
   update: ["update"],
   suspended: ["suspended"],
   onboarding: ["onboarding"],
-  everyone: ["(tabs)", "location", "open"],
-  anonymousOnly: ["sign-in"],
+  everyone: ["(tabs)", "categories", "location", "open"],
+  anonymousOnly: ["sign-in", "welcome"],
   membersOnly: [],
 } as const satisfies Record<string, readonly string[]>;
 

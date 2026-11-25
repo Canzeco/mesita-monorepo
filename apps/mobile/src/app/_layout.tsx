@@ -16,14 +16,14 @@ export const unstable_settings = { anchor: "(tabs)" };
 startReporting();
 void SplashScreen.preventAutoHideAsync();
 
+// The web's floating window over the dimmed screen.
+const WINDOW = { headerShown: false, presentation: "transparentModal", animation: "fade" } as const;
+
 const OPTIONS: Record<RootRoute, ComponentProps<typeof Stack.Screen>["options"]> = {
   "(tabs)": { headerShown: false },
-  location: {
-    title: "Location",
-    presentation: "formSheet",
-    sheetAllowedDetents: [0.5, 1],
-    sheetGrabberVisible: true,
-  },
+  categories: WINDOW,
+  location: WINDOW,
+  welcome: WINDOW,
   open: { title: "Mesita" },
   "sign-in": { headerShown: false, presentation: "modal" },
   update: { headerShown: false },

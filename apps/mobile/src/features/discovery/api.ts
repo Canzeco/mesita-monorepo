@@ -2,57 +2,110 @@ import { z } from "zod";
 
 import { callEdge } from "@/lib/edge";
 
+import type { Question } from "./families";
 import type { CatalogPlace, Point } from "./model";
 
 // Every answer here is a tolerant reader: the id is needed, the rest may go.
 
 const text = z.string().nullish().catch(null);
+const number = z.coerce.number().nullish().catch(null);
+const orNull = <T,>(v: T | null | undefined): T | null => v ?? null;
 
-const placeSchema = z
+export const placeSchema = z
   .object({
     id: z.string(),
+    slug: text,
     name: text,
+    category: text,
     category_label: text,
     profile_photo: text,
     photos: z.array(z.string()).catch([]),
+    price_level: number,
+    google_stars_overall: number,
+    google_review_count: number,
+    hours: z.unknown().optional(),
+    timezone: text,
+    zone: text,
+    distance_km: number,
+    boost_tier: number,
     ad: z.boolean().optional().catch(false),
   })
   .transform(
     (p): CatalogPlace => ({
       id: p.id,
+      slug: orNull(p.slug),
       name: p.name ?? "",
-      category: p.category_label ?? null,
+      category: p.category_label ?? p.category ?? null,
       photo: p.profile_photo ?? p.photos[0] ?? null,
+      priceLevel: orNull(p.price_level),
+      rating: orNull(p.google_stars_overall),
+      reviews: orNull(p.google_review_count),
+      hours: p.hours,
+      timezone: orNull(p.timezone),
+      zone: orNull(p.zone),
+      distanceKm: orNull(p.distance_km),
+      isPremier: (p.boost_tier ?? 0) > 0,
       isAd: p.ad === true,
     }),
   );
 
+const ids = z.array(z.string()).catch([]);
+
 export const rankSchema = z.object({
   order: z.array(z.string()),
-  adIds: z.array(z.string()).catch([]),
+  adIds: ids,
   laneOf: z.record(z.string(), z.string()).catch({}),
   places: z.array(placeSchema),
 });
 export type CatalogRank = z.infer<typeof rankSchema>;
 
+const ask = (point: Point, question: Question) => ({
+  lat: point.lat,
+  lng: point.lng,
+  rankMode: question.rankMode,
+  ...(question.familyKeys.length > 0 ? { familyKeys: question.familyKeys } : {}),
+});
+
 /** A read: ranks every place from a point; the first page comes with cards. */
-export function rankCatalog(point: Point, signal?: AbortSignal): Promise<CatalogRank> {
-  const body = { lat: point.lat, lng: point.lng, rankMode: "popular" };
-  return callEdge("consumer-web-list-catalog", body, rankSchema, { signal });
+export function rankCatalog(point: Point, question: Question, signal?: AbortSignal): Promise<CatalogRank> {
+  return callEdge("consumer-web-list-catalog", ask(point, question), rankSchema, { signal });
 }
 
 /** A read: the cards of ranked ids, in that order. Nothing is ranked again. */
-export async function fillCatalog(point: Point, rank: CatalogRank, fill: string[], signal?: AbortSignal) {
+export async function fillCatalog(
+  point: Point,
+  question: Question,
+  rank: CatalogRank,
+  fill: string[],
+  signal?: AbortSignal,
+) {
   const body = {
-    lat: point.lat,
-    lng: point.lng,
-    rankMode: "popular",
+    ...ask(point, question),
     fill,
     adIds: rank.adIds.filter((id) => fill.includes(id)),
     laneOf: Object.fromEntries(Object.entries(rank.laneOf).filter(([id]) => fill.includes(id))),
   };
   const answer = await callEdge("consumer-web-list-catalog", body, z.object({ places: z.array(placeSchema) }), { signal });
   return answer.places;
+}
+
+export type SavedPlaces = { ids: string[]; places: CatalogPlace[] };
+
+/** A read, members only: my saves, newest first. */
+export function listSaved(signal?: AbortSignal): Promise<SavedPlaces> {
+  const schema = z.object({ ids, places: z.array(placeSchema).catch([]) });
+  return callEdge("consumer-web-list-saved-places", {}, schema, { signal });
+}
+
+/** A mutation with no request id: the same save twice is one save. */
+export async function setSaved(placeId: string, on: boolean): Promise<void> {
+  const body = { kind: "saved", place_id: placeId, on };
+  await callEdge("consumer-web-track-activity", body, z.object({}), { mutation: true });
+}
+
+/** A mutation with no request id: one row per guest and place. Members only. */
+export async function recordShare(placeId: string): Promise<void> {
+  await callEdge("consumer-web-track-place-share", { place_id: placeId }, z.object({}), { mutation: true });
 }
 
 const suggestionSchema = z.object({ placeId: z.string(), mainText: z.string(), secondaryText: text, kind: text });

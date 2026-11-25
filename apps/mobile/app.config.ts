@@ -61,6 +61,7 @@ const config: ExpoConfig = {
             "./assets/fonts/Inter_400Regular.ttf",
             "./assets/fonts/Inter_500Medium.ttf",
             "./assets/fonts/Inter_600SemiBold.ttf",
+            "./assets/fonts/Outfit_700Bold.ttf",
           ],
         },
         android: {
@@ -72,6 +73,10 @@ const config: ExpoConfig = {
                 { path: "./assets/fonts/Inter_500Medium.ttf", weight: 500 },
                 { path: "./assets/fonts/Inter_600SemiBold.ttf", weight: 600 },
               ],
+            },
+            {
+              fontFamily: "Outfit",
+              fontDefinitions: [{ path: "./assets/fonts/Outfit_700Bold.ttf", weight: 700 }],
             },
           ],
         },

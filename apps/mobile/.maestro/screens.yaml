@@ -5,39 +5,44 @@ appId: com.mesita.consumer
 - launchApp:
     clearState: true
     permissions: { location: deny }
-- extendedWaitUntil: { visible: "Choose a location", timeout: 30000 }
+- extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
+- takeScreenshot: welcome
+- tapOn: "Just browse"
+- extendedWaitUntil: { visible: "Choose location", timeout: 30000 }
 - takeScreenshot: home-empty
-- tapOn: "Choose a location"
-- assertVisible: "Use my current location"
+- tapOn: "Choose location"
+- assertVisible: "Use my location"
 - takeScreenshot: location
-- tapOn: "Use my current location"
-- extendedWaitUntil: { visible: "Open Settings", timeout: 10000 }
+- tapOn: { id: "use-device" }
+- extendedWaitUntil: { visible: "Location is off for Mesita.*", timeout: 10000 }
 - takeScreenshot: location-denied
 - launchApp:
     clearState: true
     permissions: { location: allow }
 - setLocation: { latitude: 25.6490, longitude: -100.3590 }
-- extendedWaitUntil: { visible: "Choose a location", timeout: 30000 }
-- tapOn: "Choose a location"
-- tapOn: "Use my current location"
+- extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
+- takeScreenshot: welcome
+- tapOn: "Just browse"
+- extendedWaitUntil: { visible: "Choose location", timeout: 30000 }
+- tapOn: "Choose location"
+- tapOn: { id: "use-device" }
 - extendedWaitUntil: { visible: { id: "catalog" }, timeout: 30000 }
 - takeScreenshot: home
 - tapOn: "Search"
 - takeScreenshot: search
-- tapOn: "Me"
-- assertVisible: "Your reservations and your profile live here."
-- takeScreenshot: me-signed-out
-- tapOn: "Sign in"
+- tapOn: { id: "menu" }
+- takeScreenshot: categories
+- tapOn: "Close"
+- tapOn: "Sign"
 - extendedWaitUntil: { visible: "Text me the code", timeout: 10000 }
 # Before anything is typed: typed values stay out of every artifact.
 - takeScreenshot: sign-in
-- tapOn: "Close"
 - runFlow: { file: shared/link.yaml, env: { LINK: "mesita://gate/update" } }
 - extendedWaitUntil: { visible: "Update Mesita", timeout: 15000 }
 - takeScreenshot: update
 - runFlow: { file: shared/link.yaml, env: { LINK: "mesita://gate/suspended" } }
-- extendedWaitUntil: { visible: "Account suspended", timeout: 15000 }
+- extendedWaitUntil: { visible: "Your account is suspended", timeout: 15000 }
 - takeScreenshot: suspended
 - runFlow: { file: shared/link.yaml, env: { LINK: "mesita://gate/onboarding" } }
-- extendedWaitUntil: { visible: "About you", timeout: 15000 }
+- extendedWaitUntil: { visible: "Almost there.", timeout: 15000 }
 - takeScreenshot: onboarding

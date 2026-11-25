@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useState, type ReactNode } 
 
 import { plain } from "@/lib/storage";
 
+import type { ChipKey } from "./families";
 import { readActiveLocation, type ActiveLocation } from "./model";
 
 const NAME = "mesita.location";
@@ -10,14 +11,18 @@ type Value = {
   /** Undefined until the device's storage has answered. */
   location: ActiveLocation | null | undefined;
   choose: (location: ActiveLocation) => void;
+  /** The chip Home shows; the Categories window writes it too. */
+  chip: ChipKey;
+  selectChip: (chip: ChipKey) => void;
 };
 
 const Context = createContext<Value | null>(null);
 
-/** The active location, provided at the root: Home reads it and the location
- *  sheet writes it. */
+/** Home's choices, provided at the root: Home reads them, the Location and
+ *  Categories windows write them. */
 export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<ActiveLocation | null | undefined>(undefined);
+  const [chip, selectChip] = useState<ChipKey>("near");
   useEffect(() => {
     let live = true;
     plain
@@ -34,7 +39,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setLocation(next);
     plain.set(NAME, JSON.stringify(next)).catch(() => undefined);
   }, []);
-  return <Context value={{ location, choose }}>{children}</Context>;
+  return <Context value={{ location, choose, chip, selectChip }}>{children}</Context>;
 }
 
 export function useActiveLocation(): Value {

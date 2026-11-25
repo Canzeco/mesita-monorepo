@@ -58,16 +58,6 @@ export function gateOf(s: Session, profile: Profile | undefined): Gate {
 export const CODE_LENGTH = 6;
 export const RESEND_SECONDS = 60;
 
-const CALLING_CODES: Record<string, string> = {
-  MX: "52", US: "1", CA: "1", ES: "34", AR: "54", BR: "55", CL: "56", CO: "57", PE: "51", GT: "502", CR: "506",
-  PA: "507", EC: "593", UY: "598", GB: "44", FR: "33", DE: "49", IT: "39",
-};
-
-/** What the phone field starts with: the phone's own country. */
-export function callingPrefix(region: string | null | undefined): string {
-  return `+${CALLING_CODES[region ?? ""] ?? "52"} `;
-}
-
 /** The number as Auth wants it, or null when it cannot be one. Every send is
  *  a text Mesita pays for. */
 export function toE164(typed: string): string | null {
@@ -95,3 +85,6 @@ export function authMessage(err: { code?: string; status?: number; message?: str
   if (err.code === "otp_disabled") return "Phone sign-in is unavailable right now. Try again shortly.";
   return "Something went wrong. Try again.";
 }
+
+export const HEADLINE = "Discover your next favorite place.";
+export const VALUE_LINE = "Discovery, reservations, discounts and gifts at restaurants, cafés and bars.";

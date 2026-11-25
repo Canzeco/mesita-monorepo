@@ -1,16 +1,14 @@
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
 import { useState } from "react";
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
-import { Button } from "@/components/button";
-import { Card } from "@/components/card";
-import { Field, FieldError } from "@/components/field";
-import { PermissionState } from "@/components/permission-state";
-import { Row } from "@/components/row";
-import { Screen } from "@/components/screen";
+import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
+import { Window } from "@/components/window";
 import { useSession } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
+import { colors, maxFontSizeMultiplier, pressedOpacity, radius, type } from "@/theme";
 
 import { useActiveLocation } from "../location-context";
 import type { Point } from "../model";
@@ -32,11 +30,19 @@ export async function findDevice(): Promise<Location.LocationObject> {
   return found;
 }
 
+const HERE = "Current location";
+
+type Device = "idle" | "asking" | "denied" | "failed";
+const HELP: Partial<Record<Device, string>> = {
+  denied: "Location is off for Mesita. Tap to open Settings.",
+  failed: "Your location could not be found. Try again.",
+};
+
 /** Where Home looks from: the phone's own place, or one typed in. */
 export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSignIn: () => void }) {
   const member = useSession().guestId !== null;
-  const { choose } = useActiveLocation();
-  const [device, setDevice] = useState<"idle" | "asking" | "denied" | "failed">("idle");
+  const { location, choose } = useActiveLocation();
+  const [device, setDevice] = useState<Device>("idle");
   const [input, setInput] = useState("");
   const [sessionToken] = useState(() => Crypto.randomUUID());
   const search = useLocationSearch(input, sessionToken, member);
@@ -51,57 +57,146 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
 
   // Asked at the moment of use, never at launch. Approximate is enough.
   const locate = async () => {
+    if (device === "denied") return void Linking.openSettings();
     setDevice("asking");
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
       if (!granted) return setDevice("denied");
       const { coords } = await findDevice();
-      done({ lat: coords.latitude, lng: coords.longitude }, "Current location");
+      done({ lat: coords.latitude, lng: coords.longitude }, HERE);
     } catch {
       setDevice("failed");
     }
   };
 
+  const here = location?.name === HERE;
   return (
-    <Screen sheet>
-      {device === "denied" ? (
-        <PermissionState message="Mesita uses your location to show the places near you." />
-      ) : (
-        <Button
-          label="Use my current location"
-          busy={device === "asking"}
-          onPress={() => void locate()}
-          testID="use-device"
-        />
-      )}
-      {device === "failed" ? <FieldError>Your location could not be found. Try again.</FieldError> : null}
-      {member ? (
-        <Field
-          label="Or type a city or area"
-          value={input}
-          onChangeText={setInput}
-          autoCorrect={false}
-          testID="location-input"
-        />
-      ) : (
-        <>
-          <Text tone="muted">Sign in to choose another city or area.</Text>
-          <Button kind="secondary" label="Sign in" onPress={onSignIn} />
-        </>
-      )}
-      {search.data?.length ? (
-        <Card>
-          {search.data.map((s) => (
-            <Row
+    <Window title="Location" label="Location" onClose={onDone}>
+      <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        {member ? (
+          <View style={styles.search}>
+            <View style={styles.box}>
+              <Icon name="search" size={16} color={colors.muted} />
+              <TextInput
+                accessibilityLabel="Search a location"
+                placeholder="Search a city, neighborhood or address"
+                placeholderTextColor={colors.muted}
+                maxFontSizeMultiplier={maxFontSizeMultiplier}
+                value={input}
+                onChangeText={setInput}
+                autoCorrect={false}
+                testID="location-input"
+                style={styles.input}
+              />
+            </View>
+          </View>
+        ) : null}
+        {input.trim().length >= 3 ? (
+          (search.data ?? []).map((s) => (
+            <LocationRow
               key={s.placeId}
-              label={s.mainText}
-              value={s.secondaryText ?? undefined}
+              icon="map-pin"
+              title={s.mainText}
+              line={s.secondaryText ?? null}
+              busy={resolve.isPending && resolve.variables === s.placeId}
               onPress={() => resolve.mutate(s.placeId, { onSuccess: (point) => done(point, s.mainText) })}
             />
-          ))}
-        </Card>
-      ) : null}
-      {failed ? <FieldError>{copy.offline ? "No connection." : copy.message}</FieldError> : null}
-    </Screen>
+          ))
+        ) : (
+          <>
+            <LocationRow
+              icon="navigation"
+              title={here ? HERE : "Use my location"}
+              line={HELP[device] ?? "Tap to share where you are"}
+              alert={HELP[device] !== undefined}
+              busy={device === "asking"}
+              chosen={here}
+              onPress={() => void locate()}
+              testID="use-device"
+            />
+            {member ? null : (
+              <LocationRow
+                icon="log-in"
+                title="Sign in to search any place"
+                line="Then search a city or save a spot"
+                onPress={onSignIn}
+              />
+            )}
+          </>
+        )}
+        {failed ? (
+          <Text role="caption" tone="danger" style={styles.error}>
+            {copy.offline ? "No connection." : copy.message}
+          </Text>
+        ) : null}
+      </ScrollView>
+    </Window>
   );
 }
+
+type RowProps = {
+  icon: IconName;
+  title: string;
+  line: string | null;
+  alert?: boolean;
+  busy?: boolean;
+  chosen?: boolean;
+  onPress: () => void;
+  testID?: string;
+};
+
+function LocationRow({ icon, title, line, alert = false, busy = false, chosen = false, onPress, testID }: RowProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[title, line].filter(Boolean).join(". ")}
+      accessibilityState={{ selected: chosen, busy }}
+      disabled={busy}
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [styles.row, pressed && { opacity: pressedOpacity }]}
+    >
+      <View style={[styles.disc, chosen && styles.discOn]}>
+        {busy ? <ActivityIndicator color={colors.ink} /> : <Icon name={icon} size={16} color={chosen ? colors.onInk : colors.ink} />}
+      </View>
+      <View style={styles.words}>
+        <Text role="label">{title}</Text>
+        {line ? (
+          <Text role="caption" tone={alert ? "danger" : "muted"}>
+            {line}
+          </Text>
+        ) : null}
+      </View>
+      {chosen ? <Icon name="check" size={16} /> : null}
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  search: { padding: 20 },
+  box: {
+    height: 44,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.field,
+  },
+  input: { ...type.small, flex: 1, color: colors.ink },
+  row: {
+    minHeight: 64,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  disc: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: colors.fill },
+  discOn: { backgroundColor: colors.ink },
+  words: { flex: 1, gap: 2 },
+  error: { padding: 16 },
+});

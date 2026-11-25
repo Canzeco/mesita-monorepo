@@ -1,24 +1,53 @@
 import { StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
+import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
-import { space } from "@/theme";
+import { colors, radius, space } from "@/theme";
 
-type Props = { message: string; action?: { label: string; onPress: () => void } };
+type Props = {
+  icon?: IconName;
+  title: string;
+  message?: string;
+  action?: { label: string; onPress: () => void };
+  testID?: string;
+};
 
-/** One line of what belongs here and one action. */
-export function EmptyState({ message, action }: Props) {
+/** An icon on a soft ground, a title, one line and one action. */
+export function EmptyState({ icon = "compass", title, message, action, testID = "empty-state" }: Props) {
   return (
-    <View style={styles.box} testID="empty-state">
-      <Text tone="muted" style={styles.text}>
-        {message}
+    <View style={styles.box} testID={testID}>
+      <View style={styles.icon}>
+        <Icon name={icon} size={28} />
+      </View>
+      <Text role="heading" style={styles.title}>
+        {title}
       </Text>
-      {action ? <Button label={action.label} onPress={action.onPress} /> : null}
+      {message ? (
+        <Text role="small" tone="muted" style={styles.message}>
+          {message}
+        </Text>
+      ) : null}
+      {action ? (
+        <View style={styles.action}>
+          <Button label={action.label} onPress={action.onPress} />
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  box: { flex: 1, justifyContent: "center", gap: space.lg, padding: space.xl },
-  text: { textAlign: "center" },
+  box: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: space.xl, paddingVertical: 40 },
+  icon: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.card,
+    backgroundColor: colors.inkSoft,
+  },
+  title: { marginTop: space.lg, textAlign: "center" },
+  message: { marginTop: 6, maxWidth: 260, textAlign: "center" },
+  action: { marginTop: 20 },
 });

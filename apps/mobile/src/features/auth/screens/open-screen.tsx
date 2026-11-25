@@ -26,7 +26,7 @@ export function OpenScreen({ page, onClose }: { page: string; onClose: () => voi
   }, [page, onClose]);
   return (
     <EmptyState
-      message="This page opens in the browser."
+      title="This page opens in the browser"
       action={{ label: "Open again", onPress: () => void WebBrowser.openBrowserAsync(pageUrl(page)) }}
     />
   );
