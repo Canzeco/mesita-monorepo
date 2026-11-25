@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, MapPin, QrCode, X } from "lucide-react";
+import { ChevronRight, MapPin, QrCode, SlidersHorizontal, X } from "lucide-react";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -265,11 +265,12 @@ export function PlaceList({
             aria-haspopup="dialog"
             aria-expanded={filtersOpen}
             className={cn(
-              "flex h-12 min-w-0 items-center justify-center rounded-2xl px-2 text-sm font-semibold transition",
+              "flex h-12 min-w-0 items-center justify-center gap-1.5 rounded-2xl px-2 text-sm font-semibold transition",
               filtersOn ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-border",
             )}
             data-pay-filters
           >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
             Filters
           </button>
         </div>
