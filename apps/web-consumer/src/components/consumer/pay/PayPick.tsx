@@ -62,8 +62,9 @@ export function PlaceList({
       </div>
       {/* A grey pill in a white row (Pato, 2026-11-24, MESITA-4913: the plain
           white row was "more pretty but not that obvious"). It stays put: only
-          the list scrolls. */}
-      <div className="bg-card flex h-14 shrink-0 items-center px-2" data-pay-pick-search>
+          the list scrolls. A hairline under it (Pato, 2026-11-25, MESITA-4961)
+          separates the search from the first place. */}
+      <div className="border-border bg-card flex h-14 shrink-0 items-center border-b px-2" data-pay-pick-search>
         <div className={cn(BAR, "flex-1")}>
           <SearchBar
             query={query}
