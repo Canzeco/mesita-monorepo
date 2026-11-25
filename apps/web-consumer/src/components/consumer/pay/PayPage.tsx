@@ -155,7 +155,8 @@ function focusTitle(el: HTMLElement | null) {
 /** A FULL-PAGE MODAL (Pato, 2026-11-24, MESITA-4846): from the bottom over the
  *  whole app, its title and ✕ alone (Pato, MESITA-4929: "header must be only
  *  header"; ✕ left and Home's location box right under MESITA-4908), then
- *  PlaceList: the search and the places' black box, titled with the location. A reload on it
+ *  PlaceList: the search, a black Current location bar, then the places
+ *  under it (Pato, 2026-11-25: the bar is black, the list is not). A reload on it
  *  shows it at once. */
 function PlaceModal({
   id,

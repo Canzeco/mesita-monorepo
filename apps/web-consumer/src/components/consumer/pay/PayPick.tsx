@@ -70,11 +70,11 @@ export function PlaceList({
           />
         </div>
       </div>
-      {/* THE CREDITS BOX'S FRAME, THE LOCATION ITS TITLE (Pato, 2026-11-24,
-          MESITA-4929, picked from four): what the places are sorted by. */}
-      <section className="bg-foreground mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col rounded-2xl px-1.5 pb-1.5" aria-label="Places" data-pay-list-box>
+      {/* CURRENT LOCATION IS A BAR (Pato, 2026-11-25: black only on that bar,
+          the places stay outside it). It names what the list is sorted by. */}
+      <section className="mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col gap-2" aria-label="Places" data-pay-list-box>
       <LocationPicker list />
-      <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl">
+      <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
       <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {loc.state === "prime" ? (
         <div className="border-border border-b px-3.5 py-3">

@@ -78,8 +78,9 @@ export function headerLocation(
   return { label: locationLabel(active, hasFix, locating), off: false };
 }
 
-/** `list`: the title of Pay's black list box (Pato, 2026-11-24, MESITA-4929),
- *  white on its black, centred; the header box everywhere else. */
+/** `list`: Pay's Current location bar (Pato, 2026-11-25: black, and only a
+ *  bar — the places sit under it, never inside it). White on black, centred.
+ *  The header box everywhere else. */
 export function LocationPicker({ list = false }: { list?: boolean } = {}) {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -108,7 +109,7 @@ export function LocationPicker({ list = false }: { list?: boolean } = {}) {
         aria-label={`Location: ${label}. Change location`}
         className={
           list
-            ? "text-background focus-visible:ring-background flex h-12 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded-xl px-3 text-base font-semibold outline-none transition hover:opacity-80 focus-visible:ring-2"
+            ? "bg-foreground text-background focus-visible:ring-background flex h-12 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-base font-semibold outline-none transition hover:opacity-80 focus-visible:ring-2"
             : cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)
         }
         data-home-location
