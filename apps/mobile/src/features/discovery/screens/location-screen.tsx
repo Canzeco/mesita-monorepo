@@ -47,7 +47,7 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
   };
 
   return (
-    <Screen>
+    <Screen sheet>
       {device === "denied" ? (
         <PermissionState message="Mesita uses your location to show the places near you." />
       ) : (

@@ -28,7 +28,7 @@ const OPTIONS: Record<RootRoute, ComponentProps<typeof Stack.Screen>["options"]>
   "sign-in": { headerShown: false, presentation: "modal" },
   update: { headerShown: false },
   suspended: { headerShown: false },
-  onboarding: { title: "About you" },
+  onboarding: { title: "About you", headerBackVisible: false, gestureEnabled: false },
 };
 
 export default function RootLayout() {
