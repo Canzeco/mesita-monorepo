@@ -226,9 +226,10 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 }
 
 /** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo,
- *  the name over its address, a green box with what this guest's next bill gets
- *  (Discount or Cashback; MESITA-4865), Accepts Credits when the place takes
- *  them (Pato, 2026-11-25), and a black Pay box. The balance stays on the Wallet. */
+ *  the name over its address, then on the right a neutral Accepts Credits box
+ *  (Pato, 2026-11-25, MESITA-4956), a green box with what this guest's next bill
+ *  gets (Discount or Cashback; MESITA-4865), and a black Pay box. The balance
+ *  stays on the Wallet. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p);
@@ -247,9 +248,14 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
         {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight max-[429px]:text-xs">{p.address}</span> : null}
-        {credits ? <span className="mt-1 block text-sm leading-tight font-semibold">Accepts Credits</span> : null}
       </span>
       <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
+        {credits ? (
+          <span className="flex h-12 w-[76px] flex-col items-center justify-center rounded-xl bg-neutral-100 font-semibold text-neutral-950 max-[374px]:w-[68px]">
+            <span className="text-xs leading-none">Accepts</span>
+            <span className="mt-0.5 text-xs leading-none">Credits</span>
+          </span>
+        ) : null}
         {bps > 0 ? (
           <span className={cn("flex h-12 w-[76px] flex-col items-center justify-center rounded-xl font-semibold max-[374px]:w-[68px]", offerShade(bps / 100))}>
             <span className="text-lg leading-none tabular-nums">{bps / 100}%</span>
