@@ -5,6 +5,8 @@ import { useGate } from "@/features/auth";
 import { colors } from "@/theme";
 
 // Material tints its bar from the wallpaper; iPhone's glass stays the system's.
+const HOME = require("../../../assets/icons/tab-mark.png");
+
 const android = Platform.OS === "android";
 
 export default function TabsLayout() {
@@ -12,7 +14,7 @@ export default function TabsLayout() {
   return (
     <NativeTabs tintColor={colors.ink} backgroundColor={android ? colors.paper : undefined} indicatorColor={colors.fill}>
       <NativeTabs.Trigger name="(home)">
-        <NativeTabs.Trigger.Icon sf="house.fill" md="home" />
+        <NativeTabs.Trigger.Icon src={HOME} renderingMode="template" />
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="search">

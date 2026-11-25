@@ -46,3 +46,4 @@ jest.mock("expo-haptics", () => ({ selectionAsync: async () => undefined }));
 jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn(async () => ({ type: "opened" })) }));
 jest.mock("expo/fetch", () => ({ fetch: jest.fn() }));
 jest.mock("react-native-safe-area-context", () => jest.requireActual("react-native-safe-area-context/jest/mock").default);
+jest.mock("expo-router", () => ({ ...jest.requireActual("expo-router"), useIsFocused: () => true }));

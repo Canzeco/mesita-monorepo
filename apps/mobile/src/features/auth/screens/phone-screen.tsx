@@ -37,7 +37,7 @@ export function PhoneScreen({ onSent, onClose }: Props) {
   };
 
   return (
-    <CoverPage footer={TERMS} onClose={onClose}>
+    <CoverPage footer={TERMS} onClose={onClose} aboveBar={!onClose}>
       {notice ? <CoverNote>{notice}</CoverNote> : null}
       <View style={styles.field}>
         <View style={styles.country}>

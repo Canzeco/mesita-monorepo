@@ -1,3 +1,5 @@
+import { useIsFocused } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,46 +11,57 @@ import { colors } from "@/theme";
 
 import { HEADLINE, VALUE_LINE } from "../model";
 
-type Props = { children: ReactNode; footer?: string; onClose?: () => void };
+type Props = {
+  children: ReactNode;
+  footer?: string;
+  onClose?: () => void;
+  /** On a tab: the photo ends above the bar, as the web's does. */
+  aboveBar?: boolean;
+};
 
 /** The sign-in photo: the wordmark, the headline, the line, then the form. */
-export function CoverPage({ children, footer, onClose }: Props) {
+export function CoverPage({ children, footer, onClose, aboveBar = false }: Props) {
   const insets = useSafeAreaInsets();
+  const focused = useIsFocused();
   return (
-    <PhotoCover>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        automaticallyAdjustKeyboardInsets
-        contentContainerStyle={[styles.page, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
-      >
-        <View style={styles.top}>
-          <CoverWordmark />
-          {onClose ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
-              <Icon name="x" size={24} color={colors.onPhoto} />
-            </Pressable>
-          ) : null}
-        </View>
-        <View style={styles.form}>
-          <Text role="hero" tone="onPhoto">
-            {HEADLINE}
-          </Text>
-          <Text tone="onPhotoSoft" style={styles.line}>
-            {VALUE_LINE}
-          </Text>
-          <View style={styles.fields}>{children}</View>
-          {footer ? (
-            <Text role="caption" tone="onPhotoFaint" style={styles.footer}>
-              {footer}
+    <View style={[styles.ground, aboveBar && { paddingBottom: insets.bottom }]}>
+      {focused ? <StatusBar style="light" /> : null}
+      <PhotoCover>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={[styles.page, { paddingTop: insets.top, paddingBottom: aboveBar ? 0 : insets.bottom }]}
+        >
+          <View style={styles.top}>
+            <CoverWordmark />
+            {onClose ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
+                <Icon name="x" size={24} color={colors.onPhoto} />
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={styles.form}>
+            <Text role="hero" tone="onPhoto">
+              {HEADLINE}
             </Text>
-          ) : null}
-        </View>
-      </ScrollView>
-    </PhotoCover>
+            <Text tone="onPhotoSoft" style={styles.line}>
+              {VALUE_LINE}
+            </Text>
+            <View style={styles.fields}>{children}</View>
+            {footer ? (
+              <Text role="caption" tone="onPhotoFaint" style={styles.footer}>
+                {footer}
+              </Text>
+            ) : null}
+          </View>
+        </ScrollView>
+      </PhotoCover>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  ground: { flex: 1, backgroundColor: colors.paper },
   page: { flexGrow: 1, justifyContent: "space-between" },
   top: { flexDirection: "row", justifyContent: "space-between", padding: 20 },
   close: { width: 44, height: 44, marginTop: -8, marginRight: -10, alignItems: "center", justifyContent: "center" },
