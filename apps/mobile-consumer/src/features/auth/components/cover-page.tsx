@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ComponentRef, type ReactNode } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -25,10 +25,17 @@ export function CoverPage({ children, footer, onClose, aboveBar = false }: Props
   const keyboard = useKeyboardHeight();
   // iPhone's scroller makes its own room; Android's does not.
   const above = Platform.OS === "android" && keyboard > 0 ? keyboard + insets.bottom : 0;
+  // The form ends the page: with the keyboard up, its field and button show.
+  const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
+  useEffect(() => {
+    if (above > 0) requestAnimationFrame(() => scroller.current?.scrollToEnd({ animated: true }));
+  }, [above]);
   return (
     <View style={[styles.ground, { paddingBottom: above }, aboveBar && Platform.OS === "ios" && { paddingBottom: insets.bottom }]}>
       <PhotoCover>
         <ScrollView
+          ref={scroller}
+          onContentSizeChange={() => above > 0 && scroller.current?.scrollToEnd({ animated: true })}
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
           contentContainerStyle={[styles.page, { paddingTop: insets.top, paddingBottom: aboveBar ? 0 : insets.bottom }]}

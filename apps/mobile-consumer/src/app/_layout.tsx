@@ -1,12 +1,13 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { SplashScreen, Stack, useRouter, useSegments, type Href } from "expo-router";
-import { useEffect, type ComponentProps } from "react";
+import { useEffect, useRef, type ComponentProps } from "react";
 
 import { headerOptions } from "@/components/header";
 import { listen, RouteError, ROUTE_GROUPS, start, takeTarget, useGate, type RootRoute } from "@/features/auth";
 import { LocationProvider } from "@/features/discovery";
 import { queryClient } from "@/lib/query";
 import { startReporting } from "@/lib/report";
+import { followUpdates } from "@/lib/updates";
 
 export { RouteError as ErrorBoundary };
 
@@ -67,6 +68,13 @@ function Root() {
     const target = takeTarget(gate, member);
     if (target) router.push(target as Href);
   }, [gate, member, router]);
+
+  // A task is any screen above the tabs. The update screen applies its own.
+  const taskOpen = useRef(false);
+  useEffect(() => {
+    taskOpen.current = segments[0] !== "(tabs)";
+  }, [segments]);
+  useEffect(() => followUpdates(() => taskOpen.current), []);
 
   // No navigator at all until the device's own storage has answered.
   if (gate === "starting") return null;

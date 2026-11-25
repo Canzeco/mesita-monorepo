@@ -2,9 +2,7 @@
 # touches no real place: no Reserve, Buy or Pay, and it opens no place.
 appId: com.mesita.consumer
 ---
-- launchApp:
-    clearState: true
-    permissions: { location: "${maestro.platform == 'ios' ? 'never' : 'deny'}" }
+- runFlow: shared/launch-deny.yaml
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome
 - tapOn: "Just browse"
@@ -14,12 +12,10 @@ appId: com.mesita.consumer
 - assertVisible: "Use my location"
 - takeScreenshot: location
 - tapOn: { id: "use-device" }
-- tapOn: { text: "Don.t allow", optional: true }
+- tapOn: { text: "(Don.t allow|Deny)", optional: true }
 - extendedWaitUntil: { visible: ".*Location is off for Mesita.*", timeout: 10000 }
 - takeScreenshot: location-denied
-- launchApp:
-    clearState: true
-    permissions: { location: "${maestro.platform == 'ios' ? 'inuse' : 'allow'}" }
+- runFlow: shared/launch-allow.yaml
 - setLocation: { latitude: 25.6490, longitude: -100.3590 }
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome

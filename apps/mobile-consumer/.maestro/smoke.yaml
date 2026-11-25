@@ -2,10 +2,7 @@
 # the tabs, sign out. No screenshot while a number or a code is on screen.
 appId: com.mesita.consumer
 ---
-- launchApp:
-    clearState: true
-    clearKeychain: true
-    permissions: { location: "${maestro.platform == 'ios' ? 'never' : 'deny'}" }
+- runFlow: shared/launch-deny.yaml
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - tapOn: "Just browse"
 - tapOn: "Sign"
