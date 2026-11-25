@@ -4,6 +4,7 @@ import { useSession } from "@/features/auth";
 
 import {
   fillCatalog,
+  listPlaces,
   listSaved,
   rankCatalog,
   recordShare,
@@ -20,6 +21,8 @@ export const discoveryKeys = {
   all: ["discovery"] as const,
   catalog: (point: Point | null, chip: ChipKey) =>
     ["discovery", "catalog", point?.lat ?? null, point?.lng ?? null, chip] as const,
+  map: (point: Point | null, chip: ChipKey) =>
+    ["discovery", "map", point?.lat ?? null, point?.lng ?? null, chip] as const,
   saved: (guestId: string | null) => ["discovery", "saved", guestId] as const,
   locations: (input: string) => ["discovery", "locations", input] as const,
 };
@@ -49,6 +52,16 @@ export function useCatalog(location: ActiveLocation | null, chip: ChipKey) {
         : undefined,
   });
   return { ...query, places: uniquePlaces(query.data?.pages.map((p) => p.places) ?? []) };
+}
+
+/** The map's places and its extra pins, for the families that are on. */
+export function useMapPlaces(location: ActiveLocation | null, chip: ChipKey) {
+  const familyKeys = questionOf(chip).familyKeys;
+  return useQuery({
+    queryKey: discoveryKeys.map(location, chip),
+    queryFn: ({ signal }) => listPlaces(location as Point, familyKeys, signal),
+    enabled: location !== null,
+  });
 }
 
 export function useSaved() {

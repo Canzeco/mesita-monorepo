@@ -19,6 +19,8 @@ export type CatalogPlace = {
   distanceKm: number | null;
   isPremier: boolean;
   isAd: boolean;
+  lat: number | null;
+  lng: number | null;
 };
 
 export const PAGE = 20;

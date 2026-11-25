@@ -76,6 +76,13 @@ appId: com.mesita.consumer
       - takeScreenshot: categories
       - tapOn: "Close"
 - tapOn: "Search"
+- runFlow:
+    when:
+      visible:
+        id: "search-rail"
+    commands:
+      - assertVisible:
+          id: "search-rail"
 - takeScreenshot: search
 - tapOn: "Sign"
 - extendedWaitUntil: { visible: "Text me the code", timeout: 10000 }
