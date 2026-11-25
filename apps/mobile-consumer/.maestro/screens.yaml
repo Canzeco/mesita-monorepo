@@ -26,6 +26,22 @@ appId: com.mesita.consumer
 # Home's list is the proof the fix landed. The text wait missed it: the
 # button's label is "Location: Current location. Change location".
 - extendedWaitUntil: { visible: { id: "catalog" }, timeout: 45000 }
+# One amount and one time, as their own text. The card's words button must
+# not swallow them. A card that is open all day has no clock line.
+- scrollUntilVisible:
+    element: { id: "place-price" }
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    id: "place-price"
+    text: '^\$+$'
+- scrollUntilVisible:
+    element: { id: "place-hours" }
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    id: "place-hours"
+    text: '^· (opens|until) .*[0-9]{1,2}:[0-9]{2}$'
 - takeScreenshot: home
 - tapOn: "Search"
 - takeScreenshot: search

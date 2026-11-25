@@ -30,9 +30,15 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
         />
       </Pressable>
       <View style={styles.info}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`Open ${place.name}`} onPress={onOpen} style={styles.words}>
+        <Pressable accessible={false} onPress={onOpen} style={styles.words}>
           <View style={styles.title}>
-            <Text role="strong" numberOfLines={2} style={styles.name}>
+            <Text
+              role="strong"
+              numberOfLines={2}
+              style={styles.name}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${place.name}`}
+            >
               {place.name}
             </Text>
             {place.isPremier ? <PremierSeal /> : null}
@@ -50,7 +56,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
           {facts.price || facts.rating ? (
             <View style={styles.line}>
               {facts.price ? (
-                <Text role="label" tone="price">
+                <Text role="label" tone="price" testID="place-price">
                   {facts.price}
                 </Text>
               ) : null}
@@ -75,7 +81,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
                 {facts.open.now ? "Open" : "Closed"}
               </Text>
               {facts.open.when ? (
-                <Text role="small" tone="muted" numberOfLines={1} style={styles.name}>{`· ${facts.open.when}`}</Text>
+                <Text role="small" tone="muted" numberOfLines={1} style={styles.name} testID="place-hours">{`· ${facts.open.when}`}</Text>
               ) : null}
             </View>
           ) : null}
