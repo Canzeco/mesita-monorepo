@@ -30,5 +30,24 @@ if (args.includes("--test-code")) {
     );
     process.exit(1);
   }
+  // The session is used once, here, and never printed. A forbidden action
+  // must answer 403 test_guest. An empty body is enough: the door runs first.
+  const session = await verified.json();
+  const refused = await fetch(`${env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/consumer-web-send-credit`, {
+    method: "POST",
+    headers: {
+      apikey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  const payload = await refused.json().catch(() => ({}));
+  if (refused.status !== 403 || payload.code !== "test_guest") {
+    console.error(
+      `The test account was not refused (${refused.status}, ${payload.code ?? "no code"}). Set consumers.is_test_guest.`,
+    );
+    process.exit(1);
+  }
 }
 console.log("preflight: ok");

@@ -2,25 +2,20 @@
 # touches no real place: no Reserve, Buy or Pay, and it opens no place.
 appId: com.mesita.consumer
 ---
-- launchApp:
-    clearState: true
-    permissions: { location: "${maestro.platform == 'ios' ? 'never' : 'deny'}" }
+- runFlow: shared/launch-deny.yaml
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome
 - tapOn: "Just browse"
 - extendedWaitUntil: { visible: "Choose location", timeout: 30000 }
 - takeScreenshot: home-empty
 - tapOn: "Choose location"
-- assertVisible: "Use my location"
+- assertVisible: "Use my location.*"
 - takeScreenshot: location
 - tapOn: { id: "use-device" }
-- tapOn: { text: "Don.t allow", optional: true }
+- tapOn: { text: "(Don.t allow|Deny)", optional: true }
 - extendedWaitUntil: { visible: ".*Location is off for Mesita.*", timeout: 10000 }
 - takeScreenshot: location-denied
-- launchApp:
-    clearState: true
-    permissions: { location: "${maestro.platform == 'ios' ? 'inuse' : 'allow'}" }
-- setLocation: { latitude: 25.6490, longitude: -100.3590 }
+- runFlow: shared/launch-allow.yaml
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome
 - tapOn: "Just browse"
@@ -28,7 +23,9 @@ appId: com.mesita.consumer
 - tapOn: "Choose location"
 - tapOn: { id: "use-device" }
 - tapOn: { text: "While using the app", optional: true }
-- extendedWaitUntil: { visible: { id: "catalog" }, timeout: 30000 }
+# Home's list is the proof the fix landed. The text wait missed it: the
+# button's label is "Location: Current location. Change location".
+- extendedWaitUntil: { visible: { id: "catalog" }, timeout: 45000 }
 - takeScreenshot: home
 - tapOn: "Search"
 - takeScreenshot: search

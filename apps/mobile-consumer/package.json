@@ -18,7 +18,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm export",
     "lint": "expo lint --max-warnings 0 && node lint/check-fixture.mjs",
     "typecheck": "expo customize tsconfig.json && tsc --noEmit",
-    "test": "jest",
+    "test": "jest && node --test scripts/release-order.test.mjs",
     "export": "node scripts/with-env.mjs production expo export --platform ios --platform android",
     "start": "node scripts/with-env.mjs development expo start --dev-client",
     "sim": "pnpm dlx eas-cli@27.11.0 simulator:start --no-force --type agent-device --max-idle-time-minutes 15 --non-interactive",
@@ -86,7 +86,8 @@
     },
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/lint/"
+      "/lint/",
+      "/scripts/"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!(.pnpm|(jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|standard-navigation|@shopify/flash-list))"

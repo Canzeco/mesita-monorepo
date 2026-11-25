@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Keyboard, Platform } from "react-native";
 
-/** How much of the screen's bottom the keyboard covers; 0 when it is down. */
+/** How much of the screen's bottom the keyboard covers; 0 when it is down.
+ *  A screen that mounts while the keyboard is already up (the code step on
+ *  Android) gets no show event, so the first read is the keyboard's own size. */
 export function useKeyboardHeight(): number {
-  const [height, setHeight] = useState(0);
+  const [height, setHeight] = useState(() => Keyboard.metrics()?.height ?? 0);
   useEffect(() => {
     const ios = Platform.OS === "ios";
     const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) => setHeight(e.endCoordinates.height));

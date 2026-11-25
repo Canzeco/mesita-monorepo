@@ -1,0 +1,16 @@
+# A fresh app with location refused: each phone has its own word.
+appId: com.mesita.consumer
+---
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - launchApp:
+          clearState: true
+          clearKeychain: true
+          permissions: { location: never }
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - launchApp:
+          clearState: true
+          permissions: { location: deny }

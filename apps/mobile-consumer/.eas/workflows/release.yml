@@ -1,0 +1,19 @@
+# A breaking backend change after store release 1 (Docs › Apps › A2 §8).
+# One at a time with deliver, so two publishes never race. Before store
+# release 1 the script holds and the minimum stays unset.
+name: release
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: mobile-publish
+  queue: max
+
+jobs:
+  release:
+    environment: preview
+    steps:
+      - uses: eas/checkout
+      - name: Hold, or refuse the fast order
+        run: node scripts/release.mjs

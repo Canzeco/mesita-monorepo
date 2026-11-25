@@ -8,9 +8,11 @@ on:
     paths: ["apps/mobile-consumer/**"]
   workflow_dispatch: {}
 
-# One at a time, the newest waiting: an older commit never publishes last.
+# One at a time with release, the newest waiting: two publishes never race,
+# and an older commit never publishes last.
 concurrency:
-  group: ${{ workflow.filename }}
+  group: mobile-publish
+  queue: max
 
 jobs:
   fingerprint:
