@@ -228,7 +228,7 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 
 /** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo
  *  and the name (Pato, 2026-11-25, MESITA-4965: no street), then on the right a
- *  neutral Accepts Credits box (MESITA-4956), a green box with what this guest's
+ *  purple Accepts Credits box (MESITA-4956, MESITA-4966), a green box with what this guest's
  *  next bill gets (Discount or Cashback; MESITA-4865), and a black Pay box. The
  *  balance stays on the Wallet. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
@@ -249,7 +249,7 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       <span className="line-clamp-2 min-w-0 flex-1 text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
       <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
         {credits ? (
-          <span className="flex h-12 w-[76px] flex-col items-center justify-center rounded-xl bg-neutral-100 font-semibold text-neutral-950 max-[374px]:w-[68px]">
+          <span className="flex h-12 w-[76px] flex-col items-center justify-center rounded-xl bg-[#BDB9FF] font-semibold text-indigo-950 max-[374px]:w-[68px]">
             <span className="text-xs leading-none">Accepts</span>
             <span className="mt-0.5 text-xs leading-none">Credits</span>
           </span>
