@@ -13,7 +13,7 @@
 //
 // MESITA-4764: two picks per offer, and the voucher bonuses
 // small_bonus_bps 1000 · 2000, medium_bonus_bps 2000 · 4000, big_bonus_bps
-// 4000 · 6000 (optional; absent keeps the saved one).
+// 3000 · 6000 (MESITA-4980; optional; absent keeps the saved one).
 //
 // Body: { place_id, welcome_bps, returning_bps, returning_vip_bps?, welcome_vip_bps?, small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; no ceiling since MESITA-4728)
 // Response: { ok: true, cashback: { welcome_bps, welcome_vip_bps, returning_bps, returning_vip_bps, small_bonus_bps, medium_bonus_bps, big_bonus_bps } }

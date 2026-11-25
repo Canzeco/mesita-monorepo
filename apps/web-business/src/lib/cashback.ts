@@ -9,8 +9,9 @@
 // here) Off · 10 · 20 %, Returning Regular (every later bill) Off · 5 · 10 %,
 // Returning VIP (every later bill of a VIP guest: invitation code,
 // MESITA-4849) Off · 10 · 20 %. No cap per bill (MESITA-4728).
-// Voucher bonuses (MESITA-4764): Small 10 · 20 %, Medium 20 · 40 %, Big
-// 40 · 60 %. TWIN of supabase _shared/cashback.ts and money.ts
+// Voucher bonuses (MESITA-4764, Big's default 30% since MESITA-4980):
+// Small 10 · 20 %, Medium 20 · 40 %, Big 30 · 60 %. TWIN of supabase
+// _shared/cashback.ts and money.ts
 // VOUCHER_BONUS_STEPS_BPS; the server refuses anything else.
 /** MESITA-4770: how the Welcome / Returning lines pay out (Pato,
  *  2026-11-23: "YOU JUST SET THE TIER. AND THEN THE MECHANISM FOR ALL YOUR
@@ -39,7 +40,7 @@ export type VisitRateField = keyof typeof VISIT_PICKS_BPS;
 export const VOUCHER_BONUS_PICKS_BPS = {
   small_bonus_bps: [1000, 2000],
   medium_bonus_bps: [2000, 4000],
-  big_bonus_bps: [4000, 6000],
+  big_bonus_bps: [3000, 6000],
 } as const;
 export type VoucherBonusField = keyof typeof VOUCHER_BONUS_PICKS_BPS;
 export const CASHBACK_DEFAULTS: CashbackRates = {
@@ -50,7 +51,7 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
   visit_mechanism: "cashback",
   small_bonus_bps: 1000,
   medium_bonus_bps: 2000,
-  big_bonus_bps: 4000,
+  big_bonus_bps: 3000,
 };
 
 /** The fields the server saves; anything else it sent (an older server's

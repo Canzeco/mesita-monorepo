@@ -74,8 +74,8 @@ Deno.test("voucher bonus: two picks per size; absent keeps the saved one (MESITA
   const base = { welcome_bps: 1000, returning_bps: 500 };
   const ok = readCashbackInput({ ...base, small_bonus_bps: 2000, medium_bonus_bps: 4000, big_bonus_bps: 6000 });
   assertEquals(ok.ok && [ok.rates.small_bonus_bps, ok.rates.medium_bonus_bps, ok.rates.big_bonus_bps], [2000, 4000, 6000]);
-  assertEquals(readCashbackInput({ ...base, small_bonus_bps: 1000, medium_bonus_bps: 2000, big_bonus_bps: 4000 }).ok, true);
-  for (const [f, v] of [["small_bonus_bps", 4000], ["medium_bonus_bps", 1000], ["big_bonus_bps", 3000], ["big_bonus_bps", 0], ["small_bonus_bps", "2000"]] as const) {
+  assertEquals(readCashbackInput({ ...base, small_bonus_bps: 1000, medium_bonus_bps: 2000, big_bonus_bps: 3000 }).ok, true);
+  for (const [f, v] of [["small_bonus_bps", 4000], ["medium_bonus_bps", 1000], ["big_bonus_bps", 4000], ["big_bonus_bps", 0], ["small_bonus_bps", "2000"]] as const) {
     assertEquals(readCashbackInput({ ...base, [f]: v }).ok, false, `${f}=${v}`);
   }
   const absent = readCashbackInput(base);
