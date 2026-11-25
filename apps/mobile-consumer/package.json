@@ -10,7 +10,7 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "22.23.3",
+      "version": "22.x",
       "onFail": "download"
     }
   },
