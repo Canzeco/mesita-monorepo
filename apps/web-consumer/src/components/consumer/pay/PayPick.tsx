@@ -526,8 +526,8 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
         <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
       </span>
       <PayCell>{accepts ? "Yes" : "No"}</PayCell>
-      <PayCell>{discount}%</PayCell>
-      <PayCell>{cashback}%</PayCell>
+      <PayCell>{`${discount}%`}</PayCell>
+      <PayCell>{`${cashback}%`}</PayCell>
     </button>
   );
 }
