@@ -1,9 +1,10 @@
 // Supabase Edge Function — consumer-web-list-pay-places
 //
-// MESITA-3457: the Pay tab's list. The places a signed-in guest can pay at
-// now: where they hold credit (any switch, MESITA-3408), where a bill can be
-// paid outside (`outside_ok`) and where there are offers, nearest first
-// (MESITA-3536). Which places are listed, the radius and the cap are
+// MESITA-3457: the Pay tab's list. Every active Mesita place (MESITA-4986:
+// All places is the catalog, a missing offer is 0%), plus a closed place
+// where the guest holds credit, where a bill can be paid outside
+// (`outside_ok`) or where there are offers, nearest first (MESITA-3536).
+// Which places are listed, the radius and the cap are
 // _shared/pay-places.ts. MESITA-4708: no `card_ok` or `card_min_cents` (no
 // card for a bill).
 // consumer-web-start-payment is unchanged: this only lists.
@@ -43,7 +44,36 @@ import { moneyState } from "../_shared/money-state.ts";
 import { listRowMoney, NO_LIST_ROW_OFFERS, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
 import { readIsVipForMoney } from "../_shared/cashback.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
+import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+
+const PROFILE_COLUMNS = "id, name, profile_photo, address, state, currency, lat, lng, boost_tier";
+
+type ProfileRow = {
+  id: string;
+  name: string | null;
+  profile_photo: string | null;
+  address: string | null;
+  state: string | null;
+  currency: string | null;
+  lat: number | null;
+  lng: number | null;
+  boost_tier: number | null;
+};
+
+/** `.in()` rides in the URL. One chunk per ID_CHUNK, same as the other readers. */
+async function readIn<T>(
+  ids: string[],
+  run: (ids: string[]) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>,
+): Promise<{ rows: T[]; error: string | null }> {
+  const rows: T[] = [];
+  for (const some of chunked(ids, ID_CHUNK)) {
+    const res = await run(some);
+    if (res.error) return { rows, error: res.error.message };
+    rows.push(...(res.data ?? []));
+  }
+  return { rows, error: null };
+}
 
 const fail = (where: string, message: string) => {
   const request_id = crypto.randomUUID();
@@ -78,13 +108,22 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   const charging = new Set(((acctRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
   const coded = new Set(((codeRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
 
-  const ids = [...new Set([...balances.map((b) => b.place_id), ...charging, ...coded])];
+  // Every active place (MESITA-4986: All places is the catalog), plus a
+  // closed place where this guest still holds credit or a code.
+  const activeRes = await admin.from("profiles").select(PROFILE_COLUMNS).eq("state", "active").limit(1000);
+  if (activeRes.error) return fail("places", activeRes.error.message);
+  const active = (activeRes.data ?? []) as ProfileRow[];
+  const activeIds = new Set(active.map((p) => p.id));
+  const extraIds = [...new Set([...balances.map((b) => b.place_id), ...charging, ...coded])].filter((id) => !activeIds.has(id));
+  const extras = await readIn<ProfileRow>(extraIds, (some) => admin.from("profiles").select(PROFILE_COLUMNS).in("id", some));
+  if (extras.error) return fail("places", extras.error);
+  const profiles = [...active, ...extras.rows];
+  const ids = profiles.map((p) => p.id);
   if (ids.length === 0) return json({ ok: true, places: [] });
 
   const since = new Date(Date.now() - PAID_RECENT_HOURS * 3600_000).toISOString();
-  const [placesRes, settingsRes, paidRes, billedRes] = await Promise.all([
-    admin.from("profiles").select("id, name, profile_photo, address, state, currency, lat, lng, boost_tier").in("id", ids),
-    admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
+  const [settingsRes, paidRes, billedRes] = await Promise.all([
+    readIn<unknown>(ids, (some) => admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", some)),
     admin.from("wallet_payments")
       .select("id, place_id, amount_cents, tip_cents, paid_at")
       .eq("consumer_id", userId)
@@ -96,19 +135,19 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     // MESITA-4770: the places where this guest has a paid bill, so the phone
     // previews the right visit line (Welcome before the first, Returning
     // after); pay_guest_begin decides the same and has the last word.
-    admin.from("pay_tabs").select("place_id").eq("consumer_id", userId).eq("livemode", livemode)
-      .eq("status", "paid").in("place_id", ids).limit(5000),
+    readIn<{ place_id: string }>(ids, (some) =>
+      admin.from("pay_tabs").select("place_id").eq("consumer_id", userId).eq("livemode", livemode)
+        .eq("status", "paid").in("place_id", some).limit(5000)),
   ]);
-  if (placesRes.error) return fail("places", placesRes.error.message);
-  if (settingsRes.error) return fail("settings", settingsRes.error.message);
+  if (settingsRes.error) return fail("settings", settingsRes.error);
   if (paidRes.error) return fail("payments", paidRes.error.message);
-  if (billedRes.error) return fail("bills", billedRes.error.message);
+  if (billedRes.error) return fail("bills", billedRes.error);
   // MESITA-4766: VIP's later bills fall in Returning VIP (the money rule).
   const vip = await readIsVipForMoney(admin, userId, livemode);
-  const billed = new Set(((billedRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
+  const billed = new Set(billedRes.rows.map((r) => r.place_id));
 
   const settings = new Map<string, PaymentSettings>();
-  for (const row of (settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[]) {
+  for (const row of settingsRes.rows as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[]) {
     settings.set(row.place_id, settingsFromRow(row));
   }
   const paid = new Map<string, { payment_id: string; total_cents: number; paid_at: string }>();
@@ -119,8 +158,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
 
   let outsidePlaceCount = 0;
   const rows: PayPlaceInput[] = [];
-  type ProfileRow = { id: string; name: string | null; profile_photo: string | null; address: string | null; state: string | null; currency: string | null; lat: number | null; lng: number | null; boost_tier: number | null };
-  for (const p of (placesRes.data ?? []) as ProfileRow[]) {
+  for (const p of profiles) {
     const s = settings.get(p.id) ?? settingsFromRow(null);
     const charges = charging.has(p.id);
     const active = p.state === "active";
@@ -145,6 +183,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       pending_cents: active ? (b?.pending_cents ?? 0) : 0,
       outside_ok: outsideOk,
       offers_ok: active && s.loyalty_cards === true,
+      on_mesita: active,
       paid_recent: paid.get(p.id) ?? null,
     });
   }

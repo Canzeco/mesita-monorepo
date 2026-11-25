@@ -100,7 +100,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
               start={start}
               getSupabase={getSupabase}
               canUseCode={(placeId) =>
-                places?.some((p) => p.place_id === placeId) ?? false
+                places?.some((p) => p.place_id === placeId && p.outside_ok) ?? false
               }
               onTabId={(id) => {
                 writeOpenTabId(id);

@@ -20,6 +20,7 @@ import { readMoneyConfig } from "./money-config.ts";
 import { type CashbackRates, maxCashbackBps, readCashbackRatesMany, type VisitMechanism, voucherBonusFrom } from "./cashback.ts";
 import { errorMessage } from "./errors.ts";
 import { voucherBonusBps, vouchersUpToPct } from "./money.ts";
+import { chunked, ID_CHUNK } from "./postgrest.ts";
 import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
@@ -233,6 +234,13 @@ export async function withVouchersUpTo<T extends { id: string }>(
   admin: SupabaseClient | null,
   places: T[],
 ): Promise<(T & { vouchers_up_to_pct: number | null; mesita_pay: boolean; offers: ListRowOffers })[]> {
+  // The account read is one URL. The wallet list is the whole catalog
+  // (MESITA-4986), so a long page is read a chunk at a time.
+  if (places.length > ID_CHUNK) {
+    const out: (T & { vouchers_up_to_pct: number | null; mesita_pay: boolean; offers: ListRowOffers })[] = [];
+    for (const some of chunked(places, ID_CHUNK)) out.push(...await withVouchersUpTo(admin, some));
+    return out;
+  }
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.

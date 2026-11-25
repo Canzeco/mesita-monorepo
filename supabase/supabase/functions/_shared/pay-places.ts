@@ -4,6 +4,9 @@
 // (`outside_ok`, MESITA-3545: Cash Payments and a place code) and places with
 // offers (`offers_ok`). Credit places first, then by distance.
 //
+// MESITA-4986: an active Mesita place is listed too (`on_mesita`), with or
+// without an offer. All places means every place, and a missing offer is 0%.
+//
 // MESITA-4708: no card part for a bill, so no `card_ok` and no
 // `card_min_cents` (the card places of MESITA-3457 are gone).
 //
@@ -20,8 +23,9 @@
 export const OPEN_ALL_BELOW = 20;
 /** The radius once the city has OPEN_ALL_BELOW outside places. */
 export const NEAR_RADIUS_M = 2000;
-/** The hard cap on one answer. */
-export const PAY_PLACES_LIMIT = 50;
+/** The hard cap on one answer. High enough for every active place (All
+ *  places is the whole catalog, MESITA-4986), still a cap. */
+export const PAY_PLACES_LIMIT = 500;
 /** How long a row says "Paid MX$330 · 14:02" and opens that proof. */
 export const PAID_RECENT_HOURS = 12;
 // The client rounds a location to 3 decimals (~110 m) before it asks.
@@ -72,6 +76,9 @@ export type PayPlaceInput = {
   /** MESITA-4698: Loyalty Cards is On, so the place has offers (cashback,
    *  and vouchers where it sells them): Pay's Get Offers lists it. */
   offers_ok: boolean;
+  /** MESITA-4986: an active Mesita place. Listed even with no credit, no
+   *  outside pay and no offer, and not cut by the nearby radius. */
+  on_mesita?: boolean;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
 };
 
@@ -92,12 +99,12 @@ export function payPlaces(
   const out: Array<PayPlace & { credit: boolean }> = [];
   for (const r of rows) {
     const credit = r.available_cents > 0 || r.pending_cents > 0;
-    if (!credit && !r.outside_ok && !r.offers_ok) continue;
+    if (!credit && !r.outside_ok && !r.offers_ok && !r.on_mesita) continue;
     const d = opts.at && r.lat !== null && r.lng !== null ? distanceM(opts.at, { lat: r.lat, lng: r.lng }) : null;
     // A place without the guest's credit (outside or offers): within the radius
     // once the city is big enough; with no location, only while every such
-    // place is listed.
-    if (!credit && near && (d === null || d > NEAR_RADIUS_M)) continue;
+    // place is listed. An active Mesita place skips that cut (MESITA-4986).
+    if (!credit && !r.on_mesita && near && (d === null || d > NEAR_RADIUS_M)) continue;
     out.push({
       place_id: r.place_id,
       name: r.name,
