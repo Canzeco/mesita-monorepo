@@ -343,7 +343,7 @@ export function PlaceList({
         <div data-pay-places>
           {kind === "prepay" ? (
             <div className={cn(PREPAY_GRID, HEAD_BAR, "h-11")} aria-hidden data-pay-head-row>
-              <span className="pl-2.5">Place</span>
+              <span className="pl-2.5 text-sm">Place</span>
               {PREPAY_HEADS.map((h) => (
                 <span key={h} className="text-center text-base tabular-nums max-[374px]:text-sm">
                   {h}
@@ -353,7 +353,7 @@ export function PlaceList({
             </div>
           ) : (
             <div className={cn(PAY_GRID, HEAD_BAR, "min-h-11 py-1.5")} aria-hidden data-pay-head-row>
-              <span className="pl-4">Place</span>
+              <span className="pl-4 text-sm">Place</span>
               <span className={PAY_OFFERS}>
                 <span className="text-center leading-tight">
                   Accepts
