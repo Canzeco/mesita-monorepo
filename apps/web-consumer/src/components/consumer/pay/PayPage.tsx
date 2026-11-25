@@ -226,7 +226,7 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 // the QR, the same marks everywhere.
 const TILES: Record<PayModal, { word: string; line: string; icon: LucideIcon; ink: string }> = {
   prepay: { word: "Prepay", line: "Get Bonus", icon: Percent, ink: "bg-white text-indigo-500" },
-  pay: { word: "Pay Bill", line: "Cash or Credits", icon: QrCode, ink: "bg-neutral-950 text-white" },
+  pay: { word: "Pay Bill", line: "Cash, Card, or Credits", icon: QrCode, ink: "bg-neutral-950 text-white" },
 };
 
 /** ONE LETTER SIZE for the three words (Pato, 2026-11-24,
@@ -244,7 +244,7 @@ function Tile({ id, line: own, onClick }: { id: PayModal; line?: string; onClick
       </span>
       <span className="flex flex-col items-center gap-0.5 text-center">
         <span className={MARK_WORD}>{word}</span>
-        <span className="text-sm leading-tight max-[374px]:text-xs">{own ?? line}</span>
+        <span className="type-body leading-none whitespace-nowrap max-[374px]:text-xs">{own ?? line}</span>
       </span>
     </button>
   );
