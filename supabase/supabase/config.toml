@@ -279,6 +279,12 @@ verify_jwt = true
 [functions.consumer-web-list-pay-notifications]
 verify_jwt = true
 
+[functions.consumer-web-register-push]
+verify_jwt = true
+
+[functions.consumer-web-unregister-push]
+verify_jwt = true
+
 # Product instrumentation (MESITA-1387): one row in consumer_analytics_events
 # per allowlisted event. Every call site sits inside web-consumer's (shell)
 # auth wall, and the handler stamps consumer_id off the session, so the guest

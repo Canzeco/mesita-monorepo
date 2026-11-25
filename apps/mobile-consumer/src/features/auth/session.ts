@@ -1,4 +1,5 @@
 import { onRefusal, type Refusal } from "@/lib/edge";
+import { dropPushInstall, retryDropPush } from "@/lib/push";
 import { followDevice, forgetReads, keepReads } from "@/lib/query";
 import { report } from "@/lib/report";
 import { dropSession, followAppState, storedGuestId, supabase } from "@/lib/supabase";
@@ -49,6 +50,7 @@ export function listen(): () => void {
     // Auth itself refused the session. An explicit sign-out clears first.
     if (event === "SIGNED_OUT" && getSession().guestId !== null) void expire();
   });
+  if (getSession().guestId !== null) void retryDropPush();
   const stops = [followAppState(), followDevice(), onRefusal(hear), () => data.subscription.unsubscribe()];
   return () => stops.forEach((stop) => stop());
 }
@@ -74,8 +76,9 @@ export function expire(): Promise<void> {
   return leave("You were signed out. Sign in again.");
 }
 
-export function signOut(): Promise<void> {
+export async function signOut(): Promise<void> {
   forgetTarget();
+  await dropPushInstall().catch(() => undefined);
   return leave(null);
 }
 

@@ -96,6 +96,7 @@ const config: ExpoConfig = {
     // The Apple Pay merchant id arrives with the Wallet step.
     ["@stripe/stripe-react-native", { merchantIdentifier: [], enableGooglePay: true }],
     "./plugins/with-stripe-release-lint.js",
+    "expo-notifications",
     "expo-secure-store",
     "expo-sqlite",
     "expo-localization",

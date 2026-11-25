@@ -68,6 +68,7 @@ export const TEST_GUEST_RULES: Record<string, TestGuestRule> = {
   // No session reaches it: an ad counter, not a view.
   "consumer-web-record-premier-ad": "open",
   "consumer-web-redeem-vip-code": "open",
+  "consumer-web-register-push": "uncounted",
   "consumer-web-release-payment": "open",
   "consumer-web-remove-card": "open",
   "consumer-web-remove-loyalty-card": "open",
@@ -89,6 +90,7 @@ export const TEST_GUEST_RULES: Record<string, TestGuestRule> = {
   "consumer-web-track-event": "open",
   "consumer-web-track-place-share": "uncounted",
   "consumer-web-update-profile": "open",
+  "consumer-web-unregister-push": "uncounted",
   "consumer-web-update-reservation": "reserve",
 };
 

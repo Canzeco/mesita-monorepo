@@ -40,6 +40,21 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
+test("a failed push unregister still signs out and remembers this install", async () => {
+  await memberWithReads();
+  call.mockRejectedValueOnce(new Error("down"));
+  await signOut();
+  nothingLeft();
+  expect(getSession().guestId).toBeNull();
+  expect(call).toHaveBeenCalledWith(
+    "consumer-web-unregister-push",
+    expect.objectContaining({ install_id: expect.any(String) }),
+    expect.anything(),
+    { mutation: true },
+  );
+  expect(raw.get("mesita.push.drop")).toEqual(expect.any(String));
+});
+
 test("sign-out leaves nothing of the guest on the device", async () => {
   await memberWithReads();
   rememberTarget("/me");
