@@ -172,13 +172,6 @@ export function PlaceList({
           </button>
         </div>
         <ListFilters kind={kind} open={filtersOpen} show={show} onShow={setShow} onClose={() => setFiltersOpen(false)} />
-        {/* Pay's instruction (MESITA-4967). The rows are the selector; this
-            box only says so. */}
-        {kind === "pay" ? (
-          <p className="bg-foreground text-background flex h-12 items-center justify-center rounded-2xl text-base font-semibold" data-pay-select>
-            Select one place
-          </p>
-        ) : null}
       </div>
       <section className="mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
       <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -334,8 +327,8 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
  *  and the name (Pato, 2026-11-25, MESITA-4965: no street), then on the right a
  *  purple Accepts Credits box (MESITA-4956, MESITA-4966), a green box with what this guest's
  *  next bill gets (Discount or Cashback; MESITA-4865), and a chevron. The row
- *  selects the place (MESITA-4967); it does not say Pay. The balance stays on
- *  the Wallet. */
+ *  selects the place (MESITA-4967). There is no instruction bar (MESITA-4972).
+ *  The row does not say Pay. The balance stays on the Wallet. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p);
