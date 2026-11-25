@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon } from "@/components/icon";
 import { CoverWordmark, PhotoCover } from "@/components/photo-cover";
 import { Text } from "@/components/text";
+import { useKeyboardHeight } from "@/components/use-keyboard-height";
 import { colors } from "@/theme";
 
 import { HEADLINE, VALUE_LINE } from "../model";
@@ -21,8 +22,11 @@ type Props = {
 /** The sign-in photo: the wordmark, the headline, the line, then the form. */
 export function CoverPage({ children, footer, onClose, aboveBar = false }: Props) {
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
+  // iPhone's scroller makes its own room; Android's does not.
+  const above = Platform.OS === "android" && keyboard > 0 ? keyboard + insets.bottom : 0;
   return (
-    <View style={[styles.ground, aboveBar && Platform.OS === "ios" && { paddingBottom: insets.bottom }]}>
+    <View style={[styles.ground, { paddingBottom: above }, aboveBar && Platform.OS === "ios" && { paddingBottom: insets.bottom }]}>
       <PhotoCover>
         <ScrollView
           keyboardShouldPersistTaps="handled"

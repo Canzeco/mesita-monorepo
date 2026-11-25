@@ -14,7 +14,8 @@ appId: com.mesita.consumer
 - assertVisible: "Use my location"
 - takeScreenshot: location
 - tapOn: { id: "use-device" }
-- extendedWaitUntil: { visible: "Location is off for Mesita.*", timeout: 10000 }
+- tapOn: { text: "Don.t allow", optional: true }
+- extendedWaitUntil: { visible: ".*Location is off for Mesita.*", timeout: 10000 }
 - takeScreenshot: location-denied
 - launchApp:
     clearState: true
@@ -26,6 +27,7 @@ appId: com.mesita.consumer
 - extendedWaitUntil: { visible: "Choose location", timeout: 30000 }
 - tapOn: "Choose location"
 - tapOn: { id: "use-device" }
+- tapOn: { text: "While using the app", optional: true }
 - extendedWaitUntil: { visible: { id: "catalog" }, timeout: 30000 }
 - takeScreenshot: home
 - tapOn: "Search"
