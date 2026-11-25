@@ -244,7 +244,7 @@ function Tile({ id, line: own, onClick }: { id: PayModal; line?: string; onClick
       </span>
       <span className="flex flex-col items-center gap-0.5 text-center">
         <span className={MARK_WORD}>{word}</span>
-        <span className="text-[13px] leading-none whitespace-nowrap max-[374px]:text-[11px]">{own ?? line}</span>
+        <span className="type-body leading-none whitespace-nowrap max-[374px]:text-xs">{own ?? line}</span>
       </span>
     </button>
   );
