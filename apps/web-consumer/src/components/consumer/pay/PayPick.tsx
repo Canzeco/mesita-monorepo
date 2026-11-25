@@ -59,7 +59,9 @@ export function PlaceList({
           is not in the rows is found by typing. It stays put: only the list
           scrolls. A hairline under the chrome (MESITA-4961) separates it from
           the first place. */}
-      <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b px-3 pt-2 pb-3">
+      {/* NO SIDE MARGIN (Pato, 2026-11-25, MESITA-4970). The pill and the list
+          run to the modal's edges. */}
+      <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b pt-2 pb-3">
         <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
           <SearchBar
             query={query}
@@ -78,7 +80,7 @@ export function PlaceList({
           </p>
         ) : null}
       </div>
-      <section className="mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
+      <section className="mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
       <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
       <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {loc.state === "prime" ? (
