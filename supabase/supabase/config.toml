@@ -301,6 +301,12 @@ verify_jwt = true
 [functions.consumer-web-report-place]
 verify_jwt = true
 
+[functions.consumer-web-report-person]
+verify_jwt = true
+
+[functions.consumer-web-block-person]
+verify_jwt = true
+
 # Single Place › Admin › Reports (MESITA-2686): one place's guest reports,
 # newest first, with the guest's first name and member number. Super-admin
 # only. Read-only.

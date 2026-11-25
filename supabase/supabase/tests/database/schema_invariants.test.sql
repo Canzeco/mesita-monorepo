@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(215);
+select plan(217);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -646,6 +646,20 @@ select ok(
     and not has_table_privilege('authenticated', 'public.place_reports', 'SELECT')
     and not has_table_privilege('authenticated', 'public.place_reports', 'INSERT'),
   'place_reports is EF-only (RLS on, no client SELECT or INSERT)'
+);
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.social_reports'::regclass)
+    and not has_table_privilege('anon', 'public.social_reports', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.social_reports', 'INSERT'),
+  'social_reports is EF-only'
+);
+
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.social_blocks'::regclass)
+    and not has_table_privilege('anon', 'public.social_blocks', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.social_blocks', 'INSERT'),
+  'social_blocks is EF-only'
 );
 
 -- MESITA-3029: app feedback names the guest; EF-only like place_reports.

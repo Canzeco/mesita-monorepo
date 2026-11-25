@@ -111,6 +111,12 @@ serveJson("consumer-web-list-activity", async (req) => {
   const room = latest - shown;
   if (room <= 0) return json({ ok: true, viewer, items: [], next: null });
   const pageItems = Math.min(PAGE_ITEMS, room);
+  const hidden = new Set<string>();
+  if (user) {
+    const blocks = await admin.from("social_blocks").select("blocked_id").eq("consumer_id", user.id);
+    if (blocks.error) console.error("[consumer-web-list-activity] blocks", blocks.error.message);
+    else for (const row of blocks.data ?? []) hidden.add((row as { blocked_id: string }).blocked_id);
+  }
 
   const items: Array<FeedEvent & { distanceKm: number | null; place: Card }> = [];
   let cursor = before;
@@ -125,7 +131,7 @@ serveJson("consumer-web-list-activity", async (req) => {
     if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
     // MESITA-4714: the yellow badge (members only).
     const rawRows = (feedRes.data ?? []) as ActivityRow[];
-    const rows = rawRows;
+    const rows = user ? rawRows.filter((row) => !hidden.has(row.consumer_id)) : rawRows;
     const events = user ? feedEvents(rows, user.id, canSee) : anonymousFeedEvents(rows);
     const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);

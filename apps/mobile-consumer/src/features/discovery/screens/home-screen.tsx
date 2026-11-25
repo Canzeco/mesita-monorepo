@@ -1,11 +1,12 @@
 import { FlashList } from "@shopify/flash-list";
 import { useEffect } from "react";
-import { RefreshControl, Share, StyleSheet, View } from "react-native";
+import { Pressable, RefreshControl, Share, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
+import { Text } from "@/components/text";
 import { useRequireAccount, useSession } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
 import { colors, radius, space } from "@/theme";
@@ -23,6 +24,7 @@ type Nav = {
   onChooseLocation: () => void;
   onMenu: () => void;
   onWelcome: () => void;
+  onSocial?: () => void;
 };
 
 export type HomeState =
@@ -124,6 +126,14 @@ export function HomeView(props: ViewProps) {
   return (
     <View style={styles.page}>
       <HomeHeader location={props.location} onPress={props.onChooseLocation} />
+      {props.onSocial ? (
+        <View style={styles.switch}>
+          <Text role="label">Places</Text>
+          <Pressable onPress={props.onSocial} accessibilityRole="button" accessibilityLabel="Social">
+            <Text role="label" tone="muted">Social</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <FamilyStrip chips={props.chips} chosen={props.chip} onSelect={props.onChip} onMenu={props.onMenu} />
       <Body {...props} />
     </View>
@@ -200,4 +210,5 @@ const styles = StyleSheet.create({
   skeleton: { flexDirection: "row", marginHorizontal: space.sm, marginTop: space.sm, overflow: "hidden", borderRadius: radius.card },
   half: { flex: 1, aspectRatio: 1, borderRadius: 0 },
   paper: { borderWidth: 1, borderLeftWidth: 0, borderColor: colors.border },
+  switch: { flexDirection: "row", gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, backgroundColor: colors.paper },
 });

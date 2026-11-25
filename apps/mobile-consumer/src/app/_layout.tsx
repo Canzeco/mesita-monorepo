@@ -32,6 +32,7 @@ const OPTIONS: Record<RootRoute, ComponentProps<typeof Stack.Screen>["options"]>
   place: { headerShown: false },
   reserve: { title: "Reserve", presentation: "modal" },
   reservations: { headerShown: false },
+  social: { headerShown: false },
 };
 
 export default function RootLayout() {

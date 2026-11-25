@@ -117,6 +117,13 @@ serveJson("consumer-web-get-person", async (req) => {
   // MESITA-4714: the yellow badge, decided here.
   const rows = (histRes.data ?? []) as ActivityRow[];
   if (rows.length === 0) return json({ ok: true, person: null, items: [] });
+  const blocked = await admin
+    .from("social_blocks")
+    .select("blocked_id")
+    .eq("consumer_id", viewerId)
+    .eq("blocked_id", rows[0].consumer_id)
+    .limit(1);
+  if (!blocked.error && (blocked.data?.length ?? 0) > 0) return json({ ok: true, person: null, items: [] });
   // One member, every row the same: the person comes from the first.
   const person = toPerson(rows[0], viewerId, canSee);
   const events = feedEvents(rows, viewerId, canSee);
