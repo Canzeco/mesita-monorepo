@@ -18,10 +18,10 @@ import { useActiveLocation } from "../location-context";
 import { factsOf, type CatalogPlace } from "../model";
 import { useLocationSearch, useMapPlaces, useResolveLocation } from "../queries";
 
-type Nav = { onChooseLocation: () => void; onMenu: () => void };
+type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void };
 
 /** The web's Search: a map, the families, and a rail that is only as tall as its cards. */
-export function SearchScreen({ onChooseLocation, onMenu }: Nav) {
+export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
   const { location, choose, chip, selectChip } = useActiveLocation();
   const member = useSession().guestId !== null;
   const shown: ChipKey = chip === "saved" ? "near" : chip;
@@ -91,6 +91,11 @@ export function SearchScreen({ onChooseLocation, onMenu }: Nav) {
           ) : null}
         </View>
       ) : null}
+      {member && onAdd ? (
+        <Pressable onPress={onAdd} style={styles.where}>
+          <Text role="label">Add a place</Text>
+        </Pressable>
+      ) : null}
       <FamilyStrip chips={chipsFor(false)} chosen={shown} onSelect={selectChip} onMenu={onMenu} />
       <View style={styles.mapBox}>
         <MapView
@@ -119,7 +124,7 @@ export function SearchScreen({ onChooseLocation, onMenu }: Nav) {
             <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void map.refetch()} />
           </View>
         ) : (
-          <Rail places={places} picked={picked?.id ?? null} onPick={setChosen} />
+          <Rail places={places} picked={picked?.id ?? null} onPick={setChosen} onOpen={onOpen} />
         )}
       </View>
     </View>
@@ -134,7 +139,17 @@ function pinsOf(places: readonly CatalogPlace[], dots: readonly { id: string; la
   return [...fromCards, ...dots.filter((dot) => !seen.has(dot.id))];
 }
 
-function Rail({ places, picked, onPick }: { places: readonly CatalogPlace[]; picked: string | null; onPick: (id: string) => void }) {
+function Rail({
+  places,
+  picked,
+  onPick,
+  onOpen,
+}: {
+  places: readonly CatalogPlace[];
+  picked: string | null;
+  onPick: (id: string) => void;
+  onOpen: (id: string) => void;
+}) {
   if (places.length === 0) {
     return (
       <View style={styles.emptyRail} testID="search-rail">
@@ -153,7 +168,7 @@ function Rail({ places, picked, onPick }: { places: readonly CatalogPlace[]; pic
       testID="search-rail"
     >
       {places.map((place) => (
-        <RailCard key={place.id} place={place} on={place.id === picked} onPress={() => onPick(place.id)} />
+        <RailCard key={place.id} place={place} on={place.id === picked} onPress={() => { onPick(place.id); onOpen(place.id); }} />
       ))}
     </ScrollView>
   );

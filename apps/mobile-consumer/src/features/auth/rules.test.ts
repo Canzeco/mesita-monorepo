@@ -70,6 +70,8 @@ describe("links", () => {
     ["https://www.mesita.ai/home?view=social", "/?view=social"],
     ["mesita://me", "/me"],
     ["mesita:///search", "/search"],
+    ["mesita://place/123", "/place/123"],
+    ["https://mesita.ai/place/pinto/menu", "/place/pinto/menu"],
     ["/location", "/location"],
     ["https://mesita.ai/sign", "/sign-in"],
   ])("%s opens %s", (address, to) => {
@@ -77,7 +79,6 @@ describe("links", () => {
   });
   test.each([
     ["https://mesita.ai/wallet/gift/abc?x=1", "/wallet/gift/abc?x=1"],
-    ["mesita://place/123", "/place/123"],
     ["https://mesita.ai/pay/place/9", "/pay/place/9"],
     ["https://mesita.ai/open?page=https://evil.test", "/open?page=https://evil.test"],
   ])("%s has no screen: it opens the web page", (address, page) => {
