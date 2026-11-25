@@ -353,14 +353,16 @@ export function PlaceList({
             </div>
           ) : (
             <div className={cn(PAY_GRID, HEAD_BAR, "min-h-11 py-1.5")} aria-hidden data-pay-head-row>
-              <span className="pl-2.5">Place</span>
-              <span className="px-1 text-center leading-tight">
-                Accepts
-                <br />
-                Credits
+              <span className="pl-4">Place</span>
+              <span className={PAY_OFFERS}>
+                <span className="text-center leading-tight">
+                  Accepts
+                  <br />
+                  Credits
+                </span>
+                <span className="text-center whitespace-nowrap">Discount</span>
+                <span className="text-center whitespace-nowrap">Cashback</span>
               </span>
-              <span className="text-center">Discount</span>
-              <span className="text-center">Cashback</span>
             </div>
           )}
           <div className="divide-border border-border divide-y border-b">
@@ -451,8 +453,11 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
  *  (MESITA-4848). */
 const PREPAY_HEADS = ["$200", "$1,000", "$5,000"];
 const PREPAY_GRID = "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center";
-/** Pay is half the name and half three columns (Pato, 2026-11-25, MESITA-4976). */
-const PAY_GRID = "grid w-full grid-cols-[minmax(0,50%)_repeat(3,minmax(0,1fr))] items-center";
+/** Pay is the name, then three boxes (Pato, 2026-11-25, MESITA-4976). The
+ *  gaps between those boxes match the 16px from the last box to the sheet
+ *  edge, the same inset as the title and the search row (MESITA-4979). */
+const PAY_GRID = "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center";
+const PAY_OFFERS = "grid grid-cols-[repeat(3,4rem)] gap-4 pr-4";
 /** The bar that names Place and the three offers. Dark, on both lists. */
 const HEAD_BAR = "bg-foreground text-background sticky top-0 z-10 text-xs font-semibold";
 
@@ -512,8 +517,10 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
   );
 }
 
-/** PAY IS THREE COLUMNS (Pato, 2026-11-25, MESITA-4976): half the name, half
- *  Accepts Credits, Discount, and Cashback. The header stays dark. The boxes
+/** PAY IS THREE COLUMNS (Pato, 2026-11-25, MESITA-4976): the name, then
+ *  Accepts Credits, Discount, and Cashback. The gap between those boxes is
+ *  the same 16px as the space from the last box to the right edge
+ *  (MESITA-4979). The header stays dark. The boxes
  *  are colored so a glance separates them (MESITA-4977): blue Yes, green for
  *  the percent that is on, gray for No and 0%. A place uses one visit
  *  mechanic. Cashback accepts credits. A discount place may accept credits
@@ -531,13 +538,15 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       className={cn(PAY_GRID, "hover:bg-muted/60 min-h-[72px] py-2 text-left transition-colors")}
       data-pay-pick-place
     >
-      <span className="flex min-w-0 items-center gap-2 pr-1 pl-2.5">
+      <span className="flex min-w-0 items-center gap-2 pr-4 pl-4">
         <PlacePhoto place={p} className="h-12 w-12 max-[359px]:hidden" />
         <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
       </span>
-      <PayCell className={accepts ? "bg-[#BFDBFE] text-blue-950" : EMPTY_BOX}>{accepts ? "Yes" : "No"}</PayCell>
-      <PayCell className={discount > 0 ? offerShade(discount) : EMPTY_BOX}>{`${discount}%`}</PayCell>
-      <PayCell className={cashback > 0 ? offerShade(cashback) : EMPTY_BOX}>{`${cashback}%`}</PayCell>
+      <span className={PAY_OFFERS}>
+        <PayCell className={accepts ? "bg-[#BFDBFE] text-blue-950" : EMPTY_BOX}>{accepts ? "Yes" : "No"}</PayCell>
+        <PayCell className={discount > 0 ? offerShade(discount) : EMPTY_BOX}>{`${discount}%`}</PayCell>
+        <PayCell className={cashback > 0 ? offerShade(cashback) : EMPTY_BOX}>{`${cashback}%`}</PayCell>
+      </span>
     </button>
   );
 }
@@ -547,10 +556,8 @@ const EMPTY_BOX = "bg-muted text-muted-foreground";
 
 function PayCell({ children, className }: { children: string; className: string }) {
   return (
-    <span className="flex justify-center px-0.5" aria-hidden>
-      <span className={cn("flex h-11 w-full max-w-16 items-center justify-center rounded-xl text-sm font-semibold tabular-nums", className)}>
-        {children}
-      </span>
+    <span className={cn("flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold tabular-nums", className)} aria-hidden>
+      {children}
     </span>
   );
 }
