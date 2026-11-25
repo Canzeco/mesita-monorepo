@@ -108,9 +108,9 @@ const STANDARD: Product[] = [
   // "voucher is confusing"); Business keeps Voucher.
   { key: "voucher_200", name: "Small Bonus", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
   { key: "voucher_1000", name: "Medium Bonus", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
-  // MESITA-4764: the place picks each bonus (Small 10 · 20, Medium 20 · 40,
-  // Big 40 · 60); this copy is the default, the server's catalog line wins.
-  { key: "voucher_5000", name: "Big Bonus", line: "Pay $5,000.00MX, get $7,000.00MX.", limit: "As many as you like.", bonus: "40% bonus", short: "Big Bonus", brief: "As many as you like" },
+  // MESITA-4980: the default Big bonus is 30% (40% from MESITA-4764). The
+  // place can still pick 60%. This copy is the default.
+  { key: "voucher_5000", name: "Big Bonus", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN

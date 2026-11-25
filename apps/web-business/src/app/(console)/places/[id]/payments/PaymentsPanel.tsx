@@ -128,7 +128,7 @@ const VOUCHER_PRICE: Record<string, Record<VoucherKey, number>> = Object.fromEnt
 type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey };
 
 // THE OWNER PICKS EACH BONUS (Pato, 2026-11-23, MESITA-4764: "small: 10% 20% ·
-// mid 20 40 · big 40 60"); the prices stay.
+// mid 20 40 · big 30 60"); the prices stay.
 const STANDARD: VoucherSeed[] = [
   { key: "voucher_200", name: "Small Voucher", field: "small_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
   { key: "voucher_1000", name: "Medium Voucher", field: "medium_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },

@@ -59,7 +59,8 @@ export type CashbackRates = {
   /** MESITA-4770: Discount or Cashback, for all three lines. */
   visit_mechanism: VisitMechanism;
   /** MESITA-4762: the bonus each prepaid voucher gives here, in basis points:
-   *  Small 10 · 20 %, Medium 20 · 40 %, Big 40 · 60 % (VOUCHER_BONUS_STEPS_BPS). */
+   *  Small 10 · 20 %, Medium 20 · 40 %, Big 30 · 60 % (VOUCHER_BONUS_STEPS_BPS,
+   *  Big's default 30% since MESITA-4980). */
   small_bonus_bps: number;
   medium_bonus_bps: number;
   big_bonus_bps: number;

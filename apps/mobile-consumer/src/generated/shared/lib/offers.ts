@@ -170,13 +170,13 @@ const OFFER_SLIDES: OfferSlide[] = [
 ];
 
 /** The standard vouchers' default bonuses: the server's catalog (supabase
- *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +40%;
- *  MESITA-4764). Each place picks its own (Small 10 · 20, Medium 20 · 40,
- *  Big 40 · 60): `voucherPct` reads the row's pick first. */
+ *  _shared/money.ts VOUCHER_CATALOG: Small +10%, Medium +20%, Big +30%;
+ *  MESITA-4980). Each place picks its own (Small 10 · 20, Medium 20 · 40,
+ *  Big 30 · 60): `voucherPct` reads the row's pick first. */
 export const STANDARD_BONUS: Record<string, number> = {
   voucher_200: 10,
   voucher_1000: 20,
-  voucher_5000: 40,
+  voucher_5000: 30,
 };
 
 /** A voucher's bonus at this place in whole percent: the row's pick, else

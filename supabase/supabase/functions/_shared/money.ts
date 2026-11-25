@@ -131,9 +131,11 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   voucher_200: { price_cents: 200_00, bonus_bps: 1000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   voucher_1000: { price_cents: 1_000_00, bonus_bps: 2000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   // THE OWNER PICKS THE BONUS (Pato, 2026-11-23, MESITA-4762: "small: 10%
-  // 20% · mid 20 40 · big 40 60"): bonus_bps here is each size's default;
+  // 20% · mid 20 40 · big 30 60"): bonus_bps here is each size's default;
   // the place's pick lives on place_cashback_settings (VOUCHER_BONUS_STEPS_BPS).
-  voucher_5000: { price_cents: 5_000_00, bonus_bps: 4000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
+  // THE THREE COLUMNS ARE 10, 20, 30 (Pato, 2026-11-25, MESITA-4980).
+  // Big's default was 40% from MESITA-4764; the high pick stays 60%.
+  voucher_5000: { price_cents: 5_000_00, bonus_bps: 3000, kind: "open", available_after_sec: BONUS_WAIT_SEC },
   // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
   // BONUS"; gone 2026-11-21, MESITA-4636). Welcome's MX$100 lands with
   // its bonus in 3 hours (MESITA-4717); once per guest per place.
@@ -195,7 +197,7 @@ export function voucherPriceCents(key: MoneyVoucherKey, currency: string = MONEY
 export const VOUCHER_BONUS_STEPS_BPS = {
   voucher_200: [1000, 2000],
   voucher_1000: [2000, 4000],
-  voucher_5000: [4000, 6000],
+  voucher_5000: [3000, 6000],
 } as const;
 export type PickedVoucherKey = keyof typeof VOUCHER_BONUS_STEPS_BPS;
 
