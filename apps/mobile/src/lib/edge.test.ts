@@ -6,7 +6,7 @@ import * as auth from "@/lib/supabase";
 
 const send = fetch as unknown as jest.Mock;
 const schema = z.object({ id: z.string() });
-const FN = "consumer-web-get-x";
+const FN = "consumer-web-get-profile";
 
 const answer = (status: number, body: unknown, id: string | null = "req-1") => ({
   status,
