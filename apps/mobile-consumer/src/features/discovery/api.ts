@@ -29,6 +29,8 @@ export const placeSchema = z
     distance_km: number,
     boost_tier: number,
     ad: z.boolean().optional().catch(false),
+    lat: number,
+    lng: number,
   })
   .transform(
     (p): CatalogPlace => ({
@@ -46,6 +48,8 @@ export const placeSchema = z
       distanceKm: orNull(p.distance_km),
       isPremier: (p.boost_tier ?? 0) > 0,
       isAd: p.ad === true,
+      lat: orNull(p.lat),
+      lng: orNull(p.lng),
     }),
   );
 
@@ -87,6 +91,37 @@ export async function fillCatalog(
   };
   const answer = await callEdge("consumer-web-list-catalog", body, z.object({ places: z.array(placeSchema) }), { signal });
   return answer.places;
+}
+
+const mapSchema = z.object({
+  places: z.array(placeSchema).catch([]),
+  dots: z.array(z.unknown()).catch([]),
+});
+
+export type MapDot = { id: string; lat: number; lng: number; premier: boolean };
+export type MapAnswer = { places: CatalogPlace[]; dots: MapDot[] };
+
+/** Search's map. The same read the web map makes: a centre, and the families that are on. */
+export async function listPlaces(point: Point, familyKeys: readonly string[], signal?: AbortSignal): Promise<MapAnswer> {
+  const answer = await callEdge(
+    "consumer-web-list-places",
+    {
+      google: true,
+      lat: point.lat,
+      lng: point.lng,
+      ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
+    },
+    mapSchema,
+    { signal },
+  );
+  const dots = answer.dots.flatMap((raw) => {
+    if (!raw || typeof raw !== "object") return [];
+    const dot = raw as { id?: unknown; lat?: unknown; lng?: unknown; premier?: unknown };
+    if (typeof dot.id !== "string" || typeof dot.lat !== "number" || typeof dot.lng !== "number") return [];
+    if (!Number.isFinite(dot.lat) || !Number.isFinite(dot.lng)) return [];
+    return [{ id: dot.id, lat: dot.lat, lng: dot.lng, premier: dot.premier === true }];
+  });
+  return { places: answer.places, dots };
 }
 
 export type SavedPlaces = { ids: string[]; places: CatalogPlace[] };

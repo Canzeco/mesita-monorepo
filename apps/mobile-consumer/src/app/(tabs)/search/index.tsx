@@ -6,5 +6,10 @@ export { RouteError as ErrorBoundary } from "@/features/auth";
 
 export default function Route() {
   const router = useRouter();
-  return <SearchScreen onHome={() => router.navigate("/")} />;
+  return (
+    <SearchScreen
+      onChooseLocation={() => router.push("/location")}
+      onMenu={() => router.push("/categories")}
+    />
+  );
 }

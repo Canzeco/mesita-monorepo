@@ -5,7 +5,7 @@ import { withSaved } from "./queries";
 
 const PLACE: CatalogPlace = {
   id: "a", slug: null, name: "Pinto", category: "Bar", photo: "p1", priceLevel: 2, rating: 4.4, reviews: 2150,
-  hours: null, timezone: null, zone: "Centro", distanceKm: 0.31, isPremier: false, isAd: false,
+  hours: null, timezone: null, zone: "Centro", distanceKm: 0.31, isPremier: false, isAd: false, lat: null, lng: null,
 };
 
 test("a place keeps only what it can read", () => {

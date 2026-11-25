@@ -3,25 +3,40 @@
 import { render } from "@testing-library/react-native";
 import * as Updates from "expo-updates";
 
+import { QueryClientProvider } from "@tanstack/react-query";
+
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { setSession } from "@/features/auth";
 import { CodeScreen } from "@/features/auth/screens/code-screen";
+import { queryClient } from "@/lib/query";
 import { pageUrl } from "@/features/auth/screens/open-screen";
 import { PhoneScreen } from "@/features/auth/screens/phone-screen";
 import { SuspendedScreen } from "@/features/auth/screens/suspended-screen";
 import { WelcomeScreen } from "@/features/auth/screens/welcome-screen";
 import { applyUpdate, UpdateView } from "@/features/auth/screens/update-screen";
+import { LocationProvider } from "@/features/discovery/location-context";
 import { SearchScreen } from "@/features/discovery/screens/search-screen";
 import { HomeView, type HomeState } from "@/features/discovery/screens/home-screen";
 import { chipsFor } from "@/features/discovery/families";
 import { MeView, type MeState } from "@/features/settings/screens/me-screen";
 
+jest.mock("react-native-maps", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    __esModule: true,
+    default: (props: { children?: unknown }) => React.createElement(View, props, props.children),
+    Marker: View,
+    PROVIDER_GOOGLE: "google",
+  };
+});
+
 const nothing = () => undefined;
 const error = { kind: "error" as const, message: "No.", offline: false, requestId: "r1" };
 const place = {
   id: "a", slug: null, name: "Pinto", category: "Bar", photo: null, priceLevel: 2, rating: 4.4, reviews: 583,
-  hours: null, timezone: null, zone: null, distanceKm: 0.1, isPremier: true, isAd: true,
+  hours: null, timezone: null, zone: null, distanceKm: 0.1, isPremier: true, isAd: true, lat: 25.6, lng: -100.3,
 };
 
 const home: HomeState[] = [
@@ -61,7 +76,11 @@ test("sign-in, suspended and the shared states", async () => {
     <EmptyState key="4" title="None." />,
     <ErrorState key="5" message="No." />,
     <WelcomeScreen key="6" onSignIn={nothing} onBrowse={nothing} />,
-    <SearchScreen key="7" onHome={nothing} />,
+    <QueryClientProvider key="7" client={queryClient}>
+      <LocationProvider>
+        <SearchScreen onChooseLocation={nothing} onMenu={nothing} />
+      </LocationProvider>
+    </QueryClientProvider>,
   ]) {
     expect((await render(screen)).toJSON()).not.toBeNull();
   }
