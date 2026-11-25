@@ -55,9 +55,14 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
+      {/* THE BAR NAMES THE LIST, THEN THE SEARCH FILTERS IT (Pato, 2026-11-25:
+          location above the search). Black only on that bar. */}
+      <div className="shrink-0 px-2 pt-2">
+        <LocationPicker list />
+      </div>
       {/* A grey pill in a white row (Pato, 2026-11-24, MESITA-4913: the plain
           white row was "more pretty but not that obvious"). It stays put: only
-          the box's list scrolls. */}
+          the list scrolls. */}
       <div className="bg-card flex h-14 shrink-0 items-center px-2" data-pay-pick-search>
         <div className={cn(BAR, "flex-1")}>
           <SearchBar
@@ -70,10 +75,7 @@ export function PlaceList({
           />
         </div>
       </div>
-      {/* CURRENT LOCATION IS A BAR (Pato, 2026-11-25: black only on that bar,
-          the places stay outside it). It names what the list is sorted by. */}
-      <section className="mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col gap-2" aria-label="Places" data-pay-list-box>
-      <LocationPicker list />
+      <section className="mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
       <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
       <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">
       {loc.state === "prime" ? (
