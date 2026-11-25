@@ -20,6 +20,8 @@ export default function Route() {
             params: { placeId: item.placeId, kind: item.kind, at: item.at },
           })
         }
+        onOpenPlace={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
+        onFix={() => router.push("/me/profile")}
       />
     );
   }
