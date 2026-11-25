@@ -9,7 +9,7 @@ import { Text } from "@/components/text";
 import { signOut, useMyProfile } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
 import { isOutcomeUnknown } from "@/lib/reconcile";
-import { space } from "@/theme";
+import { colors, space } from "@/theme";
 
 import { checkDraft, draftOf, MIN_AGE, SEXES, type Draft, type DraftErrors } from "../model";
 import { useSaveDetails } from "../queries";
@@ -54,7 +54,7 @@ export function OnboardingScreen() {
       />
       <View style={styles.field}>
         <Text role="label">Sex</Text>
-        <Host matchContents>
+        <Host matchContents colorScheme="light" seedColor={colors.ink}>
           <Picker selectedValue={draft.sex} onValueChange={set("sex")} accessibilityLabel="Sex">
             <Picker.Item label="Choose" value="" />
             {SEXES.map((s) => (
