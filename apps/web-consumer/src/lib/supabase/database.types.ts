@@ -186,7 +186,9 @@ export type Database = {
           small_bonus_bps: number
           updated_at: string
           updated_by: string | null
+          visit_mechanism: string
           welcome_bps: number
+          welcome_vip_bps: number
         }
         Insert: {
           big_bonus_bps?: number
@@ -197,7 +199,9 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
+          visit_mechanism?: string
           welcome_bps?: number
+          welcome_vip_bps?: number
         }
         Update: {
           big_bonus_bps?: number
@@ -208,7 +212,9 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
+          visit_mechanism?: string
           welcome_bps?: number
+          welcome_vip_bps?: number
         }
         Relationships: []
       }
@@ -398,6 +404,7 @@ export type Database = {
           instagram_verified_at: string | null
           instagram_vip_checked_at: string | null
           instagram_vip_status: string | null
+          is_test_guest: boolean
           last_name: string | null
           pay_method: string | null
           phone: string | null
@@ -440,6 +447,7 @@ export type Database = {
           instagram_verified_at?: string | null
           instagram_vip_checked_at?: string | null
           instagram_vip_status?: string | null
+          is_test_guest?: boolean
           last_name?: string | null
           pay_method?: string | null
           phone?: string | null
@@ -482,6 +490,7 @@ export type Database = {
           instagram_verified_at?: string | null
           instagram_vip_checked_at?: string | null
           instagram_vip_status?: string | null
+          is_test_guest?: boolean
           last_name?: string | null
           pay_method?: string | null
           phone?: string | null
@@ -573,12 +582,16 @@ export type Database = {
           bill_cents: number
           card_cents: number
           cash_cents: number
+          cashback_bps: number | null
+          cashback_line: string | null
           charging_at: string | null
           confirmed_key_hash: string | null
           consumer_id: string
           created_at: string
           credit_cents: number
           currency: string
+          discount_bps: number
+          discount_cents: number
           end_reason: string | null
           ending_at: string | null
           ending_reason: string | null
@@ -598,17 +611,22 @@ export type Database = {
           tender: string
           tip_cents: number
           token_hash: string
+          visit_mechanism: string | null
         }
         Insert: {
           bill_cents: number
           card_cents?: number
           cash_cents?: number
+          cashback_bps?: number | null
+          cashback_line?: string | null
           charging_at?: string | null
           confirmed_key_hash?: string | null
           consumer_id: string
           created_at?: string
           credit_cents?: number
           currency: string
+          discount_bps?: number
+          discount_cents?: number
           end_reason?: string | null
           ending_at?: string | null
           ending_reason?: string | null
@@ -628,17 +646,22 @@ export type Database = {
           tender: string
           tip_cents?: number
           token_hash: string
+          visit_mechanism?: string | null
         }
         Update: {
           bill_cents?: number
           card_cents?: number
           cash_cents?: number
+          cashback_bps?: number | null
+          cashback_line?: string | null
           charging_at?: string | null
           confirmed_key_hash?: string | null
           consumer_id?: string
           created_at?: string
           credit_cents?: number
           currency?: string
+          discount_bps?: number
+          discount_cents?: number
           end_reason?: string | null
           ending_at?: string | null
           ending_reason?: string | null
@@ -658,6 +681,7 @@ export type Database = {
           tender?: string
           tip_cents?: number
           token_hash?: string
+          visit_mechanism?: string | null
         }
         Relationships: [
           {
@@ -686,6 +710,87 @@ export type Database = {
             columns: ["tab_id"]
             isOneToOne: false
             referencedRelation: "pay_tabs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_suspensions: {
+        Row: {
+          closures: number
+          consumer_id: string
+          id: string
+          place_id: string | null
+          reinstated_at: string | null
+          reinstated_by: string | null
+          suspended_at: string
+        }
+        Insert: {
+          closures: number
+          consumer_id: string
+          id?: string
+          place_id?: string | null
+          reinstated_at?: string | null
+          reinstated_by?: string | null
+          suspended_at?: string
+        }
+        Update: {
+          closures?: number
+          consumer_id?: string
+          id?: string
+          place_id?: string | null
+          reinstated_at?: string | null
+          reinstated_by?: string | null
+          suspended_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_suspensions_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_suspensions_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_ticket_closures: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: string
+          place_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: string
+          place_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_ticket_closures_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_ticket_closures_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -773,6 +878,186 @@ export type Database = {
         }
         Relationships: []
       }
+      pay_bills: {
+        Row: {
+          attempt_id: string | null
+          bill_cents: number | null
+          consumer_id: string
+          created_at: string
+          currency: string
+          expires_at: string
+          id: string
+          livemode: boolean
+          not_mine: boolean
+          place_id: string
+          quote: Json | null
+          received_at: string | null
+          received_key_hash: string | null
+          received_version: number | null
+          received_waiter_id: string | null
+          staff_key_hash: string
+          status: string
+          tip_cents: number
+          took_cents: number | null
+          updated_at: string
+          version: number
+          waiter_id: string | null
+          waiter_name: string | null
+          wrong_codes: number
+        }
+        Insert: {
+          attempt_id?: string | null
+          bill_cents?: number | null
+          consumer_id: string
+          created_at?: string
+          currency: string
+          expires_at: string
+          id?: string
+          livemode: boolean
+          not_mine?: boolean
+          place_id: string
+          quote?: Json | null
+          received_at?: string | null
+          received_key_hash?: string | null
+          received_version?: number | null
+          received_waiter_id?: string | null
+          staff_key_hash: string
+          status?: string
+          tip_cents?: number
+          took_cents?: number | null
+          updated_at?: string
+          version?: number
+          waiter_id?: string | null
+          waiter_name?: string | null
+          wrong_codes?: number
+        }
+        Update: {
+          attempt_id?: string | null
+          bill_cents?: number | null
+          consumer_id?: string
+          created_at?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          livemode?: boolean
+          not_mine?: boolean
+          place_id?: string
+          quote?: Json | null
+          received_at?: string | null
+          received_key_hash?: string | null
+          received_version?: number | null
+          received_waiter_id?: string | null
+          staff_key_hash?: string
+          status?: string
+          tip_cents?: number
+          took_cents?: number | null
+          updated_at?: string
+          version?: number
+          waiter_id?: string | null
+          waiter_name?: string | null
+          wrong_codes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_bills_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: true
+            referencedRelation: "guest_pay_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_bills_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_bills_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_bills_received_waiter_id_fkey"
+            columns: ["received_waiter_id"]
+            isOneToOne: false
+            referencedRelation: "place_waiters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_bills_waiter_id_fkey"
+            columns: ["waiter_id"]
+            isOneToOne: false
+            referencedRelation: "place_waiters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pay_guest_codes: {
+        Row: {
+          closed_at: string | null
+          consumer_id: string
+          draft_at: string | null
+          draft_bill_cents: number | null
+          draft_step: string | null
+          draft_tip_cents: number | null
+          expires_at: string
+          place_id: string | null
+          prev_token_hash: string | null
+          prev_until: string | null
+          token_hash: string
+          updated_at: string
+          wrong_codes: number
+        }
+        Insert: {
+          closed_at?: string | null
+          consumer_id: string
+          draft_at?: string | null
+          draft_bill_cents?: number | null
+          draft_step?: string | null
+          draft_tip_cents?: number | null
+          expires_at: string
+          place_id?: string | null
+          prev_token_hash?: string | null
+          prev_until?: string | null
+          token_hash: string
+          updated_at?: string
+          wrong_codes?: number
+        }
+        Update: {
+          closed_at?: string | null
+          consumer_id?: string
+          draft_at?: string | null
+          draft_bill_cents?: number | null
+          draft_step?: string | null
+          draft_tip_cents?: number | null
+          expires_at?: string
+          place_id?: string | null
+          prev_token_hash?: string | null
+          prev_until?: string | null
+          token_hash?: string
+          updated_at?: string
+          wrong_codes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pay_guest_codes_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: true
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_guest_codes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pay_tabs: {
         Row: {
           bill_cents: number | null
@@ -783,10 +1068,14 @@ export type Database = {
           cash_bill_cents: number
           cash_received_cents: number | null
           cash_tip_cents: number
+          cashback_bps: number | null
+          cashback_line: string | null
           consumer_id: string | null
           created_at: string
           credit_cents: number
           currency: string
+          discount_bps: number
+          discount_cents: number
           end_reason: string | null
           expires_at: string
           id: string
@@ -809,6 +1098,8 @@ export type Database = {
           updated_at: string
           verified_at: string | null
           verified_key_hash: string | null
+          visit_mechanism: string | null
+          waiter_id: string | null
           waiter_name: string | null
         }
         Insert: {
@@ -820,10 +1111,14 @@ export type Database = {
           cash_bill_cents?: number
           cash_received_cents?: number | null
           cash_tip_cents?: number
+          cashback_bps?: number | null
+          cashback_line?: string | null
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
           currency: string
+          discount_bps?: number
+          discount_cents?: number
           end_reason?: string | null
           expires_at: string
           id?: string
@@ -846,6 +1141,8 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_key_hash?: string | null
+          visit_mechanism?: string | null
+          waiter_id?: string | null
           waiter_name?: string | null
         }
         Update: {
@@ -857,10 +1154,14 @@ export type Database = {
           cash_bill_cents?: number
           cash_received_cents?: number | null
           cash_tip_cents?: number
+          cashback_bps?: number | null
+          cashback_line?: string | null
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
           currency?: string
+          discount_bps?: number
+          discount_cents?: number
           end_reason?: string | null
           expires_at?: string
           id?: string
@@ -883,6 +1184,8 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_key_hash?: string | null
+          visit_mechanism?: string | null
+          waiter_id?: string | null
           waiter_name?: string | null
         }
         Relationships: [
@@ -905,6 +1208,13 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pay_tabs_waiter_id_fkey"
+            columns: ["waiter_id"]
+            isOneToOne: false
+            referencedRelation: "place_waiters"
             referencedColumns: ["id"]
           },
         ]
@@ -1060,7 +1370,9 @@ export type Database = {
           small_bonus_bps: number
           updated_at: string
           updated_by: string | null
+          visit_mechanism: string
           welcome_bps: number
+          welcome_vip_bps: number
         }
         Insert: {
           big_bonus_bps?: number
@@ -1071,7 +1383,9 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
+          visit_mechanism?: string
           welcome_bps?: number
+          welcome_vip_bps?: number
         }
         Update: {
           big_bonus_bps?: number
@@ -1082,7 +1396,9 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
+          visit_mechanism?: string
           welcome_bps?: number
+          welcome_vip_bps?: number
         }
         Relationships: [
           {
@@ -1123,21 +1439,21 @@ export type Database = {
           addr_hash: string
           id: number
           kind: string
-          place_id: string
+          place_id: string | null
           tried_at: string
         }
         Insert: {
           addr_hash: string
           id?: never
           kind: string
-          place_id: string
+          place_id?: string | null
           tried_at?: string
         }
         Update: {
           addr_hash?: string
           id?: never
           kind?: string
-          place_id?: string
+          place_id?: string | null
           tried_at?: string
         }
         Relationships: [
@@ -1223,6 +1539,7 @@ export type Database = {
       place_codes: {
         Row: {
           code_hash: string
+          lookup_hash: string | null
           place_id: string
           staff_qr: string | null
           staff_qr_made_at: string | null
@@ -1232,6 +1549,7 @@ export type Database = {
         }
         Insert: {
           code_hash: string
+          lookup_hash?: string | null
           place_id: string
           staff_qr?: string | null
           staff_qr_made_at?: string | null
@@ -1241,6 +1559,7 @@ export type Database = {
         }
         Update: {
           code_hash?: string
+          lookup_hash?: string | null
           place_id?: string
           staff_qr?: string | null
           staff_qr_made_at?: string | null
@@ -2600,6 +2919,56 @@ export type Database = {
           },
         ]
       }
+      place_waiters: {
+        Row: {
+          code: string | null
+          created_at: string
+          id: string
+          lookup_hash: string | null
+          name: string
+          name_required: boolean
+          no_code: boolean
+          place_id: string
+          removed_at: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          lookup_hash?: string | null
+          name: string
+          name_required?: boolean
+          no_code?: boolean
+          place_id: string
+          removed_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string
+          id?: string
+          lookup_hash?: string | null
+          name?: string
+          name_required?: boolean
+          no_code?: boolean
+          place_id?: string
+          removed_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_waiters_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       places: {
         Row: {
           boost_tier: number
@@ -2608,6 +2977,7 @@ export type Database = {
           credit_limit_cents: number | null
           currency: string
           id: string
+          is_test_place: boolean
           slug: string
           state: Database["public"]["Enums"]["place_state"]
           updated_at: string
@@ -2619,6 +2989,7 @@ export type Database = {
           credit_limit_cents?: number | null
           currency?: string
           id: string
+          is_test_place?: boolean
           slug: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -2630,6 +3001,7 @@ export type Database = {
           credit_limit_cents?: number | null
           currency?: string
           id?: string
+          is_test_place?: boolean
           slug?: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -3955,6 +4327,7 @@ export type Database = {
           instagram_verified_at: string | null
           instagram_vip_checked_at: string | null
           instagram_vip_status: string | null
+          is_test_guest: boolean
           last_name: string | null
           pay_method: string | null
           phone: string | null
@@ -4081,6 +4454,10 @@ export type Database = {
         Args: { p_consumer_id: string; p_method: string }
         Returns: Json
       }
+      consumer_social_level: {
+        Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
+        Returns: string
+      }
       currency_for_country: { Args: { p_country: string }; Returns: string }
       deep_knn: {
         Args: {
@@ -4128,6 +4505,10 @@ export type Database = {
         Args: { a: Database["public"]["Tables"]["guest_pay_attempts"]["Row"] }
         Returns: string
       }
+      guest_ticket_closed: {
+        Args: { p_consumer_id: string; p_now?: string; p_place_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: never; Returns: boolean }
       jsonb_fill_absent: {
         Args: { p_defaults: Json; p_target: Json }
@@ -4149,6 +4530,85 @@ export type Database = {
           retry_after: string
           run_id: string
         }[]
+      }
+      pay_bill_accept: {
+        Args: {
+          p_bill_id: string
+          p_consumer_id: string
+          p_now?: string
+          p_token_hash: string
+          p_version: number
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
+      pay_bill_cancel: {
+        Args: { p_bill_id: string; p_now?: string; p_place_id: string }
+        Returns: Json
+      }
+      pay_bill_decline: {
+        Args: {
+          p_bill_id: string
+          p_consumer_id: string
+          p_not_mine?: boolean
+          p_now?: string
+          p_version: number
+        }
+        Returns: Json
+      }
+      pay_bill_open: {
+        Args: {
+          p_again_bill_id: string
+          p_code_hash: string
+          p_currency: string
+          p_key_hash: string
+          p_livemode: boolean
+          p_now?: string
+          p_place_id: string
+        }
+        Returns: Json
+      }
+      pay_bill_quote: {
+        Args: {
+          p_bill_cents: number
+          p_consumer_id: string
+          p_currency: string
+          p_livemode: boolean
+          p_now?: string
+          p_place_id: string
+          p_tip_cents: number
+        }
+        Returns: Json
+      }
+      pay_bill_receive: {
+        Args: {
+          p_bill_id: string
+          p_key_hash: string
+          p_now?: string
+          p_place_id: string
+          p_version: number
+          p_waiter_id: string
+        }
+        Returns: Json
+      }
+      pay_bill_send: {
+        Args: {
+          p_bill_cents: number
+          p_bill_id: string
+          p_key_hash: string
+          p_now?: string
+          p_place_id: string
+          p_tip_cents: number
+          p_version: number
+          p_waiter_id?: string
+          p_waiter_name?: string
+          p_window_minutes?: number
+        }
+        Returns: Json
+      }
+      pay_bill_unreceive: {
+        Args: { p_bill_id: string; p_now?: string; p_place_id: string }
+        Returns: Json
       }
       pay_guest_begin: {
         Args: {
@@ -4194,6 +4654,27 @@ export type Database = {
         Args: { p_attempt_id: string; p_now?: string }
         Returns: Json
       }
+      pay_guest_code_set: {
+        Args: {
+          p_consumer_id: string
+          p_now?: string
+          p_place_id?: string
+          p_short_hash?: string
+          p_token_hash: string
+          p_ttl?: string
+        }
+        Returns: Json
+      }
+      pay_guest_draft_set: {
+        Args: {
+          p_bill_cents: number
+          p_now?: string
+          p_step: string
+          p_tip_cents: number
+          p_token_hash: string
+        }
+        Returns: Json
+      }
       pay_guest_finish_release: {
         Args: { p_attempt_id: string; p_now?: string; p_reason: string }
         Returns: Json
@@ -4205,6 +4686,7 @@ export type Database = {
         }
         Returns: string
       }
+      pay_guest_lock: { Args: { p_consumer_id: string }; Returns: undefined }
       pay_guest_mark_held: {
         Args: { p_attempt_id: string; p_now?: string }
         Returns: Json
@@ -4519,6 +5001,7 @@ export type Database = {
           returning_bps: number
           returning_vip_bps: number
           welcome_bps: number
+          welcome_vip_bps: number
         }[]
       }
       place_charges_sweep: { Args: never; Returns: number }
@@ -4610,6 +5093,10 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
         Returns: string
       }
+      place_staff_code_start: {
+        Args: { p_place_id: string }
+        Returns: undefined
+      }
       place_take_code_try: {
         Args: { p_consumer_id: string; p_max: number; p_place_id: string }
         Returns: string
@@ -4680,6 +5167,7 @@ export type Database = {
           plan: string
         }[]
       }
+      place_visit_mechanism: { Args: { p_place_id: string }; Returns: string }
       place_visit_rows: {
         Args: { p_livemode: boolean; p_place_id: string }
         Returns: {
@@ -4810,6 +5298,25 @@ export type Database = {
       unstick_enriching_places: {
         Args: { older_than?: string }
         Returns: number
+      }
+      visit_cashback_cap_cents: { Args: never; Returns: number }
+      waiter_code_try: {
+        Args: {
+          p_addr_hash: string
+          p_bill_id: string
+          p_code: string
+          p_now?: string
+          p_token_hash: string
+        }
+        Returns: Json
+      }
+      waiter_name_required: {
+        Args: { p_bill_id: string; p_now?: string; p_token_hash: string }
+        Returns: boolean
+      }
+      waiter_no_code: {
+        Args: { p_bill_id: string; p_now?: string; p_token_hash: string }
+        Returns: string
       }
       wallet_balance: {
         Args: {
