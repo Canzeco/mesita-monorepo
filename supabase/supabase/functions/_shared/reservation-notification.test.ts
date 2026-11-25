@@ -76,6 +76,13 @@ Deno.test("notify: inserts exactly the row", async () => {
   const inserted: unknown[] = [];
   const admin = {
     from: (table: string) => {
+      if (table === "reservation_tickets") {
+        return {
+          select: () => ({
+            eq: () => ({ maybeSingle: () => Promise.resolve({ data: { consumer_notify: "call" }, error: null }) }),
+          }),
+        };
+      }
       assertEquals(table, "consumer_notifications");
       return {
         insert: (row: unknown) => {

@@ -680,6 +680,22 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
   return { ok: true, patch };
 }
 
+/** The guest's notify choice, re-read after the reservation is saved.
+ *  Push sends only for `app`. A failed read sends nothing. */
+export async function readConsumerNotify(
+  admin: SupabaseClient,
+  id: string,
+): Promise<"call" | "app" | null> {
+  const { data, error } = await admin
+    .from("reservation_tickets")
+    .select("consumer_notify")
+    .eq("id", id)
+    .maybeSingle();
+  if (error || !data) return null;
+  const value = (data as { consumer_notify?: string }).consumer_notify;
+  return value === "app" || value === "call" ? value : null;
+}
+
 // ── writeReservation — THE write door (single-row) ─────────────────────────
 
 export type ReservationWriteResult =

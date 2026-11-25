@@ -24,6 +24,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { errorMessage } from "./errors.ts";
+import { sendReservationPush } from "./push.ts";
 
 /** The kinds Me › Notifications renders — web-consumer's RESERVATION_KINDS. */
 export const RESERVATION_NOTIFICATION_KINDS = ["reservation", "booking"] as const;
@@ -95,6 +96,7 @@ export async function notifyReservationOutcome(
         `[reservation-notification] ${n.outcome} for ${n.reservationId} not written: ${error.message}`,
       );
     }
+    await sendReservationPush(admin, n);
   } catch (err) {
     console.error(
       `[reservation-notification] ${n.outcome} for ${n.reservationId} threw: ${
