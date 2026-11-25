@@ -78,7 +78,15 @@ const config: ExpoConfig = {
       },
     ],
     // Stripe's iOS SDK and Google Maps share one binary: dynamic frameworks.
-    ["expo-build-properties", { ios: { useFrameworks: "dynamic" } }],
+    // On Android, the code shrinker stops on the classes of a Stripe feature
+    // Mesita does not use (Issuing push provisioning), which are not installed.
+    [
+      "expo-build-properties",
+      {
+        ios: { useFrameworks: "dynamic" },
+        android: { extraProguardRules: "-dontwarn com.stripe.android.pushProvisioning.**" },
+      },
+    ],
     // The Apple Pay merchant id arrives with the Wallet step.
     ["@stripe/stripe-react-native", { merchantIdentifier: [], enableGooglePay: true }],
     "./plugins/with-stripe-release-lint.js",
