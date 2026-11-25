@@ -21,6 +21,10 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
         <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="pay">
+        <NativeTabs.Trigger.Icon sf="creditcard" md="payments" />
+        <NativeTabs.Trigger.Label>Pay</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="me">
         <NativeTabs.Trigger.Icon sf="person.crop.circle.fill" md="account_circle" />
         <NativeTabs.Trigger.Label>{member ? "Me" : "Sign"}</NativeTabs.Trigger.Label>
