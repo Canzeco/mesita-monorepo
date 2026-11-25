@@ -99,8 +99,9 @@ export function MeView({ state, signIn, onRetry, onSignOut, onProfile, onClass, 
         <Card>
           <Text role="title">{[state.profile.firstName, state.profile.lastName].filter(Boolean).join(" ")}</Text>
           <Row label="Phone" value={state.profile.phone ?? undefined} />
-          <Row label="Class" value={state.profile.isVip ? "VIP Class" : "Regular Class"} onPress={onClass} />
+          <Row label="Class" value={state.profile.isVip ? "VIP" : "Regular"} />
           <Row label="Profile" onPress={onProfile} />
+          <Row label="Your class" onPress={onClass} />
           <Row label="Notifications" onPress={onNotifications} />
           <Row label="Settings" onPress={onSettings} />
           <Row label="Delete account" onPress={onDelete} />
