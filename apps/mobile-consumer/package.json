@@ -1,5 +1,5 @@
 {
-  "name": "mesita-mobile",
+  "name": "mesita-mobile-consumer",
   "version": "0.1.0",
   "private": true,
   "main": "expo-router/entry",

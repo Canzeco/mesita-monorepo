@@ -1,13 +1,13 @@
 name: mobile
 
-# The guest app for iPhone and Android (apps/mobile). One required check:
+# The guest app for iPhone and Android (apps/mobile-consumer). One required check:
 # everything that can be proven without a device. Builds and device flows are
-# Expo Workflows (apps/mobile/.eas/workflows).
+# Expo Workflows (apps/mobile-consumer/.eas/workflows).
 on:
   push:
     branches: [main]
     paths:
-      - "apps/mobile/**"
+      - "apps/mobile-consumer/**"
       - ".github/workflows/mobile.yml"
       - ".github/actions/pnpm-check/**"
   # Every PR runs this workflow; the `changes` job decides whether the check
@@ -31,7 +31,7 @@ jobs:
         with:
           filters: |
             mobile:
-              - 'apps/mobile/**'
+              - 'apps/mobile-consumer/**'
               - '.github/workflows/mobile.yml'
               - '.github/actions/pnpm-check/**'
 
@@ -46,14 +46,14 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/pnpm-check
         with:
-          dir: apps/mobile
+          dir: apps/mobile-consumer
           scripts: lint typecheck test export
       # Every package is at the version this Expo SDK pins.
       - name: expo install --check
-        working-directory: apps/mobile
+        working-directory: apps/mobile-consumer
         run: pnpm exec expo install --check
       # Calls the network, so it reports and never blocks.
       - name: expo-doctor
-        working-directory: apps/mobile
+        working-directory: apps/mobile-consumer
         continue-on-error: true
         run: pnpm dlx expo-doctor

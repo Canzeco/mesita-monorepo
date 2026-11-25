@@ -15,7 +15,7 @@ import { assertEquals } from "jsr:@std/assert@1";
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const REPO_ROOT = new URL("../../../../", import.meta.url);
-const APPS = ["web-admin", "web-consumer", "web-landing", "web-business", "web-visit", "mobile"];
+const APPS = ["web-admin", "web-consumer", "web-landing", "web-business", "web-visit", "mobile-consumer"];
 const NAME = /["'`]((?:admin|consumer|business|visit)-web-[a-z0-9-]+)["'`]/g;
 const SKIP_DIRS = new Set(["node_modules", ".next", "dist", ".vercel", "generated"]);
 

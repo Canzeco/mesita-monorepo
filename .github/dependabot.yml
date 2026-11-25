@@ -67,7 +67,7 @@ updates:
   # Expo pins the versions of everything below to the SDK (`expo install
   # --check` in mobile.yml): those move in an SDK upgrade, its own issue.
   - package-ecosystem: npm
-    directory: /apps/mobile
+    directory: /apps/mobile-consumer
     schedule:
       interval: monthly
     ignore:

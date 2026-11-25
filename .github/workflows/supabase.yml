@@ -70,7 +70,7 @@ jobs:
               - 'apps/web-consumer/src/**'
               - 'apps/web-business/src/**'
               - 'apps/web-visit/src/**'
-              - 'apps/mobile/src/**'
+              - 'apps/mobile-consumer/src/**'
             schema:
               - 'supabase/supabase/migrations/**'
               - 'supabase/supabase/tests/**'
