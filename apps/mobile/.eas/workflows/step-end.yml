@@ -1,0 +1,105 @@
+# The end of a build step: builds (only when the native code changed), then the
+# Maestro flows on an iPhone simulator and an Android emulator. Run by the
+# building agent: pnpm step-end, which also posts the result on the PR.
+name: step-end
+
+on:
+  workflow_dispatch:
+    inputs:
+      testflight:
+        type: boolean
+        default: false
+        description: Also build the store-signed iPhone app (needs the App Store Connect API key).
+
+concurrency:
+  group: ${{ workflow.filename }}
+  queue: max
+
+jobs:
+  preflight:
+    environment: preview
+    steps:
+      - uses: eas/checkout
+      - name: Every credential is here
+        run: node scripts/preflight.mjs MAESTRO_TEST_PHONE MAESTRO_TEST_CODE --test-code
+
+  fingerprint:
+    needs: [preflight]
+    type: fingerprint
+    environment: preview
+
+  find_ios:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: simulator
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  find_android:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: preview
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      wait_for_in_progress: true
+
+  build_ios:
+    needs: [find_ios]
+    if: ${{ !needs.find_ios.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: simulator
+
+  build_android:
+    needs: [find_android]
+    if: ${{ !needs.find_android.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  # A reused build gets this branch's JavaScript, so the flows test this commit.
+  repack_ios:
+    needs: [find_ios]
+    if: ${{ needs.find_ios.outputs.build_id }}
+    type: repack
+    params:
+      build_id: ${{ needs.find_ios.outputs.build_id }}
+
+  repack_android:
+    needs: [find_android]
+    if: ${{ needs.find_android.outputs.build_id }}
+    type: repack
+    params:
+      build_id: ${{ needs.find_android.outputs.build_id }}
+
+  testflight:
+    needs: [preflight]
+    if: ${{ inputs.testflight }}
+    type: build
+    params:
+      platform: ios
+      profile: preview
+
+  ios:
+    after: [build_ios, repack_ios]
+    type: maestro
+    environment: preview
+    params:
+      build_id: ${{ after.build_ios.outputs.build_id || after.repack_ios.outputs.build_id }}
+      flow_path: [".maestro/smoke.yaml", ".maestro/screens.yaml"]
+      retries: 1
+
+  android:
+    after: [build_android, repack_android]
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    params:
+      build_id: ${{ after.build_android.outputs.build_id || after.repack_android.outputs.build_id }}
+      flow_path: [".maestro/smoke.yaml", ".maestro/screens.yaml"]
+      retries: 1

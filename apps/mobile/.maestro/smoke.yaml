@@ -1,0 +1,38 @@
+# Launch, sign in with the test number, finish onboarding if it is shown, see
+# the tabs, sign out. No screenshot while a number or a code is on screen.
+appId: com.mesita.consumer
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+    permissions: { location: deny }
+- extendedWaitUntil: { visible: "Home", timeout: 30000 }
+- tapOn: "Me"
+- tapOn: "Sign in"
+- tapOn: { id: "phone" }
+- eraseText
+- inputText: ${MAESTRO_TEST_PHONE}
+- tapOn: "Text me the code"
+- extendedWaitUntil: { visible: { id: "code" }, timeout: 20000 }
+# Six digits sign in by themselves.
+- inputText: ${MAESTRO_TEST_CODE}
+- runFlow:
+    when: { visible: "About you" }
+    commands:
+      - tapOn: { id: "first-name" }
+      - inputText: "Test"
+      - tapOn: { id: "last-name" }
+      - inputText: "Guest"
+      - hideKeyboard
+      - tapOn: "Choose"
+      - tapOn: "Other"
+      - tapOn: { id: "birth-year" }
+      - inputText: "1990"
+      - tapOn: { id: "save-details" }
+- extendedWaitUntil: { visible: "Sign out", timeout: 30000 }
+- assertVisible: "Class"
+- assertVisible: "Home"
+- assertVisible: "Search"
+- tapOn: "Sign out"
+- tapOn: "Sign out"
+- extendedWaitUntil: { visible: "Sign in", timeout: 15000 }

@@ -1,0 +1,59 @@
+# After a merge that touches the app: the same native code gets an update on
+# the preview channel; new native code gets new preview builds.
+name: deliver
+
+on:
+  push:
+    branches: [main]
+    paths: ["apps/mobile/**"]
+  workflow_dispatch: {}
+
+# One at a time, the newest waiting: an older commit never publishes last.
+concurrency:
+  group: ${{ workflow.filename }}
+
+jobs:
+  fingerprint:
+    type: fingerprint
+    environment: preview
+
+  find_ios:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: simulator
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+
+  find_android:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: preview
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+
+  build_ios:
+    needs: [find_ios]
+    if: ${{ !needs.find_ios.outputs.build_id }}
+    type: build
+    params:
+      platform: ios
+      profile: simulator
+
+  build_android:
+    needs: [find_android]
+    if: ${{ !needs.find_android.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: preview
+
+  update:
+    needs: [find_ios, find_android]
+    if: ${{ needs.find_ios.outputs.build_id || needs.find_android.outputs.build_id }}
+    type: update
+    environment: preview
+    params:
+      channel: preview
+      platform: all
