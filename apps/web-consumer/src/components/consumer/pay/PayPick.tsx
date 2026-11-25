@@ -28,52 +28,101 @@ import type { Loc } from "./pay-location";
 
 type ListKind = "prepay" | "pay";
 
-/** One choice of what the list shows. All is the default. */
-type ShowId = "all" | "bonus" | "voucher_200" | "voucher_1000" | "voucher_5000" | "discount" | "cashback" | "credits";
+/** Closest uses the location in this modal. Best offers is a sum on Prepay
+ *  and this guest's next-bill percent on Pay (MESITA-4973). */
+type SortId = "closest" | "best";
+
+/** Prepay is binary. Pay is four: all, discounts, cashbacks, or either deal. */
+type ShowId = "all" | "one" | "discount" | "cashback" | "either";
 
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
+const SORTS: { id: SortId; label: string }[] = [
+  { id: "closest", label: "Closest" },
+  { id: "best", label: "Best offers" },
+];
+
 const PREPAY_SHOWS: { id: ShowId; label: string }[] = [
   { id: "all", label: "All places" },
-  { id: "bonus", label: "With a bonus" },
-  { id: "voucher_200", label: "Sells $200" },
-  { id: "voucher_1000", label: "Sells $1,000" },
-  { id: "voucher_5000", label: "Sells $5,000" },
+  { id: "one", label: "Sells a prepayment" },
 ];
 
 const PAY_SHOWS: { id: ShowId; label: string }[] = [
-  { id: "all", label: "All places" },
-  { id: "discount", label: "Discount" },
-  { id: "cashback", label: "Cashback" },
-  { id: "credits", label: "Accepts credits" },
+  { id: "all", label: "All" },
+  { id: "discount", label: "Discounts" },
+  { id: "cashback", label: "Cashbacks" },
+  { id: "either", label: "Discounts & cashbacks" },
 ];
+
+/** At least one of the three prepayments ($200, $1,000, $5,000). */
+function sellsOneVoucher(p: PayPlace): boolean {
+  return VOUCHERS_SHOWN.some((k) => p.offers?.sell.includes(k) === true);
+}
+
+/** Prepay: the three bonuses added. Pay: the percent this guest's next bill
+ *  gets (welcome or returning, discount or cashback). */
+function offerScore(p: PayPlace, kind: ListKind): number {
+  if (kind === "prepay") {
+    return VOUCHERS_SHOWN.reduce((sum, k) => {
+      if (!p.offers?.sell.includes(k)) return sum;
+      return sum + Math.max(0, voucherPct(p.offers, k) || 0);
+    }, 0);
+  }
+  return payPlaceDiscountBps(p) || payPlaceCashbackBps(p);
+}
+
+function byDistance(a: PayPlace, b: PayPlace): number {
+  return (a.distance_m ?? Number.POSITIVE_INFINITY) - (b.distance_m ?? Number.POSITIVE_INFINITY);
+}
 
 function passesShow(p: PayPlace, kind: ListKind, show: ShowId): boolean {
   if (show === "all") return true;
-  if (kind === "prepay") {
-    if (show === "bonus") return VOUCHERS_SHOWN.some((k) => Boolean(p.offers?.sell.includes(k) && voucherPct(p.offers, k) > 0));
-    if (show === "voucher_200" || show === "voucher_1000" || show === "voucher_5000") {
-      return Boolean(p.offers?.sell.includes(show) && voucherPct(p.offers, show) > 0);
-    }
-    return false;
-  }
+  if (kind === "prepay") return show === "one" && sellsOneVoucher(p);
   if (show === "discount") return payPlaceDiscountBps(p) > 0;
-  if (show === "cashback") return payPlaceDiscountBps(p) === 0 && payPlaceCashbackBps(p) > 0;
-  if (show === "credits") return p.credits_ok === true;
+  if (show === "cashback") return payPlaceCashbackBps(p) > 0;
+  if (show === "either") return payPlaceDiscountBps(p) > 0 || payPlaceCashbackBps(p) > 0;
   return false;
 }
 
-/** Filters, the same modal on Prepay and Pay: location, then what to show. */
+function orderPlaces(list: PayPlace[], kind: ListKind, sort: SortId): PayPlace[] {
+  return list
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => {
+      const score = sort === "best" ? offerScore(b.p, kind) - offerScore(a.p, kind) : 0;
+      return score || byDistance(a.p, b.p) || a.i - b.i;
+    })
+    .map(({ p }) => p);
+}
+
+function FilterChoice({ on, label, onPick }: { on: boolean; label: string; onPick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      aria-pressed={on}
+      className={cn("flex h-12 w-full items-center justify-between rounded-xl px-3 text-left text-base font-semibold", on && "bg-muted")}
+    >
+      {label}
+      <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", on ? "bg-foreground" : "border-border border")} aria-hidden />
+    </button>
+  );
+}
+
+/** Location, then sort, then what to show. Prepay and Pay share the shell. */
 function ListFilters({
   kind,
   open,
+  sort,
   show,
+  onSort,
   onShow,
   onClose,
 }: {
   kind: ListKind;
   open: boolean;
+  sort: SortId;
   show: ShowId;
+  onSort: (id: SortId) => void;
   onShow: (id: ShowId) => void;
   onClose: () => void;
 }) {
@@ -86,24 +135,21 @@ function ListFilters({
           <X className="h-6 w-6" strokeWidth={2.25} aria-hidden />
         </button>
       </div>
-      <div className="flex flex-col gap-5 px-5 py-4">
+      <div className="flex min-h-0 flex-col gap-5 overflow-y-auto px-5 py-4">
         <section className="flex flex-col gap-2">
           <h3 className="text-muted-foreground text-sm font-semibold">Location</h3>
           <LocationPicker wide />
         </section>
         <section className="flex flex-col gap-1">
+          <h3 className="text-muted-foreground px-1 text-sm font-semibold">Sort</h3>
+          {SORTS.map((o) => (
+            <FilterChoice key={o.id} on={sort === o.id} label={o.label} onPick={() => onSort(o.id)} />
+          ))}
+        </section>
+        <section className="flex flex-col gap-1">
           <h3 className="text-muted-foreground px-1 text-sm font-semibold">Show</h3>
           {options.map((o) => (
-            <button
-              key={o.id}
-              type="button"
-              onClick={() => onShow(o.id)}
-              aria-pressed={show === o.id}
-              className={cn("flex h-12 w-full items-center justify-between rounded-xl px-3 text-left text-base font-semibold", show === o.id && "bg-muted")}
-            >
-              {o.label}
-              <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", show === o.id ? "bg-foreground" : "border-border border")} aria-hidden />
-            </button>
+            <FilterChoice key={o.id} on={show === o.id} label={o.label} onPick={() => onShow(o.id)} />
           ))}
         </section>
       </div>
@@ -133,18 +179,18 @@ export function PlaceList({
 }) {
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sort, setSort] = useState<SortId>("closest");
   const [show, setShow] = useState<ShowId>("all");
   const q = fold(query.trim());
   const places = all && kind === "prepay" ? all.filter((p) => payPlaceTabs(p).prepay) : all;
   const matches = (places ?? []).filter((p) => (!q || fold(p.name ?? "").includes(q)) && passesShow(p, kind, show));
-  const shown =
-    kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
+  const shown = orderPlaces(matches, kind, sort);
+  const filtersOn = sort !== "closest" || show !== "all";
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
-      {/* SEARCH, THEN FILTERS, THEN THE LIST (Pato, 2026-11-25, MESITA-4971).
-          The search takes three quarters; Filters is the right quarter and
-          opens the location and what the list shows. Edge to edge
-          (MESITA-4970). Only the list scrolls. */}
+      {/* SEARCH, THEN FILTERS, THEN THE LIST (Pato, 2026-11-25, MESITA-4973).
+          Filters holds the location, Closest or Best offers, and what to
+          show. Edge to edge (MESITA-4970). Only the list scrolls. */}
       <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b pt-2 pb-3">
         <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-2">
           <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
@@ -164,14 +210,22 @@ export function PlaceList({
             aria-expanded={filtersOpen}
             className={cn(
               "flex h-12 min-w-0 items-center justify-center rounded-2xl px-2 text-sm font-semibold transition",
-              show === "all" ? "bg-muted text-foreground hover:bg-border" : "bg-foreground text-background",
+              filtersOn ? "bg-foreground text-background" : "bg-muted text-foreground hover:bg-border",
             )}
             data-pay-filters
           >
             Filters
           </button>
         </div>
-        <ListFilters kind={kind} open={filtersOpen} show={show} onShow={setShow} onClose={() => setFiltersOpen(false)} />
+        <ListFilters
+          kind={kind}
+          open={filtersOpen}
+          sort={sort}
+          show={show}
+          onSort={setSort}
+          onShow={setShow}
+          onClose={() => setFiltersOpen(false)}
+        />
       </div>
       <section className="mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
       <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
