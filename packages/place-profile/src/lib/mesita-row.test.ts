@@ -30,7 +30,7 @@ describe("offerSlides", () => {
       cashback_pct: 10,
       cashback_flat: false,
     });
-    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Pay 10% Cashback", "Prepay Up to 40% Bonus"]);
+    expect(slides.map((s) => `${s.lead} ${s.pill}`)).toEqual(["Pay 10% Cashback", "Prepay Up to 30% Bonus"]);
     expect(slides.map((s) => s.section)).toEqual(["cashback", "prepayment"]);
     expect(slides[1]?.voucher).toBe("voucher_5000");
     // The place's own pick wins (MESITA-4764).
