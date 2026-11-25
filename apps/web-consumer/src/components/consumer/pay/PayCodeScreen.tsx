@@ -526,7 +526,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       <p className={cn("mt-3 rounded-3xl bg-[#00D66F] px-5 py-6 text-center leading-tight font-bold tracking-tight text-neutral-950 tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
       <button
         type="button"
-        className="mt-1 min-h-11 self-start text-sm font-semibold underline underline-offset-2"
+        className="bg-foreground text-background mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl text-base font-semibold"
         aria-haspopup="dialog"
         onClick={() => setWhyOpen(true)}
       >
