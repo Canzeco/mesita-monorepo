@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight, MapPin, QrCode, X } from "lucide-react";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
@@ -10,8 +10,12 @@ import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
+import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { voucherPct } from "@mesita/place-profile/lib/offers";
+import { EFError } from "@/lib/api/_invoke";
+import { apiSuggestPlacesWithIdle, type PlacePrediction } from "@/lib/api/places";
 import { payPlaceCashbackBps, payPlaceDiscountBps, payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { PlacePhoto } from "./pay-common";
 import type { Loc } from "./pay-location";
@@ -177,28 +181,79 @@ export function PlaceList({
   onRefresh: () => void;
   onPick: (placeId: string) => void;
 }) {
+  const supabase = useBrowserSupabase();
   const [query, setQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sort, setSort] = useState<SortId>("closest");
   const [show, setShow] = useState<ShowId>("all");
-  const q = fold(query.trim());
+  const [hits, setHits] = useState<PlacePrediction[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const tokenRef = useRef(newSessionToken());
+  const idleRef = useRef(1000);
+  const trimmed = query.trim();
+  const querying = trimmed.length >= 2;
+  const lat = loc.state === "on" ? loc.at.lat : null;
+  const lng = loc.state === "on" ? loc.at.lng : null;
   const places = all && kind === "prepay" ? all.filter((p) => payPlaceTabs(p).prepay) : all;
-  const matches = (places ?? []).filter((p) => (!q || fold(p.name ?? "").includes(q)) && passesShow(p, kind, show));
+  const matches = (places ?? []).filter((p) => passesShow(p, kind, show));
   const shown = orderPlaces(matches, kind, sort);
   const filtersOn = sort !== "closest" || show !== "all";
+
+  function changeQuery(next: string) {
+    setQuery(next);
+    if (next.trim().length >= 2) setSearching(true);
+    else {
+      setSearching(false);
+      setHits([]);
+      setSearchError(null);
+      tokenRef.current = newSessionToken();
+    }
+  }
+
+  useEffect(() => {
+    if (!querying) return;
+    let cancelled = false;
+    const handle = window.setTimeout(async () => {
+      try {
+        const { predictions, idleSec } = await apiSuggestPlacesWithIdle(
+          supabase,
+          trimmed,
+          tokenRef.current,
+          lat !== null && lng !== null ? { lat, lng } : null,
+          "fast",
+        );
+        if (idleSec !== null) idleRef.current = Math.round(idleSec * 1000);
+        if (cancelled) return;
+        setHits(predictions.filter((p) => p.kind !== "location"));
+        setSearchError(null);
+      } catch (err) {
+        if (cancelled) return;
+        setHits([]);
+        setSearchError(err instanceof EFError && err.status === 502 ? "Search is unavailable right now." : "Search failed. Try again.");
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, idleRef.current);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [querying, trimmed, supabase, lat, lng]);
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
       {/* SEARCH, THEN FILTERS, THEN THE LIST (Pato, 2026-11-25, MESITA-4973).
-          Filters holds the location, Closest or Best offers, and what to
-          show. Edge to edge (MESITA-4970). Only the list scrolls. */}
+          An empty bar is the nearby table. Typing searches every place
+          (MESITA-4975). Filters hold the location, Closest or Best offers,
+          and what the table shows. Edge to edge (MESITA-4970). */}
       <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b pt-2 pb-3">
         <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-2">
           <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
             <SearchBar
               query={query}
               showClear={query.length > 0}
-              onQueryChange={setQuery}
-              onClear={() => setQuery("")}
+              onQueryChange={changeQuery}
+              onClear={() => changeQuery("")}
               placeholder="Search a place"
               label="Search a place"
             />
@@ -254,7 +309,9 @@ export function PlaceList({
           Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
         </p>
       ) : null}
-      {places === null && failed ? (
+      {querying ? (
+        <SearchHits hits={hits} searching={searching} error={searchError} query={trimmed} onPick={onPick} />
+      ) : places === null && failed ? (
         <div className="px-3.5 py-4">
           <EmptyState
             inline
@@ -276,7 +333,7 @@ export function PlaceList({
         </p>
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">
-          {q ? <>No place matches &ldquo;{query.trim()}&rdquo;</> : "No place matches this filter"}
+          No place matches this filter
         </p>
       ) : (
         // A PLACE TABLE (Pato, 2026-11-24, MESITA-4844: "this looks like three
@@ -308,12 +365,74 @@ export function PlaceList({
   );
 }
 
-/** Lower case, no accents: "Cafe" finds "Café". */
-function fold(v: string): string {
-  return v
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase();
+/** The typed bar (MESITA-4975): every place, not the nearby table. A Mesita
+ *  row opens. A Google-only row stays, with a mark and no way to add it. */
+function SearchHits({
+  hits,
+  searching,
+  error,
+  query,
+  onPick,
+}: {
+  hits: PlacePrediction[];
+  searching: boolean;
+  error: string | null;
+  query: string;
+  onPick: (placeId: string) => void;
+}) {
+  if (searching && hits.length === 0) return <RowsSkeleton kind="pay" />;
+  if (error && hits.length === 0) return <p className="text-muted-foreground px-3.5 py-4 text-sm">{error}</p>;
+  if (hits.length === 0) {
+    return <p className="text-muted-foreground px-3.5 py-4 text-sm">No place matches &ldquo;{query}&rdquo;</p>;
+  }
+  return (
+    <div className="divide-border border-border divide-y border-b" data-pay-search-hits>
+      {hits.map((hit) => (
+        <SearchHit key={hit.placeId || hit.mesitaId} hit={hit} onPick={onPick} />
+      ))}
+    </div>
+  );
+}
+
+function hitPhoto(hit: PlacePrediction): string | null {
+  const card = hit.card;
+  const candidates = [card?.profile_photo, ...(Array.isArray(card?.photos) ? card.photos : [])];
+  for (const src of candidates) {
+    if (typeof src === "string" && src.startsWith("https://")) return src;
+  }
+  return null;
+}
+
+function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: string) => void }) {
+  const onMesita = Boolean(hit.mesitaId);
+  const row = (
+    <>
+      <PlacePhoto place={{ photo: hitPhoto(hit), name: hit.mainText }} className="h-12 w-12" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-base font-semibold">{hit.mainText}</span>
+        {hit.secondaryText ? <span className="text-muted-foreground block truncate text-sm">{hit.secondaryText}</span> : null}
+      </span>
+      {onMesita ? null : (
+        <span className="type-label bg-muted text-muted-foreground shrink-0 rounded-xl px-2 py-1.5 text-center leading-tight font-semibold" data-pay-not-on-mesita>
+          Not on
+          <br />
+          Mesita
+        </span>
+      )}
+    </>
+  );
+  if (onMesita && hit.mesitaId) {
+    return (
+      <button type="button" onClick={() => onPick(hit.mesitaId!)} className="hover:bg-muted/60 flex w-full items-center gap-3 px-2.5 py-2.5 text-left" data-pay-search-hit>
+        {row}
+      </button>
+    );
+  }
+  return (
+    <div className="flex w-full items-center gap-3 px-2.5 py-2.5" data-pay-search-hit>
+      {row}
+    </div>
+  );
 }
 
 /** Prepay's columns (Pato, 2026-11-24, MESITA-4845), a › ending every row
