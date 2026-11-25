@@ -496,6 +496,9 @@ export type PayPlace = {
   outside_ok?: boolean;
   /** MESITA-4698: Loyalty Cards is On, so the place has offers (Get Discounts). */
   offers_ok?: boolean;
+  /** Loyalty Cards is on at an active place: it takes Mesita credit. A visit
+   *  discount alone does not. Absent from an older server reads as no. */
+  credits_ok?: boolean;
   /** What the guest can buy here now (MESITA-4519), the card's offer
    *  slides, plus the Pay (cashback) offer the server already sends
    *  (MESITA-4731). Absent from an older server reads as none. */

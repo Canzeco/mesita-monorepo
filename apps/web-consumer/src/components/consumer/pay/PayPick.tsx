@@ -225,17 +225,19 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 
 /** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo,
  *  the name over its address, a green box with what this guest's next bill gets
- *  (Discount or Cashback; MESITA-4865) and a black Pay box. No credits: the Wallet's box has them. */
+ *  (Discount or Cashback; MESITA-4865), Accepts Credits when the place takes
+ *  them (Pato, 2026-11-25), and a black Pay box. The balance stays on the Wallet. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p);
   const bps = discount || payPlaceCashbackBps(p);
   const word = discount > 0 ? "Discount" : "Cashback";
+  const credits = p.credits_ok === true;
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={[`Pay at ${name}`, p.address, bps > 0 ? `${bps / 100}% ${word}` : null].filter(Boolean).join(", ")}
+      aria-label={[`Pay at ${name}`, p.address, bps > 0 ? `${bps / 100}% ${word}` : null, credits ? "Accepts Credits" : null].filter(Boolean).join(", ")}
       className="hover:bg-muted/60 flex min-h-[72px] w-full items-center gap-3 px-2.5 py-2.5 text-left transition-colors max-[429px]:gap-2"
       data-pay-pick-place
     >
@@ -243,6 +245,7 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
         {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight max-[429px]:text-xs">{p.address}</span> : null}
+        {credits ? <span className="mt-1 block text-sm leading-tight font-semibold">Accepts Credits</span> : null}
       </span>
       <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
         {bps > 0 ? (
