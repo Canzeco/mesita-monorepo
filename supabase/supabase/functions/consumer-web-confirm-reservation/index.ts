@@ -19,6 +19,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
+import { refuseOutsideTestPlace } from "../_shared/test-guest.ts";
 import {
   matchesOffer,
   normalizeAlternatives,
@@ -81,6 +82,8 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
   if (!ticket) {
     return json({ ok: false, error: "reservation not found" }, 404);
   }
+  const testRefused = await refuseOutsideTestPlace(ctx, ticket.place_id);
+  if (testRefused) return testRefused;
   if (ticket.state === "cancelled") {
     return json({ ok: false, error: "this reservation is cancelled" }, 409);
   }

@@ -25,6 +25,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
+import { refuseOutsideTestPlace } from "../_shared/test-guest.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
   type ReservationPatch,
@@ -123,6 +124,8 @@ serveJson("consumer-web-update-reservation", async (req) => {
   if (!row) {
     return json({ ok: false, error: "Reservation not found" }, 404);
   }
+  const testRefused = await refuseOutsideTestPlace(ctx, row.place_id);
+  if (testRefused) return testRefused;
   if (row.state === "cancelled") {
     return json({ ok: false, error: "This reservation is cancelled — book a new one." }, 409);
   }

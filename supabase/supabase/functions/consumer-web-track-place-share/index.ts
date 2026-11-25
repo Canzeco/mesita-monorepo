@@ -14,13 +14,14 @@ import { isUuid } from "../_shared/place-id.ts";
 serveJson("consumer-web-track-place-share", async (req) => {
   const ctx = await requireConsumerRequest(req);
   if (ctx instanceof Response) return ctx;
-  const { admin, user } = ctx;
+  const { admin, user, testGuest } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
+  if (testGuest) return json({ ok: true }); // counts nowhere (MESITA-4931)
   const { error } = await admin.from("place_shares").upsert(
     { consumer_id: user.id, place_id: placeId, shared_at: new Date().toISOString() },
     { onConflict: "consumer_id,place_id" },

@@ -71,7 +71,7 @@ type Body = {
 serveJson("consumer-web-track-activity", async (req) => {
   const ctx = await consumerOrAnonymousRequest(req);
   if (ctx instanceof Response) return ctx;
-  const { env, admin, user } = ctx;
+  const { env, admin, user, testGuest } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -97,7 +97,10 @@ serveJson("consumer-web-track-activity", async (req) => {
   }
   const consumerId = user.id;
   const on = kind === "viewed" ? true : bodyRes.body.on !== false;
-  const quiet = kind === "saved" && bodyRes.body.quiet === true;
+  // The test guest (MESITA-4931): a view is not recorded; a save is quiet, so
+  // only their own Saved list reads it.
+  if (testGuest && kind === "viewed") return json({ ok: true, kind, on, enriching: false });
+  const quiet = kind === "saved" && (testGuest || bodyRes.body.quiet === true);
   const point = eventPoint(bodyRes.body.lat, bodyRes.body.lng);
 
   if (on) {
