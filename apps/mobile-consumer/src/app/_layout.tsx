@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { SplashScreen, Stack, useRouter, type Href } from "expo-router";
+import { SplashScreen, Stack, useRouter, useSegments, type Href } from "expo-router";
 import { useEffect, type ComponentProps } from "react";
 
 import { headerOptions } from "@/components/header";
@@ -45,12 +45,22 @@ export default function RootLayout() {
   );
 }
 
-const screens = (names: readonly RootRoute[]) =>
-  names.map((name) => <Stack.Screen key={name} name={name} options={OPTIONS[name]} />);
+const screens = (names: readonly RootRoute[], light: boolean = false) =>
+  names.map((name) => (
+    <Stack.Screen
+      key={name}
+      name={name}
+      // The tab bar hands its status bar to this screen, not to the tab's.
+      options={name === "(tabs)" ? { ...OPTIONS[name], statusBarStyle: light ? "light" : "dark" } : OPTIONS[name]}
+    />
+  ));
 
 function Root() {
   const { gate, member } = useGate();
   const router = useRouter();
+  const segments = useSegments() as string[];
+  // Signed out, the third tab is the photo.
+  const onPhoto = !member && segments[0] === "(tabs)" && segments[1] === "me";
 
   useEffect(() => {
     if (gate !== "starting") void SplashScreen.hideAsync();
@@ -67,7 +77,7 @@ function Root() {
       <Stack.Protected guard={gate === "update"}>{screens(ROUTE_GROUPS.update)}</Stack.Protected>
       <Stack.Protected guard={gate === "suspended"}>{screens(ROUTE_GROUPS.suspended)}</Stack.Protected>
       <Stack.Protected guard={gate === "onboarding"}>{screens(ROUTE_GROUPS.onboarding)}</Stack.Protected>
-      <Stack.Protected guard={open}>{screens(ROUTE_GROUPS.everyone)}</Stack.Protected>
+      <Stack.Protected guard={open}>{screens(ROUTE_GROUPS.everyone, onPhoto)}</Stack.Protected>
       <Stack.Protected guard={open && !member}>{screens(ROUTE_GROUPS.anonymousOnly)}</Stack.Protected>
       <Stack.Protected guard={open && member} redirectTo={open ? "/sign-in" : undefined}>
         {screens(ROUTE_GROUPS.membersOnly)}
