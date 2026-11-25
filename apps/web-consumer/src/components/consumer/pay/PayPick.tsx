@@ -341,16 +341,27 @@ export function PlaceList({
         // per place, one tap; plain columns, no boxes.
         <div data-pay-places>
           {kind === "prepay" ? (
-            <div className={cn(PREPAY_GRID, "border-border bg-muted text-muted-foreground sticky top-0 z-10 h-11 border-b text-xs font-semibold")} aria-hidden data-pay-head-row>
+            <div className={cn(PREPAY_GRID, HEAD_BAR, "h-11")} aria-hidden data-pay-head-row>
               <span className="pl-2.5">Place</span>
               {PREPAY_HEADS.map((h) => (
-                <span key={h} className="text-foreground text-center text-base tabular-nums max-[374px]:text-sm">
+                <span key={h} className="text-center text-base tabular-nums max-[374px]:text-sm">
                   {h}
                 </span>
               ))}
               <span />
             </div>
-          ) : null}
+          ) : (
+            <div className={cn(PAY_GRID, HEAD_BAR, "min-h-11 py-1.5")} aria-hidden data-pay-head-row>
+              <span className="pl-2.5">Place</span>
+              <span className="px-1 text-center leading-tight">
+                Accepts
+                <br />
+                Credits
+              </span>
+              <span className="text-center">Discount</span>
+              <span className="text-center">Cashback</span>
+            </div>
+          )}
           <div className="divide-border border-border divide-y border-b">
             {shown.map((p) => (
               <PlaceRow key={p.place_id} p={p} onPick={onPick} kind={kind} />
@@ -439,6 +450,10 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
  *  (MESITA-4848). */
 const PREPAY_HEADS = ["$200", "$1,000", "$5,000"];
 const PREPAY_GRID = "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center";
+/** Pay is half the name and half three columns (Pato, 2026-11-25, MESITA-4976). */
+const PAY_GRID = "grid w-full grid-cols-[minmax(0,50%)_repeat(3,minmax(0,1fr))] items-center";
+/** The bar that names Place and the three offers. Dark, on both lists. */
+const HEAD_BAR = "bg-foreground text-background sticky top-0 z-10 text-xs font-semibold";
 
 /** THE HIGHER THE BONUS, THE DARKER ITS PURPLE (Pato, 2026-11-24, MESITA-4860:
  *  "that way we can quickly spot the high bonuses"): Prepay's purple in four
@@ -448,13 +463,6 @@ function bonusShade(pct: number): string {
   if (pct >= 40) return "bg-[#635BFF] text-white";
   if (pct >= 20) return "bg-[#BDB9FF] text-indigo-950";
   return "bg-[#E6E4FF] text-indigo-950";
-}
-
-/** Pay's green the same way (Pato, 2026-11-24, MESITA-4862). */
-function offerShade(pct: number): string {
-  if (pct >= 20) return "bg-[#00D66F] text-neutral-950";
-  if (pct >= 10) return "bg-[#85EDB6] text-neutral-950";
-  return "bg-[#D3F8E2] text-neutral-950";
 }
 
 /** A place, one row, the one button. */
@@ -496,44 +504,41 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
   );
 }
 
-/** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo
- *  and the name (Pato, 2026-11-25, MESITA-4965: no street), then on the right a
- *  blue Accepts Credits box (MESITA-4956, MESITA-4974: purple is prepay), a green box with what this guest's
- *  next bill gets (Discount or Cashback; MESITA-4865), and a chevron. The row
- *  selects the place (MESITA-4967). There is no instruction bar (MESITA-4972).
- *  The row does not say Pay. The balance stays on the Wallet. */
+/** PAY IS THREE DARK COLUMNS (Pato, 2026-11-25, MESITA-4976): half the name,
+ *  half Accepts Credits, Discount, and Cashback. A place uses one visit
+ *  mechanic, so one percent is 0. Cashback accepts credits. A discount place
+ *  may accept credits or not. The row selects the place. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
-  const discount = payPlaceDiscountBps(p);
-  const bps = discount || payPlaceCashbackBps(p);
-  const word = discount > 0 ? "Discount" : "Cashback";
-  const credits = p.credits_ok === true;
+  const discount = payPlaceDiscountBps(p) / 100;
+  const cashback = payPlaceCashbackBps(p) / 100;
+  const accepts = cashback > 0 || p.credits_ok === true;
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={[`Select ${name}`, bps > 0 ? `${bps / 100}% ${word}` : null, credits ? "Accepts Credits" : null].filter(Boolean).join(", ")}
-      className="hover:bg-muted/60 flex min-h-[72px] w-full items-center gap-3 px-2.5 py-2.5 text-left transition-colors max-[429px]:gap-2"
+      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Discount ${discount}%, Cashback ${cashback}%`}
+      className={cn(PAY_GRID, "hover:bg-muted/60 min-h-[72px] py-2 text-left transition-colors")}
       data-pay-pick-place
     >
-      <PlacePhoto place={p} className="h-12 w-12 max-[359px]:hidden" />
-      <span className="line-clamp-2 min-w-0 flex-1 text-base leading-tight font-semibold max-[429px]:text-sm">{name}</span>
-      <span className="flex shrink-0 items-center gap-1.5" aria-hidden>
-        {credits ? (
-          <span className="flex h-12 w-[76px] flex-col items-center justify-center rounded-xl bg-[#BFDBFE] font-semibold text-blue-950 max-[374px]:w-[68px]">
-            <span className="text-xs leading-none">Accepts</span>
-            <span className="mt-0.5 text-xs leading-none">Credits</span>
-          </span>
-        ) : null}
-        {bps > 0 ? (
-          <span className={cn("flex h-12 w-[76px] flex-col items-center justify-center rounded-xl font-semibold max-[374px]:w-[68px]", offerShade(bps / 100))}>
-            <span className="text-lg leading-none tabular-nums">{bps / 100}%</span>
-            <span className="mt-0.5 text-xs leading-none">{word}</span>
-          </span>
-        ) : null}
+      <span className="flex min-w-0 items-center gap-2 pr-1 pl-2.5">
+        <PlacePhoto place={p} className="h-12 w-12 max-[359px]:hidden" />
+        <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
       </span>
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      <PayCell>{accepts ? "Yes" : "No"}</PayCell>
+      <PayCell>{discount}%</PayCell>
+      <PayCell>{cashback}%</PayCell>
     </button>
+  );
+}
+
+function PayCell({ children }: { children: string }) {
+  return (
+    <span className="flex justify-center px-0.5" aria-hidden>
+      <span className="bg-foreground text-background flex h-11 w-full max-w-16 items-center justify-center rounded-xl text-sm font-semibold tabular-nums">
+        {children}
+      </span>
+    </span>
   );
 }
 
