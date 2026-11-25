@@ -1,0 +1,44 @@
+import { createContext, use, useCallback, useEffect, useState, type ReactNode } from "react";
+
+import { plain } from "@/lib/storage";
+
+import { readActiveLocation, type ActiveLocation } from "./model";
+
+const NAME = "mesita.location";
+
+type Value = {
+  /** Undefined until the device's storage has answered. */
+  location: ActiveLocation | null | undefined;
+  choose: (location: ActiveLocation) => void;
+};
+
+const Context = createContext<Value | null>(null);
+
+/** The active location, provided at the root: Home reads it and the location
+ *  sheet writes it. */
+export function LocationProvider({ children }: { children: ReactNode }) {
+  const [location, setLocation] = useState<ActiveLocation | null | undefined>(undefined);
+  useEffect(() => {
+    let live = true;
+    plain
+      .get(NAME)
+      .catch(() => null)
+      .then((raw) => {
+        if (live) setLocation((chosen) => (chosen === undefined ? readActiveLocation(raw) : chosen));
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const choose = useCallback((next: ActiveLocation) => {
+    setLocation(next);
+    plain.set(NAME, JSON.stringify(next)).catch(() => undefined);
+  }, []);
+  return <Context value={{ location, choose }}>{children}</Context>;
+}
+
+export function useActiveLocation(): Value {
+  const value = use(Context);
+  if (!value) throw new Error("LocationProvider is missing at the root");
+  return value;
+}
