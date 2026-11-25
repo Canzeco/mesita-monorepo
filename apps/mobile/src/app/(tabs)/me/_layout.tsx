@@ -1,14 +1,17 @@
 import { Stack } from "expo-router";
 
-// No session exists yet: 1c replaces this constant with the auth feature's member.
-const member = false;
+import { ME_PAGES, useGate } from "@/features/auth";
 
+/** Every Me page but index is a member's. */
 export default function MeLayout() {
+  const { member } = useGate();
   return (
     <Stack>
       <Stack.Screen name="index" options={{ title: "Me" }} />
       <Stack.Protected guard={member} redirectTo="/sign-in">
-        <Stack.Screen name="profile" options={{ title: "Profile" }} />
+        {ME_PAGES.map((name) => (
+          <Stack.Screen key={name} name={name} />
+        ))}
       </Stack.Protected>
     </Stack>
   );

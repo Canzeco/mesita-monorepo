@@ -18,7 +18,8 @@
       "env": {
         "APP_VARIANT": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "simulator": true
@@ -34,7 +35,8 @@
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "simulator": true
@@ -51,7 +53,8 @@
       "env": {
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
         "distribution": "store"
@@ -69,7 +72,8 @@
       "env": {
         "APP_VARIANT": "production",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd"
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "android": {
         "buildType": "app-bundle"

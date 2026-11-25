@@ -90,10 +90,17 @@ const config: ExpoConfig = {
     // The Apple Pay merchant id arrives with the Wallet step.
     ["@stripe/stripe-react-native", { merchantIdentifier: [], enableGooglePay: true }],
     "./plugins/with-stripe-release-lint.js",
+    "expo-secure-store",
+    "expo-sqlite",
+    "expo-localization",
+    "expo-web-browser",
+    ["expo-location", { locationWhenInUsePermission: "Mesita uses your location to show the places near you." }],
+    // Source maps are uploaded by the pipeline (1d), which holds the token.
+    ["@sentry/react-native/expo", { organization: "canzeco", project: "mesita-mobile" }],
     ["react-native-maps", mapsKeys],
   ],
   experiments: { typedRoutes: true, reactCompiler: true },
-  extra: { eas: { projectId: PROJECT_ID } },
+  extra: { variant: name, eas: { projectId: PROJECT_ID } },
 };
 
 export default config;
