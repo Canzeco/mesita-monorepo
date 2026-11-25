@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { closeBill, getBill, keepBillStaff, openBill, readBillStaff, receiveBill, sendBill, unreceiveBill, signIn as checkCode, type BillRead, type BillState, type Refused, type Staff } from "@/lib/bill-api";
 import { BillEntry, CodeEntry, WaiterSteps } from "@/components/BillEntry";
 import { Bones } from "@/components/Bones";
-import { UserIcon } from "@/app/tab/[token]/icons";
+import { UserIcon, XIcon } from "@/app/tab/[token]/icons";
 
 // THE WAITER'S BILL (MESITA-4823), by its state:
 //
@@ -44,8 +45,19 @@ export function BillScreen({ billId }: { billId: string }) {
   // A bill that just changed is not received by a tap already on its way.
   const [armedAt, setArmedAt] = useState(0);
   const [now, setNow] = useState(0);
-  // The itemized bill stays behind Why until the waiter asks (MESITA-4955).
+  // The itemized bill stays behind Why until the waiter asks (MESITA-4955),
+  // and Why is a modal over the whole page (MESITA-4962).
   const [why, setWhy] = useState(false);
+  const whyClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!why) return;
+    whyClose.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setWhy(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [why]);
   const changedAt = useRef(0);
   const stamp = useRef("");
 
@@ -420,19 +432,33 @@ export function BillScreen({ billId }: { billId: string }) {
           <div className="tk-box">
             <p className="tk-amount">{m(due)}</p>
           </div>
-          <button type="button" className="tk-why" aria-expanded={why} onClick={() => setWhy((open) => !open)}>
+          <button type="button" className="tk-why" aria-haspopup="dialog" onClick={() => setWhy(true)}>
             Why?
           </button>
-          {why ? (
-            <ul className="tk-lines">
-              {detailLines.map((l) => (
-                <li key={l.label} className={l.good ? "tk-good" : undefined}>
-                  <span>{l.label}</span>
-                  <b>{l.value}</b>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          {why
+            ? createPortal(
+                <div className="why-modal" role="dialog" aria-modal="true" aria-label="Why?">
+                  <button type="button" className="why-back" aria-label="Close" onClick={() => setWhy(false)} />
+                  <div className="why-card">
+                    <div className="why-head">
+                      <h2>Why?</h2>
+                      <button ref={whyClose} type="button" className="why-x" aria-label="Close" onClick={() => setWhy(false)}>
+                        <XIcon className="pay-icon" />
+                      </button>
+                    </div>
+                    <ul className="tk-lines">
+                      {detailLines.map((l) => (
+                        <li key={l.label} className={l.good ? "tk-good" : undefined}>
+                          <span>{l.label}</span>
+                          <b>{l.value}</b>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>,
+                document.body,
+              )
+            : null}
         </section>
         <div className="hs" role="status">
           {side("You", ready)}
