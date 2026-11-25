@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 import type { ReservationNotice } from "./reservation-notification.ts";
+import { readConsumerNotify } from "./reservation-doc.ts";
 
 const EXPO_PUSH = "https://exp.host/--/api/v2/push/send";
 const TRIES = 3;
@@ -52,7 +53,6 @@ export async function deliverPush(tokens: string[], message: PushMessage, post: 
   return false;
 }
 
-type Ticket = { consumer_notify?: string | null };
 type TokenRow = { token?: string | null };
 type SendRow = { attempts?: number | null; sent_at?: string | null };
 
@@ -60,12 +60,7 @@ type SendRow = { attempts?: number | null; sent_at?: string | null };
  *  provider leaves the reservation as it is. */
 export async function sendReservationPush(admin: SupabaseClient, n: ReservationNotice): Promise<void> {
   try {
-    const ticket = await admin
-      .from("reservation_tickets")
-      .select("consumer_notify")
-      .eq("id", n.reservationId)
-      .maybeSingle();
-    if (ticket.error || (ticket.data as Ticket | null)?.consumer_notify !== "app") return;
+    if (await readConsumerNotify(admin, n.reservationId) !== "app") return;
 
     const prior = await admin
       .from("consumer_push_sends")
