@@ -41,6 +41,11 @@ export const colors = {
   /** An icon's soft ground, ink at ten percent. */
   inkSoft: "rgba(23, 23, 23, 0.1)",
 
+  /** A face with no photo: the sex's colour, age in white. */
+  faceFemale: "#db2777",
+  faceMale: "#2563eb",
+  faceOther: "#000000",
+
   /** The mark, and nothing else. */
   brand: BRAND.pink,
 } as const;

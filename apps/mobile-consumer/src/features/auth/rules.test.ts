@@ -73,6 +73,7 @@ describe("links", () => {
     ["mesita://place/123", "/place/123"],
     ["mesita://reserve/pinto", "/reserve/pinto"],
     ["https://mesita.ai/reservations", "/reservations"],
+    ["mesita://social/person", "/social/person"],
     ["https://mesita.ai/place/pinto/menu", "/place/pinto/menu"],
     ["/location", "/location"],
     ["https://mesita.ai/sign", "/sign-in"],
