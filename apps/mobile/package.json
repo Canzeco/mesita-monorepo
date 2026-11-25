@@ -22,7 +22,9 @@
     "export": "node scripts/with-env.mjs production expo export --platform ios --platform android",
     "start": "node scripts/with-env.mjs development expo start --dev-client",
     "sim": "pnpm dlx eas-cli@27.11.0 simulator:start --no-force --type agent-device --max-idle-time-minutes 15 --non-interactive",
-    "shot": "node lint/shot.mjs"
+    "shot": "node lint/shot.mjs",
+    "step-end": "node scripts/step-end.mjs",
+    "screens": "pnpm dlx eas-cli@27.11.0 workflow:run .eas/workflows/screens.yml --wait --non-interactive"
   },
   "dependencies": {
     "@expo/ui": "~58.0.29",

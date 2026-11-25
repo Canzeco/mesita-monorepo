@@ -1,0 +1,60 @@
+# Minutes, not a build: the last builds with this branch's JavaScript, and the
+# flow that opens and screenshots every signed-out screen.
+name: screens
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ workflow.filename }}
+  cancel_in_progress: true
+
+jobs:
+  fingerprint:
+    type: fingerprint
+    environment: preview
+
+  find_ios:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: ios
+      profile: simulator
+      fingerprint_hash: ${{ needs.fingerprint.outputs.ios_fingerprint_hash }}
+
+  find_android:
+    needs: [fingerprint]
+    type: get-build
+    params:
+      platform: android
+      profile: preview
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+
+  repack_ios:
+    needs: [find_ios]
+    type: repack
+    params:
+      build_id: ${{ needs.find_ios.outputs.build_id }}
+
+  repack_android:
+    needs: [find_android]
+    type: repack
+    params:
+      build_id: ${{ needs.find_android.outputs.build_id }}
+
+  ios:
+    needs: [repack_ios]
+    type: maestro
+    environment: preview
+    params:
+      build_id: ${{ needs.repack_ios.outputs.build_id }}
+      flow_path: .maestro/screens.yaml
+
+  android:
+    needs: [repack_android]
+    type: maestro
+    environment: preview
+    runs_on: linux-large-nested-virtualization
+    params:
+      build_id: ${{ needs.repack_android.outputs.build_id }}
+      flow_path: .maestro/screens.yaml

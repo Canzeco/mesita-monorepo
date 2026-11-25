@@ -3,11 +3,11 @@ import { SplashScreen, Stack, useRouter, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, type ComponentProps } from "react";
 
+import { headerOptions } from "@/components/header";
 import { listen, RouteError, ROUTE_GROUPS, start, takeTarget, useGate, type RootRoute } from "@/features/auth";
 import { LocationProvider } from "@/features/discovery";
 import { queryClient } from "@/lib/query";
 import { startReporting } from "@/lib/report";
-import { colors } from "@/theme";
 
 export { RouteError as ErrorBoundary };
 
@@ -65,7 +65,7 @@ function Root() {
 
   const open = gate === "open";
   return (
-    <Stack screenOptions={{ contentStyle: { backgroundColor: colors.page }, headerTintColor: colors.ink }}>
+    <Stack screenOptions={headerOptions}>
       <Stack.Protected guard={gate === "update"}>{screens(ROUTE_GROUPS.update)}</Stack.Protected>
       <Stack.Protected guard={gate === "suspended"}>{screens(ROUTE_GROUPS.suspended)}</Stack.Protected>
       <Stack.Protected guard={gate === "onboarding"}>{screens(ROUTE_GROUPS.onboarding)}</Stack.Protected>

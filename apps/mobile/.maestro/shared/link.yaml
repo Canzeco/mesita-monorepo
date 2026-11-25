@@ -1,0 +1,10 @@
+# Opens ${LINK}. iPhone asks before it opens a test link.
+appId: com.mesita.consumer
+---
+- openLink: ${LINK}
+- runFlow:
+    when:
+      platform: iOS
+      visible: "Open in .*"
+    commands:
+      - tapOn: "Open"

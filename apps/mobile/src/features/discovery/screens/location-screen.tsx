@@ -8,13 +8,29 @@ import { Field, FieldError } from "@/components/field";
 import { PermissionState } from "@/components/permission-state";
 import { Row } from "@/components/row";
 import { Screen } from "@/components/screen";
-import { SignInInvite } from "@/components/sign-in-invite";
+import { Text } from "@/components/text";
 import { useSession } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
 
 import { useActiveLocation } from "../location-context";
 import type { Point } from "../model";
 import { useLocationSearch, useResolveLocation } from "../queries";
+
+const FIX_MS = 10_000;
+
+/** The phone's place now; with no fix in ten seconds (indoors, a phone that
+ *  never got one), the last it knew. Throws when there is neither. */
+export async function findDevice(): Promise<Location.LocationObject> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const slow = new Promise<null>((done) => {
+    timer = setTimeout(() => done(null), FIX_MS);
+  });
+  const now = Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+  const found = (await Promise.race([now, slow])) ?? (await Location.getLastKnownPositionAsync());
+  clearTimeout(timer);
+  if (!found) throw new Error("no location");
+  return found;
+}
 
 /** Where Home looks from: the phone's own place, or one typed in. */
 export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSignIn: () => void }) {
@@ -39,7 +55,7 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
     try {
       const { granted } = await Location.requestForegroundPermissionsAsync();
       if (!granted) return setDevice("denied");
-      const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { coords } = await findDevice();
       done({ lat: coords.latitude, lng: coords.longitude }, "Current location");
     } catch {
       setDevice("failed");
@@ -68,7 +84,10 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
           testID="location-input"
         />
       ) : (
-        <SignInInvite message="Sign in to choose another city or area." onSignIn={onSignIn} />
+        <>
+          <Text tone="muted">Sign in to choose another city or area.</Text>
+          <Button kind="secondary" label="Sign in" onPress={onSignIn} />
+        </>
       )}
       {search.data?.length ? (
         <Card>
