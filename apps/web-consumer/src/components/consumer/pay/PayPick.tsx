@@ -196,7 +196,8 @@ export function PlaceList({
   const querying = trimmed.length >= 2;
   const lat = loc.state === "on" ? loc.at.lat : null;
   const lng = loc.state === "on" ? loc.at.lng : null;
-  const matches = (all ?? []).filter((p) => passesShow(p, kind, show));
+  const places = all;
+  const matches = (places ?? []).filter((p) => passesShow(p, kind, show));
   const shown = orderPlaces(matches, kind, sort);
   const filtersOn = sort !== "closest" || show !== "all";
 
@@ -327,11 +328,7 @@ export function PlaceList({
         <RowsSkeleton kind={kind} />
       ) : places.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">
-          {loc.state !== "on"
-            ? "Turn on location to see places near you"
-            : kind === "prepay"
-              ? "No place near you sells credit yet"
-              : "No Mesita place near you"}
+          {loc.state !== "on" ? "Turn on location to see places near you" : "No Mesita place near you"}
         </p>
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">
