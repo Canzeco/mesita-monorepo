@@ -13,7 +13,7 @@ import { formatRating } from "@/generated/shared/lib/format";
 
 import { getPlace, type Place } from "../api";
 
-type Nav = { onMenu: () => void; onContact: () => void; onReport: () => void };
+type Nav = { onMenu: () => void; onContact: () => void; onReport: () => void; onReserve: () => void };
 
 export function PlaceScreen({ id, ...nav }: Nav & { id: string }) {
   const query = useQuery({ queryKey: ["place", id], queryFn: ({ signal }) => getPlace(id, signal) });
@@ -30,7 +30,7 @@ export function PlaceScreen({ id, ...nav }: Nav & { id: string }) {
   return <PlaceView place={query.data} {...nav} />;
 }
 
-export function PlaceView({ place, onMenu, onContact, onReport }: Nav & { place: Place }) {
+export function PlaceView({ place, onMenu, onContact, onReport, onReserve }: Nav & { place: Place }) {
   const open = computeOpenState(place.hours, place.timezone ?? undefined);
   const when = open.open_now ? open.closes_at : open.opens_at;
   return (
@@ -47,6 +47,7 @@ export function PlaceView({ place, onMenu, onContact, onReport }: Nav & { place:
       ) : null}
       {place.pitch ? <Text role="body">{place.pitch}</Text> : null}
       <View style={styles.actions}>
+        <Button label="Reserve" onPress={onReserve} />
         <Button label="Menu" onPress={onMenu} kind="secondary" />
         <Button label="Contact" onPress={onContact} kind="secondary" />
         <Button label="Report" onPress={onReport} kind="quiet" />
