@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
-import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { BAR } from "@/components/consumer/search/header-classes";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
@@ -55,10 +54,11 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
-      {/* SEARCH, THEN LOCATION, THEN THE LIST (Pato, 2026-11-25, MESITA-4968:
-          the one pill was cramped). Each is its own full-width grey pill.
-          They stay put: only the list scrolls. A hairline under the chrome
-          (MESITA-4961) separates it from the first place. */}
+      {/* THE SEARCH, THEN THE LIST (Pato, 2026-11-25, MESITA-4969: no location
+          control here). Home's location already sorts the places. A place that
+          is not in the rows is found by typing. It stays put: only the list
+          scrolls. A hairline under the chrome (MESITA-4961) separates it from
+          the first place. */}
       <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b px-3 pt-2 pb-3">
         <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
           <SearchBar
@@ -70,7 +70,6 @@ export function PlaceList({
             label="Search a place"
           />
         </div>
-        <LocationPicker bar />
         {/* Pay's instruction (MESITA-4967). The rows are the selector; this
             box only says so. */}
         {kind === "pay" ? (
