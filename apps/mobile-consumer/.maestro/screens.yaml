@@ -4,7 +4,7 @@ appId: com.mesita.consumer
 ---
 - launchApp:
     clearState: true
-    permissions: { location: deny }
+    permissions: { location: "${maestro.platform == 'ios' ? 'never' : 'deny'}" }
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome
 - tapOn: "Just browse"
@@ -18,7 +18,7 @@ appId: com.mesita.consumer
 - takeScreenshot: location-denied
 - launchApp:
     clearState: true
-    permissions: { location: allow }
+    permissions: { location: "${maestro.platform == 'ios' ? 'inuse' : 'allow'}" }
 - setLocation: { latitude: 25.6490, longitude: -100.3590 }
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - takeScreenshot: welcome
