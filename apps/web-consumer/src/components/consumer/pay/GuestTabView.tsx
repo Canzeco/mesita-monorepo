@@ -252,7 +252,7 @@ export function GuestTabView({
   // 7 RECEIPT (MESITA-4135, Pato: "a better design when the tickets are gone
   // ... keep the structure"). The same three
   // parts as before, green Paid, one panel of rows, Done, now under the step
-  // panel ("Receipt · 6 of 6", the sixth segment shown only here): Paid carries the total, Signed by staff
+  // panel ("Receipt · 6 of 6", the sixth segment shown only here): Paid carries the cash or card, Signed by staff
   // carries its check, and the footer is Done.
   if (signed) {
     return (
@@ -265,7 +265,7 @@ export function GuestTabView({
           <div className="flex shrink-0 items-center gap-3 rounded-2xl bg-green-700 px-4 py-3 text-left text-white" data-guest-paid>
             <CircleCheck className="h-8 w-8 shrink-0" aria-hidden />
             <h2 className="flex-1 text-xl font-semibold">Paid</h2>
-            <p className="text-2xl font-semibold tabular-nums">{m(total)}</p>
+            <p className="text-2xl font-semibold tabular-nums">{m(cash)}</p>
           </div>
           {/* One panel (MESITA-4072): the place, the money rows, and what the
               bill earned as its last row, hairlines between. */}

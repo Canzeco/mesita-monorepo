@@ -136,6 +136,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const [qrOver, setQrOver] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [armedAt, setArmedAt] = useState(0);
+  // The itemized bill stays behind Why until the guest asks (MESITA-4955).
+  const [whyOpen, setWhyOpen] = useState(false);
   const following = useRef<string | null>(null);
   const seen = useRef("");
   const changedAt = useRef(0);
@@ -499,46 +501,48 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     );
   }
 
-  // THE AMOUNT FIRST (Pato, 2026-11-24, MESITA-4882: "make this design
-  // better"): the place, what the guest pays and how, large and alone; under it
-  // what it is made of, a plain receipt. Every number is the server's.
+  // THE AMOUNT (Pato, 2026-11-25, MESITA-4955): one instruction and the cash
+  // or card still owed, including $0.00. The itemized bill opens from Why.
+  // Every number is the server's.
   const nothingOwed = q.outside_cents === 0;
-  const big = m(nothingOwed ? q.credit_cents : q.outside_cents);
-  const saved = q.discount_cents > 0 ? `You save ${m(q.discount_cents)}` : q.cashback_cents > 0 ? `You get ${m(q.cashback_cents)} cashback` : null;
+  const big = m(q.outside_cents);
+  const say = "Pay this to waiter, in cash or card";
   const line = (label: string, value: string, good = false) => (
     <div className={cn("flex min-h-11 items-center justify-between gap-3", good && "font-semibold text-green-700")}>
       <dt className={cn("truncate", !good && "text-muted-foreground")}>{label}</dt>
       <dd className={cn("shrink-0", !good && "font-semibold")}>{value}</dd>
     </div>
   );
-  // ONE TICKET (Pato, 2026-11-24, MESITA-4886: "better design in those"): the
-  // black top is the Wallet's Balance card, the place and what the guest pays;
-  // its lines hang from it. The waiter's screen draws the same ticket.
-  const ticket = (words: string) => (
-    <section className="border-border w-full shrink-0 overflow-hidden rounded-3xl border text-left" aria-label={`${words} ${big}`} data-pay-bill-ticket>
-      <div className="bg-foreground text-background flex flex-col gap-4 px-5 pt-4 pb-5">
-        <div className="flex items-center gap-3">
-          <PlacePhoto place={{ photo: bill.place.photo_url, name: placeName }} className="h-11 w-11" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-base font-semibold">{placeName}</span>
-            {from && from !== bill.place.id ? <span className="block truncate text-sm opacity-70">Not the place you opened</span> : null}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1">
-          <p className="text-base opacity-70">{nothingOwed ? "Paid with your credits" : words}</p>
-          <p className={cn("leading-tight font-bold tracking-tight tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
-          {saved ? <p className="mt-2 self-start rounded-full bg-[#00D66F] px-3 py-1 text-sm font-semibold text-neutral-950 tabular-nums" data-pay-bill-saved>{saved}</p> : null}
-        </div>
+  const ticket = (
+    <section className="flex w-full shrink-0 flex-col text-left" aria-label={`${say} ${big}`} data-pay-bill-ticket>
+      <div className="flex items-center gap-3">
+        <PlacePhoto place={{ photo: bill.place.photo_url, name: placeName }} className="h-11 w-11" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-base font-semibold">{placeName}</span>
+          {from && from !== bill.place.id ? <span className="block truncate text-sm text-muted-foreground">Not the place you opened</span> : null}
+        </span>
       </div>
-      <dl className="divide-border bg-card divide-y px-5 py-1 text-base tabular-nums" data-pay-bill-rows>
-        {line("Bill", m(bill.bill_cents ?? 0))}
-        {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
-        {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
-        {bill.tip_cents > 0
-          ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))
-          : null}
-        {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
-      </dl>
+      <p className="mt-4 text-2xl font-semibold leading-tight">{say}</p>
+      <p className={cn("mt-3 rounded-3xl bg-[#00D66F] px-5 py-6 text-center leading-tight font-bold tracking-tight text-neutral-950 tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
+      <button
+        type="button"
+        className="mt-1 min-h-11 self-start text-sm font-semibold underline underline-offset-2"
+        aria-expanded={whyOpen}
+        onClick={() => setWhyOpen((open) => !open)}
+      >
+        Why?
+      </button>
+      {whyOpen ? (
+        <dl className="divide-border w-full divide-y text-base tabular-nums" data-pay-bill-rows>
+          {line("Bill", m(bill.bill_cents ?? 0))}
+          {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
+          {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
+          {bill.tip_cents > 0
+            ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))
+            : null}
+          {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
+        </dl>
+      ) : null}
     </section>
   );
 
@@ -584,7 +588,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         {frame(
           "Payment",
           <>
-            {ticket("Pay your waiter, cash or card")}
+            {ticket}
             {handshake}
             {changedLine}
             <p className="text-muted-foreground flex items-center justify-center gap-2 text-sm tabular-nums">
@@ -632,13 +636,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   return frame(
     "Payment",
     <>
-      {ticket("Pay your waiter, cash or card")}
-      {nothingOwed ? null : (
-        <ol className="flex shrink-0 justify-center gap-4 text-sm font-semibold" data-pay-order>
-          <li>1. Pay your waiter</li>
-          <li>2. Both tap</li>
-        </ol>
-      )}
+      {ticket}
       {handshake}
       {changedLine}
       <p className="text-muted-foreground flex shrink-0 items-center justify-center gap-2 text-sm tabular-nums">

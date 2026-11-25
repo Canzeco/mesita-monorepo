@@ -44,6 +44,8 @@ export function BillScreen({ billId }: { billId: string }) {
   // A bill that just changed is not received by a tap already on its way.
   const [armedAt, setArmedAt] = useState(0);
   const [now, setNow] = useState(0);
+  // The itemized bill stays behind Why until the waiter asks (MESITA-4955).
+  const [why, setWhy] = useState(false);
   const changedAt = useRef(0);
   const stamp = useRef("");
 
@@ -287,11 +289,12 @@ export function BillScreen({ billId }: { billId: string }) {
   );
   const took = bill.took_cents ?? null;
   const billLine = { label: "Bill", value: m(bill.bill_cents ?? 0) };
-  const tipLine = { label: "Tip", value: bill.tip_cents > 0 ? m(bill.tip_cents) : "None" };
+  const tipLine = bill.tip_cents > 0 ? [{ label: "Tip", value: m(bill.tip_cents) }] : [];
   const offLines = [
     ...(bill.discount_cents > 0 ? [{ label: "Discount", value: `−${m(bill.discount_cents)}`, good: true }] : []),
     ...(bill.credit_cents > 0 ? [{ label: "Paid with credits", value: `−${m(bill.credit_cents)}`, good: true }] : []),
   ];
+  const detailLines: { label: string; value: string; good?: boolean }[] = [billLine, ...offLines, ...tipLine];
   const sendAgain = () =>
     run("again", async (s) => {
       const r = await openBill(s, { again_bill_id: billId });
@@ -321,10 +324,8 @@ export function BillScreen({ billId }: { billId: string }) {
       <main className="wp" data-bill="paid">
         <WaiterSteps at="Receipt" named={waiter !== null} />
         {band}
-        {ticket("green", collected > 0 ? "✓ Paid · Cash or card" : "✓ Paid with credits", m(collected > 0 ? collected : bill.credit_cents), [
-          billLine,
-          ...offLines,
-          tipLine,
+        {ticket("green", "Paid", m(collected), [
+          ...detailLines,
           ...(waiter ? [{ label: "Waiter", value: waiter }] : []),
         ])}
         {/* Friends who split: each shows their own QR. */}
@@ -402,12 +403,37 @@ export function BillScreen({ billId }: { billId: string }) {
         <WaiterSteps at="Payment" named={waiter !== null} />
         {band}
         {reconnecting}
-        {ticket(
-          "ink",
-          waiting ? <>Waiting for {guest} {dots}</> : due > 0 ? "Collect, cash or card" : "Nothing to collect, paid with credits",
-          m(due),
-          [billLine, ...offLines, tipLine],
-        )}
+        <section className="tk tk-open" data-pay-amount>
+          <div className="tk-who">
+            <span className="tk-photo" aria-hidden>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {photo ? <img src={photo} alt="" /> : <UserIcon className="pay-icon" />}
+            </span>
+            <span className="tk-names">
+              <b>{guestName ?? "Guest"}</b>
+              <span>{placeName}</span>
+            </span>
+          </div>
+          <p className="tk-say" role="status">
+            {waiting ? <>Waiting for {guest} {dots}</> : due > 0 ? "Collect this, cash or card" : "Nothing to collect"}
+          </p>
+          <div className="tk-box">
+            <p className="tk-amount">{m(due)}</p>
+          </div>
+          <button type="button" className="tk-why" aria-expanded={why} onClick={() => setWhy((open) => !open)}>
+            Why?
+          </button>
+          {why ? (
+            <ul className="tk-lines">
+              {detailLines.map((l) => (
+                <li key={l.label} className={l.good ? "tk-good" : undefined}>
+                  <span>{l.label}</span>
+                  <b>{l.value}</b>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
         <div className="hs" role="status">
           {side("You", ready)}
           <span className={`hs-line${ready || guestReady ? " hs-on" : ""}`} aria-hidden />
