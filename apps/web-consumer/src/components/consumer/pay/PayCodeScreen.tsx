@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { Check, Loader2, Lock, XCircle } from "lucide-react";
+import { Check, Loader2, Lock, X, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -502,8 +502,8 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   }
 
   // THE AMOUNT (Pato, 2026-11-25, MESITA-4955): one instruction and the cash
-  // or card still owed, including $0.00. The itemized bill opens from Why.
-  // Every number is the server's.
+  // or card still owed, including $0.00. Why opens that bill in a modal
+  // (MESITA-4962). Every number is the server's.
   const nothingOwed = q.outside_cents === 0;
   const big = m(q.outside_cents);
   const say = "Pay this to waiter, in cash or card";
@@ -527,13 +527,24 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       <button
         type="button"
         className="mt-1 min-h-11 self-start text-sm font-semibold underline underline-offset-2"
-        aria-expanded={whyOpen}
-        onClick={() => setWhyOpen((open) => !open)}
+        aria-haspopup="dialog"
+        onClick={() => setWhyOpen(true)}
       >
         Why?
       </button>
-      {whyOpen ? (
-        <dl className="divide-border w-full divide-y text-base tabular-nums" data-pay-bill-rows>
+      <LocalDialog open={whyOpen} onClose={() => setWhyOpen(false)} ariaLabel="Why?" fit>
+        <div className="flex items-center justify-between gap-3 px-5 pt-5">
+          <h2 className="text-xl font-semibold">Why?</h2>
+          <button
+            type="button"
+            onClick={() => setWhyOpen(false)}
+            aria-label="Close"
+            className="border-border hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full border"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <dl className="divide-border divide-y px-5 pt-2 pb-5 text-base tabular-nums" data-pay-bill-rows>
           {line("Bill", m(bill.bill_cents ?? 0))}
           {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
           {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
@@ -542,7 +553,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
             : null}
           {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
         </dl>
-      ) : null}
+      </LocalDialog>
     </section>
   );
 
