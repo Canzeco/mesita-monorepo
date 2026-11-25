@@ -282,6 +282,7 @@ const PLACES_READ_ALLOWLIST = [
   "_shared/place-listed-handler.ts",
   "consumer-web-create-reservation/index.ts",
   "_shared/place-scores.ts", // boost_tier for the Premier row of the Profile Scores box (MESITA-4515)
+  "_shared/test-guest.ts", // is_test_place only, error logged and refused (MESITA-4931)
 ];
 
 Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", async () => {
@@ -337,6 +338,8 @@ const CONSUMER_READ_ALLOWLIST = [
   // way to pay. Read-only, error logged (null falls back to the card).
   // Writes go through the consumer_set_pay_method RPC.
   "_shared/cards.ts",
+  // The guest door (MESITA-4931): is_test_guest only, error logged.
+  "_shared/test-guest.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

@@ -47,13 +47,71 @@ function unhandledError(fnName: string, err: unknown): Response {
   return jsonError("Internal error", 500);
 }
 
+// ─── The app's contract number (MESITA-4931, Docs › Apps › A2 §8) ───
+//
+// An installed app outlives the backend it was built for. It sends one whole
+// number in x-mesita-contract; the secret MOBILE_MIN_CONTRACT is the lowest
+// one still served. The web sends none and is never checked. This is about
+// compatibility and never grants or refuses access.
+
+const WHOLE_NUMBER = /^\d+$/;
+
+/** The app's number: null when it sent none, 0 when it is not a whole number. */
+export function seenContract(req: Request): number | null {
+  const raw = req.headers.get("x-mesita-contract");
+  if (raw === null) return null;
+  return WHOLE_NUMBER.test(raw.trim()) ? Number(raw.trim()) : 0;
+}
+
+/** The 426 for an app older than the minimum, or null. An unset or malformed
+ *  minimum refuses nobody; a malformed one says so in the log. */
+function refuseOldApp(fnName: string, req: Request): Response | null {
+  if (!fnName.startsWith("consumer-web-") || req.method === "OPTIONS") return null;
+  const seen = seenContract(req);
+  if (seen === null) return null;
+  // sb-request-id is Supabase's own id for the call, returned to the caller
+  // on every answer, so a screen and this line share one id.
+  console.log(`[${fnName}]`, JSON.stringify({ contract: seen, request_id: req.headers.get("sb-request-id") }));
+  const raw = (Deno.env.get("MOBILE_MIN_CONTRACT") ?? "").trim();
+  if (!raw) return null;
+  if (!WHOLE_NUMBER.test(raw)) {
+    console.error(`[${fnName}]`, JSON.stringify({ code: "min_contract_malformed" }));
+    return null;
+  }
+  const min = Number(raw);
+  if (seen >= min) return null;
+  return json({
+    ok: false,
+    code: "update_app",
+    error: "Update Mesita to continue.",
+    min_contract: min,
+    seen_contract: seen,
+  }, 426);
+}
+
+const servedBy = new WeakMap<Request, string>();
+
+/** The Edge Function serving this request; undefined outside serveJson. */
+export function servingFunction(req: Request): string | undefined {
+  return servedBy.get(req);
+}
+
+/** What serveJson serves: the app's contract check, then the handler, with a
+ *  throw answered as JSON. */
+export function servedHandler(fnName: string, handler: EFHandler): EFHandler {
+  return withJsonErrors(fnName, (req) => {
+    servedBy.set(req, fnName);
+    return refuseOldApp(fnName, req) ?? handler(req);
+  });
+}
+
 /** Every Edge Function serves through this; it is the only `Deno.serve(`
  *  in functions/ (serve-json-guard.test.ts). The try/catch in
  *  withJsonErrors does the work; `onError` is the runtime's own backstop. */
 export function serveJson(fnName: string, handler: EFHandler): void {
   Deno.serve(
     { onError: (err) => unhandledError(fnName, err) },
-    withJsonErrors(fnName, handler),
+    servedHandler(fnName, handler),
   );
 }
 

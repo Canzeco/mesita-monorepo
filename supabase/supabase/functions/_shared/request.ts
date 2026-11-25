@@ -28,14 +28,17 @@
 // comes before its 400.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, rejectUnlessMethods } from "./http.ts";
+import { corsPreflight, json, rejectUnlessMethods, servingFunction } from "./http.ts";
 import { adminClient, type AuthedUser, bearerToken, classifyCaller, type EFEnv, getAuthedUser, readEFEnv } from "./auth.ts";
 import { checkSuperAdmin, requireSuperAdmin } from "./auth-super-admin.ts";
 import { requireInternalCaller } from "./internal.ts";
+import { checkTestGuest, testGuestRule } from "./test-guest.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
 export type OpenRequest = { env: EFEnv; admin: SupabaseClient };
 export type UserRequest = OpenRequest & { user: AuthedUser };
+/** `testGuest` is true only on a function test-guest.ts limits. */
+export type ConsumerRequest = UserRequest & { testGuest: boolean };
 export type InternalRequest = OpenRequest & { callerName: string };
 
 /** The four steps every door shares. `methods` defaults to POST. */
@@ -76,15 +79,29 @@ async function refuseSuspended(ctx: OpenRequest, userId: string): Promise<Respon
   return data ? json({ ok: false, code: "suspended", error: "This account is suspended. Write to support@mesita.ai." }, 403) : null;
 }
 
-export async function requireConsumerRequest(req: Request, door: ConsumerDoor = {}): Promise<UserRequest | Response> {
+/** The two limits on a signed-in guest: suspended, then the test guest's. */
+async function admitGuest(
+  req: Request,
+  ctx: OpenRequest,
+  user: UserRequest,
+  suspendedOk = false,
+): Promise<ConsumerRequest | Response> {
+  const [suspended, test] = await Promise.all([
+    suspendedOk ? null : refuseSuspended(ctx, user.user.id),
+    checkTestGuest(ctx.admin, user.user.id, testGuestRule(servingFunction(req))),
+  ]);
+  return suspended ?? test.refusal ?? { ...user, testGuest: test.testGuest };
+}
+
+export async function requireConsumerRequest(req: Request, door: ConsumerDoor = {}): Promise<ConsumerRequest | Response> {
   const ctx = openRequest(req, door.methods);
   if (ctx instanceof Response) return ctx;
   const unauthorized = door.signIn === undefined
     ? undefined
     : json({ ok: false, code: "sign_in", error: door.signIn }, 401);
   const user = await withUser(req, ctx, unauthorized);
-  if (user instanceof Response || door.suspendedOk) return user;
-  return (await refuseSuspended(ctx, user.user.id)) ?? user;
+  if (user instanceof Response) return user;
+  return await admitGuest(req, ctx, user, door.suspendedOk);
 }
 
 /** A consumer-web-* read an anonymous visitor may also make (MESITA-4246):
@@ -92,13 +109,13 @@ export async function requireConsumerRequest(req: Request, door: ConsumerDoor = 
  *  `session_invalid` for a broken session (never served as anonymous). */
 export async function consumerOrAnonymousRequest(
   req: Request,
-): Promise<(OpenRequest & { user: AuthedUser | null }) | Response> {
+): Promise<(OpenRequest & { user: AuthedUser | null; testGuest: boolean }) | Response> {
   const ctx = openRequest(req);
   if (ctx instanceof Response) return ctx;
   const who = await classifyCaller(req, ctx.env);
   if (!who.ok) return who.response;
-  const refused = who.user ? await refuseSuspended(ctx, who.user.id) : null;
-  return refused ?? { ...ctx, user: who.user };
+  if (!who.user) return { ...ctx, user: null, testGuest: false };
+  return await admitGuest(req, ctx, { ...ctx, user: who.user });
 }
 
 // ─── business-web-* ─────────────────────────────────────────────────

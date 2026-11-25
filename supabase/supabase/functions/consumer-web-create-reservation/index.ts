@@ -28,6 +28,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
+import { refuseOutsideTestPlace } from "../_shared/test-guest.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
@@ -105,6 +106,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
   if (!body.reserved_at || typeof body.reserved_at !== "string") {
     return json({ ok: false, error: "reserved_at (ISO 8601) required" }, 400);
   }
+  const testRefused = await refuseOutsideTestPlace(ctx, body.project_id);
+  if (testRefused) return testRefused;
   const reservedAt = new Date(body.reserved_at);
   if (Number.isNaN(reservedAt.getTime())) {
     return json({ ok: false, error: "reserved_at must be a valid ISO 8601 timestamp" }, 400);
