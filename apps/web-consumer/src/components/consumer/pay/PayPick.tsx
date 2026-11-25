@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
-import { BAR } from "@/components/consumer/search/header-classes";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
@@ -55,26 +54,31 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
-      {/* THE BAR NAMES THE LIST, THEN THE SEARCH FILTERS IT (Pato, 2026-11-25:
-          location above the search). Black only on that bar. */}
-      <div className="shrink-0 px-2 pt-2">
-        <LocationPicker list />
-      </div>
-      {/* A grey pill in a white row (Pato, 2026-11-24, MESITA-4913: the plain
-          white row was "more pretty but not that obvious"). It stays put: only
-          the list scrolls. A hairline under it (Pato, 2026-11-25, MESITA-4961)
-          separates the search from the first place. */}
-      <div className="border-border bg-card flex h-14 shrink-0 items-center border-b px-2" data-pay-pick-search>
-        <div className={cn(BAR, "flex-1")}>
-          <SearchBar
-            query={query}
-            showClear={query.length > 0}
-            onQueryChange={setQuery}
-            onClear={() => setQuery("")}
-            placeholder="Search a place"
-            label="Search a place"
-          />
+      {/* ONE PILL (Pato, 2026-11-25, MESITA-4967: "the searchbar with location
+          in the same place not two"). Location is the left end; search fills
+          the rest. It stays put: only the list scrolls. A hairline under the
+          chrome (MESITA-4961) separates it from the first place. */}
+      <div className="border-border bg-card shrink-0 border-b px-2 pt-2 pb-2">
+        <div className="bg-muted flex h-12 min-w-0 items-stretch overflow-hidden rounded-full" data-pay-pick-search>
+          <LocationPicker joined />
+          <div className="flex min-w-0 flex-1 pl-1">
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={setQuery}
+              onClear={() => setQuery("")}
+              placeholder="Search a place"
+              label="Search a place"
+            />
+          </div>
         </div>
+        {/* Pay's instruction (MESITA-4967). The rows are the selector; this
+            box only says so. */}
+        {kind === "pay" ? (
+          <p className="bg-foreground text-background mt-2 flex h-12 items-center justify-center rounded-2xl text-base font-semibold" data-pay-select>
+            Select one place
+          </p>
+        ) : null}
       </div>
       <section className="mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
       <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -229,8 +233,9 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 /** PAY IS ROWS, NOT A TABLE (Pato, 2026-11-24, MESITA-4860, look A): the photo
  *  and the name (Pato, 2026-11-25, MESITA-4965: no street), then on the right a
  *  purple Accepts Credits box (MESITA-4956, MESITA-4966), a green box with what this guest's
- *  next bill gets (Discount or Cashback; MESITA-4865), and a black Pay box. The
- *  balance stays on the Wallet. */
+ *  next bill gets (Discount or Cashback; MESITA-4865), and a chevron. The row
+ *  selects the place (MESITA-4967); it does not say Pay. The balance stays on
+ *  the Wallet. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p);
@@ -241,7 +246,7 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={[`Pay at ${name}`, bps > 0 ? `${bps / 100}% ${word}` : null, credits ? "Accepts Credits" : null].filter(Boolean).join(", ")}
+      aria-label={[`Select ${name}`, bps > 0 ? `${bps / 100}% ${word}` : null, credits ? "Accepts Credits" : null].filter(Boolean).join(", ")}
       className="hover:bg-muted/60 flex min-h-[72px] w-full items-center gap-3 px-2.5 py-2.5 text-left transition-colors max-[429px]:gap-2"
       data-pay-pick-place
     >
@@ -260,10 +265,8 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
             <span className="mt-0.5 text-xs leading-none">{word}</span>
           </span>
         ) : null}
-        <span className="bg-foreground text-background flex h-12 w-[58px] items-center justify-center rounded-xl text-base font-semibold max-[374px]:w-12 max-[374px]:text-sm">
-          Pay
-        </span>
       </span>
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
     </button>
   );
 }
