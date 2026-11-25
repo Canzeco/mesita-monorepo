@@ -465,6 +465,13 @@ function bonusShade(pct: number): string {
   return "bg-[#E6E4FF] text-indigo-950";
 }
 
+/** Pay's green the same way (Pato, 2026-11-24, MESITA-4862). */
+function offerShade(pct: number): string {
+  if (pct >= 20) return "bg-[#00D66F] text-neutral-950";
+  if (pct >= 10) return "bg-[#85EDB6] text-neutral-950";
+  return "bg-[#D3F8E2] text-neutral-950";
+}
+
 /** A place, one row, the one button. */
 function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) => void; kind: ListKind }) {
   return kind === "prepay" ? <PrepayRow p={p} onPick={onPick} /> : <PayRow p={p} onPick={onPick} />;
@@ -504,10 +511,12 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
   );
 }
 
-/** PAY IS THREE DARK COLUMNS (Pato, 2026-11-25, MESITA-4976): half the name,
- *  half Accepts Credits, Discount, and Cashback. A place uses one visit
- *  mechanic, so one percent is 0. Cashback accepts credits. A discount place
- *  may accept credits or not. The row selects the place. */
+/** PAY IS THREE COLUMNS (Pato, 2026-11-25, MESITA-4976): half the name, half
+ *  Accepts Credits, Discount, and Cashback. The header stays dark. The boxes
+ *  are colored so a glance separates them (MESITA-4977): blue Yes, green for
+ *  the percent that is on, gray for No and 0%. A place uses one visit
+ *  mechanic. Cashback accepts credits. A discount place may accept credits
+ *  or not. The row selects the place. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p) / 100;
@@ -525,17 +534,20 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
         <PlacePhoto place={p} className="h-12 w-12 max-[359px]:hidden" />
         <span className="line-clamp-2 min-w-0 text-sm leading-tight font-semibold">{name}</span>
       </span>
-      <PayCell>{accepts ? "Yes" : "No"}</PayCell>
-      <PayCell>{`${discount}%`}</PayCell>
-      <PayCell>{`${cashback}%`}</PayCell>
+      <PayCell className={accepts ? "bg-[#BFDBFE] text-blue-950" : EMPTY_BOX}>{accepts ? "Yes" : "No"}</PayCell>
+      <PayCell className={discount > 0 ? offerShade(discount) : EMPTY_BOX}>{`${discount}%`}</PayCell>
+      <PayCell className={cashback > 0 ? offerShade(cashback) : EMPTY_BOX}>{`${cashback}%`}</PayCell>
     </button>
   );
 }
 
-function PayCell({ children }: { children: string }) {
+/** No, and a percent that is off. Gray, so it stays a box on the white row. */
+const EMPTY_BOX = "bg-muted text-muted-foreground";
+
+function PayCell({ children, className }: { children: string; className: string }) {
   return (
     <span className="flex justify-center px-0.5" aria-hidden>
-      <span className="bg-foreground text-background flex h-11 w-full max-w-16 items-center justify-center rounded-xl text-sm font-semibold tabular-nums">
+      <span className={cn("flex h-11 w-full max-w-16 items-center justify-center rounded-xl text-sm font-semibold tabular-nums", className)}>
         {children}
       </span>
     </span>
