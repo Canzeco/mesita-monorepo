@@ -40,7 +40,8 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: variant.id,
     supportsTablet: false,
-    infoPlist: { ITSAppUsesNonExemptEncryption: false },
+    // Each screen says its own status bar (statusBarStyle): the photo's is light.
+    infoPlist: { ITSAppUsesNonExemptEncryption: false, UIViewControllerBasedStatusBarAppearance: true },
   },
   android: {
     package: variant.id,

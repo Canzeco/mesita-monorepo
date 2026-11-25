@@ -1,5 +1,3 @@
-import { useIsFocused } from "expo-router";
-import { StatusBar } from "expo-status-bar";
 import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,10 +20,8 @@ type Props = {
 /** The sign-in photo: the wordmark, the headline, the line, then the form. */
 export function CoverPage({ children, footer, onClose, aboveBar = false }: Props) {
   const insets = useSafeAreaInsets();
-  const focused = useIsFocused();
   return (
     <View style={[styles.ground, aboveBar && { paddingBottom: insets.bottom }]}>
-      {focused ? <StatusBar style="light" /> : null}
       <PhotoCover>
         <ScrollView
           keyboardShouldPersistTaps="handled"
