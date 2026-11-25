@@ -65,6 +65,13 @@ Deno.test("location: both or neither, a bad one names its field", () => {
 // MESITA-3545: a place with a place code is listed (the guest
 // types the waiter's code there) and counts toward the radius rule;
 // with neither, it is not listed.
+Deno.test("an active Mesita place with no offer is listed, past the radius (MESITA-4986)", () => {
+  const plain = row("plain", { outside_ok: false, offers_ok: false, on_mesita: true, ...north(9) });
+  const ids = payPlaces([plain, row("nothing", { outside_ok: false })], { at: AT, outsidePlaceCount: OPEN_ALL_BELOW, testMode: false })
+    .map((p) => p.place_id);
+  assertEquals(ids, ["plain"]);
+});
+
 Deno.test("payPlaces: an outside-only place is listed and obeys the radius", () => {
   const out = row("o", { outside_ok: true, ...north(0.5) });
   const none = row("n", { outside_ok: false, ...north(0.5) });

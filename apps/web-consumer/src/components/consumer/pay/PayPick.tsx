@@ -14,7 +14,7 @@ import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { voucherPct } from "@mesita/place-profile/lib/offers";
 import { EFError } from "@/lib/api/_invoke";
 import { apiSuggestPlacesWithIdle, type PlacePrediction } from "@/lib/api/places";
-import { payPlaceCashbackBps, payPlaceDiscountBps, payPlaceTabs, type PayPlace } from "@/lib/api/wallet";
+import { payPlaceCashbackBps, payPlaceDiscountBps, type PayPlace } from "@/lib/api/wallet";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { PlacePhoto } from "./pay-common";
@@ -23,8 +23,9 @@ import type { Loc } from "./pay-location";
 // THE WALLET'S TWO PLACE LISTS (MESITA-4838, Pato: "if i select prepay, then
 // the box below displays all the prepay options ... if i select pay, then i
 // see places to select below"): a search box and the places, in the menu's
-// box. Prepay lists the places that sell credit, nearest first, with their
-// vouchers; a row opens its Offers. Pay lists every place, the ones the guest
+// box. Prepay lists every Mesita place, nearest first. All places includes
+// the ones that sell nothing, and those columns read 0% (MESITA-4986). A row
+// opens its Offers. Pay lists every place, the ones the guest
 // holds credit at first, with what their next bill gets; a
 // row opens the one QR with that place over it. The reads and the location
 // are PayPage's, shared by both. They were a sheet (MESITA-4232), /wallet/buy
@@ -195,7 +196,7 @@ export function PlaceList({
   const querying = trimmed.length >= 2;
   const lat = loc.state === "on" ? loc.at.lat : null;
   const lng = loc.state === "on" ? loc.at.lng : null;
-  const places = all && kind === "prepay" ? all.filter((p) => payPlaceTabs(p).prepay) : all;
+  const places = all;
   const matches = (places ?? []).filter((p) => passesShow(p, kind, show));
   const shown = orderPlaces(matches, kind, sort);
   const filtersOn = sort !== "closest" || show !== "all";
@@ -327,11 +328,7 @@ export function PlaceList({
         <RowsSkeleton kind={kind} />
       ) : places.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">
-          {loc.state !== "on"
-            ? "Turn on location to see places near you"
-            : kind === "prepay"
-              ? "No place near you sells credit yet"
-              : "No Mesita place near you"}
+          {loc.state !== "on" ? "Turn on location to see places near you" : "No Mesita place near you"}
         </p>
       ) : shown.length === 0 ? (
         <p className="text-muted-foreground px-3.5 py-4 text-sm">
@@ -484,11 +481,12 @@ function PlaceRow({ p, onPick, kind }: { p: PayPlace; onPick: (placeId: string) 
   return kind === "prepay" ? <PrepayRow p={p} onPick={onPick} /> : <PayRow p={p} onPick={onPick} />;
 }
 
-/** The bonus of each voucher it sells (– where it sells none). */
+/** The bonus of each voucher it sells. A voucher it does not sell is 0%
+ *  (MESITA-4986: All places still lists it). */
 function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
-  const bonuses = VOUCHERS_SHOWN.map((k) => (p.offers?.sell.includes(k) ? voucherPct(p.offers, k) : null));
-  const spoken = [name, ...bonuses.map((pct, i) => (pct === null ? null : `${PREPAY_HEADS[i]}, +${pct}% bonus`))];
+  const bonuses = VOUCHERS_SHOWN.map((k) => (p.offers?.sell.includes(k) ? voucherPct(p.offers, k) : 0));
+  const spoken = [name, ...bonuses.map((pct, i) => `${PREPAY_HEADS[i]}, ${pct ? `+${pct}%` : "0%"}`)];
   return (
     <button
       type="button"
@@ -504,13 +502,9 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
       </span>
       {bonuses.map((pct, i) => (
         <span key={VOUCHERS_SHOWN[i]} className="flex justify-center">
-          {pct ? (
-            <span className={cn("flex h-11 w-11 items-center justify-center rounded-full text-xs font-semibold tabular-nums max-[359px]:h-10 max-[359px]:w-10", bonusShade(pct))}>
-              +{pct}%
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-sm font-semibold">–</span>
-          )}
+          <span className={cn("flex h-11 w-11 items-center justify-center rounded-full text-xs font-semibold tabular-nums max-[359px]:h-10 max-[359px]:w-10", pct ? bonusShade(pct) : EMPTY_BOX)}>
+            {pct ? `+${pct}%` : "0%"}
+          </span>
         </span>
       ))}
       <ChevronRight className="text-muted-foreground h-4 w-4" strokeWidth={2.25} aria-hidden />

@@ -190,7 +190,7 @@ function PrepayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) =>
         const pct = on ? bonusPct(place.offers, key) : 0;
         return (
           <View key={key} style={[styles.bonus, { backgroundColor: on ? bonusColor(pct) : colors.fill }]}>
-            <Text role="caption" tone={on && pct >= 40 ? "onPrepay" : "ink"}>{on ? `+${pct}%` : "–"}</Text>
+            <Text role="caption" tone={on && pct >= 40 ? "onPrepay" : "ink"}>{on ? `+${pct}%` : "0%"}</Text>
           </View>
         );
       })}
