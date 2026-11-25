@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronRight, MapPin, QrCode } from "lucide-react";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
+import { BAR } from "@/components/consumer/search/header-classes";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -54,28 +55,26 @@ export function PlaceList({
     kind === "pay" ? [...matches.filter((p) => p.available_cents > 0), ...matches.filter((p) => p.available_cents <= 0)] : matches;
   return (
     <div className="flex min-h-0 flex-1 flex-col" data-pay-list={kind}>
-      {/* ONE PILL (Pato, 2026-11-25, MESITA-4967: "the searchbar with location
-          in the same place not two"). Location is the left end; search fills
-          the rest. It stays put: only the list scrolls. A hairline under the
-          chrome (MESITA-4961) separates it from the first place. */}
-      <div className="border-border bg-card shrink-0 border-b px-2 pt-2 pb-2">
-        <div className="bg-muted flex h-12 min-w-0 items-stretch overflow-hidden rounded-full" data-pay-pick-search>
-          <LocationPicker joined />
-          <div className="flex min-w-0 flex-1 pl-1">
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={setQuery}
-              onClear={() => setQuery("")}
-              placeholder="Search a place"
-              label="Search a place"
-            />
-          </div>
+      {/* SEARCH, THEN LOCATION, THEN THE LIST (Pato, 2026-11-25, MESITA-4968:
+          the one pill was cramped). Each is its own full-width grey pill.
+          They stay put: only the list scrolls. A hairline under the chrome
+          (MESITA-4961) separates it from the first place. */}
+      <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b px-3 pt-2 pb-3">
+        <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
+          <SearchBar
+            query={query}
+            showClear={query.length > 0}
+            onQueryChange={setQuery}
+            onClear={() => setQuery("")}
+            placeholder="Search a place"
+            label="Search a place"
+          />
         </div>
+        <LocationPicker bar />
         {/* Pay's instruction (MESITA-4967). The rows are the selector; this
             box only says so. */}
         {kind === "pay" ? (
-          <p className="bg-foreground text-background mt-2 flex h-12 items-center justify-center rounded-2xl text-base font-semibold" data-pay-select>
+          <p className="bg-foreground text-background flex h-12 items-center justify-center rounded-2xl text-base font-semibold" data-pay-select>
             Select one place
           </p>
         ) : null}
