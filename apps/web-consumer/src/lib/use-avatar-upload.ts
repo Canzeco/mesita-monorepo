@@ -1,6 +1,6 @@
 "use client";
 
-// One tap to a profile photo (MESITA-4888): Me's + and Profile's Change photo
+// One tap to a profile photo (MESITA-4888, MESITA-4960): Me's camera and Profile's Change photo
 // share it. The picked photo shows at once; Storage and the profile follow, and
 // a failure puts the old one back and says why.
 

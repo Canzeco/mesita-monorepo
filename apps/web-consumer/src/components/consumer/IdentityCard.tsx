@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { SexFace } from "./SexFace";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Crown, Loader2, Plus, User } from "lucide-react";
+import { Camera, Crown, Loader2, User } from "lucide-react";
 import { ALLOWED_AVATAR_ACCEPT } from "@/lib/avatar-upload";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -214,9 +214,10 @@ export function IdentityModules({
           profile photo redirect me to profile subpage"): it opens the same
           Profile page as the name pill; the 72px photo is past the 44px floor. */}
       {adding ? (
-        // NO PHOTO: A + THAT ADDS ONE (Pato, 2026-11-24, MESITA-4888: "bottom
-        // right add + … really easy and fast"): one tap on the circle opens the
-        // phone's own picker, the photo shows at once. Nothing else to open.
+        // NO PHOTO: THE CAMERA IS THE SHORTCUT (Pato, 2026-11-25, MESITA-4960:
+        // "if no pp, in header too in me add the little photo icon"). The same
+        // black camera Profile uses. One tap opens the picker. The green +
+        // (MESITA-4888) is gone.
         <>
           <input
             ref={fileInput}
@@ -246,12 +247,17 @@ export function IdentityModules({
               ) : (
                 <DefaultAvatar className="h-full w-full" />
               )}
+              {adding.uploading ? (
+                <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                  <Loader2 className="h-5 w-5 animate-spin text-white motion-reduce:animate-none" strokeWidth={2.75} />
+                </span>
+              ) : null}
             </span>
-            <span className="absolute -right-1 -bottom-1 flex h-8 w-8 items-center justify-center" aria-hidden>
-              {adding.uploading ? null : <span className="absolute inset-1 animate-ping rounded-full bg-[#00D66F] opacity-60 motion-reduce:animate-none" />}
-              <span className="border-card relative flex h-8 w-8 items-center justify-center rounded-full border-[3px] bg-[#00D66F] text-neutral-950">
-                {adding.uploading ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" strokeWidth={2.75} /> : <Plus className="h-4 w-4" strokeWidth={3} />}
-              </span>
+            <span
+              aria-hidden
+              className="bg-foreground text-paper ring-background absolute right-0 bottom-0 flex h-8 w-8 items-center justify-center rounded-full ring-4"
+            >
+              <Camera className="h-4 w-4" />
             </span>
           </button>
         </>
