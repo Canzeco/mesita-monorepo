@@ -78,10 +78,10 @@ export function headerLocation(
   return { label: locationLabel(active, hasFix, locating), off: false };
 }
 
-/** `list`: Pay's Current location bar, its own black bar. `joined`: the left
- *  end of Pay's search pill (Pato, 2026-11-25, MESITA-4967: location and
- *  search are one bar). The header box everywhere else. */
-export function LocationPicker({ list = false, joined = false }: { list?: boolean; joined?: boolean } = {}) {
+/** `list`: Pay's Current location bar, its own black bar. `bar`: Pay's
+ *  location under the search, its own full-width grey pill (Pato, 2026-11-25,
+ *  MESITA-4968). The header box everywhere else. */
+export function LocationPicker({ list = false, bar = false }: { list?: boolean; bar?: boolean } = {}) {
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
   const settled = useUserLocationSettled();
@@ -108,8 +108,8 @@ export function LocationPicker({ list = false, joined = false }: { list?: boolea
         aria-haspopup="dialog"
         aria-label={`Location: ${label}. Change location`}
         className={
-          joined
-            ? "hover:bg-border focus-visible:bg-border flex h-full max-w-[46%] min-w-0 shrink-0 items-center gap-1.5 border-r border-border pr-2.5 pl-3.5 text-sm font-semibold outline-none"
+          bar
+            ? "bg-muted text-foreground hover:bg-border focus-visible:border-foreground flex h-12 w-full min-w-0 shrink-0 items-center gap-2 rounded-full border border-transparent px-4 text-sm font-semibold outline-none transition-colors"
             : list
               ? "bg-foreground text-background focus-visible:ring-background flex h-12 w-full min-w-0 shrink-0 items-center justify-center gap-2 rounded-2xl px-3 text-base font-semibold outline-none transition hover:opacity-80 focus-visible:ring-2"
               : cn(HOME_LOCATION_CLASS, off && HOME_LOCATION_OFF_CLASS)
@@ -124,7 +124,7 @@ export function LocationPicker({ list = false, joined = false }: { list?: boolea
         )}
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
-          className={cn("h-4 w-4 shrink-0", !joined && list ? "opacity-70" : off ? "text-destructive" : "text-muted-foreground")}
+          className={cn("h-4 w-4 shrink-0", !bar && list ? "opacity-70" : off ? "text-destructive" : "text-muted-foreground")}
           strokeWidth={2.25}
           aria-hidden
         />
