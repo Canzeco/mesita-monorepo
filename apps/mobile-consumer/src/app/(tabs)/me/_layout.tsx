@@ -11,7 +11,11 @@ export default function MeLayout() {
       <Stack.Screen name="index" options={{ title: "Me", headerShown: member, statusBarStyle: member ? "dark" : "light" }} />
       <Stack.Protected guard={member} redirectTo="/sign-in">
         {ME_PAGES.map((name) => (
-          <Stack.Screen key={name} name={name} />
+          <Stack.Screen
+            key={name}
+            name={name}
+            options={{ title: name === "delete" ? "Delete account" : name[0].toUpperCase() + name.slice(1) }}
+          />
         ))}
       </Stack.Protected>
     </Stack>
