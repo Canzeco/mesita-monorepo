@@ -19,7 +19,9 @@ appId: com.mesita.consumer
       - inputText: "Test"
       - tapOn: { id: "last-name" }
       - inputText: "Guest"
-      - hideKeyboard
+      # iOS shows no dismiss key, and the year sits under the keyboard.
+      - tapOn: "Almost there."
+      - scrollUntilVisible: { element: { id: "birth-year" }, direction: DOWN }
       - tapOn: "Other"
       - tapOn: { id: "birth-year" }
       - scrollUntilVisible: { element: "1990" }

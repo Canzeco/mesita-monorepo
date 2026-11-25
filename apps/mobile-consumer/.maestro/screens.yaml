@@ -23,19 +23,10 @@ appId: com.mesita.consumer
 - tapOn: "Choose location"
 - tapOn: { id: "use-device" }
 - tapOn: { text: "While using the app", optional: true }
-# A fix shows Home's places. An emulator with none shows the failure and
-# the rest of the walk continues from Home's empty state.
-- extendedWaitUntil: { visible: "Current location|Your location could not be found.*", timeout: 30000 }
-- runFlow:
-    when: { visible: "Your location could not be found.*" }
-    commands:
-      - takeScreenshot: location-no-fix
-      - tapOn: "Close"
-- runFlow:
-    when: { notVisible: "Your location could not be found.*" }
-    commands:
-      - extendedWaitUntil: { visible: { id: "catalog" }, timeout: 15000 }
-      - takeScreenshot: home
+# Home's list is the proof the fix landed. The text wait missed it: the
+# button's label is "Location: Current location. Change location".
+- extendedWaitUntil: { visible: { id: "catalog" }, timeout: 45000 }
+- takeScreenshot: home
 - tapOn: "Search"
 - takeScreenshot: search
 - tapOn: { id: "menu" }
