@@ -1,4 +1,5 @@
-# apps/mobile — the guest app for iPhone and Android
+<!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
+# apps/mobile-consumer — the guest app for iPhone and Android
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only; the architecture is Notion Docs › Apps › A2.
 

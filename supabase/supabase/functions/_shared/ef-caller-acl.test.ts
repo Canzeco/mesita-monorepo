@@ -36,7 +36,7 @@ const REPO_ROOT = new URL("../../../../", import.meta.url);
 const ACTOR_APPS: Record<string, readonly string[]> = {
   admin: ["web-admin"],
   // MESITA-4930: the phone app is the guest's second client.
-  consumer: ["web-consumer", "mobile"],
+  consumer: ["web-consumer", "mobile-consumer"],
   // MESITA-3103: the place's own console is back, on real data.
   business: ["web-business"],
   // MESITA-3240: service.mesita.ai closes a visit, with no sign-in.
