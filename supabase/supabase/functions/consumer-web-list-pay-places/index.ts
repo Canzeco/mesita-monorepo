@@ -16,10 +16,12 @@
 //             distance_m | null, currency, available_cents,
 //             pending_cents, outside_ok, test_mode,
 //             paid_recent: { payment_id, total_cents, paid_at } | null,
-//             offers_ok, offers: { sell, cashback_pct, cashback_flat,
+//             offers_ok, credits_ok, offers: { sell, cashback_pct, cashback_flat,
 //             welcome_pct, welcome_vip_pct, returning_pct, returning_vip_pct } }] }
 //   MESITA-4748: welcome_pct | returning_pct, the two Back lines apart, for
 //   the Pay Bill sheet's two boxes.
+//   credits_ok = Loyalty Cards On at an active place (the place takes Mesita
+//   credit). A visit discount widens offers_ok and does not set credits_ok.
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
 //   and vouchers where sold), or (MESITA-4770) a visit Discount there:
 //   Pay's Get Offers lists these. offers.visit_mechanism = discount | cashback;
@@ -166,6 +168,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       const discount = o.visit_mechanism === "discount" && [o.welcome_pct, o.welcome_vip_pct, o.returning_pct, o.returning_vip_pct].some((v) => v !== null);
       return {
         ...p,
+        // Accepts Credits is Loyalty Cards on, before a visit discount widens offers_ok.
+        credits_ok: p.offers_ok,
         offers_ok: p.offers_ok || (discount && p.outside_ok),
         visit_line: billed.has(p.place_id) ? (vip ? "returning_vip" : "returning") : vip ? "welcome_vip" : "welcome",
         offers: o,
