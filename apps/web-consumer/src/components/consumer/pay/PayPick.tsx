@@ -245,8 +245,9 @@ export function PlaceList({
       {/* SEARCH, THEN FILTERS, THEN THE LIST (Pato, 2026-11-25, MESITA-4973).
           An empty bar is the nearby table. Typing searches every place
           (MESITA-4975). Filters hold the location, Closest or Best offers,
-          and what the table shows. Edge to edge (MESITA-4970). */}
-      <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b pt-2 pb-3">
+          and what the table shows. The controls share the title's 16px inset
+          (MESITA-4978). The column bar stays full width. */}
+      <div className="border-border bg-card flex shrink-0 flex-col gap-2 border-b px-4 pt-3 pb-3">
         <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,1fr)] gap-2">
           <div className={cn(BAR, "h-12 w-full")} data-pay-pick-search>
             <SearchBar
