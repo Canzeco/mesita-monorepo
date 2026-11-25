@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Keyboard, Platform, ScrollView, StyleSheet, View } from "react-native";
+import type { ReactNode } from "react";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useKeyboardHeight } from "@/components/use-keyboard-height";
 import { colors, space } from "@/theme";
 
 type Props = {
@@ -40,20 +41,6 @@ export function Screen({ children, footer, center = false, sheet = false }: Prop
       ) : null}
     </View>
   );
-}
-
-function useKeyboardHeight(): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const ios = Platform.OS === "ios";
-    const show = Keyboard.addListener(ios ? "keyboardWillShow" : "keyboardDidShow", (e) => setHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener(ios ? "keyboardWillHide" : "keyboardDidHide", () => setHeight(0));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-  return height;
 }
 
 const styles = StyleSheet.create({

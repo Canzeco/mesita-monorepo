@@ -5,7 +5,7 @@ appId: com.mesita.consumer
 - launchApp:
     clearState: true
     clearKeychain: true
-    permissions: { location: deny }
+    permissions: { location: "${maestro.platform == 'ios' ? 'never' : 'deny'}" }
 - extendedWaitUntil: { visible: "Just browse", timeout: 30000 }
 - tapOn: "Just browse"
 - tapOn: "Sign"

@@ -16,6 +16,13 @@ jobs:
   fingerprint:
     type: fingerprint
     environment: preview
+    # The profile's own env (eas.json, a test keeps them equal): without it the
+    # fingerprint is another variant's and no build is ever reused.
+    env: &env
+      APP_VARIANT: "preview"
+      EXPO_PUBLIC_SUPABASE_URL: "https://yjalywfzdelacdzccpgb.supabase.co"
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd"
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
 
   find_ios:
     needs: [fingerprint]
@@ -54,6 +61,7 @@ jobs:
     if: ${{ needs.find_ios.outputs.build_id || needs.find_android.outputs.build_id }}
     type: update
     environment: preview
+    env: *env
     params:
       channel: preview
       platform: all
