@@ -78,7 +78,7 @@ test("sign-in, suspended and the shared states", async () => {
     <WelcomeScreen key="6" onSignIn={nothing} onBrowse={nothing} />,
     <QueryClientProvider key="7" client={queryClient}>
       <LocationProvider>
-        <SearchScreen onChooseLocation={nothing} onMenu={nothing} />
+        <SearchScreen onChooseLocation={nothing} onMenu={nothing} onOpen={nothing} />
       </LocationProvider>
     </QueryClientProvider>,
   ]) {

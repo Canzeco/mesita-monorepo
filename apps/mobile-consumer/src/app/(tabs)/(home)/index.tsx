@@ -10,8 +10,7 @@ export default function Route() {
   const welcome = useCallback(() => router.push("/welcome"), [router]);
   return (
     <HomeScreen
-      // The place screen is step 3: until then a place opens as its web page.
-      onOpenPlace={(placeId) => router.push({ pathname: "/open", params: { page: `/place/${placeId}` } })}
+      onOpenPlace={(placeId) => router.push({ pathname: "/place/[id]", params: { id: placeId } })}
       onChooseLocation={() => router.push("/location")}
       onMenu={() => router.push("/categories")}
       onWelcome={welcome}
