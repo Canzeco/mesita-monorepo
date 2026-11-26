@@ -6,6 +6,7 @@
 // _shared/reservation-cap.test.ts — change them together. The page builds its
 // lines from these constants, never a literal. An operator can still set one
 // guest's own cap (Manage › Guests); the page states the plan's.
-export const FREE_RESERVATIONS_PER_MONTH = 3;
-export const PRO_RESERVATIONS_PER_MONTH = 10;
+// Free 10, Pro 30 since MESITA-5007 (🦚 Main § 3, § 8).
+export const FREE_RESERVATIONS_PER_MONTH = 10;
+export const PRO_RESERVATIONS_PER_MONTH = 30;
 export const PRO_PRICE_CENTS = 100;

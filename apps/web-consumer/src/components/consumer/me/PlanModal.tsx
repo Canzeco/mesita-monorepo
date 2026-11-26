@@ -71,11 +71,7 @@ import { Loader2, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PLAN_ROWS } from "@/components/consumer/me/plan-words";
-import {
-  apiCancelPlan,
-  apiGetPlan,
-  type GuestPlanView,
-} from "@/lib/api/plan";
+import { apiCancelPlan, apiGetPlan, type GuestPlanView } from "@/lib/api/plan";
 import { PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 import { resetDay } from "@/lib/reset-day";
 import { refusal, startUpgrade } from "@/lib/start-upgrade";
@@ -83,10 +79,7 @@ import { PRO_INK, ProOffer, UpgradeAction } from "./ProOffer";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS, INFO_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
-import {
-  CurrentPill,
-  ME_BUTTON_CLASS,
-} from "./settings-rows";
+import { CurrentPill, ME_BUTTON_CLASS } from "./settings-rows";
 
 /** Free as one line above Pro (MESITA-4385; above and white since
  *  MESITA-4388): a ticket mark, the name with its Current pill, its monthly
@@ -116,6 +109,15 @@ function FreeLine({ current }: { current: boolean }) {
   );
 }
 
+/** "{used} of {cap} … used"; over the cap (an operator's override, or a cap
+ *  that fell) never more used than the cap allows, but "{used} … used ·
+ *  limit {cap}" (MESITA-5007). */
+function usedLine(used: number, cap: number): string {
+  return used > cap
+    ? `${used} reservations used · limit ${cap}`
+    : `${used} of ${cap} reservations used`;
+}
+
 /** This month's usage (MESITA-3899), the reason to upgrade, as its own card
  *  (MESITA-4385): "{used} of {cap} tickets used" with a red "Limit reached"
  *  pill at or over the cap, the bar (ink, red when full), then the reset
@@ -138,7 +140,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-semibold">
-          {view ? `${used} of ${cap} reservations used` : "Reservations this month"}
+          {view ? usedLine(used, cap) : "Reservations this month"}
         </p>
         {full && (
           <span className="bg-destructive/10 text-destructive type-meta shrink-0 rounded-full px-2 py-0.5 font-semibold">
@@ -154,7 +156,7 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
         aria-valuenow={view ? Math.min(used, cap) : undefined}
         aria-valuetext={
           view
-            ? `${used} of ${cap} reservations used${full ? ", limit reached" : ""}`
+            ? `${usedLine(used, cap)}${full ? ", limit reached" : ""}`
             : undefined
         }
         className="bg-muted mt-3 h-2 overflow-hidden rounded-full"
@@ -181,7 +183,6 @@ function UsageCard({ view }: { view: GuestPlanView | null }) {
     </section>
   );
 }
-
 
 /** "Dec 14". */
 function day(iso: string | null): string {
@@ -234,7 +235,8 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
           clearSessionId();
           setNotice(null);
           // An old return link on a guest who pays for Pro says nothing.
-          if (v.plan === "free") setError("Your payment didn't go through. Try again.");
+          if (v.plan === "free")
+            setError("Your payment didn't go through. Try again.");
         } else if (sessionId && v.plan === "free") {
           setError("Couldn't check your payment. Reload to try again.");
         }
@@ -312,7 +314,8 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
   // (granted) has nothing to buy and nothing to cancel.
   const proAction =
     // A payment still processing is never bought twice.
-    plan === "free" && view?.confirmed === "pending" ? null : plan === "free" ? (
+    plan === "free" && view?.confirmed === "pending" ? null : plan ===
+      "free" ? (
       <UpgradeAction onUpgrade={upgrade} busy={busy} />
     ) : paidPro && view && !view.cancel_at_period_end ? (
       <p className="text-muted-foreground type-label">
@@ -347,7 +350,6 @@ export function PlanModal({ fallback = false }: { fallback?: boolean }) {
         <FreeLine current={plan === "free"} />
         <ProOffer current={plan === "premium"}>{proAction}</ProOffer>
       </div>
-
 
       <div className="mt-4 flex flex-col gap-3" aria-live="polite">
         {failed && (

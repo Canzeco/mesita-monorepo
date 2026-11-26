@@ -31,9 +31,7 @@ export type PlanRowWords = {
 
 /** "$2" for whole dollars, "$2.50" otherwise. */
 export function dollars(cents: number): string {
-  return cents % 100 === 0
-    ? `$${cents / 100}`
-    : `$${(cents / 100).toFixed(2)}`;
+  return cents % 100 === 0 ? `$${cents / 100}` : `$${(cents / 100).toFixed(2)}`;
 }
 
 // The currency is named (MESITA-3887, Pato: "mention usd"): every other
@@ -55,6 +53,9 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
     // "reservation tickets a month", since MESITA-4388 (Pato: "simple
     // language. reservations per month").
     perk: `${PRO_RESERVATIONS_PER_MONTH} reservations per month`,
-    soonPerk: "MCP for ChatGPT or Claude",
+    // Better prepay rates in place of MCP (Pato, 2026-11-26, MESITA-5007:
+    // "write better prepay rates as fake perk"): nothing grants it yet, so
+    // it keeps the Soon mark MCP had.
+    soonPerk: "Better prepay rates",
   },
 };

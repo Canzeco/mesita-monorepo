@@ -19,8 +19,9 @@ import {
 const view = (over: Partial<GuestPlanView> = {}): GuestPlanView => ({
   plan: "free",
   granted: false,
-  cap: 3,
-  used: 3,
+  // Free 10, Pro 30 since MESITA-5007.
+  cap: 10,
+  used: 10,
   price_cents: 100,
   currency: "usd",
   paid_until: null,
@@ -33,13 +34,15 @@ const view = (over: Partial<GuestPlanView> = {}): GuestPlanView => ({
 describe("offerPro", () => {
   it("offers Pro to a Free guest with none left and no operator cap", () => {
     expect(offerPro(view())).toBe(true);
-    expect(offerPro(view({ used: 9 }))).toBe(true);
+    expect(offerPro(view({ used: 29 }))).toBe(true);
   });
   it("never offers Pro when Pro would not help", () => {
-    expect(offerPro(view({ plan: "premium", cap: 10, used: 10 }))).toBe(false);
-    expect(offerPro(view({ plan: "premium", granted: true, cap: 10, used: 10 }))).toBe(false);
+    expect(offerPro(view({ plan: "premium", cap: 30, used: 30 }))).toBe(false);
+    expect(
+      offerPro(view({ plan: "premium", granted: true, cap: 30, used: 30 })),
+    ).toBe(false);
     expect(offerPro(view({ cap_override: true }))).toBe(false);
-    expect(offerPro(view({ used: 10 }))).toBe(false);
+    expect(offerPro(view({ used: 30 }))).toBe(false);
     expect(offerPro(view({ used: 2 }))).toBe(false);
     expect(offerPro(view({ cap_lifted: true }))).toBe(false);
   });
@@ -49,7 +52,9 @@ describe("offerPro", () => {
     delete old.cap_override;
     expect(offerPro(old)).toBe(false);
     expect(blocked(old)).toBe(false);
-    expect(capApplies({ view: old, checking: false, hasLiveTable: false })).toBe(false);
+    expect(
+      capApplies({ view: old, checking: false, hasLiveTable: false }),
+    ).toBe(false);
   });
 });
 
@@ -60,10 +65,18 @@ describe("blocked and capApplies", () => {
     expect(blocked(view({ used: 1 }))).toBe(false);
   });
   it("applies only after the duplicate check and without a live table", () => {
-    expect(capApplies({ view: view(), checking: false, hasLiveTable: false })).toBe(true);
-    expect(capApplies({ view: view(), checking: true, hasLiveTable: false })).toBe(false);
-    expect(capApplies({ view: view(), checking: false, hasLiveTable: true })).toBe(false);
-    expect(capApplies({ view: null, checking: false, hasLiveTable: false })).toBe(false);
+    expect(
+      capApplies({ view: view(), checking: false, hasLiveTable: false }),
+    ).toBe(true);
+    expect(
+      capApplies({ view: view(), checking: true, hasLiveTable: false }),
+    ).toBe(false);
+    expect(
+      capApplies({ view: view(), checking: false, hasLiveTable: true }),
+    ).toBe(false);
+    expect(
+      capApplies({ view: null, checking: false, hasLiveTable: false }),
+    ).toBe(false);
   });
 });
 
@@ -97,33 +110,69 @@ describe("draft", () => {
     expect(decodeDraft(encodeDraft(draft), now)).toEqual(draft);
   });
   it("drops stale, future, malformed and out-of-range drafts without throwing", () => {
-    expect(decodeDraft(encodeDraft({ ...draft, savedAt: now - DRAFT_TTL_MS - 1 }), now)).toBeNull();
-    expect(decodeDraft(encodeDraft({ ...draft, savedAt: now + 60_000 }), now)).toBeNull();
+    expect(
+      decodeDraft(
+        encodeDraft({ ...draft, savedAt: now - DRAFT_TTL_MS - 1 }),
+        now,
+      ),
+    ).toBeNull();
+    expect(
+      decodeDraft(encodeDraft({ ...draft, savedAt: now + 60_000 }), now),
+    ).toBeNull();
     expect(decodeDraft("{not json", now)).toBeNull();
     expect(decodeDraft("null", now)).toBeNull();
     expect(decodeDraft(null, now)).toBeNull();
     expect(decodeDraft(encodeDraft({ ...draft, party: 0 }), now)).toBeNull();
-    expect(decodeDraft(JSON.stringify({ ...draft, firstName: 7 }), now)).toBeNull();
-    expect(decodeDraft(encodeDraft({ ...draft, stepAt: 3 }), now)?.stepAt).toBe(3);
+    expect(
+      decodeDraft(JSON.stringify({ ...draft, firstName: 7 }), now),
+    ).toBeNull();
+    expect(decodeDraft(encodeDraft({ ...draft, stepAt: 3 }), now)?.stepAt).toBe(
+      3,
+    );
     expect(decodeDraft(encodeDraft({ ...draft, stepAt: 4 }), now)).toBeNull();
   });
 });
 
 describe("returnOutcome", () => {
-  const base = { hasProMarker: true, sessionId: null as string | null, view: view(), readFailed: false };
+  const base = {
+    hasProMarker: true,
+    sessionId: null as string | null,
+    view: view(),
+    readFailed: false,
+  };
   it("is nothing without the marker or a session", () => {
-    expect(returnOutcome({ ...base, hasProMarker: false })).toEqual({ kind: "none" });
+    expect(returnOutcome({ ...base, hasProMarker: false })).toEqual({
+      kind: "none",
+    });
   });
   it("reads the payment verdict on a session return", () => {
     const s = { ...base, sessionId: "cs_1" };
-    expect(returnOutcome({ ...s, view: view({ plan: "premium", cap: 10, confirmed: "paid" }) })).toEqual({ kind: "paid" });
-    expect(returnOutcome({ ...s, view: view({ confirmed: "pending" }) })).toEqual({ kind: "pending" });
-    expect(returnOutcome({ ...s, readFailed: true, view: null })).toEqual({ kind: "check_failed" });
-    expect(returnOutcome({ ...s, view: view({ plan: "premium", cap: 10 }) })).toEqual({ kind: "paid" });
-    expect(returnOutcome({ ...s, view: view() })).toEqual({ kind: "check_failed" });
+    expect(
+      returnOutcome({
+        ...s,
+        view: view({ plan: "premium", cap: 30, confirmed: "paid" }),
+      }),
+    ).toEqual({ kind: "paid" });
+    expect(
+      returnOutcome({ ...s, view: view({ confirmed: "pending" }) }),
+    ).toEqual({ kind: "pending" });
+    expect(returnOutcome({ ...s, readFailed: true, view: null })).toEqual({
+      kind: "check_failed",
+    });
+    expect(
+      returnOutcome({ ...s, view: view({ plan: "premium", cap: 30 }) }),
+    ).toEqual({ kind: "paid" });
+    expect(returnOutcome({ ...s, view: view() })).toEqual({
+      kind: "check_failed",
+    });
   });
   it("offers Pro again after a cancel only while Pro still helps", () => {
     expect(returnOutcome(base)).toEqual({ kind: "offer" });
-    expect(returnOutcome({ ...base, view: view({ plan: "premium", cap: 10, used: 4 }) })).toEqual({ kind: "form" });
+    expect(
+      returnOutcome({
+        ...base,
+        view: view({ plan: "premium", cap: 30, used: 4 }),
+      }),
+    ).toEqual({ kind: "form" });
   });
 });
