@@ -427,7 +427,9 @@ function SearchMapCanvas({
   onLiveViewport?: (box: ViewportBox) => void;
 }) {
   const located = places.filter(hasCoords);
-  const opensAt = userLocation ?? chosenLocation;
+  // A chosen pin wins over the phone (MESITA-5008): Distrito Tec, or any
+  // saved location, is where the map opens. Current location is no pin.
+  const opensAt = chosenLocation ?? userLocation;
 
   return (
     <Map

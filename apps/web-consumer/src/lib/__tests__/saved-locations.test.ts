@@ -14,12 +14,18 @@ import {
   removeSavedLocation,
   setSavedLocationsRemote,
   syncSavedLocations,
+  DISTRITO_TEC_ID,
   SAVED_LOCATION_FALLBACK,
   SAVED_LOCATIONS_MAX,
   updateSavedLocation,
   type SavedLocationInput,
 } from "@/lib/saved-locations";
-import { resolveActiveLocation, savedLocationKey } from "@/lib/active-location";
+import {
+  distritoActive,
+  fallbackLocationKey,
+  resolveActiveLocation,
+  savedLocationKey,
+} from "@/lib/active-location";
 
 // Pato (MESITA-2380): the guest's own named points, in this browser, like
 // Favorites. Since MESITA-2501 every one is a pin the guest confirmed on a
@@ -153,6 +159,39 @@ describe("entries stored before confirmed pins", () => {
     });
     expect(resolveActiveLocation("saved:gone", [confirmed])).toBeNull();
     expect(resolveActiveLocation(null, [confirmed])).toBeNull();
+    // The built-in pin resolves with nothing stored (MESITA-5008).
+    expect(resolveActiveLocation(savedLocationKey(DISTRITO_TEC_ID), [])).toEqual(distritoActive());
+  });
+});
+
+describe("Distrito Tec stands in when there is no location (MESITA-5008)", () => {
+  const distrito = savedLocationKey(DISTRITO_TEC_ID);
+  const base = {
+    chosen: null,
+    remembered: null,
+    noFix: false,
+    anonymous: false,
+    explicitHere: false,
+  };
+
+  it("an anonymous visitor starts on Distrito Tec, even with a phone fix", () => {
+    expect(fallbackLocationKey({ ...base, anonymous: true })).toBe(distrito);
+    expect(fallbackLocationKey({ ...base, anonymous: true, noFix: false })).toBe(distrito);
+  });
+
+  it("Current location wins for an anonymous visitor only after they ask and a fix exists", () => {
+    expect(
+      fallbackLocationKey({ ...base, anonymous: true, explicitHere: true, noFix: false }),
+    ).toBeNull();
+    expect(
+      fallbackLocationKey({ ...base, anonymous: true, explicitHere: true, noFix: true }),
+    ).toBe(distrito);
+  });
+
+  it("a member with no fix and no pin gets Distrito Tec; a live fix stays current location", () => {
+    expect(fallbackLocationKey({ ...base, noFix: true })).toBe(distrito);
+    expect(fallbackLocationKey({ ...base, noFix: false })).toBeNull();
+    expect(fallbackLocationKey({ ...base, noFix: true, remembered: "saved:home" })).toBe("saved:home");
   });
 });
 

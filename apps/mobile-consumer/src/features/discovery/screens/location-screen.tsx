@@ -11,7 +11,7 @@ import { useErrorCopy } from "@/lib/error-copy";
 import { colors, maxFontSizeMultiplier, pressedOpacity, radius, type } from "@/theme";
 
 import { useActiveLocation } from "../location-context";
-import type { Point } from "../model";
+import { DISTRITO_TEC, type Point } from "../model";
 import { useLocationSearch, useResolveLocation } from "../queries";
 
 const FIX_MS = 10_000;
@@ -122,6 +122,14 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
               chosen={here}
               onPress={() => void locate()}
               testID="use-device"
+            />
+            <LocationRow
+              icon="map-pin"
+              title={DISTRITO_TEC.name}
+              line="Monterrey"
+              chosen={location?.name === DISTRITO_TEC.name}
+              onPress={() => done(DISTRITO_TEC, DISTRITO_TEC.name)}
+              testID="distrito-tec"
             />
             {member ? null : (
               <LocationRow

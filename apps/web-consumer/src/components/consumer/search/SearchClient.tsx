@@ -602,7 +602,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // No map, no first viewport: load the rail from the guest's point instead.
   const onMapFailed = useCallback(() => {
     if (lastFetchedCenter.current) return;
-    void loadAt(locationRef.current ?? chosen ?? MONTERREY_CENTER, null);
+    void loadAt(chosen ?? locationRef.current ?? MONTERREY_CENTER, null);
   }, [chosen, loadAt]);
 
   // Try again after a failed load: the view on screen, or with no map the
@@ -668,7 +668,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             asked,
             firstFix,
             userMoved: userMovedRef.current,
-            picked: pickedRef.current,
+            // A saved pin already claimed the camera (MESITA-5008).
+            picked: pickedRef.current || chosen !== null,
           })
         ) {
           return;
@@ -688,7 +689,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           void loadAt(fix, boxAtSight(lastBoxRef.current, fix));
         }
       },
-      [askCamera, clearPendingReload, loadAt],
+      [askCamera, chosen, clearPendingReload, loadAt],
     ),
   );
 
