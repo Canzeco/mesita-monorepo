@@ -13,12 +13,14 @@
 //               never sends it, so its read is unchanged.
 // Response: { ok: true, plan: "free" | "premium", granted: boolean,
 //             cap, used, price_cents, currency, paid_until, cancel_at_period_end,
-//             cap_lifted?, cap_override?, confirmed?: "paid" | "pending" | "failed" }
+//             cap_lifted?, cap_override?, test_call?, confirmed?: "paid" | "pending" | "failed" }
 //   confirmed (MESITA-4915): only with a session_id. `pending` is the guest's
 //   own Checkout that can still be paid; `failed` is terminal; left out when
 //   Stripe could not be read, so the app keeps the id and asks again.
 //   cap_lifted / cap_override (MESITA-4393, _shared/plan-flags.ts) are left
 //   out when the settings read fails; the web form then fails open.
+//   test_call (MESITA-5000): true while Who the agent calls is Test number
+//   or Guest's phone. The reserve form adds its Test step only then.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";

@@ -24,6 +24,9 @@ export type GuestPlanView = {
   cap_lifted?: boolean;
   /** An operator set this guest's cap, so Pro would not change it. */
   cap_override?: boolean;
+  /** Who the agent calls is a test number or this guest's phone (MESITA-5000).
+   *  Absent when the server could not read it: the form stays at three steps. */
+  test_call?: boolean;
 };
 
 export async function apiGetPlan(
