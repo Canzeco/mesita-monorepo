@@ -9,6 +9,8 @@ import { formatPlacePriceChip } from "../../lib/place-price";
 import { cn } from "../../lib/cn";
 import { formatCompactCount, formatDistanceKm, formatRating } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
+import { isPremierPlace } from "../../premier";
+import { PremierRosette } from "../PremierBadge";
 
 import { profileChannelStats } from "./channel-stats";
 import { channelStatIcon } from "./channel-stat-icons";
@@ -145,8 +147,16 @@ export function ProfileSummary({
         ) : place.is_enriching ? (
           <RunningFact label="Enriching" tone="green" />
         ) : null}
-        {/* No Premier fact here (MESITA-2925): the place's one mark,
-            "Premier 2X", stands after its name in the top bar. */}
+        {/* PREMIER LEADS THE CATEGORY (Pato, 2026-11-26, MESITA-5019):
+            the first tag before the category. The word is Premier, with
+            the red seal and no level (MESITA-3420). Creating and Enriching
+            still lead the row while they are running. */}
+        {isPremierPlace(place) ? (
+          <ProfileFact data-profile-premier>
+            <PremierRosette decorative className="h-4 w-4" />
+            Premier
+          </ProfileFact>
+        ) : null}
         {place.category && (
           // The category's own emoji, Tag only when it has none (MESITA-2813).
           <ProfileFact icon={Tag} emoji={place.category_emoji}>
