@@ -104,6 +104,8 @@ describe("draft", () => {
     expect(decodeDraft(null, now)).toBeNull();
     expect(decodeDraft(encodeDraft({ ...draft, party: 0 }), now)).toBeNull();
     expect(decodeDraft(JSON.stringify({ ...draft, firstName: 7 }), now)).toBeNull();
+    expect(decodeDraft(encodeDraft({ ...draft, stepAt: 3 }), now)?.stepAt).toBe(3);
+    expect(decodeDraft(encodeDraft({ ...draft, stepAt: 4 }), now)).toBeNull();
   });
 });
 

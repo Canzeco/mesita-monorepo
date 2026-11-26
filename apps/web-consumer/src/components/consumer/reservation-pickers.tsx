@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronLeft,
   CircleCheck,
+  FlaskConical,
   Minus,
   Plus,
   Users,
@@ -541,13 +542,15 @@ export function ReservationUpdatesPicker({
 // name … and the phone"). Changing a reservation stops at Party.
 // MESITA-4403 (Pato: "if you already have a table, add it as a prev step"):
 // a live table here comes first, as Your table.
-export type ReserveStep = "table" | "when" | "party" | "you";
+export type ReserveStep = "table" | "when" | "party" | "you" | "test";
 
 export const STEP_META: Record<ReserveStep, { name: string; icon: LucideIcon }> = {
   table: { name: "Your table", icon: CalendarClock },
   when: { name: "When", icon: CalendarDays },
   party: { name: "Party", icon: Users },
   you: { name: "You", icon: CircleCheck },
+  // MESITA-5000: only while the agent dials a test number or the guest.
+  test: { name: "Test", icon: FlaskConical },
 };
 
 /**

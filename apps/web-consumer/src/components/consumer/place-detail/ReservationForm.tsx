@@ -21,6 +21,7 @@ import {
   ReserveStepNav,
   type ReserveStep,
 } from "@/components/consumer/reservation-pickers";
+import { MAX_DRAFT_STEP } from "@/lib/reserve-plan";
 import {
   apiCreateReservation,
   apiUpdateReservation,
@@ -246,7 +247,7 @@ export function ReservationForm({
       const open =
         opts.some((o) => o.iso === d.dateChoice && !o.disabled) &&
         resolveSlot(d.dateChoice, d.timeChoice, hours, tz) === d.timeChoice;
-      setStepAt(open ? Math.min(d.stepAt, 2) : 0);
+      setStepAt(open ? Math.min(d.stepAt, MAX_DRAFT_STEP) : 0);
   };
   const plan = useReservePlan({
     supabase,
@@ -394,11 +395,18 @@ export function ReservationForm({
     missing,
   });
 
+  // Test (MESITA-5000) only on a new booking, and only while the agent dials
+  // a test number or this guest. Production, a change, and a live table stay
+  // as they are. The flag is absent until the plan read lands, and absent
+  // when that read fails: three steps, Reserve still works.
+  const testCall = !rescheduling && !existing && plan.view?.test_call === true;
   const steps: ReserveStep[] = existing
     ? ["table", "when", "party"]
     : rescheduling
       ? ["when", "party"]
-      : ["when", "party", "you"];
+      : testCall
+        ? ["when", "party", "you", "test"]
+        : ["when", "party", "you"];
   // A table found mid-flow (a 409 re-read, a restored draft) is answered
   // first: its step opens wherever the guest was.
   const at = awaitingChoice ? 0 : Math.min(stepAt, steps.length - 1);
@@ -458,7 +466,9 @@ export function ReservationForm({
                 <span className="bg-reserve h-2 w-2 shrink-0 rounded-full" aria-hidden />
                 <span className="font-semibold">
                   {parked ??
-                    `Mesita calls ${place.name} as soon as it is open${rescheduling ? " to move your table" : ""}`}
+                    (plan.view?.test_call === true && !rescheduling
+                      ? `Mesita calls your number, not ${place.name}. Answer as the waiter.`
+                      : `Mesita calls ${place.name} as soon as it is open${rescheduling ? " to move your table" : ""}`)}
                 </span>
               </div>
             </dl>
@@ -504,7 +514,7 @@ export function ReservationForm({
   // sends the request (MESITA-4671 D4: it repeated on every step). Hidden on
   // the Pro sheet and in a month that is already full.
   const promisesACall =
-    !plan.pro && last && step !== "table" && !(!submitting && (plan.offer || plan.isBlocked));
+    !plan.pro && last && step !== "table" && step !== "test" && !(!submitting && (plan.offer || plan.isBlocked));
   // Next waits for the duplicate answered and a time.
   const nextBlocked = step === "when" && (checking || awaitingChoice || !time);
   const next = () => {
@@ -658,6 +668,19 @@ export function ReservationForm({
               />
             )}
           </>
+        )}
+
+        {!plan.pro && step === "test" && (
+          <ReservationSection title="Test mode">
+            <div className="flex flex-col gap-2" data-reserve-test-step="">
+              <p className="type-body font-semibold">
+                This is a test. Mesita will call your number instead of {place.name}, so you can see how that call works.
+              </p>
+              <p className="text-muted-foreground type-body">
+                When your phone rings, pretend you are the waiter.
+              </p>
+            </div>
+          </ReservationSection>
         )}
       </div>
 

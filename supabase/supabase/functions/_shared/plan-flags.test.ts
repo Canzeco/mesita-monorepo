@@ -20,6 +20,15 @@ Deno.test("cap_override is true only for an override the server enforces", () =>
   assertEquals(planFlags({ reservation_cap_override: "5" }, {})?.cap_override, false);
 });
 
+Deno.test("test_call is on for a test number or the guest's phone, off in production", () => {
+  assertEquals(planFlags({}, { testCall: { enabled: true, target: "number" } })?.test_call, true);
+  assertEquals(planFlags({}, { testCall: { enabled: true, target: "guest" } })?.test_call, true);
+  assertEquals(planFlags({}, { testCall: { enabled: false, target: "number" } })?.test_call, false);
+  assertEquals(planFlags({}, { testCall: { enabled: "true" } })?.test_call, false);
+  assertEquals(planFlags({}, {})?.test_call, false);
+  assertEquals(planFlags({}, null)?.test_call, false);
+});
+
 Deno.test("a failed settings read yields no flags (the form fails open)", () => {
   assertEquals(planFlags({ reservation_cap_override: 3 }, null, true), null);
 });

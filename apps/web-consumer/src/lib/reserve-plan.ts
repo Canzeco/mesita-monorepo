@@ -99,6 +99,9 @@ const str = (v: unknown, max = 500): v is string =>
 const int = (v: unknown, lo: number, hi: number): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= lo && v <= hi;
 
+/** When · Party · You, plus Test while the agent is not calling the place. */
+export const MAX_DRAFT_STEP = 3;
+
 /** The saved draft, or null when it is missing, malformed, from the future
  *  or older than DRAFT_TTL_MS. Never throws. */
 export function decodeDraft(raw: string | null, now: number): ReserveDraft | null {
@@ -123,7 +126,7 @@ export function decodeDraft(raw: string | null, now: number): ReserveDraft | nul
     !str(d.lastName, 60) ||
     !str(d.onConfirm, 20) ||
     !str(d.onReject, 20) ||
-    !int(d.stepAt, 0, 2)
+    !int(d.stepAt, 0, MAX_DRAFT_STEP)
   )
     return null;
   return d as unknown as ReserveDraft;
