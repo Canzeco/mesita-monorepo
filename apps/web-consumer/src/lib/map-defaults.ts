@@ -116,9 +116,8 @@ export const MAP_MINIMAL_STYLES = [
 // The visible circle sits in a 44px pad so the hit box is a finger, not
 // the painted disk. Cursor stays default — never the pointing hand.
 export const MAP_PLACE_PIN_RADIUS = 7;
-/** Mesita Premier (MESITA-2925; Selected's from gate d4a): a slightly
- *  larger disk on the map. */
-export const MAP_PREMIER_PLACE_PIN_RADIUS = 9;
+// Premier (red) is this same radius (MESITA-5001, Pato: "red dot must be
+// same size as black dot or purple dot or blue dot"). It was r 9.
 // The selected (purple) pin is the plain pin's size, like the blue dot
 // (Pato, MESITA-4014: "purple and blue and black same size"; MESITA-3998
 // drew it at r 10): it reads by colour alone.
@@ -153,9 +152,8 @@ export function mapPinSvg(
  *  something here, zoom in". Not a hit target, so the pad is the disk. */
 // A black dot is r 3: MESITA-3994 set 3.5 (between the first 2.5 and
 // MESITA-3992's 4.5), and MESITA-4231 took half a pixel more off (Pato: "just
-// a bit smaller"); a red Premier dot keeps 4.5, as a Premier pin is larger.
+// a bit smaller"). A red Premier dot is this same r 3 (MESITA-5001); it was 4.5.
 export const MAP_DOT_RADIUS = 3;
-export const MAP_PREMIER_DOT_RADIUS = 4.5;
 export const MAP_DOT_SIZE = 12;
 
 export function mapDotIcon(
