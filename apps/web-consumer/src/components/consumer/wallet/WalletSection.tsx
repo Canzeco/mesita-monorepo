@@ -18,16 +18,6 @@ import { cn } from "@/lib/utils";
 import { useWallet } from "./use-wallet";
 import { money } from "@/lib/api/wallet";
 
-/** The soonest time a pending entry here turns Available (MESITA-4644). */
-function soonestPendingAt(entries: { pending: boolean; available_at?: string | null }[]): string | null {
-  let best: string | null = null;
-  for (const e of entries) {
-    if (!e.pending || !e.available_at) continue;
-    if (best === null || Date.parse(e.available_at) < Date.parse(best)) best = e.available_at;
-  }
-  return best;
-}
-
 // ONE PANEL, EACH PLACE ONCE (Pato, 2026-11-20, MESITA-4497, after a
 // /plan-design-review of MESITA-4485/4492): Pay hands this its place rows
 // (`lead`); a card whose place is listed there is not drawn again, the rest
@@ -250,7 +240,6 @@ export function WalletSection({
                   amount={money(Math.max(row.card.available_cents, 0), row.card.currency)}
                   subtitle={gone ? "Ask Mesita support to use it." : null}
                   pending={!gone && row.balance.pending_cents > 0 ? money(row.balance.pending_cents, row.card.currency) : null}
-                  pendingAt={soonestPendingAt(row.balance.entries)}
                   disabled={gone}
                   placeId={row.placeId}
                   giftHref={!gone && wallet?.can_send === true && row.card.available_cents > 0 ? walletSendPath(row.placeId) : null}
