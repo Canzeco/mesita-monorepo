@@ -2,7 +2,6 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
@@ -118,39 +117,6 @@ function ScoreLabel({
         </div>
       ))}
     </dl>
-  );
-}
-
-/**
- * YOUR TABLE HERE, ON THE PHOTO (MESITA-4453, Pato: "a red button, but only
- * if there is an active reservation for that place … at the left side of
- * Save and Share, over the image"): bottom left of the photo, level with
- * Save · Share. The place tile's ticket in small (MESITA-4444): soft red,
- * the state over the day and time. It opens the place's Reserve page, which
- * starts on Your table (Change it · Cancel it, MESITA-4403). Its own Link,
- * beside the photo's (links never nest).
- */
-function TableBadge({ table, href, name }: { table: LiveTable; href: string; name: string }) {
-  const state = table.confirmed ? "Booked" : "Booking";
-  return (
-    <Link
-      href={href}
-      aria-label={`Your table at ${name}: ${state}, ${table.when}. Change or cancel it.`}
-      className="absolute bottom-2 left-2 z-10 flex max-w-[calc(50%-1rem)] flex-col items-start gap-0.5 rounded-xl bg-gradient-to-b from-[#E2454F] to-[#C92F3A] px-2.5 py-1.5 text-white shadow-md ring-1 ring-white/15 ring-inset transition active:scale-[0.98]"
-      data-card-table={table.confirmed ? "booked" : "booking"}
-    >
-      <span className="flex items-center gap-1 text-xs leading-tight font-semibold opacity-95">
-        {table.confirmed ? (
-          <Check className="h-3 w-3 shrink-0" strokeWidth={3} aria-hidden />
-        ) : (
-          <span aria-hidden className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-white" />
-        )}
-        {state}
-      </span>
-      <span className="max-w-full truncate text-sm leading-tight font-bold tabular-nums">
-        {table.when}
-      </span>
-    </Link>
   );
 }
 
@@ -289,10 +255,6 @@ export function PlaceRowCard({
         `Open ${place.name}`,
       )}
 
-      {table && !google ? (
-        <TableBadge table={table} href={placeReservePath(place.slug || place.id)} name={place.name} />
-      ) : null}
-
       <div className={ROW_INFO}>
         {/* THE WHOLE SQUARE OPENS THE PROFILE (Pato, MESITA-3797: "all this
             box must be clickable … there is a dead spot between name and
@@ -333,6 +295,8 @@ export function PlaceRowCard({
             hours={place.hours}
             timezone={place.timezone}
             reservable={reservable}
+            reserveLabel={table && !google ? (table.confirmed ? "Booked" : "Booking") : undefined}
+            reserveDetail={table?.when}
             reserveHref={placeReservePath(place.slug || place.id)}
             offerHref={placeHref(place.slug || place.id)}
             className="pointer-events-auto"
