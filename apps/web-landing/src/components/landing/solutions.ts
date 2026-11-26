@@ -77,7 +77,7 @@ export const MODULES: Solution[] = [
   },
   {
     name: "Checkout",
-    body: "Closing the bill of a visit. The waiter sends the bill to the guest’s phone; the guest’s credit pays first, and what is left is paid by card or cash. One six-digit code, shared by the whole place, confirms it.",
+    body: "Closing the bill of a visit, led by the waiter. The guest shows a QR; the waiter scans it and sends the bill with the place’s one six-digit code. The guest’s credit pays first, and what is left is paid at the place, in cash or on its own terminal.",
   },
   {
     name: "Customers",
