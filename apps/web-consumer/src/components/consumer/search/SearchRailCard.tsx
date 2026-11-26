@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
+import { placeHref } from "@/lib/place-route";
+import { placeReservePath } from "@/lib/consumer-route-contract";
 import {
   cardPhoto,
   isGoogleOnlyPlace,
@@ -21,7 +23,7 @@ import {
   StarsOpenRow,
   cardFacts,
 } from "@/components/consumer/place-card";
-import { OfferStrip, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, offerSlides } from "@/components/consumer/offer-button";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
@@ -161,18 +163,32 @@ export function RailCard({
   // The offer strip, the Home tile's rotating offers on the same beat
   // (MESITA-3444, rotating since MESITA-3467); none = no strip.
   const ad = isAdPlace(place);
-  const slides = isGoogleOnlyPlace(place) ? [] : offerSlides(place);
-  const strip = slides.length > 0;
+  const google = isGoogleOnlyPlace(place);
+  const slides = google ? [] : offerSlides(place);
+  const reservable = !google && place.reservations_enabled !== false;
+  const banner = reservable || slides.length > 0;
 
   return (
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        strip ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
+        banner ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
       <PremierAdBeacon placeId={place.id} ad={ad} />
+      {banner ? (
+        <PlaceBannerRow
+          name={place.name}
+          placeId={place.id}
+          slides={slides}
+          reservable={reservable}
+          reserveHref={placeReservePath(place.slug || place.id)}
+          offerHref={placeHref(place.slug || place.id)}
+          className="absolute inset-x-0 top-0 z-20 gap-0"
+          cellClassName={RAIL_CARD_STRIP}
+        />
+      ) : null}
       <button
         type="button"
         // ONE TAP OPENS (Pato, MESITA-2824: a card that only selected read
@@ -183,9 +199,11 @@ export function RailCard({
           if (ad) notePremierAd(place.id, "tap");
         }}
         onClick={onOpen}
-        className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
+        className={cn(
+          "focus-visible:ring-primary absolute inset-x-0 bottom-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset",
+          banner ? "top-8" : "top-0",
+        )}
       >
-        {strip ? <OfferStrip name={place.name} slides={slides} className={RAIL_CARD_STRIP} /> : null}
         <div className={RAIL_CARD_ROW}>
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card

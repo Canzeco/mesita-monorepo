@@ -11,8 +11,8 @@ import { ROW_INFO, ROW_LIST, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 // land. Places 1.0's tile silhouette left with CatalogTile (MESITA-3794).
 
 /** PlaceRowCard's silhouette (MESITA-3662): the photo square, and the info
- *  square with its name, three fact lines and the Save · Share row at its
- *  bottom. */
+ *  square with its name, three fact lines, the 50/50 Reserve · Offer row
+ *  and Save · Share at its bottom (MESITA-5006). */
 function PlaceRowSkeleton() {
   return (
     <li className={ROW_PAIR}>
@@ -24,9 +24,15 @@ function PlaceRowSkeleton() {
         <Skeleton className="h-3 w-1/2" />
         <Skeleton className="h-3 w-2/5" />
         <Skeleton className="h-3 w-3/5" />
-        <div className={`mt-auto ${CARD_ACTIONS_ROW}`}>
-          <Skeleton className={CARD_BUTTON_BOX} />
-          <Skeleton className={CARD_BUTTON_BOX} />
+        <div className="mt-auto flex flex-col gap-2">
+          <div className={CARD_ACTIONS_ROW}>
+            <Skeleton className={CARD_BUTTON_BOX} />
+            <Skeleton className={CARD_BUTTON_BOX} />
+          </div>
+          <div className={CARD_ACTIONS_ROW}>
+            <Skeleton className={CARD_BUTTON_BOX} />
+            <Skeleton className={CARD_BUTTON_BOX} />
+          </div>
         </div>
       </div>
     </li>

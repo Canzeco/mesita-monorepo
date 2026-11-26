@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { placeReservePath } from "@/lib/consumer-route-contract";
 import type { LiveTable } from "@/lib/use-live-reservations";
 import { CardActions } from "@/components/consumer/place-card";
-import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
@@ -215,6 +215,7 @@ export function PlaceRowCard({
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
   const slides = google ? [] : offerSlides(place);
+  const reservable = !google && place.reservations_enabled !== false;
 
   const openCard = () => {
     if (ad) notePremierAd(place.id, "tap");
@@ -323,9 +324,17 @@ export function PlaceRowCard({
             taps between chips through to the name's stretched link (the dead
             spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
         <div className="pointer-events-none relative z-10 mt-auto flex flex-col gap-2">
-          {/* ONE SWITCHING BOX (MESITA-4219): every offer, moving; nothing
-              when the place sells none here. Chips in MESITA-4207. */}
-          <OfferButton href={placeHref(place.slug || place.id)} placeId={place.id} name={place.name} slides={slides} />
+          {/* 50/50 (Pato, 2026-11-26, MESITA-5006): Reserve and the offer,
+              each half the row. A missing side repeats the one that exists. */}
+          <PlaceBannerRow
+            name={place.name}
+            placeId={place.id}
+            slides={slides}
+            reservable={reservable}
+            reserveHref={placeReservePath(place.slug || place.id)}
+            offerHref={placeHref(place.slug || place.id)}
+            className="pointer-events-auto"
+          />
           <div className="pointer-events-auto">
           <CardActions
             // White with a hairline, not grey (MESITA-4432).
