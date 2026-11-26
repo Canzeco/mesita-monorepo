@@ -99,12 +99,25 @@ export function OfferButton({
   );
 }
 
+/** A list card may show Reserve (MESITA-5021). The switch has to be on and
+ *  the row has to carry a phone: with neither, the call cannot be placed, and
+ *  a missing flag is not a yes. The Reservations phone stays off this payload;
+ *  the place screen's own `reservable` still sees it. */
+export function listCardReservable(place: {
+  reservations_enabled?: boolean | null;
+  phone?: string | null;
+}): boolean {
+  return place.reservations_enabled === true && (place.phone ?? "").trim() !== "";
+}
+
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
  *  "when seeing shit in home, don't move banenrs / just red say icon reserve
  *  / and green say icon discounts / use icons"; then "discounts in green").
- *  Nothing moves. Reservations only: one red Reserve with a calendar mark,
- *  the full width. Offers only: one green Discounts with a percent mark, the
- *  full width. Both: each half. Neither: nothing, and Save · Share stay.
+ *  Nothing moves. Reservations only: one red Reserve, the full width
+ *  (MESITA-5021: the left half grows from 50% to 100%). Offers only: one
+ *  green Discounts, the full width (the right half grows from 50% to 100%).
+ *  Both: Reserve left, Discounts right, each half. Neither: nothing, and
+ *  Save · Share stay.
  *  Reserve opens Reserve; Discounts opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
  *  (MESITA-5014). The open times that rotated in Reserve (MESITA-5011) are
@@ -151,12 +164,8 @@ export function PlaceBannerRow({
   const offer = slides[0];
   return (
     <div
-      className={cn(
-        "grid gap-2",
-        cells.length === 2 ? "grid-cols-2" : "grid-cols-1",
-        className,
-      )}
-      data-place-banner
+      className={cn("flex w-full", className)}
+      data-place-banner={cells.length === 2 ? "both" : cells[0]}
     >
       {cells.map((kind, i) =>
         kind === "reserve" ? (
@@ -178,8 +187,10 @@ export function PlaceBannerRow({
             className={cn(
               CARD_BUTTON_BOX,
               BANNER_CELL,
+              "min-w-0 flex-1",
               "bg-reserve text-reserve-foreground",
               cellClassName,
+              "shrink",
             )}
             data-tile-reserve
           >
@@ -203,9 +214,11 @@ export function PlaceBannerRow({
             className={cn(
               CARD_BUTTON_BOX,
               BANNER_CELL,
+              "min-w-0 flex-1",
               // Stripe Link's green, every offer's colour (MESITA-4210).
               "bg-[#00D66F] text-neutral-950",
               cellClassName,
+              "shrink",
             )}
             data-tile-bonus
           >
