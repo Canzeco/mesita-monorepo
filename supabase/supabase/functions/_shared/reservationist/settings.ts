@@ -9,11 +9,12 @@ export const LANGUAGE = "es";
 /**
  * The agent has no name of its own: it presents itself as Mesita (MESITA-4927,
  * Pato 2026-11-24; it was Mesi, MESITA-4620). Calls out open with «Le llamo de
- * Mesita»; calls in with «Soy Mesita». The male voice and masculine speech stay.
+ * Mesita»; calls in with «Soy Mesita». The voice is the woman again
+ * (Pato, 2026-11-26, MESITA-5017), and she speaks of herself in feminine.
  */
 export const AGENT_NAME = "Mesita";
 export const AGENT_SELF =
-  `Eres el agente de reservaciones de ${AGENT_NAME} y te presentas como ${AGENT_NAME}, sin otro nombre propio (hombre: habla de ti en masculino).`;
+  `Eres el agente de reservaciones de ${AGENT_NAME} y te presentas como ${AGENT_NAME}, sin otro nombre propio (mujer: habla de ti en femenino).`;
 
 // claude-haiku-4-5. haiku-5-5 (10x cheaper) was tried 2026-11-14 and failed
 // 3 of 13 simulated calls, every time at a tool node whose inputs the model
@@ -27,14 +28,14 @@ export const LLM = {
 };
 
 /** The shared-library name the fleet sync searches to add the voice (MESITA-4624). */
-export const TTS_VOICE_NAME = "Alejandro Garcia";
+export const TTS_VOICE_NAME = "Jess";
 
 export const TTS = {
   model_id: "eleven_flash_v2_5",
-  // "Alejandro Garcia — Deep, Warm, Confident": native Mexican male, northern
-  // accent, a shared library voice (MESITA-4620). Fallback if it is ever
-  // withdrawn: x5O3bgPT2grYhry6qmWR ("Jess", the earlier female voice).
-  voice_id: "9gm2jXcKEKzgaypKoOlk",
+  // Jess, the female voice these agents used before MESITA-4620. Back on
+  // Pato's word (2026-11-26, MESITA-5017). The male voice it replaced was
+  // 9gm2jXcKEKzgaypKoOlk ("Alejandro Garcia").
+  voice_id: "x5O3bgPT2grYhry6qmWR",
   speed: 1,
   stability: 0.5,
   similarity_boost: 0.75,
