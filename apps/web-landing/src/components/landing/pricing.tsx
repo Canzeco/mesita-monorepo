@@ -4,7 +4,7 @@ import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 // 🦚 Main § 8, what Mesita costs (MESITA-4994). Rows of numbers are a table:
 // restaurants first, then guests. Premier orders, it never hides or shows a
-// place, and it is always marked Ad. Guest Pro is US$1 a month (Pato,
+// place, and it is always marked Ad. Guest Pro is US$3 a month (MESITA-5022; Pato,
 // 2026-11-26): every reservation is a phone call Mesita pays for.
 type Plan = { name: string; price: string; what: string };
 
@@ -44,7 +44,7 @@ const GROUPS: { who: string; plans: Plan[] }[] = [
       },
       {
         name: "Pro",
-        price: "US$1 a month",
+        price: "US$3 a month",
         what: "30 reservation requests a month.",
       },
     ],

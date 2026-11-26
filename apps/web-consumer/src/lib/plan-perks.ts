@@ -9,4 +9,4 @@
 // Free 10, Pro 30 since MESITA-5007 (🦚 Main § 3, § 8).
 export const FREE_RESERVATIONS_PER_MONTH = 10;
 export const PRO_RESERVATIONS_PER_MONTH = 30;
-export const PRO_PRICE_CENTS = 100;
+export const PRO_PRICE_CENTS = 300; // US$3 a month since MESITA-5022
