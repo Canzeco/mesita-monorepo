@@ -414,9 +414,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
     reservation as { project_id?: string | null },
   ]);
 
-  // Hand off to the Reservationist: it rings the place now if it is open, or
-  // parks the ticket for opening time (_shared/reservation-retry.ts
-  // firstCallPlan).
+  // Hand off to the Reservationist. It rings now, open or closed
+  // (MESITA-5009, _shared/reservation-retry.ts firstCallPlan).
   // Best-effort — the reservation already exists, so a call-trigger failure must
   // NOT fail the request: the ticket was born scheduled and due now, so the
   // minute cron pushes it again (MESITA-3619).
