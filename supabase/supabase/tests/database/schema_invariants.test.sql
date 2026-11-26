@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(217);
+select plan(219);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1511,6 +1511,31 @@ select is(
     where u.slug = 'mesita-2091-probe'),
   'USD/probe'::text,
   'an UPDATE through public.profiles reaches both halves of the join'
+);
+
+-- MESITA-5020: Business › General flips reservations_enabled through this
+-- view. The column is on the view, so a body that forgets it is 200 and a
+-- no-op — the switch snaps back.
+update public.profiles set reservations_enabled = false
+ where slug = 'mesita-2091-probe';
+
+select is(
+  (select p.reservations_enabled
+     from public.places u join public.place_profiles p on p.id = u.id
+    where u.slug = 'mesita-2091-probe'),
+  false,
+  'the Reservations switch Off sticks when saved through profiles (MESITA-5020)'
+);
+
+update public.profiles set pitch = 'still'
+ where slug = 'mesita-2091-probe';
+
+select is(
+  (select p.reservations_enabled
+     from public.places u join public.place_profiles p on p.id = u.id
+    where u.slug = 'mesita-2091-probe'),
+  false,
+  'a later save of another field leaves the Reservations switch Off (MESITA-5020)'
 );
 
 rollback to savepoint before_profiles_write_probe;
