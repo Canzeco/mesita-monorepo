@@ -33,15 +33,17 @@ export const AD_BLUE = "#1D9BF0";
 export function PremierRosette({
   className,
   fill = PREMIER_RED,
-}: { className?: string; fill?: string } = {}) {
+  decorative = false,
+}: { className?: string; fill?: string; decorative?: boolean } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
-      role="img"
-      aria-label="Mesita Premier"
+      role={decorative ? undefined : "img"}
+      aria-label={decorative ? undefined : "Mesita Premier"}
+      aria-hidden={decorative || undefined}
       className={cn("inline-block h-5 w-5 shrink-0", className)}
     >
-      <title>Mesita Premier</title>
+      {decorative ? null : <title>Mesita Premier</title>}
       <path
         d={SEAL_PATH}
         fill={fill}
