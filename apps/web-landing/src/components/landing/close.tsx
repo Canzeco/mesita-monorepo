@@ -2,20 +2,21 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 
-// The last screen gives each side its own door, side by side.
+// The last screen gives each side its own door; the restaurant door leads
+// (MESITA-4994).
 const DOORS = [
   {
-    who: "Going out?",
-    line: "Every place in the city, and a table without the phone call.",
-    cta: "Open Mesita",
-    href: CONSUMER_URL,
+    who: "Run a place?",
+    line: "Your profile is already on Mesita. Claim it for free.",
+    cta: "Claim your place",
+    href: BUSINESS_URL,
     primary: true,
   },
   {
-    who: "Run a place?",
-    line: "Your profile is already on Mesita. Claim it, free forever.",
-    cta: "Claim your place",
-    href: BUSINESS_URL,
+    who: "Going out?",
+    line: "Find a place, book a table, pay ahead and give credit to friends.",
+    cta: "Open Mesita",
+    href: CONSUMER_URL,
     primary: false,
   },
 ];

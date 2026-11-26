@@ -11,8 +11,8 @@ import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 
 const FAMILIES = ["Restaurants", "Tacos", "Dinner"];
 
-// The hero is 🦚 Main § 2's first paragraph and nothing else (MESITA-4991):
-// the product list lives in the next section, never here too.
+// The hero is 🦚 Main § 2 (MESITA-4994): what Mesita is, then how the catalog
+// works. Claim your place leads; Open Mesita is the quieter second.
 // It sells both sides in one viewport: the guest's promise on the left,
 // one place profile on the right with a chip from each side of Mesita on it
 // (a guest's confirmed booking, the place's Premier mark). The card is drawn
@@ -40,15 +40,22 @@ function Hero() {
           </h1>
 
           <p className="text-muted-foreground max-w-xl text-lg leading-relaxed md:text-xl">
-            Find a place, book a table and save by paying ahead. For
-            restaurants: get discovered, bring guests back and get paid before
-            the meal.
+            Guests use it to find a place, book a table, save by paying ahead,
+            and give credit to friends. Restaurants use it to get discovered,
+            bring guests back, and get paid before the meal.
+          </p>
+
+          <p className="text-muted-foreground max-w-xl text-[15px] leading-relaxed">
+            Mesita lists every restaurant, café, bar and club in the city from
+            public sources, so a place is listed before it signs up. Restaurants
+            claim their profile for free, and can pay for Premier to rank
+            higher. Paid placements are always labeled Ad.
           </p>
 
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
             <Button asChild size="lg" className="min-h-11 rounded-full">
-              <a href={CONSUMER_URL}>
-                Open Mesita
+              <a href={BUSINESS_URL}>
+                Claim your place
                 <ArrowRight />
               </a>
             </Button>
@@ -58,7 +65,7 @@ function Hero() {
               variant="outline"
               className="bg-background/60 min-h-11 rounded-full"
             >
-              <a href={BUSINESS_URL}>Claim your place</a>
+              <a href={CONSUMER_URL}>Open Mesita</a>
             </Button>
           </div>
         </div>
@@ -101,7 +108,7 @@ function Hero() {
                   Reserve
                 </span>
                 <span className="border-border text-muted-foreground rounded-full border py-2.5 text-center text-sm font-medium">
-                  Pay · Soon
+                  Prepay
                 </span>
               </div>
             </div>
