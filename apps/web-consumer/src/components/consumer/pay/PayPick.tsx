@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, MapPin, QrCode, SlidersHorizontal, X } from "lucide-react";
+import { ChevronRight, MapPin, QrCode, SlidersHorizontal, TriangleAlert, X } from "lucide-react";
 import { LocationPicker } from "@/components/consumer/home/LocationPicker";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -283,6 +283,11 @@ export function PlaceList({
           onClose={() => setFiltersOpen(false)}
         />
       </div>
+      {/* FOR THE MOMENT (Pato, 2026-11-26, MESITA-5005): a yellow warning between the title and the black column bar, on Prepay and on Pay. */}
+      <p className="flex shrink-0 items-start gap-2 border-b border-amber-400 bg-amber-200 px-4 py-3 text-sm font-semibold text-amber-950" data-pay-test-banner>
+        <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <span>Test mode. No real money is moving, and the offers are fake.</span>
+      </p>
       <section className="mb-[max(0.5rem,env(safe-area-inset-bottom))] flex min-h-0 flex-1 flex-col" aria-label="Places" data-pay-list-box>
       <div className="bg-card text-foreground flex min-h-0 flex-1 flex-col overflow-hidden">
       <KeptScroll className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-contain">
