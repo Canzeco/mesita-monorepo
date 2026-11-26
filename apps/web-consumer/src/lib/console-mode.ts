@@ -7,6 +7,11 @@
 // The default is Phone (MESITA-3826): the console is secondary, opt-in. The
 // server renders Phone too, so a loading page paints the card centered,
 // never parked at the left edge waiting for localStorage.
+//
+// Pato, 2026-11-26 (MESITA-4993): Functions and Terminal stay hidden. Phone
+// only, even when this browser last left them open. Flip CONSOLE_VISIBLE
+// to bring the switch back; the three modes stay.
+export const CONSOLE_VISIBLE = false;
 
 export type ConsoleMode = "phone" | "functions" | "terminal";
 
@@ -19,6 +24,7 @@ let mode: ConsoleMode | null = null;
 const listeners = new Set<() => void>();
 
 export function readConsoleMode(): ConsoleMode {
+  if (!CONSOLE_VISIBLE) return DEFAULT;
   if (mode !== null) return mode;
   let stored: string | null = null;
   try {
@@ -37,6 +43,7 @@ export function readConsoleModeOnServer(): ConsoleMode {
 }
 
 export function setConsoleMode(next: ConsoleMode): void {
+  if (!CONSOLE_VISIBLE) return;
   mode = next;
   try {
     window.localStorage.setItem(KEY, next);

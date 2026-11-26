@@ -14,6 +14,7 @@ import {
 } from "@/lib/call-log";
 import {
   CONSOLE_MODES,
+  CONSOLE_VISIBLE,
   setConsoleMode,
   type ConsoleMode,
 } from "@/lib/console-mode";
@@ -36,6 +37,7 @@ const SLOW_MS = 800;
  *
  * A switch at the top right picks how much shows (MESITA-3575): Phone,
  * Functions (+ the log) or Terminal (+ the request/response panel).
+ * Hidden for now (MESITA-4993, CONSOLE_VISIBLE): Phone only.
  *
  * Server-side calls (the shell layout's profile read, a place page's read)
  * do not appear as lines: they are inside the `nav` line's time.
@@ -99,7 +101,7 @@ export function CallLog() {
 
   return (
     <>
-      <ModeSwitch mode={mode} />
+      {CONSOLE_VISIBLE ? <ModeSwitch mode={mode} /> : null}
       {mode === "phone" ? null : (
         <div
           data-testid="call-log"
