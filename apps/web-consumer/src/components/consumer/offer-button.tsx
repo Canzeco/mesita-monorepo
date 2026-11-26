@@ -84,12 +84,11 @@ export function OfferButton({
   );
 }
 
-/** TWO EQUAL HALVES (Pato, 2026-11-26, MESITA-5006: "instead of one large
- *  buttons, we have 4" and "banner must be 50% and 50%"). Both: Reserve |
- *  the offer. No offer: Reserve | Reserve. Offer only: the offer twice.
- *  Neither: nothing, and Save · Share stay. The offer half keeps the
- *  rotating words and still opens the place (MESITA-4455). Reserve opens
- *  Reserve. Two copies of one action do the same thing. */
+/** THE BANNER (Pato, 2026-11-26, MESITA-5010: the doubled Reserve looked
+ *  wrong). Reservations only: one red Reserve, the full width. Both: Reserve
+ *  and the offer, each half. Offers only: the offer, the full width.
+ *  Neither: nothing, and Save · Share stay. The offer keeps its rotating
+ *  words and still opens the place (MESITA-4455). Reserve opens Reserve. */
 export function PlaceBannerRow({
   name,
   placeId,
@@ -115,13 +114,16 @@ export function PlaceBannerRow({
   const canOffer = slides.length > 0;
   if (!reservable && !canOffer) return null;
   const cells: Array<"reserve" | "offer"> =
-    reservable && canOffer ? ["reserve", "offer"] : reservable ? ["reserve", "reserve"] : ["offer", "offer"];
+    reservable && canOffer ? ["reserve", "offer"] : reservable ? ["reserve"] : ["offer"];
   const index = canOffer ? (held ?? live.index) : 0;
   const slide = canOffer ? slides[index] : undefined;
   const hold = () => setHeld((h) => h ?? live.index);
   const release = () => setHeld(null);
   return (
-    <div className={cn("grid grid-cols-2 gap-2", className)} data-place-banner>
+    <div
+      className={cn("grid gap-2", cells.length === 2 ? "grid-cols-2" : "grid-cols-1", className)}
+      data-place-banner
+    >
       {cells.map((kind, i) =>
         kind === "reserve" ? (
           <PushLink
@@ -130,7 +132,7 @@ export function PlaceBannerRow({
             aria-label={`Reserve at ${name}`}
             className={cn(
               CARD_BUTTON_BOX,
-              "bg-foreground text-background pointer-events-auto flex items-center justify-center px-2 text-xs font-semibold",
+              "bg-reserve text-reserve-foreground pointer-events-auto flex items-center justify-center px-2 text-xs font-semibold",
               "focus-visible:ring-primary outline-none focus-visible:ring-2",
               cellClassName,
             )}
