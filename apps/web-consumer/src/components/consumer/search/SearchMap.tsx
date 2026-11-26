@@ -28,10 +28,8 @@ import {
   MAP_PIN_STROKE_COLOR,
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
-  MAP_PREMIER_PLACE_PIN_RADIUS,
   MAP_DOT_RADIUS,
   MAP_DOT_SIZE,
-  MAP_PREMIER_DOT_RADIUS,
   mapDotIcon,
   mapPinIcon,
 } from "@/lib/map-defaults";
@@ -89,17 +87,13 @@ function mapsPinIcon(
   };
 }
 
-/** `held` is the tapped pin (purple, the plain pin's size, MESITA-2488,
- *  MESITA-4014). A Premier pin is red and a little larger (MESITA-2925). */
+/** `held` is the tapped pin (purple). Premier is red. Every disk is the
+ *  same size (MESITA-5001, Pato: the red dot matches black, purple, blue). */
 function placeIcon(tone: PinTone, held: boolean) {
-  const weight = pinStrokeWeight(held);
-  const radius =
-    tone === "premier" && !held ? MAP_PREMIER_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),
-    weight,
-    radius,
+    pinStrokeWeight(held),
   );
 }
 
@@ -109,7 +103,7 @@ function dotIcon(premier: boolean) {
   const raw = mapDotIcon(
     pinToneColor(premier ? "premier" : "mesita"),
     MAP_PIN_STROKE_COLOR,
-    premier ? MAP_PREMIER_DOT_RADIUS : MAP_DOT_RADIUS,
+    MAP_DOT_RADIUS,
   );
   const maps = (globalThis as { google?: { maps?: Partial<MapsCtor> } }).google
     ?.maps;
