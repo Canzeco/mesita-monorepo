@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { SexFace } from "./SexFace";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Camera, Crown, Loader2, User } from "lucide-react";
+import { isBlankPersonIcon } from "@/lib/blank-avatar";
 import { ALLOWED_AVATAR_ACCEPT } from "@/lib/avatar-upload";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -203,13 +204,26 @@ export function IdentityModules({
   guestClass?: "vip" | "regular";
   /** No photo yet: the circle is the picker (MESITA-4888). `previewUrl` is the
    *  picked photo while it uploads. */
-  addPhoto?: { pick: (file: File | undefined) => void; uploading: boolean; previewUrl: string | null };
+  addPhoto?: {
+    pick: (file: File | undefined) => void;
+    uploading: boolean;
+    previewUrl: string | null;
+  };
 }) {
   const fileInput = useRef<HTMLInputElement>(null);
-  const adding = addPhoto && (!avatarUrl || addPhoto.uploading) ? addPhoto : null;
+  // A stored copy of Instagram's grey person is no photo (MESITA-5003). The
+  // URL is set, so the camera used to stay hidden. Once that image loads,
+  // this header uses the same picker as an empty photo.
+  const [blankUrl, setBlankUrl] = useState<string | null>(null);
+  const blank = !!avatarUrl && blankUrl === avatarUrl;
+  const adding =
+    addPhoto && (!avatarUrl || blank || addPhoto.uploading) ? addPhoto : null;
   // The photo, then the name with its Class. No Instagram (MESITA-4863).
   return (
-    <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card>
+    <div
+      className="flex w-full min-w-0 flex-col items-center gap-3 text-center"
+      data-identity-card
+    >
       {/* THE PHOTO IS A DOOR TOO (Pato, 2026-11-22, MESITA-4659: "if i click
           profile photo redirect me to profile subpage"): it opens the same
           Profile page as the name pill; the 72px photo is past the 44px floor. */}
@@ -236,20 +250,33 @@ export function IdentityModules({
             type="button"
             onClick={() => fileInput.current?.click()}
             disabled={adding.uploading}
-            aria-label={adding.uploading ? "Adding your photo" : "Add your photo"}
-            className={cn(IDENTITY_RING_CLASS, "relative block", DOOR_HOVER_CLASS)}
+            aria-label={
+              adding.uploading ? "Adding your photo" : "Add your photo"
+            }
+            className={cn(
+              IDENTITY_RING_CLASS,
+              "relative block",
+              DOOR_HOVER_CLASS,
+            )}
             data-identity-add-photo
           >
             <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
               {adding.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={adding.previewUrl} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={adding.previewUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <DefaultAvatar className="h-full w-full" />
               )}
               {adding.uploading ? (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                  <Loader2 className="h-5 w-5 animate-spin text-white motion-reduce:animate-none" strokeWidth={2.75} />
+                  <Loader2
+                    className="h-5 w-5 animate-spin text-white motion-reduce:animate-none"
+                    strokeWidth={2.75}
+                  />
                 </span>
               ) : null}
             </span>
@@ -262,20 +289,29 @@ export function IdentityModules({
           </button>
         </>
       ) : (
-      <PushLink
-        href={nameHref}
-        aria-label="Profile"
-        className={cn(IDENTITY_RING_CLASS, "block", DOOR_HOVER_CLASS)}
-        data-identity-photo
-      >
-        <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
-          {avatarUrl ? (
-            <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
-          ) : (
-            <DefaultAvatar className="h-full w-full" />
-          )}
-        </span>
-      </PushLink>
+        <PushLink
+          href={nameHref}
+          aria-label="Profile"
+          className={cn(IDENTITY_RING_CLASS, "block", DOOR_HOVER_CLASS)}
+          data-identity-photo
+        >
+          <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
+            {avatarUrl ? (
+              <SizedImg
+                src={avatarUrl}
+                size="thumb"
+                alt=""
+                className="h-full w-full object-cover"
+                onLoad={(e) => {
+                  if (isBlankPersonIcon(e.currentTarget))
+                    setBlankUrl(avatarUrl);
+                }}
+              />
+            ) : (
+              <DefaultAvatar className="h-full w-full" />
+            )}
+          </span>
+        </PushLink>
       )}
       <span className="flex w-full min-w-0 flex-col gap-2">
         {/* ONE BOX, THE CLASS A BADGE IN IT (Pato, 2026-11-24, MESITA-4864:
@@ -292,11 +328,15 @@ export function IdentityModules({
             <span
               className={cn(
                 "flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                guestClass === "vip" ? "bg-foreground text-background" : "bg-muted text-muted-foreground",
+                guestClass === "vip"
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground",
               )}
               data-identity-class={guestClass}
             >
-              {guestClass === "vip" ? <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden /> : null}
+              {guestClass === "vip" ? (
+                <Crown className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+              ) : null}
               {guestClass === "vip" ? "VIP" : "Regular"}
             </span>
           ) : null}
@@ -323,11 +363,20 @@ export function PersonModules({
 }) {
   const still = "hover:bg-card";
   return (
-    <div className="flex w-full min-w-0 flex-col items-center gap-3 text-center" data-identity-card data-person-modules>
+    <div
+      className="flex w-full min-w-0 flex-col items-center gap-3 text-center"
+      data-identity-card
+      data-person-modules
+    >
       <span className={cn(IDENTITY_RING_CLASS, "block")} aria-hidden>
         <span className="bg-muted relative block h-[72px] w-[72px] overflow-hidden rounded-full">
           {avatarUrl ? (
-            <SizedImg src={avatarUrl} size="thumb" alt="" className="h-full w-full object-cover" />
+            <SizedImg
+              src={avatarUrl}
+              size="thumb"
+              alt=""
+              className="h-full w-full object-cover"
+            />
           ) : age != null ? (
             <SexFace sex={sex} age={age} className="h-full w-full text-2xl" />
           ) : (
