@@ -1,6 +1,6 @@
 // The advantage both sides stand on (🦚 Main § 2): Mesita never needs to
-// onboard a place to serve it. Three steps, then the one line on what sits
-// between the two sides.
+// onboard a place to serve it. Three steps. What sits between the two sides,
+// paying ahead, is the next section (`offers.tsx`).
 const STEPS = [
   {
     title: "The catalog builds itself.",
@@ -44,11 +44,6 @@ function How() {
             </li>
           ))}
         </ol>
-        <p className="text-foreground max-w-3xl text-base leading-relaxed md:text-lg">
-          Discounted Prepayments sit between the two sides: the guest pays
-          ahead and gets more to spend, and the place has the money before the
-          meal.
-        </p>
       </div>
     </section>
   );

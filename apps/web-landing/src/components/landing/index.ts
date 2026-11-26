@@ -4,4 +4,6 @@ export { Guests } from "./guests";
 export { Hero } from "./hero";
 export { How } from "./how";
 export { Nav } from "./nav";
+export { Offers } from "./offers";
 export { Places } from "./places";
+export { Pricing } from "./pricing";

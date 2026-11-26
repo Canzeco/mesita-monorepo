@@ -1,11 +1,9 @@
-// The product solutions. Guests: three, as 🦚 Main names them (MESITA-4190,
-// Pato: "Simplification."): Global Discovery, Reservations Agent,
-// Discounted Prepayments. Discounted Prepayments is not live with real money
-// yet, so it carries `soon` and the page tags it instead of hiding it.
-// Restaurants: every product on Business › All (web-business
-// places/[id]/all), same names, same copy, same order: four current, ten Soon
-// (MESITA-3845, Pato: "List all this in the Solutions for Restaurants").
-// Rename a product there first, then here.
+// The solutions, as 🦚 Main names them (MESITA-4991): four for the guest
+// (§ 3) and four for the restaurant (§ 4). A solution is what the guest or the
+// owner receives, so the page lists outcomes, never modules. Paying ahead is
+// not live with real money yet, so every row that depends on it carries
+// `soon` and the page tags it instead of hiding it. Rename on Main first,
+// then here.
 
 export type Solution = {
   name: string;
@@ -18,85 +16,55 @@ export type Solution = {
 export const GUEST_SOLUTIONS: Solution[] = [
   {
     name: "Global Discovery",
-    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place five ways: type its name, browse what is near or popular in 25 one-word families, read the map, ask Mesita in your own words, or see what people nearby are looking at.",
-    ways: ["Name", "Catalog", "Map", "Deep", "Social"],
+    body: "Every restaurant, café, bar and club in the city, including places that have never heard of Mesita, each with photos, hours, reviews and channels in one profile. Find your next place by name, nearby, on the map, by asking in your own words, or by what people around you are looking at.",
+    ways: ["Name", "Nearby", "Map", "Ask", "Social"],
   },
   {
     name: "Reservations Agent",
-    body: "Ask for a table and Mesita makes the call. Its agent phones the place with your date, time and party size, and comes back with a confirmation or alternatives.",
+    body: "Ask for a table and Mesita makes the call. Its agent phones the place with your date, time and party size, and comes back with a confirmation or the other times the place offered.",
   },
   {
-    name: "Discounted Prepayments",
-    body: "Pay a place ahead and get more to spend there: pay MX$1,000, spend MX$1,200. Your credit never expires, spends only at that place, and you can send it to a friend.",
+    name: "Visit Discounts",
+    body: "Pay a place ahead and get more to spend there: pay MX$1,000, get MX$1,200. Your credit spends only at that place and never expires.",
+    soon: true,
+  },
+  {
+    name: "Gift Credits",
+    body: "Give a friend credit at a place you recommend. They spend it there, on their own visit.",
     soon: true,
   },
 ];
 
 export const PLACE_SOLUTIONS: Solution[] = [
   {
-    name: "Profile",
-    body: "What guests read about your place: basics, hours, location and links, and what they say on Google, Instagram and Facebook. Edit it here and preview it the way guests see it.",
+    name: "New Customers",
+    body: "Get found by diners who have not visited yet. Your profile is already in front of people choosing where to go, and they can ask Mesita to book a table with you. A Welcome offer wins the first visit.",
   },
   {
-    name: "Premier",
-    body: "Get ad spots on Home and the Map, marked as an ad. See your level here and how it works.",
-  },
-  {
-    name: "Offers",
-    body: "Discounts or credit back on the bill, prepaid vouchers, waiter codes, and the Credits and Stripe accounts behind them.",
-  },
-  {
-    name: "Reservations",
-    body: "Whether guests can ask for a table at your place. When they do, Mesita's AI agent calls you with the date, time and party size.",
-  },
-  {
-    name: "Smart Menu",
-    body: "Your interactive menu, built by AI from a photo, file or website, approved by you and hosted on Mesita. Guests open it from a QR code or link with no account, ask its AI questions, and order and pay directly, at your place or from anywhere.",
+    name: "Returning Customers",
+    body: "Give guests a reason to come back. The bonus on what they pay ahead arrives three hours later, after the meal, so it always pays for another visit.",
     soon: true,
   },
   {
-    name: "Express Website",
-    body: "A website on your own domain, made from your Mesita profile with the same menu, hours and photos. Change it by asking, with ordering and reservation buttons already connected.",
+    name: "Wholesale Presale",
+    body: "Sell several visits upfront. Regulars buy enough credit for many meals in one purchase at a better price, and you are paid before they come.",
     soon: true,
   },
   {
-    name: "Mesita Capital",
-    body: "Cash upfront, by selling an agreed amount of future credit at your restaurant to Mesita at a discount. Mesita gives that credit to guests, who redeem it over time, so the funding brings visits with it.",
+    name: "VIP Customers",
+    body: "Bring in the guests who bring others. A VIP code from your place unlocks a stronger offer for them, and its bonus brings them back.",
     soon: true,
   },
-  {
-    name: "Marketing Agent",
-    body: "Connects to Google and Meta. Uses Higgsfield to turn your profile data and guests' Instagram Stories, with their permission, into AI content made to go viral. Create your content, post it to your feed and boost it with ads on every channel, all from one place.",
-    soon: true,
-  },
-  {
-    name: "Answering Agent",
-    body: "Agents connected to all your channels, including phone, WhatsApp and text, that know your business: hours, menu and bookings. They turn questions into orders and bookings, so your staff get structured information instead of scattered calls and messages.",
-    soon: true,
-  },
-  {
-    name: "Orders Management",
-    body: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats and Rappi. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
-    soon: true,
-  },
-  {
-    name: "Reservations Management",
-    body: "One calendar for every booking, labeled by source: Mesita members, your website and agents, and outside booking systems, synced so tables aren't double-booked. Manage availability, confirmations, reminders, changes and cancellations, with every booking tied to its guest.",
-    soon: true,
-  },
-  {
-    name: "Mesita CRM",
-    body: "One record per guest, built from every booking, order, visit and redemption, with history, notes, tags and preferences so staff recognize who's at the door. Message guests on WhatsApp, SMS and email from that record, with every message logged.",
-    soon: true,
-  },
-  {
-    name: "Mesita Terminal",
-    body: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, staff see the result on the right bill, and online and in-person payments reconcile in one place.",
-    soon: true,
-  },
-  {
-    name: "Mesita POS",
-    body: "Take orders, track the kitchen and close bills on a point of sale connected to your Smart Menu. Counter, table and online sales share the same guest, rewards and payment records.",
-    soon: true,
-  },
+];
+
+// What comes after the four, by name only (🦚 Main § 6). One line on the
+// page, never a row each: a list of Soon rows reads as a roadmap.
+export const PLACE_LATER = [
+  "Menu",
+  "Website",
+  "Orders",
+  "Deliveries",
+  "Content",
+  "Ads",
+  "Capital",
 ];

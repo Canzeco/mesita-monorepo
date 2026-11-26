@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 // The share card, drawn at build time so it says what the page says. It
 // replaced a San Francisco photo when the launch city became Monterrey
 // (MESITA-3106).
-export const alt = "Mesita — where are we going? Mesita knows.";
+export const alt = "Mesita — where are we going? going out.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -24,7 +24,7 @@ export default function OpengraphImage() {
       <div style={{ fontSize: 44, fontWeight: 700 }}>Mesita</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ fontSize: 84, fontWeight: 700, lineHeight: 1.05 }}>
-          Where are we going?
+          The app for
         </div>
         <div
           style={{
@@ -34,11 +34,11 @@ export default function OpengraphImage() {
             opacity: 0.85,
           }}
         >
-          Mesita knows.
+          going out.
         </div>
       </div>
       <div style={{ fontSize: 30, opacity: 0.9 }}>
-        Three products for guests · fourteen for restaurants · launching in Monterrey
+        Find a place · book a table · pay ahead · launching in Monterrey
       </div>
     </div>,
     size,
