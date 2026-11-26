@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { placeReservePath } from "@/lib/consumer-route-contract";
 import type { LiveTable } from "@/lib/use-live-reservations";
 import { CardActions } from "@/components/consumer/place-card";
-import { PlaceBannerRow, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
@@ -181,7 +181,7 @@ export function PlaceRowCard({
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
   const slides = google ? [] : offerSlides(place);
-  const reservable = !google && place.reservations_enabled !== false;
+  const reservable = !google && listCardReservable(place);
 
   const openCard = () => {
     if (ad) notePremierAd(place.id, "tap");
@@ -299,7 +299,7 @@ export function PlaceRowCard({
             reserveDetail={table?.when}
             reserveHref={placeReservePath(place.slug || place.id)}
             offerHref={placeHref(place.slug || place.id)}
-            className="pointer-events-auto"
+            className="pointer-events-auto gap-2"
           />
           <div className="pointer-events-auto">
           <CardActions

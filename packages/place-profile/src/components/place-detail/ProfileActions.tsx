@@ -278,33 +278,42 @@ export function MesitaActions({
   // Pay.
   const openSlide = (slide: OfferSlide) =>
     onOpenRewards ? () => onOpenRewards(slide.section ?? "prepayment") : undefined;
+  // A discounts-only place draws the green tile alone, full width
+  // (MESITA-5021). The Off Reserve twin, and the times that used to tick
+  // beside it, stay off the page. Offers still draws when it is Off, so a
+  // reservations-only place can say it has none.
+  const reserveLive = Boolean(actions?.reservation) || row.reserve.works;
+  const offersLive = row.offers.works || row.offers.loading;
+  const showReserve = reserveLive || !offersLive;
   return (
     <div className="flex flex-col gap-2">
-    <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
+    <div className={cn("grid gap-2", showReserve ? "grid-cols-2" : "grid-cols-1")} data-profile-actions="mesita">
       {offOpen ? (
         <OffTileSheet tile={offOpen} line={offOpen === "offers" ? row.offers.note : undefined} onClose={() => setOffOpen(null)} />
       ) : null}
-      {actions?.reservation ? (
-        <TableTile r={actions.reservation} onReserve={onReserve} />
-      ) : row.reserve.works ? (
-        <ReserveTile place={place} onReserve={onReserve} />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOffOpen("reserve")}
-          aria-haspopup="dialog"
-          aria-label="Reserve, off: this place doesn't offer reservations"
-          className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
-        >
-          <span className={ROW_LEAD}>
-            <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-            <span>Reserve</span>
-          </span>
-          <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
-            Off
-          </span>
-        </button>
-      )}
+      {showReserve ? (
+        actions?.reservation ? (
+          <TableTile r={actions.reservation} onReserve={onReserve} />
+        ) : row.reserve.works ? (
+          <ReserveTile place={place} onReserve={onReserve} />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOffOpen("reserve")}
+            aria-haspopup="dialog"
+            aria-label="Reserve, off: this place doesn't offer reservations"
+            className={cn(PROFILE_MESITA_TILE_BOX_CLASS, ROW_TILE)}
+          >
+            <span className={ROW_LEAD}>
+              <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+              <span>Reserve</span>
+            </span>
+            <span className={cn(ROW_CHIP, OFF_CHIP)} aria-hidden>
+              Off
+            </span>
+          </button>
+        )
+      ) : null}
       {row.offers.works ? (
         <OffersTile name={place.name} slides={row.offers.slides} open={openSlide} />
       ) : (

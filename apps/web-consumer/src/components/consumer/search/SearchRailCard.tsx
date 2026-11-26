@@ -23,7 +23,7 @@ import {
   StarsOpenRow,
   cardFacts,
 } from "@/components/consumer/place-card";
-import { PlaceBannerRow, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
@@ -165,7 +165,7 @@ export function RailCard({
   const ad = isAdPlace(place);
   const google = isGoogleOnlyPlace(place);
   const slides = google ? [] : offerSlides(place);
-  const reservable = !google && place.reservations_enabled !== false;
+  const reservable = !google && listCardReservable(place);
   const banner = reservable || slides.length > 0;
 
   return (
