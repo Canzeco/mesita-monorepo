@@ -205,7 +205,10 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       // one offer"): the guest's own line, else the highest one.
       void flat;
       const words = `${pct}% ${word}`;
-      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${word}`, stacked: { top: `Pay ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
+      // THE NARROW PILL (Pato, 2026-11-26, MESITA-5012: "discount word is too
+      // long"): the card says "10% Off". The place screen keeps "Discount".
+      const shortWord = mech === "discount" ? "Off" : word;
+      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${shortWord}`, stacked: { top: `Pay ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
     }
     if (s.key === "prepay")
       // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
