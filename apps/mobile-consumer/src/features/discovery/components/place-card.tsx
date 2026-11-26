@@ -41,12 +41,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
             >
               {place.name}
             </Text>
-            {place.isPremier ? <PremierSeal /> : null}
-            {place.isPremier && place.isAd ? (
-              <Text role="button" tone="muted">
-                Ad
-              </Text>
-            ) : null}
+            {place.isPremier ? <PremierSeal color={place.isAd ? colors.ad : colors.premier} /> : null}
           </View>
           {facts.kind ? (
             <Text role="small" tone="muted" numberOfLines={1}>
