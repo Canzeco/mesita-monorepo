@@ -22,9 +22,12 @@
 // Free. 10 Reservations per month if Pro."). Pro is paid ($2/month,
 // _shared/guest-plan.ts); the caller passes the plan that applies NOW
 // (effectivePlan), not the stored column.
+// Free 10, Pro 30 since MESITA-5007 (Pato, 2026-11-26: "fix the plan"; 🦚
+// Main § 3 and § 8: "Free guests get 10 reservation requests a month, and Pro
+// guests get 30").
 export const RESERVATION_CAP_BY_PLAN = {
-  free: 3,
-  premium: 10,
+  free: 10,
+  premium: 30,
 } as const;
 
 export type CapPlan = keyof typeof RESERVATION_CAP_BY_PLAN;

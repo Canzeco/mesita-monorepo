@@ -69,11 +69,11 @@ Deno.test("Me › Plan builds that line from the constant, never a typed number"
 
 // ── The cap lookup (MESITA-2555): it gates every reservation a guest makes. ──
 
-Deno.test("the cap is the plan's: Free 3, Pro (stored 'premium') 10, anything else Free", () => {
-  assertEquals(monthlyReservationCap({ plan: "free" }), 3);
-  assertEquals(monthlyReservationCap({ plan: "premium" }), 10);
-  assertEquals(monthlyReservationCap({ plan: "pro" }), 3);
-  assertEquals(monthlyReservationCap({}), 3);
+Deno.test("the cap is the plan's: Free 10, Pro (stored 'premium') 30, anything else Free", () => {
+  assertEquals(monthlyReservationCap({ plan: "free" }), 10);
+  assertEquals(monthlyReservationCap({ plan: "premium" }), 30);
+  assertEquals(monthlyReservationCap({ plan: "pro" }), 10);
+  assertEquals(monthlyReservationCap({}), 10);
   assertEquals(monthlyReservationCap(null), MONTHLY_RESERVATION_CAP);
   assertEquals(RESERVATION_CAP_BY_PLAN.free, MONTHLY_RESERVATION_CAP);
   assert(RESERVATION_CAP_BY_PLAN.premium > RESERVATION_CAP_BY_PLAN.free, "Pro must allow more than Free");
@@ -83,12 +83,12 @@ Deno.test("an operator's override wins over the plan, both ways, and 0 blocks", 
   assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: 50 }), 50);
   assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: 2 }), 2);
   assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: 0 }), 0);
-  assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: null }), 10);
+  assertEquals(monthlyReservationCap({ plan: "premium", reservation_cap_override: null }), 30);
 });
 
 Deno.test("a malformed override is ignored, never a bigger cap", () => {
   for (const bad of [-1, 1001, 2.5, "50", Number.NaN, Infinity]) {
-    assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: bad }), 3);
+    assertEquals(monthlyReservationCap({ plan: "free", reservation_cap_override: bad }), 10);
     assertEquals(readCapOverride(bad), null);
   }
   assertEquals(readCapOverride(RESERVATION_CAP_OVERRIDE_MAX), RESERVATION_CAP_OVERRIDE_MAX);

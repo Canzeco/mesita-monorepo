@@ -26,7 +26,7 @@ export const PRO_INK = { color: "var(--brand-pink-600)" } as const;
  *  your fucking shadows and ilumaination..its just a fucking subscription.
  *  make stuff cleaner"): the Me card's hairline border, no shadow; a pink
  *  band with the name and price; then two boxes (Pro's reservations per month,
- *  MCP connector Soon) and the action the guest's plan calls for
+ *  Better prepay rates Soon) and the action the guest's plan calls for
  *  (`children`). */
 export function ProOffer({
   current,
@@ -67,8 +67,9 @@ export function ProOffer({
         </p>
       </div>
       <div className="bg-card flex flex-col gap-3 p-4">
-        {/* Two boxes, Pato's words (MESITA-4388: "just two boxes", Pro's
-            reservations per month and "MCP connector. Soon."). */}
+        {/* Two boxes, Pato's words (MESITA-4388: "just two boxes"): Pro's
+            reservations per month, and Better prepay rates, Soon (MESITA-5007;
+            the MCP connector before it). */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-muted rounded-xl px-3 py-2.5">
             <p className="text-xl font-bold tabular-nums" style={PRO_INK}>
@@ -80,10 +81,10 @@ export function ProOffer({
           </div>
           <div className="bg-muted rounded-xl px-3 py-2.5">
             <p className="text-xl font-bold" style={PRO_INK}>
-              MCP
+              Better
             </p>
             <p className="text-muted-foreground type-label">
-              connector ·{" "}
+              prepay rates ·{" "}
               <span className="text-foreground font-semibold">Soon</span>
             </p>
           </div>
