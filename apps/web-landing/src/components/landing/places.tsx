@@ -1,11 +1,10 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SolutionList } from "@/components/landing/solution-list";
-import { PLACE_LATER, PLACE_SOLUTIONS } from "@/components/landing/solutions";
+import { PLACE_SOLUTIONS } from "@/components/landing/solutions";
 import { BUSINESS_URL } from "@/components/landing/urls";
 
-// The restaurant side: four solutions (🦚 Main § 4, MESITA-4991), then what
-// comes later as one line of names. The profile is the door; nobody from
+// 🦚 Main § 4, Restaurant Solutions (MESITA-4994). The profile is the door; nobody from
 // Mesita has to be in the room.
 function Places() {
   return (
@@ -13,7 +12,7 @@ function Places() {
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-5 py-20 md:grid-cols-[2fr_3fr] md:gap-14 md:py-24">
         <div className="flex flex-col gap-5 md:sticky md:top-24 md:self-start">
           <p className="text-secondary text-xs font-semibold tracking-[0.18em] uppercase">
-            For restaurants
+            Restaurant Solutions
           </p>
           <h2 className="font-display text-3xl font-semibold tracking-tight md:text-4xl">
             Your profile is already built. Claim it.
@@ -38,13 +37,7 @@ function Places() {
             </a>
           </Button>
         </div>
-        <div className="flex flex-col gap-5">
-          <SolutionList items={PLACE_SOLUTIONS} />
-          <p className="text-muted-foreground px-1 text-sm leading-relaxed">
-            <span className="text-foreground font-medium">Later:</span>{" "}
-            {PLACE_LATER.join(" · ")}
-          </p>
-        </div>
+        <SolutionList items={PLACE_SOLUTIONS} />
       </div>
     </section>
   );

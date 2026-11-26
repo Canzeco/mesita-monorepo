@@ -111,7 +111,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-display: var(--font-body);
 }
 
 @layer base {
@@ -127,7 +127,7 @@
   h2,
   h3,
   .font-display {
-    font-family: var(--font-display);
+    font-family: var(--font-body);
     letter-spacing: -0.015em;
   }
 }
