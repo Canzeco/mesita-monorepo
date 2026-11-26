@@ -12,15 +12,15 @@ const text = (html: string) =>
   html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
 // Plan is sold (MESITA-3870, Pato: "make it 2 dollar per month"): the prices
-// on the page are Free's $0 (MESITA-4359) and Pro's $1 a month (MESITA-3881),
+// on the page are Free's $0 (MESITA-4359) and Pro's $3 a month (MESITA-5022),
 // and nothing is sold before the
 // server says which plan the guest is on (MVP test rule: money).
 describe("Me › Plan (MESITA-3870)", () => {
   const html = renderToStaticMarkup(<PlanModal />);
 
-  it("prices Free at $0 and Pro at $1 a month and offers no Upgrade before the plan is known", () => {
-    expect(text(html).match(/\$\s?\d+(\.\d+)?/g)?.sort()).toEqual(["$0", "$1"]);
-    expect(text(html)).toContain("$1 USD a month");
+  it("prices Free at $0 and Pro at $3 a month and offers no Upgrade before the plan is known", () => {
+    expect(text(html).match(/\$\s?\d+(\.\d+)?/g)?.sort()).toEqual(["$0", "$3"]);
+    expect(text(html)).toContain("$3 USD a month");
     expect(text(html)).not.toMatch(/MX\$/);
     // The header's back arrow is the only button until the read lands.
     expect(html.match(/<button\b/g) ?? []).toHaveLength(1);

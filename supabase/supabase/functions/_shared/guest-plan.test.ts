@@ -29,7 +29,7 @@ const paid = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-Deno.test("Pro is $1.00 (MESITA-3881)", () => assertEquals(PRO_PRICE_CENTS, 100));
+Deno.test("Pro is $3.00 (MESITA-5022)", () => assertEquals(PRO_PRICE_CENTS, 300));
 
 Deno.test("effectivePlan: a paid period is Pro, a lapsed one is Free", () => {
   assertEquals(effectivePlan(paid(), NOW, false), "premium");
@@ -82,14 +82,14 @@ Deno.test("subscriptionOfSession: only this guest's complete Pro Checkout", () =
   assertEquals(subscriptionOfSession({ ...ok, mode: "payment" }, "c1"), null);
 });
 
-Deno.test("planCheckoutParams: $2 a month, the guest's customer, back with plan=<session>", () => {
+Deno.test("planCheckoutParams: $3 a month, the guest's customer, back with plan=<session>", () => {
   const p = planCheckoutParams({ customer: "cus_1", consumerId: "c1", returnUrl: "https://mesita.ai/me/plan", nowSec: 1000 });
   assertEquals(p.mode, "subscription");
   assertEquals(p.customer, "cus_1");
   assertEquals(p.client_reference_id, "c1");
   assertEquals(p.success_url, "https://mesita.ai/me/plan?plan={CHECKOUT_SESSION_ID}");
   const item = (p.line_items as Array<{ price_data: Record<string, unknown> }>)[0].price_data;
-  assertEquals(item.unit_amount, 100);
+  assertEquals(item.unit_amount, 300);
   assertEquals(item.currency, "usd");
   assertEquals(item.recurring, { interval: "month" });
 });

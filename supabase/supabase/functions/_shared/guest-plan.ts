@@ -20,10 +20,11 @@ import { UNCOUNTED_STATES_FILTER } from "./reservation-cap.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./stripe.ts";
 
-/** Pro's price: $1.00 a month (MESITA-3881, Pato: "charge 1 dollars, not 2
- *  dollars"; $2.00 under MESITA-3870). web-consumer's plan-perks.ts prints the same
+/** Pro's price: $3.00 a month (MESITA-5022, Pato: "make the consumer
+ *  subscription 3 dollars a month"; $1.00 under MESITA-3881, $2.00 under
+ *  MESITA-3870). Existing subscribers keep what Stripe already bills them. web-consumer's plan-perks.ts prints the same
  *  number; reservation-cap.test.ts pins the two together. */
-export const PRO_PRICE_CENTS = 100;
+export const PRO_PRICE_CENTS = 300;
 export const PRO_CURRENCY = "usd";
 
 /** The consumers columns this module reads. */

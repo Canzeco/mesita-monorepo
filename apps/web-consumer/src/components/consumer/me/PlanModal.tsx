@@ -14,7 +14,7 @@
 //   ┌ Free  Current             Free ┐
 //   │ ✓ Max 3 reservation tickets a month │
 //   └────────────────────────────────┘
-//   ┏ Pro            $1 USD a month ┓   2px ink border
+//   ┏ Pro            $3 USD a month ┓   2px ink border
 //   ┃ ✓ Max 10 reservation tickets a month ┃
 //   ┃ ✓ MCP for ChatGPT or Claude Soon┃
 //   ┃ [ Upgrade to Pro ]              ┃  Free guests
@@ -52,7 +52,7 @@
 // CLEANER SINCE MESITA-4388 (Pato: "free on top of pro. and chill out with
 // your fucking shadows and ilumaination..its just a fucking subscription"):
 // Free sits above Pro, white; Pro has a hairline border and no shadow or
-// glow, a slimmer band with "$1 USD a month", two grey boxes (Pro's
+// glow, a slimmer band with "$3 USD a month", two grey boxes (Pro's
 // reservations per month", "MCP connector · Soon"; no "+7 more than Free"),
 // and the app's ink Upgrade button.
 //
