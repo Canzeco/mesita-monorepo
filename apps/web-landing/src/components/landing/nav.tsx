@@ -6,8 +6,9 @@ import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 // One anchor per section, in page order. `footer.tsx` prints the same list.
 export const NAV_LINKS = [
   { href: "/#guests", label: "Guests" },
+  { href: "/#restaurants", label: "Restaurants" },
   { href: "/#how", label: "How it works" },
-  { href: "/#places", label: "Places" },
+  { href: "/#pricing", label: "Pricing" },
 ];
 
 function Nav() {
@@ -38,7 +39,7 @@ function Nav() {
             variant="ghost"
             className="hidden min-h-9 rounded-full sm:inline-flex"
           >
-            <a href={BUSINESS_URL}>For places</a>
+            <a href={BUSINESS_URL}>For restaurants</a>
           </Button>
           <Button asChild size="sm" className="min-h-9 rounded-full">
             <a href={CONSUMER_URL}>

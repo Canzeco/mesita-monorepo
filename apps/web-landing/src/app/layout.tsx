@@ -16,17 +16,17 @@ const fraunces = Fraunces({
 });
 
 const DESCRIPTION =
-  "Every restaurant, café, bar and club in the city, found your way and booked by an agent that makes the call. For places, a profile that already exists, ready to claim. Launching in Monterrey.";
+  "Mesita is the app for going out. Find a place, book a table and save by paying ahead. For restaurants: get discovered, bring guests back and get paid before the meal. Launching in Monterrey.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://landing.mesita.ai"),
   title: {
-    default: "Mesita — where are we going?",
+    default: "Mesita — the app for going out",
     template: "%s · Mesita",
   },
   description: DESCRIPTION,
   openGraph: {
-    title: "Mesita — where are we going?",
+    title: "Mesita — the app for going out",
     description: DESCRIPTION,
     siteName: "Mesita",
     locale: "en_US",
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Mesita — where are we going?",
+    title: "Mesita — the app for going out",
     description: DESCRIPTION,
   },
 };
