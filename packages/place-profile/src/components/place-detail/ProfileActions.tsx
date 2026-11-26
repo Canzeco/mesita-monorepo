@@ -278,18 +278,16 @@ export function MesitaActions({
   // Pay.
   const openSlide = (slide: OfferSlide) =>
     onOpenRewards ? () => onOpenRewards(slide.section ?? "prepayment") : undefined;
-  // ONE LIVE TILE TAKES THE ROW (MESITA-5021). A discounts-only place draws
-  // the green tile alone, full width; the Off Reserve twin, and the times
-  // that used to tick beside it, stay off the page. The same when only
-  // Reserve works. Both off: the two Off tiles stay, so the row can still
-  // say why.
+  // A discounts-only place draws the green tile alone, full width
+  // (MESITA-5021). The Off Reserve twin, and the times that used to tick
+  // beside it, stay off the page. Offers still draws when it is Off, so a
+  // reservations-only place can say it has none.
   const reserveLive = Boolean(actions?.reservation) || row.reserve.works;
   const offersLive = row.offers.works || row.offers.loading;
   const showReserve = reserveLive || !offersLive;
-  const showOffers = offersLive || !reserveLive;
   return (
     <div className="flex flex-col gap-2">
-    <div className={cn("grid gap-2", showReserve && showOffers ? "grid-cols-2" : "grid-cols-1")} data-profile-actions="mesita">
+    <div className={cn("grid gap-2", showReserve ? "grid-cols-2" : "grid-cols-1")} data-profile-actions="mesita">
       {offOpen ? (
         <OffTileSheet tile={offOpen} line={offOpen === "offers" ? row.offers.note : undefined} onClose={() => setOffOpen(null)} />
       ) : null}
@@ -316,9 +314,9 @@ export function MesitaActions({
           </button>
         )
       ) : null}
-      {showOffers && row.offers.works ? (
+      {row.offers.works ? (
         <OffersTile name={place.name} slides={row.offers.slides} open={openSlide} />
-      ) : showOffers ? (
+      ) : (
         <button
           type="button"
           {...(row.offers.loading ? inertButtonProps(false) : { onClick: () => setOffOpen("offers"), "aria-haspopup": "dialog" as const })}
@@ -333,7 +331,7 @@ export function MesitaActions({
             {row.offers.loading ? "…" : "Off"}
           </span>
         </button>
-      ) : null}
+      )}
     </div>
     </div>
   );
