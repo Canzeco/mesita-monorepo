@@ -29,6 +29,8 @@ export {
 } from "./components/place-detail/skeleton";
 export {
   OFFER_BEAT_MS,
+  ROW_TICK_MS,
+  ROW_TICKS_PER_CHANGE,
   OfferTrack,
   offerSlides,
   offersLabel,

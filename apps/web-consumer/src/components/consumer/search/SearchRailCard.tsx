@@ -182,6 +182,8 @@ export function RailCard({
           name={place.name}
           placeId={place.id}
           slides={slides}
+          hours={place.hours}
+          timezone={place.timezone}
           reservable={reservable}
           reserveHref={placeReservePath(place.slug || place.id)}
           offerHref={placeHref(place.slug || place.id)}

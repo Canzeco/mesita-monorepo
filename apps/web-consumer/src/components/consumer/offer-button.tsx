@@ -1,9 +1,19 @@
 "use client";
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
-import { OfferTrack, offerSlides as slidesFor, offersLabel, useOfferSlide, type OfferSlide } from "@mesita/place-profile";
+import {
+  OfferTrack,
+  ROW_TICK_MS,
+  ROW_TICKS_PER_CHANGE,
+  offerSlides as slidesFor,
+  offersLabel,
+  useOfferSlide,
+  type OfferSlide,
+} from "@mesita/place-profile";
+import { hoursTable } from "@mesita/place-profile/helpers";
+import { reserveTimes } from "@mesita/place-profile/lib/reserve-times";
 import type { Place } from "@/lib/api/places";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -84,15 +94,42 @@ export function OfferButton({
   );
 }
 
-/** THE BANNER (Pato, 2026-11-26, MESITA-5010: the doubled Reserve looked
- *  wrong). Reservations only: one red Reserve, the full width. Both: Reserve
- *  and the offer, each half. Offers only: the offer, the full width.
- *  Neither: nothing, and Save · Share stay. The offer keeps its rotating
- *  words and still opens the place (MESITA-4455). Reserve opens Reserve. */
+/** One clock for every card, so a list does not start a timer per row. The
+ *  server render reads null (the word Reserve); the times appear once the
+ *  page runs, and move on as the hour passes. */
+const TEN_MIN = 600_000;
+const tenMinListeners = new Set<() => void>();
+let tenMinTimer: ReturnType<typeof setInterval> | null = null;
+function subscribeTenMin(listener: () => void) {
+  tenMinListeners.add(listener);
+  tenMinTimer ??= setInterval(() => {
+    for (const l of tenMinListeners) l();
+  }, TEN_MIN);
+  return () => {
+    tenMinListeners.delete(listener);
+    if (tenMinListeners.size === 0 && tenMinTimer) {
+      clearInterval(tenMinTimer);
+      tenMinTimer = null;
+    }
+  };
+}
+function useTenMinuteClock(): number | null {
+  return useSyncExternalStore(subscribeTenMin, () => Math.floor(Date.now() / TEN_MIN), () => null);
+}
+
+/** THE BANNER (Pato, 2026-11-26, MESITA-5010 and MESITA-5011). Reservations
+ *  only: one red Reserve, the full width. Both: Reserve and the offer, each
+ *  half. Offers only: the offer, the full width. Neither: nothing, and
+ *  Save · Share stay. RESERVE IS THE ONE THAT MOVES (MESITA-5011): the red
+ *  button rotates the place's open times, the same ones as the place screen,
+ *  every 2 seconds. The offer sits on its first slide and does not rotate.
+ *  The offer still opens the place (MESITA-4455). Reserve opens Reserve. */
 export function PlaceBannerRow({
   name,
   placeId,
   slides,
+  hours,
+  timezone,
   reserveHref,
   offerHref,
   reservable,
@@ -102,23 +139,35 @@ export function PlaceBannerRow({
   name: string;
   placeId?: string;
   slides: OfferSlide[];
+  hours?: unknown;
+  timezone?: string | null;
   reserveHref: string;
   offerHref: string;
   reservable: boolean;
   className?: string;
   cellClassName?: string;
 }) {
-  const live = useOfferSlide(slides);
-  const [held, setHeld] = useState<number | null>(null);
+  const clock = useTenMinuteClock();
+  const timeSlides = useMemo<OfferSlide[]>(() => {
+    if (!reservable || clock === null) return [];
+    return reserveTimes({ hours_table: hoursTable(hours), timezone: timezone ?? "" }, clock * TEN_MIN).map((t) => ({
+      key: `${t.day}-${t.time}`,
+      lead: t.day,
+      pill: t.time,
+      pillShort: t.time,
+      short: t.day,
+      spoken: `${t.day} ${t.time}`,
+      section: null,
+      tone: "",
+    }));
+  }, [reservable, clock, hours, timezone]);
+  const times = useOfferSlide(timeSlides, ROW_TICK_MS, { every: ROW_TICKS_PER_CHANGE });
   const getSupabase = useLazyBrowserSupabase();
   const canOffer = slides.length > 0;
   if (!reservable && !canOffer) return null;
   const cells: Array<"reserve" | "offer"> =
     reservable && canOffer ? ["reserve", "offer"] : reservable ? ["reserve"] : ["offer"];
-  const index = canOffer ? (held ?? live.index) : 0;
-  const slide = canOffer ? slides[index] : undefined;
-  const hold = () => setHeld((h) => h ?? live.index);
-  const release = () => setHeld(null);
+  const offer = slides[0];
   return (
     <div
       className={cn("grid gap-2", cells.length === 2 ? "grid-cols-2" : "grid-cols-1", className)}
@@ -129,16 +178,24 @@ export function PlaceBannerRow({
           <PushLink
             key={`${kind}-${i}`}
             href={reserveHref}
-            aria-label={`Reserve at ${name}`}
+            aria-label={
+              timeSlides.length > 0
+                ? `Reserve at ${name}, ${timeSlides.length} times, from ${timeSlides[0].spoken}`
+                : `Reserve at ${name}`
+            }
             className={cn(
               CARD_BUTTON_BOX,
-              "bg-reserve text-reserve-foreground pointer-events-auto flex items-center justify-center px-2 text-xs font-semibold",
+              "bg-reserve text-reserve-foreground pointer-events-auto relative flex items-center justify-center px-2 text-xs font-semibold",
               "focus-visible:ring-primary outline-none focus-visible:ring-2",
               cellClassName,
             )}
             data-tile-reserve
           >
-            Reserve
+            {timeSlides.length > 0 ? (
+              <OfferTrack slides={timeSlides} index={times.index} previous={times.previous} />
+            ) : (
+              "Reserve"
+            )}
           </PushLink>
         ) : (
           <PushLink
@@ -146,27 +203,21 @@ export function PlaceBannerRow({
             href={offerHref}
             aria-label={offersLabel(name, slides)}
             onClick={() => {
-              release();
-              const voucher = slide?.voucher ?? slide?.key;
+              const voucher = offer?.voucher ?? offer?.key;
               if (placeId && voucher) {
                 trackEvent(getSupabase(), "offer_chip_tap", { place_id: placeId, voucher });
               }
             }}
-            onPointerDown={hold}
-            onPointerCancel={release}
-            onPointerLeave={release}
             className={cn(
               CARD_BUTTON_BOX,
               OFFER_BOX,
-              slide?.tone,
+              offer?.tone,
               "pointer-events-auto focus-visible:ring-primary outline-none focus-visible:ring-2",
               cellClassName,
             )}
             data-tile-bonus
           >
-            {slide ? (
-              <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} short />
-            ) : null}
+            {offer ? <OfferTrack slides={slides} index={0} previous={null} short /> : null}
           </PushLink>
         ),
       )}
