@@ -1,5 +1,6 @@
--- MESITA-3590 — admin_reset_database() refuses while money is open or a
--- Stripe row is live, lists what blocks it, changes nothing when it refuses,
+-- MESITA-3590, MESITA-4995 — admin_reset_database() refuses while LIVE money
+-- is open or a Stripe row is live. Test-mode money does not block. It lists
+-- what blocks it, changes nothing when it refuses,
 -- and after a wipe leaves no auth.flow_state row pointing at a missing user
 -- and names the Stripe ids it left behind.
 --
@@ -22,14 +23,14 @@ insert into public.places (id, slug, state, content_state, currency) values
 -- ━━━ open money refuses ━━━
 
 insert into public.place_fee_invoices (id, place_id, livemode, currency, amount_cents, status)
-  values ('00000000-0000-4000-8000-0000000f3590', '00000000-0000-4000-8000-000000013590', false, 'usd', 500, 'open');
+  values ('00000000-0000-4000-8000-0000000f3590', '00000000-0000-4000-8000-000000013590', true, 'usd', 500, 'open');
 -- A tab past its expiry is dead (tabs expire lazily) and must not block.
 insert into public.pay_tabs (id, place_id, token_hash, currency, expires_at, status)
   values ('00000000-0000-4000-8000-0000000a3590', '00000000-0000-4000-8000-000000013590', repeat('a', 64), 'mxn', now() - interval '1 minute', 'waiting_bill');
 
 create temp table r1 as select public.admin_reset_database() as r;
 
-select is((select r->>'ok' from r1), 'false', 'an open fee invoice refuses the reset');
+select is((select r->>'ok' from r1), 'false', 'an open live fee invoice refuses the reset');
 select ok((select r->'refused' from r1) ? 'open_money', 'the refusal names open_money');
 select ok(
   not (select r->'open_money' from r1) @> '[{"table": "pay_tabs", "id": "00000000-0000-4000-8000-0000000a3590"}]'::jsonb,
@@ -46,9 +47,9 @@ select ok(
 );
 
 -- An open tab (before its expiry) blocks too.
-update public.place_fee_invoices set status = 'paid', paid_at = now() where id = '00000000-0000-4000-8000-0000000f3590';
-insert into public.pay_tabs (id, place_id, token_hash, currency, expires_at, status)
-  values ('00000000-0000-4000-8000-0000000b3590', '00000000-0000-4000-8000-000000013590', repeat('b', 64), 'mxn', now() + interval '10 minutes', 'waiting_bill');
+update public.place_fee_invoices set status = 'paid', livemode = false, paid_at = now() where id = '00000000-0000-4000-8000-0000000f3590';
+insert into public.pay_tabs (id, place_id, token_hash, currency, expires_at, status, livemode)
+  values ('00000000-0000-4000-8000-0000000b3590', '00000000-0000-4000-8000-000000013590', repeat('b', 64), 'mxn', now() + interval '10 minutes', 'waiting_bill', true);
 select ok(
   public.admin_reset_database()->'open_money' @> '[{"table": "pay_tabs", "id": "00000000-0000-4000-8000-0000000b3590"}]'::jsonb,
   'an open tab refuses the reset'
@@ -56,8 +57,8 @@ select ok(
 delete from public.pay_tabs where id = '00000000-0000-4000-8000-0000000b3590';
 
 -- A pending refund attempt is a Stripe refund in flight.
-insert into public.wallet_purchases (id, place_id, amount_cents, currency, stripe_account_id, status)
-  values ('00000000-0000-4000-8000-000000103590', '00000000-0000-4000-8000-000000013590', 10000, 'mxn', 'acct_test3590', 'failed');
+insert into public.wallet_purchases (id, place_id, amount_cents, currency, stripe_account_id, status, livemode)
+  values ('00000000-0000-4000-8000-000000103590', '00000000-0000-4000-8000-000000013590', 10000, 'mxn', 'acct_test3590', 'failed', true);
 insert into public.wallet_refund_attempts (id, purchase_id, amount_cents, status)
   values ('00000000-0000-4000-8000-000000113590', '00000000-0000-4000-8000-000000103590', 100, 'pending');
 select ok(
@@ -65,15 +66,16 @@ select ok(
   'a pending refund attempt refuses the reset'
 );
 update public.wallet_refund_attempts set status = 'failed' where id = '00000000-0000-4000-8000-000000113590';
+update public.wallet_purchases set livemode = false where id = '00000000-0000-4000-8000-000000103590';
 
 -- A ready pledge with a change-plan Checkout in flight blocks too.
-insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status, stripe_checkout_session_id, checkout_kind)
-  values ('00000000-0000-4000-8000-000000123590', '00000000-0000-4000-8000-000000013590', 'boost_2x', 'month', 500, 'ready', 'cs_test3590', 'change');
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status, stripe_checkout_session_id, checkout_kind, livemode)
+  values ('00000000-0000-4000-8000-000000123590', '00000000-0000-4000-8000-000000013590', 'boost_2x', 'month', 500, 'ready', 'cs_test3590', 'change', true);
 select ok(
   public.admin_reset_database()->'open_money' @> '[{"table": "place_backings", "id": "00000000-0000-4000-8000-000000123590", "status": "ready:change"}]'::jsonb,
   'a ready pledge with a Checkout in flight refuses the reset'
 );
-update public.place_backings set stripe_checkout_session_id = null, checkout_kind = null
+update public.place_backings set stripe_checkout_session_id = null, checkout_kind = null, livemode = false
  where id = '00000000-0000-4000-8000-000000123590';
 
 -- ━━━ a live row in any livemode table refuses ━━━
@@ -110,9 +112,13 @@ insert into auth.flow_state (id, user_id, provider_type, authentication_method)
   values ('00000000-0000-4000-8000-0000000d3590', '00000000-0000-4000-8000-0000000e3590', 'google', 'oauth'),
          ('00000000-0000-4000-8000-0000000d3591', null, 'google', 'oauth');
 
+update public.place_fee_invoices
+   set status = 'open', livemode = false, paid_at = null
+ where id = '00000000-0000-4000-8000-0000000f3590';
+
 create temp table r3 as select public.admin_reset_database() as r;
 
-select is((select r->>'ok' from r3), 'true', 'with nothing open and nothing live the reset runs');
+select is((select r->>'ok' from r3), 'true', 'an open test-mode invoice does not block the reset');
 select ok(
   not exists (select 1 from public.places where id = '00000000-0000-4000-8000-000000013590'),
   'the reset wiped the probe place'

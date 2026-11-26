@@ -17,10 +17,11 @@
 //      auth.users delete is keyed on that table, so an empty one deletes every
 //      account including the operator's, and nothing can re-grant admin
 //      afterwards because granting runs through checkSuperAdmin (MESITA-1192).
-//   4. In SQL (MESITA-3590): open money (a payment, purchase, Premier charge,
-//      checkout, fee invoice, tab or waiter's charge not yet final) or a
-//      livemode Stripe account or customer row refuses the wipe; the result
-//      lists what blocks it and this EF answers 409 without purging files.
+//   4. In SQL (MESITA-3590, MESITA-4995): open LIVE money (a payment, purchase,
+//      Premier charge, checkout, fee invoice, tab or waiter's charge not yet
+//      final, and livemode) or any live Stripe row refuses the wipe. Test-mode
+//      money does not. The result lists what blocks it and this EF answers
+//      409 without purging files.
 //      A wipe returns the test-mode Stripe ids it leaves behind
 //      (stripe_left_behind) and deletes auth.flow_state rows of gone users.
 //
