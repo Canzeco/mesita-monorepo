@@ -55,7 +55,9 @@ function Pricing() {
               <tr className="text-muted-foreground border-border border-b text-xs font-semibold tracking-wide uppercase">
                 <th className="px-5 py-4 md:px-7">For restaurants</th>
                 <th className="px-5 py-4 md:px-7">Price</th>
-                <th className="px-5 py-4 md:px-7">What you get</th>
+                <th className="hidden px-5 py-4 md:table-cell md:px-7">
+                  What you get
+                </th>
               </tr>
             </thead>
             <tbody className="divide-border divide-y">
@@ -63,7 +65,7 @@ function Pricing() {
                 <tr key={name} className="align-top">
                   <th
                     scope="row"
-                    className="px-5 py-4 font-semibold whitespace-nowrap md:px-7"
+                    className="px-5 py-4 font-semibold md:px-7 md:whitespace-nowrap"
                   >
                     {name}
                     {soon ? (
@@ -72,11 +74,17 @@ function Pricing() {
                         · Soon
                       </span>
                     ) : null}
+                    {/* On a phone the description sits under the name: a
+                        third column would hide behind a sideways scroll
+                        (MESITA-4992). */}
+                    <span className="text-muted-foreground mt-1 block text-sm leading-relaxed font-normal md:hidden">
+                      {what}
+                    </span>
                   </th>
                   <td className="px-5 py-4 font-semibold whitespace-nowrap tabular-nums md:px-7">
                     {price}
                   </td>
-                  <td className="text-muted-foreground min-w-56 px-5 py-4 leading-relaxed md:px-7">
+                  <td className="text-muted-foreground hidden px-5 py-4 leading-relaxed md:table-cell md:px-7">
                     {what}
                   </td>
                 </tr>
