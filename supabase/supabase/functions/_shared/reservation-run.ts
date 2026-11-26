@@ -74,9 +74,10 @@ export function outageRetryAt(
 
 /**
  * When the next cancel-notice call may fire (Docs › Reservations §B legs
- * 5/6) — the place side paces by the place's own opening hours with a hard
- * cap, the guest side rides the guest ladder. Extracted from the engine so
- * the one decision that dials real places is provable without a phone.
+ * 5/6) — the place side retries in five minutes, open or closed
+ * (MESITA-5009), up to its cap; the guest side rides the guest ladder.
+ * Extracted from the engine so the one decision that dials real places is
+ * provable without a phone.
  */
 export function noticeNextAt(
   kind: "place_cancel" | "guest_cancel",

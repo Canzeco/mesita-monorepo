@@ -640,12 +640,8 @@ export async function runIntents(input: {
   const end = (d: DeadEnd, reason: string, extra: Record<string, unknown> = {}) =>
     endAtDeadEnd(deadEndIo, d, reason, { ...releaseOldHold, ...extra });
   try {
-    // The first call waits until the place is open (MESITA-3626): a request
-    // made at 3 a.m. parks until opening time and the minute cron wakes it;
-    // a slot the place doesn't open in time for ends here, and the guest is
-    // told. Retries already pace by hours (nextAttemptAt).
-    // Every booking attempt, not only the first (MESITA-4145): closed places
-    // wait for opening, and nothing rings at or after the table's time.
+    // The call rings now even when the place is closed (MESITA-5009). The
+    // only stop here is the table's own time: nothing rings at or after it.
     {
       const plan = firstCallPlan(input.placeHours, input.placeTz, new Date(input.reservedAtIso));
       if (plan.kind === "too_late" || !beforeTable(new Date(), input.reservedAtIso)) {

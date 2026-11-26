@@ -11,8 +11,8 @@
 //   no_key        unresolved   the calling key is missing
 //   crash         unresolved   the run crashed
 //   expired       unresolved   the reserved time passed while still Booking
-//   closed        unresolved   the place opens too late to call before the slot
-//                              (the first call waits for opening, MESITA-3626)
+//   closed        unresolved   Reservations is off for this place (MESITA-5009:
+//                              a closed place is called anyway)
 //   no_answer     unreachable  every attempt rang out (the ladder ran dry)
 //   offer_unanswered unresolved the guest never picked one of the place's
 //                              options in time; the place is released too
