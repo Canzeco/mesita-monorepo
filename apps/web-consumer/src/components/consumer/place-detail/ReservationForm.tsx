@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarClock, Loader2 } from "lucide-react";
+import { CalendarClock, Loader2, TriangleAlert } from "lucide-react";
 
 import {
   buildDateOptions,
@@ -670,17 +670,22 @@ export function ReservationForm({
           </>
         )}
 
+        {/* A WARNING, NOT A PLAIN PANEL (Pato, 2026-11-26, MESITA-5004: "put this yellow it must feel like a warning"). The same yellow as the ticket banner, louder, with the warning mark. */}
         {!plan.pro && step === "test" && (
-          <ReservationSection title="Test mode">
-            <div className="flex flex-col gap-2" data-reserve-test-step="">
+          <Panel className="border-amber-400 bg-amber-200 text-amber-950" data-reserve-test-step="">
+            <div className="flex items-center gap-2 px-4 pt-4">
+              <TriangleAlert className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
+              <h2 className="text-base font-semibold tracking-tight">Test mode</h2>
+            </div>
+            <div className="flex flex-col gap-2 px-4 pt-3 pb-4">
               <p className="type-body font-semibold">
                 This is a test. Mesita will call your number instead of {place.name}, so you can see how that call works.
               </p>
-              <p className="text-muted-foreground type-body">
+              <p className="type-body text-amber-900">
                 When your phone rings, pretend you are the waiter.
               </p>
             </div>
-          </ReservationSection>
+          </Panel>
         )}
       </div>
 
