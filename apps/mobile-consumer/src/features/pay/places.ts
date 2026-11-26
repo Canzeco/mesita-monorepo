@@ -59,7 +59,7 @@ export function sellsVoucher(p: PayPlace): boolean {
 }
 
 export type PaySort = "closest" | "best";
-export type PayShow = "all" | "one" | "discount" | "cashback" | "either";
+export type PayShow = "all" | "one" | "discount";
 
 export function offerScore(p: PayPlace, kind: "prepay" | "pay"): number {
   if (kind === "prepay") {
@@ -68,14 +68,12 @@ export function offerScore(p: PayPlace, kind: "prepay" | "pay"): number {
       return sum + Math.max(0, bonusPct(p.offers, key));
     }, 0);
   }
-  return discountBps(p) || cashbackBps(p);
+  return discountBps(p);
 }
 
 export function passesShow(p: PayPlace, kind: "prepay" | "pay", show: PayShow): boolean {
   if (show === "all") return true;
   if (kind === "prepay") return show === "one" && sellsVoucher(p);
   if (show === "discount") return discountBps(p) > 0;
-  if (show === "cashback") return cashbackBps(p) > 0;
-  if (show === "either") return discountBps(p) > 0 || cashbackBps(p) > 0;
   return false;
 }

@@ -38,8 +38,9 @@ type ListKind = "prepay" | "pay";
  *  and this guest's next-bill percent on Pay (MESITA-4973). */
 type SortId = "closest" | "best";
 
-/** Prepay is binary. Pay is four: all, discounts, cashbacks, or either deal. */
-type ShowId = "all" | "one" | "discount" | "cashback" | "either";
+/** Prepay is binary. Pay is all places, or the ones with a discount.
+ *  Cashback is hidden for now (Pato, 2026-11-26). */
+type ShowId = "all" | "one" | "discount";
 
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
@@ -56,8 +57,6 @@ const PREPAY_SHOWS: { id: ShowId; label: string }[] = [
 const PAY_SHOWS: { id: ShowId; label: string }[] = [
   { id: "all", label: "All" },
   { id: "discount", label: "Discounts" },
-  { id: "cashback", label: "Cashbacks" },
-  { id: "either", label: "Discounts & cashbacks" },
 ];
 
 /** At least one of the three prepayments ($200, $1,000, $5,000). */
@@ -65,8 +64,8 @@ function sellsOneVoucher(p: PayPlace): boolean {
   return VOUCHERS_SHOWN.some((k) => p.offers?.sell.includes(k) === true);
 }
 
-/** Prepay: the three bonuses added. Pay: the percent this guest's next bill
- *  gets (welcome or returning, discount or cashback). */
+/** Prepay: the three bonuses added. Pay: this guest's discount percent.
+ *  Cashback does not rank a row while it is hidden. */
 function offerScore(p: PayPlace, kind: ListKind): number {
   if (kind === "prepay") {
     return VOUCHERS_SHOWN.reduce((sum, k) => {
@@ -74,7 +73,7 @@ function offerScore(p: PayPlace, kind: ListKind): number {
       return sum + Math.max(0, voucherPct(p.offers, k) || 0);
     }, 0);
   }
-  return payPlaceDiscountBps(p) || payPlaceCashbackBps(p);
+  return payPlaceDiscountBps(p);
 }
 
 function byDistance(a: PayPlace, b: PayPlace): number {
@@ -85,8 +84,6 @@ function passesShow(p: PayPlace, kind: ListKind, show: ShowId): boolean {
   if (show === "all") return true;
   if (kind === "prepay") return show === "one" && sellsOneVoucher(p);
   if (show === "discount") return payPlaceDiscountBps(p) > 0;
-  if (show === "cashback") return payPlaceCashbackBps(p) > 0;
-  if (show === "either") return payPlaceDiscountBps(p) > 0 || payPlaceCashbackBps(p) > 0;
   return false;
 }
 
@@ -360,7 +357,6 @@ export function PlaceList({
                   Credits
                 </span>
                 <span className="text-center whitespace-nowrap">Discount</span>
-                <span className="text-center whitespace-nowrap">Cashback</span>
               </span>
             </div>
           )}
@@ -452,11 +448,12 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
  *  (MESITA-4848). */
 const PREPAY_HEADS = ["$200", "$1,000", "$5,000"];
 const PREPAY_GRID = "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center";
-/** Pay is the name, then three boxes (Pato, 2026-11-25, MESITA-4976). The
- *  gaps between those boxes match the 16px from the last box to the sheet
- *  edge, the same inset as the title and the search row (MESITA-4979). */
+/** Pay is the name, then Accepts Credits and Discount (Pato, 2026-11-25,
+ *  MESITA-4976; Cashback hidden 2026-11-26). The gaps between those boxes
+ *  match the 16px from the last box to the sheet edge, the same inset as
+ *  the title and the search row (MESITA-4979). */
 const PAY_GRID = "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center";
-const PAY_OFFERS = "grid grid-cols-[repeat(3,4rem)] gap-4 pr-4";
+const PAY_OFFERS = "grid grid-cols-[repeat(2,4rem)] gap-4 pr-4";
 /** The bar that names Place and the three offers. Dark, on both lists. */
 const HEAD_BAR = "bg-foreground text-background sticky top-0 z-10 text-xs font-semibold";
 
@@ -523,24 +520,22 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
   );
 }
 
-/** PAY IS THREE COLUMNS (Pato, 2026-11-25, MESITA-4976): the name, then
- *  Accepts Credits, Discount, and Cashback. The gap between those boxes is
- *  the same 16px as the space from the last box to the right edge
- *  (MESITA-4979). The header stays dark. The boxes
- *  are colored so a glance separates them (MESITA-4977): blue Yes, green for
- *  the percent that is on, gray for No and 0%. A place uses one visit
- *  mechanic. Cashback accepts credits. A discount place may accept credits
- *  or not. The row selects the place. */
+/** PAY IS TWO COLUMNS (Pato, 2026-11-25, MESITA-4976, then 2026-11-26:
+ *  cashback is hidden): the name, then Accepts Credits and Discount. The
+ *  gap between those boxes is the same 16px as the space from the last box
+ *  to the right edge (MESITA-4979). The header stays dark. The boxes are
+ *  colored so a glance separates them (MESITA-4977): blue Yes, green for the
+ *  percent that is on, gray for No and 0%. Cashback still accepts credits;
+ *  the column is just not shown. The row selects the place. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
   const discount = payPlaceDiscountBps(p) / 100;
-  const cashback = payPlaceCashbackBps(p) / 100;
-  const accepts = cashback > 0 || p.credits_ok === true;
+  const accepts = payPlaceCashbackBps(p) > 0 || p.credits_ok === true;
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Discount ${discount}%, Cashback ${cashback}%`}
+      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Discount ${discount}%`}
       className={cn(PAY_GRID, "hover:bg-muted/60 min-h-[72px] py-2 text-left transition-colors")}
       data-pay-pick-place
     >
@@ -551,7 +546,6 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       <span className={PAY_OFFERS}>
         <PayCell className={accepts ? "bg-[#BFDBFE] text-blue-950" : EMPTY_BOX}>{accepts ? "Yes" : "No"}</PayCell>
         <PayCell className={discount > 0 ? offerShade(discount) : EMPTY_BOX}>{`${discount}%`}</PayCell>
-        <PayCell className={cashback > 0 ? offerShade(cashback) : EMPTY_BOX}>{`${cashback}%`}</PayCell>
       </span>
     </button>
   );

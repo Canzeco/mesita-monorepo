@@ -889,46 +889,17 @@ function ArtClock({ text }: { text: string }) {
   );
 }
 
-/** Pay's How it works: Discounts and Cashback (MESITA-4874), opening on this
- *  place's mechanism; the other one is an example. */
+/** Pay's How it works: discounts only (cashback is hidden, Pato 2026-11-26). */
 function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
   const shown = rows.find((o) => o.line === guest) ?? rows[0];
-  const [section, setSection] = useState<VisitMechanism>(shown.mech);
-  const here = section === shown.mech;
-  const discount = section === "discount";
+  if (!shown || shown.mech !== "discount") return null;
   const rate = `${shown.bps / 100}%`;
   const gives = (EXAMPLE_BILL * shown.bps) / 10000;
-  const what = (m: VisitMechanism) =>
-    m === "discount" ? "discounts: part of your bill comes off before you pay" : "cashback: part of what you pay comes back as credit for your next visit";
   return (
-    <HowItWorks
-      tab="pay"
-      title={discount ? "How discounts work" : "How cashback works"}
-      menu={
-        <div className="border-border grid shrink-0 grid-cols-2 gap-1 border-b p-2" role="group" aria-label="How it works" data-how-sections>
-          {(["discount", "cashback"] as const).map((x) => (
-            <button
-              key={x}
-              type="button"
-              aria-pressed={section === x}
-              onClick={() => setSection(x)}
-              className={cn(
-                "flex min-h-11 items-center justify-center rounded-xl text-base font-semibold transition",
-                section === x ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground",
-              )}
-              data-how-section={x}
-            >
-              {x === "discount" ? "Discounts" : "Cashback"}
-            </button>
-          ))}
-        </div>
-      }
-      lead={here ? `This place gives ${what(section)}.` : `This place gives ${discount ? "cashback" : "discounts"}. Other places give ${what(section)}.`}
-    >
-      {discount ? (
-        <Scenes
-          note={`The discount is on the bill, never on the tip. If you have credits ${here ? "here" : "there"}, they are used first; credits never pay the tip.`}
-        >
+    <HowItWorks tab="pay" title="How discounts work" lead="This place gives discounts: part of your bill comes off before you pay.">
+      <Scenes
+        note="The discount is on the bill, never on the tip. If you have credits here, they are used first; credits never pay the tip."
+      >
           <Scene n={1} tint="discount" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter." />
           <Scene
             n={2}
@@ -957,37 +928,7 @@ function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceC
             title="Pay your waiter"
             text="Cash or card, like always. Your waiter confirms it and you get your receipt."
           />
-        </Scenes>
-      ) : (
-        <Scenes note="The tip and the part you pay with credit earn no cashback, and one bill earns $1,000 at most. Your credit never expires.">
-          <Scene n={1} tint="cashback" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter. Check the bill on your phone and tap Accept." />
-          <Scene
-            n={2}
-            tint="cashback"
-            art={
-              <>
-                <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
-                <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
-              </>
-            }
-            title={`Pay your waiter $${EXAMPLE_BILL}`}
-            text="Cash or card, like always. Your waiter confirms it."
-          />
-          <Scene
-            n={3}
-            tint="cashback"
-            art={
-              <>
-                <ArtClock text="1 hour" />
-                <ArtArrow />
-                <ArtCredit label={`${rate} back`} amount={`+$${gives}`} />
-              </>
-            }
-            title={`Get $${gives} back`}
-            text={`One hour later it is in your Wallet. Use it on any bill at ${here ? "this place" : "the place that gave it"}.`}
-          />
-        </Scenes>
-      )}
+      </Scenes>
     </HowItWorks>
   );
 }
@@ -1394,23 +1335,25 @@ function CheckoutSection({
   vipNote?: string | null;
 }) {
   const rows = cashback ? cashbackRows(cashback) : [];
+  // Cashback rates stay on the server. The guest sees a discount place only.
+  const shown = rows.filter((r) => r.mech === "discount");
   return (
     <>
       {loading ? (
         <BoneRows n={2} />
-      ) : cashback && rows.length > 0 ? (
+      ) : cashback && shown.length > 0 ? (
         <CashbackPanel cashback={cashback} />
-      ) : (
-        // No cashback here, or the read failed: Pay Bill still works.
+      ) : rows.length > 0 ? null : (
+        // No visit offer here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
-          This place gives no Back yet. You can still pay your bill here.
+          This place gives no discount yet. You can still pay your bill here.
         </p>
       )}
-      {rows.length > 0 ? <PayHowItWorks rows={rows} guest={cashback?.line ?? null} /> : null}
+      {shown.length > 0 ? <PayHowItWorks rows={shown} guest={cashback?.line ?? null} /> : null}
       {/* CONNECT INSTAGRAM, BELOW HOW IT WORKS (Pato, 2026-11-24, MESITA-4872:
           "not the fourth offer"); in the VIP row under MESITA-4863. Only where a
           VIP row shows and the host knows the guest is not VIP. */}
-      {onBecomeVip && rows.some((r) => r.klass === "VIP Class") ? (
+      {onBecomeVip && shown.some((r) => r.klass === "VIP Class") ? (
         <div className="flex shrink-0 flex-col items-center gap-1.5">
           <button
             type="button"

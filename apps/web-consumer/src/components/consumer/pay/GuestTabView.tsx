@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, TAB_REFUSAL, type TabRead } from "@/lib/api/tab";
-import { discountOf, money, type PayPlace, payPlaceCashbackBps } from "@/lib/api/wallet";
-import { untilLabel } from "@/components/consumer/wallet/WalletLists";
+import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
 import { trackEvent } from "@/lib/analytics/track";
@@ -30,8 +29,8 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 //   Confirming    a Loader and "Confirming…" while the waiter's Confirm
 //                 runs.
 //   3 Receipt     a green Paid with the total, the lines with their icons,
-//                 the Discount taken or the Cashback earned and when it is
-//                 ready, "Confirmed by staff" ✓; Done.
+//                 the Discount taken, "Confirmed by staff" ✓; Done.
+//                 Cashback is hidden for now (Pato, 2026-11-26).
 //   Not paid      a red XCircle, one line why, "Nothing was paid" (never on
 //                 cash), New ticket (MESITA-4524: the old ticket is done). Was Start
 //                 again (the bill with everything typed).
@@ -69,10 +68,9 @@ export function GuestTabView({
   registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const [tab, setTab] = useState(first);
-  // MESITA-4813: the Cashback the paid bill earned; undefined = not read yet.
-  const [back, setBack] = useState<TabRead["back"]>(undefined);
   // MESITA-4878: what prepaying would have saved.
   const [prepay, setPrepay] = useState<TabRead["prepay_tip"]>(null);
+  const [extrasRead, setExtrasRead] = useState(false);
   const [qr, setQr] = useState<string | null>(() => readGuestQr(first.tab_id));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,8 +87,6 @@ export function GuestTabView({
   const tip = tab.cash_tip_cents;
   const total = tab.credit_cents + cash;
   const discount = tab.discount_cents ?? 0;
-  // What this bill will earn, while it waits (MESITA-4813).
-  const willEarn = tab.visit_mechanism === "discount" || discount > 0 ? 0 : discountOf(tab.cash_bill_cents, payPlaceCashbackBps(place));
   const signed = tab.status === "paid" && !!tab.verified_at;
   const ended = tab.status === "cancelled" || tab.status === "expired";
   useEffect(() => {
@@ -137,7 +133,6 @@ export function GuestTabView({
           if (!alive) return;
           setFailedReads(0);
           setTab(r.tab);
-          if (r.back !== undefined) setBack(r.back);
           if (r.prepay_tip) setPrepay(r.prepay_tip);
         })
         .catch(() => {
@@ -151,23 +146,23 @@ export function GuestTabView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done, tab.tab_id]);
 
-  // A receipt opened already paid never polls: read its Cashback once.
-  const needsBack = signed && back === undefined;
+  // A receipt opened already paid never polls: read the prepay tip once.
+  const needsExtras = signed && !extrasRead;
   useEffect(() => {
-    if (!needsBack) return;
+    if (!needsExtras) return;
     let alive = true;
     void apiGetTab(getSupabase(), tab.tab_id)
       .then((r) => {
         if (!alive) return;
-        setBack(r.back ?? null);
         setPrepay(r.prepay_tip ?? null);
+        setExtrasRead(true);
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsBack, tab.tab_id]);
+  }, [needsExtras, tab.tab_id]);
 
   // A bill still open is the waiter's (MESITA-4823): /pay/code shows it.
   const router = useRouter();
@@ -286,21 +281,6 @@ export function GuestTabView({
             {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Paid to the waiter" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
             <MoneyRow label="Total" value={m(total)} strong />
-            {back && back.amount_cents > 0 ? (
-              <MoneyRow
-                className={BOX_TINT.cashback}
-                icon={<BadgePercent />}
-                label={`Cashback · ${readyWords(back, now)}`}
-                value={`+${money(back.amount_cents, back.currency)}`}
-              />
-            ) : back !== undefined && tab.visit_mechanism !== "discount" && discount === 0 ? (
-              // MESITA-4892: a bill that earned none says so, and why.
-              <MoneyRow
-                icon={<BadgePercent />}
-                label={tab.cash_bill_cents === 0 && tab.credit_cents > 0 ? "Cashback · none on credits" : "Cashback"}
-                value={m(0)}
-              />
-            ) : null}
             <MoneyRow
               icon={<PenLine />}
               label="Confirmed by staff"
@@ -450,11 +430,6 @@ export function GuestTabView({
                   .join(" · ")}
               </p>
             ) : null}
-            {willEarn > 0 ? (
-              <p className={cn("shrink-0 rounded-lg px-2.5 py-0.5 text-sm font-semibold tabular-nums", BOX_TINT.cashback)} data-guest-sign-cashback>
-                You get {m(willEarn)} Cashback
-              </p>
-            ) : null}
             <div className="flex min-h-[80px] w-full flex-1 items-center justify-center">
               <div className="flex aspect-square h-full max-h-[340px] max-w-full items-center justify-center rounded-2xl bg-white">
                 {qr ? (
@@ -551,12 +526,4 @@ export function GuestTabView({
       </LocalDialog>
     </div>
   );
-}
-
-
-/** When the Cashback can be spent: "ready in 58 min", "ready" once due. */
-function readyWords(back: NonNullable<TabRead["back"]>, now: number): string {
-  const t = back.available_at ? Date.parse(back.available_at) : Number.NaN;
-  if (!back.pending || !Number.isFinite(t)) return "ready";
-  return t > now ? `ready in ${untilLabel(t - now)}` : "ready soon";
 }
