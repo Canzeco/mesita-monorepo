@@ -125,7 +125,8 @@ function useTenMinuteClock(): number | null {
  *  every 2 seconds. Beside Reserve the green half is too small for an
  *  amount, so it says Offers (MESITA-5013). Alone, the offer keeps its
  *  amount. Either way it opens the place (MESITA-4455). Reserve opens
- *  Reserve. */
+ *  Reserve. A live table says Booking, or Booked once the place confirms,
+ *  in that same button, and the times stop (MESITA-5014). */
 export function PlaceBannerRow({
   name,
   placeId,
@@ -135,6 +136,8 @@ export function PlaceBannerRow({
   reserveHref,
   offerHref,
   reservable,
+  reserveLabel,
+  reserveDetail,
   className,
   cellClassName,
 }: {
@@ -146,12 +149,17 @@ export function PlaceBannerRow({
   reserveHref: string;
   offerHref: string;
   reservable: boolean;
+  /** A live table: the reserve button says this instead of Reserve. */
+  reserveLabel?: string;
+  /** The table's day and time, for the button's spoken label. */
+  reserveDetail?: string;
   className?: string;
   cellClassName?: string;
 }) {
+  const holding = Boolean(reserveLabel);
   const clock = useTenMinuteClock();
   const timeSlides = useMemo<OfferSlide[]>(() => {
-    if (!reservable || clock === null) return [];
+    if (!reservable || holding || clock === null) return [];
     return reserveTimes({ hours_table: hoursTable(hours), timezone: timezone ?? "" }, clock * TEN_MIN).map((t) => ({
       key: `${t.day}-${t.time}`,
       lead: t.day,
@@ -162,13 +170,14 @@ export function PlaceBannerRow({
       section: null,
       tone: "",
     }));
-  }, [reservable, clock, hours, timezone]);
+  }, [reservable, holding, clock, hours, timezone]);
   const times = useOfferSlide(timeSlides, ROW_TICK_MS, { every: ROW_TICKS_PER_CHANGE });
   const getSupabase = useLazyBrowserSupabase();
   const canOffer = slides.length > 0;
-  if (!reservable && !canOffer) return null;
+  const showReserve = reservable || holding;
+  if (!showReserve && !canOffer) return null;
   const cells: Array<"reserve" | "offer"> =
-    reservable && canOffer ? ["reserve", "offer"] : reservable ? ["reserve"] : ["offer"];
+    showReserve && canOffer ? ["reserve", "offer"] : showReserve ? ["reserve"] : ["offer"];
   const offer = slides[0];
   const tight = cells.length === 2;
   return (
@@ -182,10 +191,13 @@ export function PlaceBannerRow({
             key={`${kind}-${i}`}
             href={reserveHref}
             aria-label={
-              timeSlides.length > 0
-                ? `Reserve at ${name}, ${timeSlides.length} times, from ${timeSlides[0].spoken}`
-                : `Reserve at ${name}`
+              holding
+                ? `${reserveLabel} at ${name}${reserveDetail ? `, ${reserveDetail}` : ""}. Change or cancel it.`
+                : timeSlides.length > 0
+                  ? `Reserve at ${name}, ${timeSlides.length} times, from ${timeSlides[0].spoken}`
+                  : `Reserve at ${name}`
             }
+            data-card-table={holding ? (reserveLabel === "Booked" ? "booked" : "booking") : undefined}
             className={cn(
               CARD_BUTTON_BOX,
               "bg-reserve text-reserve-foreground pointer-events-auto relative flex items-center justify-center px-2 text-xs font-semibold",
@@ -194,7 +206,9 @@ export function PlaceBannerRow({
             )}
             data-tile-reserve
           >
-            {timeSlides.length > 0 ? (
+            {holding ? (
+              reserveLabel
+            ) : timeSlides.length > 0 ? (
               <OfferTrack slides={timeSlides} index={times.index} previous={times.previous} />
             ) : (
               "Reserve"
