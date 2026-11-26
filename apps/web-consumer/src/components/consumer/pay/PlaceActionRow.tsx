@@ -3,9 +3,7 @@
 import { ChevronRight, Gift } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
 import { PlacePhoto } from "./pay-common";
-import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 
 // THE CARD AT THE LEFT, ITS GIFT BOX AT THE RIGHT (Pato, 2026-11-24,
 // MESITA-4851: "left pp, name, credits two lines, right gift box"; "don't mention gift, just a gift box and an
@@ -19,7 +17,6 @@ export function PlaceActionRow({
   amount,
   subtitle,
   pending = null,
-  pendingAt = null,
   placeId,
   disabled = false,
   giftHref = null,
@@ -32,10 +29,9 @@ export function PlaceActionRow({
   amount: string;
   /** Why the card can't be used; it replaces the balance. */
   subtitle?: string | null;
-  /** "$50.00MX" still landing here. */
+  /** "$50.00MX" still landing here. The preview says pending and no time
+   *  (Pato, 2026-11-26, MESITA-5016). The Loyalty Card page still says when. */
   pending?: string | null;
-  /** When the soonest of it turns Available (MESITA-4644). */
-  pendingAt?: string | null;
   placeId?: string;
   disabled?: boolean;
   /** Send this card's credit to a friend; null when there is none to send. */
@@ -66,7 +62,7 @@ export function PlaceActionRow({
           )}
           {pending && !disabled ? (
             <span className="block text-xs leading-tight font-semibold text-emerald-700 tabular-nums" data-wallet-pending>
-              +{pending} pending <PendingEta at={pendingAt} />
+              +{pending} pending
             </span>
           ) : null}
         </span>
@@ -85,19 +81,4 @@ export function PlaceActionRow({
       ) : null}
     </div>
   );
-}
-
-/** WHEN IT ARRIVES (Pato, 2026-11-22, MESITA-4644: "in the pending mention
- *  in how much time will they arrive, like the credits"): "Ready in 1 h 48
- *  min", the Loyalty Card page's words, every 30 s; "Ready soon" once due. */
-function PendingEta({ at }: { at: string | null }) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!at) return;
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, [at]);
-  const t = at ? Date.parse(at) : Number.NaN;
-  if (!Number.isFinite(t)) return null;
-  return <span>· {t > now ? `Ready in ${untilLabel(t - now)}` : "Ready soon"}</span>;
 }
