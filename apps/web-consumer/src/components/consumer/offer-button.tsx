@@ -84,6 +84,94 @@ export function OfferButton({
   );
 }
 
+/** TWO EQUAL HALVES (Pato, 2026-11-26, MESITA-5006: "instead of one large
+ *  buttons, we have 4" and "banner must be 50% and 50%"). Both: Reserve |
+ *  the offer. No offer: Reserve | Reserve. Offer only: the offer twice.
+ *  Neither: nothing, and Save · Share stay. The offer half keeps the
+ *  rotating words and still opens the place (MESITA-4455). Reserve opens
+ *  Reserve. Two copies of one action do the same thing. */
+export function PlaceBannerRow({
+  name,
+  placeId,
+  slides,
+  reserveHref,
+  offerHref,
+  reservable,
+  className,
+  cellClassName,
+}: {
+  name: string;
+  placeId?: string;
+  slides: OfferSlide[];
+  reserveHref: string;
+  offerHref: string;
+  reservable: boolean;
+  className?: string;
+  cellClassName?: string;
+}) {
+  const live = useOfferSlide(slides);
+  const [held, setHeld] = useState<number | null>(null);
+  const getSupabase = useLazyBrowserSupabase();
+  const canOffer = slides.length > 0;
+  if (!reservable && !canOffer) return null;
+  const cells: Array<"reserve" | "offer"> =
+    reservable && canOffer ? ["reserve", "offer"] : reservable ? ["reserve", "reserve"] : ["offer", "offer"];
+  const index = canOffer ? (held ?? live.index) : 0;
+  const slide = canOffer ? slides[index] : undefined;
+  const hold = () => setHeld((h) => h ?? live.index);
+  const release = () => setHeld(null);
+  return (
+    <div className={cn("grid grid-cols-2 gap-2", className)} data-place-banner>
+      {cells.map((kind, i) =>
+        kind === "reserve" ? (
+          <PushLink
+            key={`${kind}-${i}`}
+            href={reserveHref}
+            aria-label={`Reserve at ${name}`}
+            className={cn(
+              CARD_BUTTON_BOX,
+              "bg-foreground text-background pointer-events-auto flex items-center justify-center px-2 text-xs font-semibold",
+              "focus-visible:ring-primary outline-none focus-visible:ring-2",
+              cellClassName,
+            )}
+            data-tile-reserve
+          >
+            Reserve
+          </PushLink>
+        ) : (
+          <PushLink
+            key={`${kind}-${i}`}
+            href={offerHref}
+            aria-label={offersLabel(name, slides)}
+            onClick={() => {
+              release();
+              const voucher = slide?.voucher ?? slide?.key;
+              if (placeId && voucher) {
+                trackEvent(getSupabase(), "offer_chip_tap", { place_id: placeId, voucher });
+              }
+            }}
+            onPointerDown={hold}
+            onPointerCancel={release}
+            onPointerLeave={release}
+            className={cn(
+              CARD_BUTTON_BOX,
+              OFFER_BOX,
+              slide?.tone,
+              "pointer-events-auto focus-visible:ring-primary outline-none focus-visible:ring-2",
+              cellClassName,
+            )}
+            data-tile-bonus
+          >
+            {slide ? (
+              <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} short />
+            ) : null}
+          </PushLink>
+        ),
+      )}
+    </div>
+  );
+}
+
 /** The Search map card's top strip (MESITA-3444): the same slides on the
  *  same beat (MESITA-3467), part of the card (its tap opens the place). */
 export function OfferStrip({ name, slides, className }: { name: string; slides: OfferSlide[]; className?: string }) {
