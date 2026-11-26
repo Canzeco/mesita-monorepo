@@ -36,6 +36,9 @@ export const colors = {
   closed: "#e7000b",
   distance: "#155dfc",
   star: "#ffb900",
+  /** The seal after a place name. Premier is red; an ad slot is blue. */
+  premier: "#f4212e",
+  ad: "#1d9bf0",
 
   /** On the sign-in photo. */
   phone: "#00a63e",
