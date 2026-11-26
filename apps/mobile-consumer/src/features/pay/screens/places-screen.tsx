@@ -6,7 +6,7 @@ import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
 import { colors, radius, space } from "@/theme";
 
-import { acceptsCredits, bonusPct, cashbackBps, discountBps, offerScore, passesShow, VOUCHERS, type PayPlace, type PayShow, type PaySort } from "../places";
+import { acceptsCredits, bonusPct, discountBps, offerScore, passesShow, VOUCHERS, type PayPlace, type PayShow, type PaySort } from "../places";
 import { PlacePhoto } from "./photo";
 
 type Kind = "prepay" | "pay";
@@ -102,8 +102,6 @@ const PREPAY_SHOWS: { id: PayShow; label: string }[] = [
 const PAY_SHOWS: { id: PayShow; label: string }[] = [
   { id: "all", label: "All" },
   { id: "discount", label: "Discounts" },
-  { id: "cashback", label: "Cashbacks" },
-  { id: "either", label: "Discounts & cashbacks" },
 ];
 
 function Filters({
@@ -170,7 +168,7 @@ function PayHeads() {
   return (
     <View style={styles.bar}>
       <Text role="caption" tone="onInk" style={styles.barName}>Place</Text>
-      {["Accepts Credits", "Discount", "Cashback"].map((label) => (
+      {["Accepts Credits", "Discount"].map((label) => (
         <Text key={label} role="caption" tone="onInk" style={styles.payHead}>{label}</Text>
       ))}
     </View>
@@ -201,12 +199,11 @@ function PrepayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) =>
 function PayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) => void }) {
   const name = place.name ?? "A Mesita place";
   const discount = discountBps(place) / 100;
-  const cashback = cashbackBps(place) / 100;
   const credits = acceptsCredits(place);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Select ${name}, Accepts Credits ${credits ? "Yes" : "No"}, Discount ${discount}%, Cashback ${cashback}%`}
+      accessibilityLabel={`Select ${name}, Accepts Credits ${credits ? "Yes" : "No"}, Discount ${discount}%`}
       onPress={() => onPick(place.place_id)}
       style={styles.payRow}
     >
@@ -217,7 +214,6 @@ function PayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) => vo
       <View style={styles.offers}>
         <Cell label={credits ? "Yes" : "No"} on={credits} blue />
         <Cell label={`${discount}%`} on={discount > 0} />
-        <Cell label={`${cashback}%`} on={cashback > 0} />
       </View>
     </Pressable>
   );
