@@ -31,7 +31,7 @@ Deno.test("guest row: name falls back, the handle shows only when proved, plain 
       guestClassSetByEmail: null,
       guestClassNote: null,
       reservationCapOverride: null,
-      planReservationCap: 3,
+      planReservationCap: 10,
       vipPartnerId: null,
       createdAt: "2026-10-21T00:00:00Z",
     },
@@ -89,9 +89,9 @@ Deno.test("search filter: % and _ are literal, not wildcards", () => {
 
 Deno.test("guest row: the reservation cap override and the plan's cap (MESITA-2555)", () => {
   const pro = toGuestRow({ id: ID, plan: "premium", reservation_cap_override: 50 });
-  assertEquals([pro.reservationCapOverride, pro.planReservationCap], [50, 10]);
+  assertEquals([pro.reservationCapOverride, pro.planReservationCap], [50, 30]);
   const odd = toGuestRow({ id: ID, plan: "free", reservation_cap_override: "50" });
-  assertEquals([odd.reservationCapOverride, odd.planReservationCap], [null, 3]);
+  assertEquals([odd.reservationCapOverride, odd.planReservationCap], [null, 10]);
 });
 
 Deno.test("the consumer door cannot write Class, Plan or the VIP audit (MESITA-2553)", () => {
