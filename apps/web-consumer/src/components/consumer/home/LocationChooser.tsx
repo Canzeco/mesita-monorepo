@@ -36,7 +36,14 @@ import {
   useUserLocationLocating,
   LOCATION_HELP,
 } from "@/lib/use-user-location";
-import { displayName, evictionFor, useSavedLocations, type SavedLocation } from "@/lib/saved-locations";
+import {
+  displayName,
+  DISTRITO_TEC_ID,
+  distritoTecLocation,
+  evictionFor,
+  useSavedLocations,
+  type SavedLocation,
+} from "@/lib/saved-locations";
 import { savedLocationKey, setActiveLocation, useActiveLocation, useActiveLocationKey } from "@/lib/active-location";
 import { PIN_LIST_FULL, PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
 import { cn, errMsg } from "@/lib/utils";
@@ -114,7 +121,7 @@ export function LocationChooser({
   // the paid Google calls behind search and the pin's address (MESITA-4246),
   // so the field only ever said "No matches yet" and Add a location never
   // found its address. Signed out, the chooser offers what works: Use my
-  // location, then Sign in to search any place.
+  // location, Distrito Tec, then Sign in to search any place.
   const anonymous = useViewer() === "anonymous";
   const coords = useUserLocation();
   const locating = useUserLocationLocating();
@@ -126,6 +133,15 @@ export function LocationChooser({
   const active = useActiveLocation();
   const activeKey = useActiveLocationKey();
   const savedLocations = useSavedLocations();
+  // DISTRITO TEC WHEN THERE IS NOWHERE ELSE (MESITA-5008). Anonymous always
+  // sees it, so they can come back after Current location. A member sees it
+  // while it is the active stand-in. It is not one of their eight pins.
+  const showDistrito =
+    anonymous || activeKey === savedLocationKey(DISTRITO_TEC_ID);
+  const pins =
+    showDistrito && !savedLocations.some((l) => l.id === DISTRITO_TEC_ID)
+      ? [...savedLocations, distritoTecLocation()]
+      : savedLocations;
   const supabase = useBrowserSupabase();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlacePrediction[]>([]);
@@ -382,7 +398,7 @@ export function LocationChooser({
         alert: help,
         onClick: chooseHere,
       })}
-      {savedLocations.map((l) =>
+      {pins.map((l) =>
         row({
           key: savedLocationKey(l.id),
           title: displayName(l),
@@ -391,7 +407,8 @@ export function LocationChooser({
           selected: activeKey === savedLocationKey(l.id) && !l.unconfirmed,
           muted: l.unconfirmed,
           // An old entry no one confirmed on a map opens the picker first;
-          // it never drives a search before that.
+          // it never drives a search before that. Distrito Tec is built in:
+          // choosing it is the whole of the row.
           onClick: () => {
             if (l.unconfirmed) {
               openSaved(l, "confirm");
@@ -401,7 +418,7 @@ export function LocationChooser({
             setActiveLocation(savedLocationKey(l.id));
             done();
           },
-          trailing: l.unconfirmed ? (
+          trailing: l.id === DISTRITO_TEC_ID ? null : l.unconfirmed ? (
             <span
               className="bg-muted text-foreground pointer-events-none mr-4 flex h-7 shrink-0 items-center rounded-full px-3 text-xs font-semibold"
               data-places-confirm-location

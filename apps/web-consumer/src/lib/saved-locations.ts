@@ -94,6 +94,28 @@ function withRecent(server: readonly SavedLocation[], since: number): SavedLocat
 /** At most this many; see `evictionFor` for which one makes room. */
 export const SAVED_LOCATIONS_MAX = 8;
 export const SAVED_LOCATION_FALLBACK = "Saved location";
+/** The built-in pin (MESITA-5008). Not stored, not synced: a guest with no
+ *  location, and every anonymous profile, searches from here. */
+export const DISTRITO_TEC_ID = "distrito-tec";
+export const DISTRITO_TEC_POINT = { lat: 25.6514, lng: -100.2895 } as const;
+
+export function distritoTecLocation(): SavedLocation {
+  const entry = {
+    id: DISTRITO_TEC_ID,
+    lat: DISTRITO_TEC_POINT.lat,
+    lng: DISTRITO_TEC_POINT.lng,
+    suggestedName: "Distrito Tec",
+    customName: null,
+    formattedAddress: "Monterrey",
+    kind: "point" as const,
+    nameEdited: false,
+    namedAt: null,
+    needsName: false,
+    unconfirmed: false,
+    legacyName: null,
+  };
+  return { ...entry, name: displayName(entry) };
+}
 /** Google-made names are refreshed after this long (its terms allow only
  *  temporary caching); the guest's own `customName` never expires. */
 export const SAVED_NAME_TTL_MS = 30 * 24 * 60 * 60 * 1000;

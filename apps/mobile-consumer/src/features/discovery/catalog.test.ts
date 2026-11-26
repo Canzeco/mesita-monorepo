@@ -1,6 +1,6 @@
 import { rankSchema } from "./api";
 import { chipsFor, questionOf } from "./families";
-import { factsOf, PAGE, pageIds, readActiveLocation, uniquePlaces, type CatalogPlace } from "./model";
+import { DISTRITO_TEC, factsOf, PAGE, pageIds, readActiveLocation, uniquePlaces, withDefaultLocation, type CatalogPlace } from "./model";
 import { withSaved } from "./queries";
 
 const PLACE: CatalogPlace = {
@@ -61,4 +61,9 @@ test("pages walk the whole order once", () => {
 test("a saved location that cannot be read is none", () => {
   expect(readActiveLocation('{"lat":1,"lng":2,"name":"Roma"}')).toEqual({ lat: 1, lng: 2, name: "Roma" });
   for (const bad of [null, "", "{", '{"lat":"1","lng":2}', "null"]) expect(readActiveLocation(bad)).toBeNull();
+});
+
+test("no stored location is Distrito Tec", () => {
+  expect(withDefaultLocation(null)).toEqual(DISTRITO_TEC);
+  expect(withDefaultLocation({ lat: 1, lng: 2, name: "Roma" }).name).toBe("Roma");
 });

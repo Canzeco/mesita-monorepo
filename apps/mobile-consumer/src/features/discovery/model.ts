@@ -4,6 +4,19 @@ import { computeOpenState } from "@/generated/shared/place-to-detail-helpers";
 export type Point = { lat: number; lng: number };
 export type ActiveLocation = Point & { name: string };
 
+/** The built-in pin (MESITA-5008). A guest with nothing stored, and every
+ *  anonymous profile, starts here. The campus point the web app uses. */
+export const DISTRITO_TEC: ActiveLocation = {
+  lat: 25.6514,
+  lng: -100.2895,
+  name: "Distrito Tec",
+};
+
+/** A stored choice, or Distrito Tec when the phone has none. */
+export function withDefaultLocation(stored: ActiveLocation | null): ActiveLocation {
+  return stored ?? DISTRITO_TEC;
+}
+
 export type CatalogPlace = {
   id: string;
   slug: string | null;

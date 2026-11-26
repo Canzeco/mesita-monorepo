@@ -3,7 +3,7 @@ import { createContext, use, useCallback, useEffect, useState, type ReactNode } 
 import { plain } from "@/lib/storage";
 
 import type { ChipKey } from "./families";
-import { readActiveLocation, type ActiveLocation } from "./model";
+import { readActiveLocation, withDefaultLocation, type ActiveLocation } from "./model";
 
 const NAME = "mesita.location";
 
@@ -29,7 +29,11 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       .get(NAME)
       .catch(() => null)
       .then((raw) => {
-        if (live) setLocation((chosen) => (chosen === undefined ? readActiveLocation(raw) : chosen));
+        if (!live) return;
+        const stored = readActiveLocation(raw);
+        const next = withDefaultLocation(stored);
+        setLocation((chosen) => (chosen === undefined ? next : chosen));
+        if (!stored) plain.set(NAME, JSON.stringify(next)).catch(() => undefined);
       });
     return () => {
       live = false;
