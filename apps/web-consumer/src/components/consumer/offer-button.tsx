@@ -122,8 +122,10 @@ function useTenMinuteClock(): number | null {
  *  half. Offers only: the offer, the full width. Neither: nothing, and
  *  Save · Share stay. RESERVE IS THE ONE THAT MOVES (MESITA-5011): the red
  *  button rotates the place's open times, the same ones as the place screen,
- *  every 2 seconds. The offer sits on its first slide and does not rotate.
- *  The offer still opens the place (MESITA-4455). Reserve opens Reserve. */
+ *  every 2 seconds. Beside Reserve the green half is too small for an
+ *  amount, so it says Offers (MESITA-5013). Alone, the offer keeps its
+ *  amount. Either way it opens the place (MESITA-4455). Reserve opens
+ *  Reserve. */
 export function PlaceBannerRow({
   name,
   placeId,
@@ -168,6 +170,7 @@ export function PlaceBannerRow({
   const cells: Array<"reserve" | "offer"> =
     reservable && canOffer ? ["reserve", "offer"] : reservable ? ["reserve"] : ["offer"];
   const offer = slides[0];
+  const tight = cells.length === 2;
   return (
     <div
       className={cn("grid gap-2", cells.length === 2 ? "grid-cols-2" : "grid-cols-1", className)}
@@ -211,13 +214,13 @@ export function PlaceBannerRow({
             className={cn(
               CARD_BUTTON_BOX,
               OFFER_BOX,
-              offer?.tone,
+              tight ? "bg-[#00D66F] text-neutral-950" : offer?.tone,
               "pointer-events-auto focus-visible:ring-primary outline-none focus-visible:ring-2",
               cellClassName,
             )}
             data-tile-bonus
           >
-            {offer ? <OfferTrack slides={slides} index={0} previous={null} short /> : null}
+            {tight ? "Offers" : offer ? <OfferTrack slides={slides} index={0} previous={null} short /> : null}
           </PushLink>
         ),
       )}
