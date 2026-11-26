@@ -30,7 +30,7 @@ const GROUPS: { who: string; plans: Plan[] }[] = [
       {
         name: "Payments fee",
         price: "5%",
-        what: "Of every voucher bought in the app and every bill paid by App at Checkout. Spending credit carries no fee.",
+        what: "Of every voucher bought in the app. Bills and spending credit carry no fee.",
       },
     ],
   },
