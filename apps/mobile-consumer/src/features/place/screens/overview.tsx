@@ -29,6 +29,7 @@ export function Overview({ place, width, photo, onPhoto }: { place: PlaceDetail;
       <Presentation text={place.long_description} />
       <Location place={place} />
       {place.hours_table.length ? <Hours place={place} /> : null}
+      <PopularTimes place={place} />
       <Tags place={place} />
     </View>
   );
@@ -140,6 +141,47 @@ function Hours({ place }: { place: PlaceDetail }) {
   );
 }
 
+function PopularTimes({ place }: { place: PlaceDetail }) {
+  const days = place.popular_times.filter((day) => day.day && day.range);
+  let today = "";
+  try {
+    today = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: place.timezone || undefined }).format(new Date());
+  } catch {
+    today = new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(new Date());
+  }
+  const initial = days.find((day) => day.day.trim().slice(0, 3).toLowerCase() === today.slice(0, 3).toLowerCase())?.day ?? days[0]?.day ?? "";
+  const [selected, setSelected] = useState(initial);
+  if (days.length === 0) return null;
+  const featured = days.find((day) => day.day === selected) ?? days[0];
+  const bars = featured.bars.filter((value) => Number.isFinite(value));
+  return (
+    <View style={styles.block}>
+      <View style={styles.hour}>
+        <Text role="strong">Popular times</Text>
+        <Text role="caption" tone="muted">From Google</Text>
+      </View>
+      <View style={styles.sorts}>
+        {days.map((day) => {
+          const on = day.day === featured.day;
+          return (
+            <Pressable key={day.day} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => setSelected(day.day)} style={[styles.dayChip, on && styles.dayChipOn]}>
+              <Text role="caption" tone={on ? "onInk" : "muted"}>{day.day.slice(0, 3)}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <Text role="caption" tone="muted">{`Busiest ${featured.range}`}</Text>
+      {bars.length > 0 ? (
+        <View style={styles.bars}>
+          {bars.map((value, index) => (
+            <View key={index} style={[styles.bar, { height: Math.max(Math.min(value, 1), 0.06) * 72 }]} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function Tags({ place }: { place: PlaceDetail }) {
   const familyLabels = new Set(place.families.map((row) => row.label.trim().toLowerCase()));
   const tags = place.tags.filter((tag) => !familyLabels.has(tag.label.trim().toLowerCase()));
@@ -171,6 +213,11 @@ const styles = StyleSheet.create({
   hours: { gap: space.xs, padding: space.md, borderRadius: radius.field, backgroundColor: colors.fill },
   hour: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
   mapBtn: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.field, backgroundColor: colors.fill },
+  sorts: { flexDirection: "row", gap: 4 },
+  dayChip: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.control, backgroundColor: colors.fill },
+  dayChipOn: { backgroundColor: colors.ink },
+  bars: { height: 72, flexDirection: "row", alignItems: "flex-end", gap: 4 },
+  bar: { flex: 1, borderRadius: 99, backgroundColor: colors.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   tag: { backgroundColor: colors.fill, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: space.xs },
 });
