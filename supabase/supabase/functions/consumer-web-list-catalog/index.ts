@@ -17,12 +17,11 @@
 //   Score     = Proximity × ((1 − w) × stars × reviews + w × growth) ^ GoogleExp
 //               × premierFactor ^ PremierExp
 //   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp); no point = 1
-//   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X)
+//   premierFactor = 1 · Pro · Max (no plan; Mixing, defaults 2 and 5, MESITA-5028)
 // The numbers are the mode's recipe rows (`params.recipes`). SQL
 // (`catalog_rank_lanes`) ranks the Organic lane (every place; the n-th of a
 // kind × `params.variety.repeat`^(n − 1), off on Nearby) and the Inorganic
-// lane (Premier places whose Proximity × premierFactor reaches
-// `params.mix.adFloor`). FEEDS AND LANES (MESITA-4517, MESITA-4548): Nearby
+// lane (every Premier place; no ad floor since MESITA-5029). FEEDS AND LANES (MESITA-4517, MESITA-4548): Nearby
 // is close + both, Popular is popular + both, Family is close + well known
 // + both of one family; both = strong on close and on well known, ordered
 // nearest first (MESITA-4674). Every lane has an Organic and an Inorganic row; one SQL
@@ -366,7 +365,6 @@ serveJson("consumer-web-list-catalog", async (req) => {
     organic: pool.lanes.organic,
     premier: pool.lanes.premier,
     adsFirstPage: pool.lanes.adsFirstPage,
-    below_floor: pool.lanes.belowFloor,
     inorganicTotal: pool.lanes.inorganicTotal,
     byLane: pool.lanes.byLane,
     weaves: pool.weaves.slice(0, 5),

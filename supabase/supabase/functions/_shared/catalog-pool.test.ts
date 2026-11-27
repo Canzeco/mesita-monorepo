@@ -114,7 +114,6 @@ function fakeRank(order: string[], opts: { fail?: boolean; read?: number; premie
           // Popular lane alone, as these tests assume (MESITA-4548).
           ids: args.p_organic_half_km === 0.1 ? [] : order,
           premier: opts.premier ?? [],
-          below_floor: 2,
           inorganic_total: (opts.premier ?? []).length + 2,
         },
         error: null,
@@ -251,7 +250,8 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
     [near.p_organic_fsq_factor, near.p_organic_fsq_exp, near.p_ad_fsq_factor, near.p_ad_fsq_exp],
     [o.foursquareFactor, o.foursquareExponent, i.foursquareFactor, i.foursquareExponent],
   );
-  assertEquals(near.p_ad_floor, cfg.params.mix.adFloor);
+  // No ad floor since MESITA-5029: none is sent.
+  assert(!("p_ad_floor" in near));
   // No repeat penalty since MESITA-4463: no mode sends one.
   assert(!("p_repeat" in near));
   const popular = catalogRankLanesArgs(cfg, resolveAreaLocation(null, null), [], "popular");
@@ -307,7 +307,6 @@ Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad ca
   assertEquals(out.lanes, {
     organic: 30,
     premier: 2,
-    belowFloor: 2,
     inorganicTotal: 4,
     adsFirstPage: 2,
     // Ads round-robin over Popular's two Inorganic lanes (MESITA-4548).

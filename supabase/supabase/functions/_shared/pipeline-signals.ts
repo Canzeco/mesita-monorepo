@@ -214,11 +214,10 @@ export const FOURSQUARE_EXPONENT_MIN = 1;
 export const FOURSQUARE_EXPONENT_MAX = 40;
 export const FOURSQUARE_FACTOR_DEFAULT = 1;
 export const FOURSQUARE_EXPONENT_DEFAULT = 20;
-/** The mix: per-mode Temperature (the shuffle's), the ad floor and cadence. */
+/** The mix: per-mode Temperature (the shuffle's) and the ad cadence. No ad
+ *  floor since MESITA-5029. */
 export const MIX_TEMPERATURE_MIN = 0;
 export const MIX_TEMPERATURE_MAX = 5;
-export const AD_FLOOR_MIN = 0;
-export const AD_FLOOR_MAX = 1;
 export const AD_EVERY_MIN = 0;
 export const AD_EVERY_MAX = 10;
 /** Pro and Max factors (MESITA-5028): the multiplier each paid plan earns;
@@ -335,12 +334,6 @@ export function recipeScore(
   };
 }
 
-/** The ad floor (MESITA-4454, M5): an Inorganic place takes an ad slot only
- *  when Proximity (its lane's row; 1 with no anchor) × the raw
- *  premierFactor (2 or 5) reaches it. */
-export function clearsAdFloor(proximityOrNull: number | null, premierFactor: number, adFloor: number): boolean {
-  return (proximityOrNull ?? 1) * premierFactor >= adFloor;
-}
 
 // ── The merge and the shuffle (MESITA-4454) ─────────────────────────────────
 

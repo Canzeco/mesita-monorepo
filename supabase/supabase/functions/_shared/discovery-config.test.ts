@@ -508,7 +508,6 @@ Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 wh
   );
   assertEquals(m, {
     temperature: { nearby: 5, family: 0, popular: 0.33 },
-    adFloor: 1,
     adEvery: 4,
     proFactor: 2,
     maxFactor: 5,
@@ -516,7 +515,9 @@ Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 wh
   });
   assertEquals(normalizeMix({ growthWeightCap: 0.8 }).growthWeightCap, 0.8);
   assertEquals(normalizeMix({ growthWeightCap: 2 }).growthWeightCap, 0.8);
-  assertEquals(seen.sort(), ["params.mix.adFloor", "params.mix.temperature.family", "params.mix.temperature.nearby"]);
+  assertEquals(seen.sort(), ["params.mix.temperature.family", "params.mix.temperature.nearby"]);
+  // MESITA-5029: a saved adFloor is dropped, never read.
+  assertEquals("adFloor" in m, false);
   assertEquals(normalizeMix({ adEvery: 0 }).adEvery, 0);
   assertEquals(normalizeMix({ adEvery: 99 }).adEvery, 10);
 });
