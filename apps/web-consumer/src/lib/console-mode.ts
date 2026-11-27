@@ -8,10 +8,10 @@
 // server renders Phone too, so a loading page paints the card centered,
 // never parked at the left edge waiting for localStorage.
 //
-// Pato, 2026-11-26 (MESITA-4993): Functions and Terminal stay hidden. Phone
-// only, even when this browser last left them open. Flip CONSOLE_VISIBLE
-// to bring the switch back; the three modes stay.
-export const CONSOLE_VISIBLE = false;
+// Pato, 2026-11-27 (MESITA-5048): Functions and Terminal are back. Phone
+// stays the default until this browser chooses otherwise. A browser that
+// last left Functions or Terminal open shows that mode again.
+export const CONSOLE_VISIBLE = true;
 
 export type ConsoleMode = "phone" | "functions" | "terminal";
 
