@@ -115,10 +115,10 @@ export function listCardReservable(place: {
  *  / and green say icon discounts / use icons"; then "discounts in green").
  *  Nothing moves. Reservations only: one red Reserve, the full width
  *  (MESITA-5021: the left half grows from 50% to 100%). Offers only: one
- *  green Discounts, the full width (the right half grows from 50% to 100%).
- *  Both: Reserve left, Discounts right, each half. Neither: nothing, and
+ *  green Extra discount, the full width (the right half grows from 50% to 100%).
+ *  Both: Reserve left, Extra discount right, each half. Neither: nothing, and
  *  Save · Share stay.
- *  Reserve opens Reserve; Discounts opens the place (MESITA-4455). A live
+ *  Reserve opens Reserve; Extra discount opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
  *  (MESITA-5014). The open times that rotated in Reserve (MESITA-5011) are
  *  gone from the card; the place screen keeps them. */
@@ -223,7 +223,7 @@ export function PlaceBannerRow({
             data-tile-bonus
           >
             <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
-            Discounts
+            Extra discount
           </PushLink>
         ),
       )}

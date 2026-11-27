@@ -56,7 +56,7 @@ const PREPAY_SHOWS: { id: ShowId; label: string }[] = [
 
 const PAY_SHOWS: { id: ShowId; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "discount", label: "Discounts" },
+  { id: "discount", label: "Extra discount" },
 ];
 
 /** At least one of the three prepayments ($200, $1,000, $5,000). */
@@ -361,7 +361,11 @@ export function PlaceList({
                   <br />
                   Credits
                 </span>
-                <span className="text-center whitespace-nowrap">Discount</span>
+                <span className="text-center leading-tight">
+                  Extra
+                  <br />
+                  discount
+                </span>
               </span>
             </div>
           )}
@@ -453,7 +457,7 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
  *  (MESITA-4848). */
 const PREPAY_HEADS = ["$200", "$1,000", "$5,000"];
 const PREPAY_GRID = "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center";
-/** Pay is the name, then Accepts Credits and Discount (Pato, 2026-11-25,
+/** Pay is the name, then Accepts Credits and Extra discount (Pato, 2026-11-25,
  *  MESITA-4976; Cashback hidden 2026-11-26). The gaps between those boxes
  *  match the 16px from the last box to the sheet edge, the same inset as
  *  the title and the search row (MESITA-4979). */
@@ -526,7 +530,7 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
 }
 
 /** PAY IS TWO COLUMNS (Pato, 2026-11-25, MESITA-4976, then 2026-11-26:
- *  cashback is hidden): the name, then Accepts Credits and Discount. The
+ *  cashback is hidden): the name, then Accepts Credits and Extra discount. The
  *  gap between those boxes is the same 16px as the space from the last box
  *  to the right edge (MESITA-4979). The header stays dark. The boxes are
  *  colored so a glance separates them (MESITA-4977): blue Yes, green for the
@@ -540,7 +544,7 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Discount ${discount}%`}
+      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Extra discount ${discount}%`}
       className={cn(PAY_GRID, "hover:bg-muted/60 min-h-[72px] py-2 text-left transition-colors")}
       data-pay-pick-place
     >
