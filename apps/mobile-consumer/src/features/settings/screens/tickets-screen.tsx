@@ -32,7 +32,7 @@ export function TicketsScreen({
 }: {
   onVisit: (id: string) => void;
   onGift: (id: string) => void;
-  onVoucher: (place: string, line: string) => void;
+  onVoucher: (placeId: string, entryKey: string) => void;
   onEmpty: (tab: Tab) => void;
 }) {
   const [tab, setTab] = useState<Tab>("visits");
@@ -76,7 +76,7 @@ export function TicketsScreen({
                 <Text role="body">{ticketLine(row)}</Text>
               </Pressable>
             ) : (
-              <Pressable key={row.id} accessibilityRole="button" onPress={() => onVoucher(row.place, "line" in row ? row.line : "")}>
+              <Pressable key={row.id} accessibilityRole="button" onPress={() => onVoucher(row.placeId, row.entryKey)}>
                 <Text role="body">{ticketLine(row)}</Text>
               </Pressable>
             ),

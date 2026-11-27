@@ -155,7 +155,7 @@ export function setInstagramHandle(handle: string): Promise<void> {
   }).then(() => undefined);
 }
 
-export type WalletLine = { id: string; place: string; line: string };
+export type WalletLine = { id: string; place: string; placeId: string; entryKey: string; line: string };
 
 const BOUGHT = new Set(["prepay", "voucher", "bonus"]);
 
@@ -173,7 +173,8 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
     {},
     z.object({
       balances: z.array(z.object({
-        place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+        place_id: z.string().catch(""),
+        place: z.object({ id: z.string().nullish().catch(null), name: z.string().nullish().catch(null) }).nullish().catch(null),
         currency: z.string().catch("mxn"),
         entries: z.array(z.object({
           kind: z.string().catch(""),
@@ -199,9 +200,12 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
       balance.entries.forEach((entry, index) => {
         if (!BOUGHT.has(entry.kind)) return;
         const amount = money(Math.abs(entry.amount_cents), balance.currency) ?? "";
+        const placeId = balance.place_id || balance.place?.id || "";
         vouchers.push({
-          id: `${entry.at}-${index}`,
+          id: `${placeId}-${entry.kind}-${entry.at}-${index}`,
           place: balance.place?.name ?? "A Mesita place",
+          placeId,
+          entryKey: `${entry.kind}.${Date.parse(entry.at)}`,
           line: `${entry.pending ? "Pending" : "Available"} · ${amount}`,
         });
       });
@@ -209,6 +213,8 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
     const gifts = answer.gifts.map((gift) => ({
       id: gift.gift_id,
       place: gift.place?.name ?? "A Mesita place",
+      placeId: "",
+      entryKey: "",
       line: `${gift.role === "sender" ? "Sent" : "Received"} · ${gift.status} · ${money(gift.amount_cents, gift.currency) ?? ""} · ${gift.sender.name}`,
     }));
     return { vouchers, gifts };
