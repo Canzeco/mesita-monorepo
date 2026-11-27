@@ -8,8 +8,12 @@ import { space } from "@/theme";
 export function MenuTab({ place, onMenu, onOpen }: { place: PlaceDetail; onMenu: () => void; onOpen: (index: number) => void }) {
   if (!place.products.menu.length) {
     return (
-      <Pressable accessibilityRole="button" onPress={onMenu}>
-        <Text role="label">Open the menu</Text>
+      <Pressable accessibilityRole="button" onPress={onMenu} style={styles.empty}>
+        <Text role="heading">Smart Menu</Text>
+        <Text role="label">Order and pay from your phone.</Text>
+        <Text role="body" tone="muted">At your table or for takeaway.</Text>
+        <Text role="body" tone="muted">See photos and videos of every dish, and ask AI about ingredients, calories and more.</Text>
+        <Text role="body" tone="muted">Coming soon</Text>
       </Pressable>
     );
   }
@@ -25,4 +29,4 @@ export function MenuTab({ place, onMenu, onOpen }: { place: PlaceDetail; onMenu:
   );
 }
 
-const styles = StyleSheet.create({ box: { gap: space.md }, row: { gap: space.xs } });
+const styles = StyleSheet.create({ box: { gap: space.md }, row: { gap: space.xs }, empty: { gap: space.sm } });
