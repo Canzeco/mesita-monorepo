@@ -43,11 +43,16 @@ export function ReservationTabs({ half, onPick }: { half: ReservationHalf; onPic
   );
 }
 
-export function ReservationRows({ rows, empty, onOpen }: { rows: Reservation[]; empty: string; onOpen: (id: string) => void }) {
+export function ReservationRows({ rows, empty, action, onOpen }: { rows: Reservation[]; empty: string; action?: { label: string; onPress: () => void }; onOpen: (id: string) => void }) {
   if (rows.length === 0) {
     return (
       <ScrollView contentContainerStyle={styles.page}>
         <Text role="body">{empty}</Text>
+        {action ? (
+          <Pressable accessibilityRole="button" onPress={action.onPress}>
+            <Text role="label">{action.label}</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     );
   }

@@ -7,5 +7,5 @@ import type { ReservationHalf } from "@/features/reservations/screens/halves";
 export default function Route() {
   const router = useRouter();
   const [half, setHalf] = useState<ReservationHalf>("upcoming");
-  return <ReservationsScreen half={half} onHalf={setHalf} onOpen={(id) => router.push({ pathname: "/reservations/[id]", params: { id } })} />;
+  return <ReservationsScreen half={half} onHalf={setHalf} onFind={() => router.push("/")} onOpen={(id) => router.push({ pathname: "/reservations/[id]", params: { id } })} />;
 }

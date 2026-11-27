@@ -9,7 +9,7 @@ import { colors } from "@/theme";
 import { listReservations } from "../api";
 import { halvesOf, ReservationRows, ReservationTabs, useNow, type ReservationHalf } from "./halves";
 
-export function ReservationsScreen({ onOpen, half, onHalf }: { onOpen: (id: string) => void; half: ReservationHalf; onHalf: (half: ReservationHalf) => void }) {
+export function ReservationsScreen({ onOpen, onFind, half, onHalf }: { onOpen: (id: string) => void; onFind?: () => void; half: ReservationHalf; onHalf: (half: ReservationHalf) => void }) {
   const query = useQuery({ queryKey: ["reservations"], queryFn: ({ signal }) => listReservations(signal) });
   const copy = useErrorCopy(query.error);
   const now = useNow();
@@ -19,7 +19,12 @@ export function ReservationsScreen({ onOpen, half, onHalf }: { onOpen: (id: stri
   return (
     <View style={styles.fill}>
       <ReservationTabs half={half} onPick={onHalf} />
-      <ReservationRows rows={rows} empty={half === "past" ? "No past reservations" : "No upcoming reservations"} onOpen={onOpen} />
+      <ReservationRows
+        rows={rows}
+        empty={half === "past" ? "No past reservations" : "No upcoming reservations"}
+        action={half === "upcoming" && onFind ? { label: "Find a place", onPress: onFind } : undefined}
+        onOpen={onOpen}
+      />
     </View>
   );
 }
