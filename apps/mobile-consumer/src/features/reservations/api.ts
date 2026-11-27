@@ -13,6 +13,8 @@ export type Reservation = {
   notes: string | null;
   placeName: string | null;
   placeId: string | null;
+  placePhoto: string | null;
+  timezone: string | null;
   reference: string | null;
 };
 
@@ -25,7 +27,12 @@ const rowSchema = z
     notes: text,
     reference_code: text,
     place: z
-      .object({ id: text, name: text })
+      .object({
+        id: text,
+        name: text,
+        timezone: text,
+        photos: z.array(z.string()).nullish().catch(null),
+      })
       .nullish()
       .catch(null),
   })
@@ -38,6 +45,8 @@ const rowSchema = z
       notes: row.notes ?? null,
       placeName: row.place?.name ?? null,
       placeId: row.place?.id ?? null,
+      placePhoto: row.place?.photos?.[0] ?? null,
+      timezone: row.place?.timezone ?? null,
       reference: row.reference_code ?? null,
     }),
   );
