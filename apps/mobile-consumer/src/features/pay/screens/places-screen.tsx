@@ -6,7 +6,7 @@ import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
 import { colors, radius, space } from "@/theme";
 
-import { acceptsCredits, bonusPct, offerScore, passesShow, VOUCHERS, type PayPlace, type PayShow, type PaySort } from "../places";
+import { acceptsCredits, bonusPct, discountBps, offerScore, passesShow, VOUCHERS, type PayPlace, type PayShow, type PaySort } from "../places";
 import { PlacePhoto } from "./photo";
 
 type Kind = "prepay" | "pay";
@@ -168,7 +168,9 @@ function PayHeads() {
   return (
     <View style={styles.bar}>
       <Text role="caption" tone="onInk" style={styles.barName}>Place</Text>
-      <Text role="caption" tone="onInk" style={styles.payHead}>Accepts Credits</Text>
+      {["Accepts Credits", "Discount"].map((label) => (
+        <Text key={label} role="caption" tone="onInk" style={styles.payHead}>{label}</Text>
+      ))}
     </View>
   );
 }
@@ -196,11 +198,12 @@ function PrepayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) =>
 
 function PayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) => void }) {
   const name = place.name ?? "A Mesita place";
+  const discount = discountBps(place) / 100;
   const credits = acceptsCredits(place);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Select ${name}, Accepts Credits ${credits ? "Yes" : "No"}`}
+      accessibilityLabel={`Select ${name}, Accepts Credits ${credits ? "Yes" : "No"}, Discount ${discount}%`}
       onPress={() => onPick(place.place_id)}
       style={styles.payRow}
     >
@@ -209,7 +212,8 @@ function PayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) => vo
         <Text role="label" numberOfLines={2} style={styles.nameText}>{name}</Text>
       </View>
       <View style={styles.offers}>
-        <Cell label={credits ? "Yes" : "No"} on={credits} />
+        <Cell label={credits ? "Yes" : "No"} on={credits} blue />
+        <Cell label={`${discount}%`} on={discount > 0} />
       </View>
     </Pressable>
   );
@@ -222,8 +226,15 @@ function bonusColor(pct: number): string {
   return colors.bonusLow;
 }
 
-function Cell({ label, on }: { label: string; on: boolean }) {
-  const backgroundColor = on ? colors.creditsYes : colors.fill;
+function offerColor(pct: number): string {
+  if (pct >= 20) return colors.pay;
+  if (pct >= 10) return colors.pay10;
+  return colors.payLow;
+}
+
+function Cell({ label, on, blue = false }: { label: string; on: boolean; blue?: boolean }) {
+  const pct = Number(label.replace("%", ""));
+  const backgroundColor = on ? (blue ? colors.creditsYes : offerColor(pct)) : colors.fill;
   const tone = on ? "ink" : "muted";
   return (
     <View style={[styles.cell, { backgroundColor }]}>
