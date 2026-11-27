@@ -3,6 +3,26 @@ import { Stack } from "expo-router";
 import { headerOptions } from "@/components/header";
 import { ME_PAGES, useGate } from "@/features/auth";
 
+const TITLE: Record<string, string> = {
+  profile: "Profile",
+  class: "Class",
+  reservations: "Reservations",
+  notifications: "Notifications",
+  tickets: "Tickets",
+  card: "Card",
+  plan: "Plan",
+  share: "Share",
+  settings: "Settings",
+  contact: "Contact",
+  feedback: "Send feedback",
+  refunds: "Refunds",
+  integrations: "Integrations",
+  "vip-code": "Invitation code",
+  "vip-instagram": "Instagram",
+  "vip-agency": "Bring your people",
+  delete: "Delete account",
+};
+
 /** Every Me page but index is a member's. */
 export default function MeLayout() {
   const { member } = useGate();
@@ -11,11 +31,7 @@ export default function MeLayout() {
       <Stack.Screen name="index" options={{ title: "Me", headerShown: member, statusBarStyle: member ? "dark" : "light" }} />
       <Stack.Protected guard={member}>
         {ME_PAGES.map((name) => (
-          <Stack.Screen
-            key={name}
-            name={name}
-            options={{ title: name === "delete" ? "Delete account" : name[0].toUpperCase() + name.slice(1) }}
-          />
+          <Stack.Screen key={name} name={name} options={{ title: TITLE[name] ?? name }} />
         ))}
       </Stack.Protected>
     </Stack>
