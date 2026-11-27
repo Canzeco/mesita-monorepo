@@ -108,6 +108,7 @@ export function PayScreen({
         places={places.data ?? []}
         loading={places.isLoading}
         failed={places.isError}
+        onRetry={() => void places.refetch()}
         onClose={() => setOpen(null)}
         onPick={(id) => {
           setOpen(null);
