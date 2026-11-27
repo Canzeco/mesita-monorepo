@@ -41,7 +41,7 @@ export function VipCodeScreen() {
       <Text role="body">Type the twelve digits you were given.</Text>
       <Field label="Invitation code" value={code} onChangeText={setCode} keyboardType="number-pad" maxLength={14} />
       {said ? <Text role="small">{said}</Text> : null}
-      <Button label="Join VIP" busy={busy} disabled={digits.length !== 12} onPress={join} />
+      <Button label={busy ? "Checking the code" : "Join VIP"} busy={busy} disabled={digits.length !== 12} onPress={join} />
     </ScrollView>
   );
 }
