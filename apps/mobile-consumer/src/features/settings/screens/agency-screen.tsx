@@ -23,7 +23,7 @@ export function AgencyScreen() {
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <Text role="title">Make your people VIP</Text>
-      <Text role="small" tone="muted">They get each place's VIP rate, on their first bill and every one after. One code per person.</Text>
+      <Text role="small" tone="muted">{"They get each place's VIP rate, on their first bill and every one after. One code per person."}</Text>
       <SettingsGroup title="Who are you?">
         {GROUPS.map((group) => (
           <SettingsRow key={group.title} icon="sparkles" label={group.title} sub={group.line} onPress={() => mail(group)} />
