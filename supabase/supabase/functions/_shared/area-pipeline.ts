@@ -729,7 +729,7 @@ export function catalogRankLanesArgs(
     p_ad_fsq_factor: ad.foursquareFactor,
     p_ad_fsq_exp: ad.foursquareExponent,
     p_ad_offers_exp: ad.offersExp,
-    // No p_ad_floor: the SQL ignores it since MESITA-5029.
+    // No p_ad_floor or p_repeat: the SQL has neither since MESITA-5036.
   };
 }
 

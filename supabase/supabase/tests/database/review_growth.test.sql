@@ -126,9 +126,7 @@ returns jsonb language sql as $$
     p_premier_1 => 2, p_premier_2 => 5,
     p_families => array['dinner'],
     p_known_families => array['dinner'],
-    p_require_active => false,
-    p_repeat => 1,
-    p_ad_floor => 0.2) -> 'ids'
+    p_require_active => false) -> 'ids'
 $$;
 
 select has_table('public', 'google_review_observations', 'Fast Update stores one review snapshot per observation');
