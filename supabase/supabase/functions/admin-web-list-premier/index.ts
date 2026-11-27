@@ -24,11 +24,11 @@ import {
   PERIOD_COLUMNS,
   type Pledge,
   PLEDGE_COLUMNS,
-  PREMIER_FACTOR,
   premierRankOf,
   runningManual,
   runningPeriod,
 } from "../_shared/boost.ts";
+import { loadDiscoveryConfig, premierFactors } from "../_shared/discovery-config.ts";
 import { boostLivemode, boostStripeKey } from "../_shared/stripe.ts";
 
 const PLACE_LIMIT = 1000;
@@ -42,7 +42,7 @@ serveJson("admin-web-list-premier", async (req) => {
   const now = Date.now();
   const since = new Date(now - 30 * DAY_MS).toISOString();
   const nowIso = new Date(now).toISOString();
-  const [placesRes, pledgesRes, periodsRes, manualRes] = await Promise.all([
+  const [placesRes, pledgesRes, periodsRes, manualRes, discovery] = await Promise.all([
     admin.from("profiles").select("id, name, boost_tier").eq("state", "active").order("name").limit(PLACE_LIMIT),
     admin.from("place_backings").select(PLEDGE_COLUMNS).in("status", ["open", "ready"]).limit(5000),
     admin
@@ -51,7 +51,10 @@ serveJson("admin-web-list-premier", async (req) => {
       .or(`ends_at.gte.${nowIso},created_at.gte.${since},status.eq.charging`)
       .limit(5000),
     admin.from("place_manual_premier").select(MANUAL_COLUMNS).gt("ends_at", nowIso).limit(5000),
+    loadDiscoveryConfig(admin),
   ]);
+  // Each plan's factor as Discovery › Mixing saved it (MESITA-5028).
+  const factors = premierFactors(discovery);
   if (placesRes.error) return json({ ok: false, error: `places_read: ${placesRes.error.message}` }, 500);
   if (pledgesRes.error) return json({ ok: false, error: `pledges_read: ${pledgesRes.error.message}` }, 500);
   if (periodsRes.error) return json({ ok: false, error: `periods_read: ${periodsRes.error.message}` }, 500);
@@ -74,7 +77,7 @@ serveJson("admin-web-list-premier", async (req) => {
       id: p.id,
       name: p.name ?? "Unnamed place",
       tier,
-      factor: PREMIER_FACTOR[tier],
+      factor: factors[tier],
       manual: manual ? { tier: manual.tier, ends_at: manual.ends_at, source: manual.source, granted_by: manual.granted_by } : null,
       period: running ? { tier: running.tier, ends_at: running.ends_at, granted: false, granted_by: null } : null,
       charging: chargingPeriod(periods) != null,

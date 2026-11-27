@@ -84,6 +84,8 @@ import {
   AD_EVERY_MIN,
   AD_FLOOR_MAX,
   AD_FLOOR_MIN,
+  PLAN_FACTOR_MAX,
+  PLAN_FACTOR_MIN,
   FOURSQUARE_EXPONENT_MAX,
   FOURSQUARE_EXPONENT_MIN,
   FOURSQUARE_FACTOR_MAX,
@@ -115,7 +117,7 @@ import {
   STARS_POWER_MIN,
 } from "./pipeline-signals.ts";
 import { errorMessage } from "./errors.ts";
-import { PREMIER_TIERS, PREMIER_YEARLY_CENTS, type PremierPrices } from "./boost.ts";
+import { PREMIER_FACTOR, PREMIER_TIERS, PREMIER_YEARLY_CENTS, type PremierPrices } from "./boost.ts";
 
 /**
  * The stored signal numbers (MESITA-3083): Proximity's half distance (km)
@@ -176,6 +178,10 @@ export type MixParams = {
   temperature: Record<RankMode, number>;
   adFloor: number;
   adEvery: number;
+  /** Premier Pro's and Premier Max's factor (MESITA-5028): what each plan
+   *  multiplies a score by and what the ad floor compares. Free is 1. */
+  proFactor: number;
+  maxFactor: number;
   growthWeightCap: number;
 };
 
@@ -221,6 +227,8 @@ export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
   adFloor: 0.2,
   adEvery: 1,
+  proFactor: PREMIER_FACTOR[1],
+  maxFactor: PREMIER_FACTOR[2],
   growthWeightCap: 0.5,
 };
 
@@ -239,6 +247,8 @@ export const MIX_BOUNDS = {
   temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
   adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
   adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
+  proFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
+  maxFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
   growthWeightCap: { min: GROWTH_WEIGHT_CAP_MIN, max: GROWTH_WEIGHT_CAP_MAX, decimals: 2 },
 } as const;
 
@@ -862,6 +872,8 @@ export function normalizeMix(raw: unknown, onClamp?: OnClamp): MixParams {
     temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
     adFloor: reportedParam(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor, "params.mix.adFloor", onClamp),
     adEvery: reportedParam(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery, "params.mix.adEvery", onClamp),
+    proFactor: reportedParam(r.proFactor, DEFAULT_MIX.proFactor, MIX_BOUNDS.proFactor, "params.mix.proFactor", onClamp),
+    maxFactor: reportedParam(r.maxFactor, DEFAULT_MIX.maxFactor, MIX_BOUNDS.maxFactor, "params.mix.maxFactor", onClamp),
     growthWeightCap: reportedParam(
       r.growthWeightCap,
       DEFAULT_MIX.growthWeightCap,
@@ -1030,6 +1042,13 @@ export function recipeRow(
 export function laneBatch(recipe: Recipe): number {
   const b = recipe.batch;
   return typeof b === "number" && Number.isFinite(b) && b >= 1 ? Math.floor(b) : LANE_BATCH_DEFAULT;
+}
+
+/** The factor each `boost_tier` (0 free, 1 Pro, 2 Max) earns, from the
+ *  saved mix (MESITA-5028); a cfg that predates the two keys reads 2 and 5. */
+export function premierFactors(cfg: { params: Partial<Pick<SignalParams, "mix">> }): Record<0 | 1 | 2, number> {
+  const mix = mixFor(cfg);
+  return { 0: 1, 1: mix.proFactor ?? PREMIER_FACTOR[1], 2: mix.maxFactor ?? PREMIER_FACTOR[2] };
 }
 
 /** The mix, or its defaults on a cfg that predates it. */

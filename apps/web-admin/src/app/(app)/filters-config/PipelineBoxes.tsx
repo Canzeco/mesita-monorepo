@@ -225,7 +225,7 @@ function proximityAt(d: number, halfKm: number, exp: number): number {
 }
 
 /** The farthest an Inorganic place clears the Inorganic floor: Proximity ×
- *  premierFactor (the plan's raw 2 or 5, never the exponent) ≥ floor, so
+ *  premierFactor (the plan's saved Pro or Max factor, never the exponent) ≥ floor, so
  *  d = Half distance × (premierFactor ÷ floor − 1)^(1 ÷ Distance exponent).
  *  A floor of 0 lets every distance through. */
 function adReachKm(premierFactor: number, floor: number, halfKm: number, exp: number): number {
@@ -312,7 +312,7 @@ export function HowRankedCard() {
             decides who is on it, never the order.
           </p>
           <p>
-            Premier is the place&apos;s plan: 1 with no plan, 2 for 2X, 5 for 5X. The plan&apos;s weight in
+            Premier is the place&apos;s plan: 1 with no plan, Premier Pro and Premier Max from Mixing (2 and 5 by default). The plan&apos;s weight in
             the score is Premier ^ Premier exponent.
           </p>
           <p>
@@ -409,14 +409,19 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
 ];
 
 /** What the row's numbers do, computed from the row as edited (1A). */
-function recipeEffect(row: RecipeRow, recipe: Recipe, inorganicFloor: number): string {
+function recipeEffect(
+  row: RecipeRow,
+  recipe: Recipe,
+  inorganicFloor: number,
+  plans: { pro: number; max: number },
+): string {
   const organic = isOrganicRow(row);
   if (isFavoritesRow(row)) return "Order: nearest first";
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
   if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
   if (organic) return `½ at ${h} km · 2 km ${fmtProx(proximityAt(2, h, e))}`;
-  return `2X up to ${fmtKm(adReachKm(2, inorganicFloor, h, e))} · 5X up to ${fmtKm(adReachKm(5, inorganicFloor, h, e))}`;
+  return `Pro up to ${fmtKm(adReachKm(plans.pro, inorganicFloor, h, e))} · Max up to ${fmtKm(adReachKm(plans.max, inorganicFloor, h, e))}`;
 }
 
 /** A value the server forces: plain muted text, never an input (C1, L-1). */
@@ -438,6 +443,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const dirty = !same(cfg.params.recipes, saved.params.recipes);
   // The inorganic reach reads the SAVED floor: an unsaved edit in Mixing does not move it.
   const inorganicFloor = saved.params.mix.adFloor;
+  const plans = { pro: saved.params.mix.proFactor, max: saved.params.mix.maxFactor };
   const cell = (row: RecipeRow, rowName: string, key: RecipeKey, label: string) => {
     const recipe = cfg.params.recipes[row];
     if (isMapRow(row) && (key === "halfKm" || key === "distanceExp" || key === "batch")) return <Fixed>—</Fixed>;
@@ -499,7 +505,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
                   </Td>
                 ))}
                 <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">
-                  {recipeEffect(row, cfg.params.recipes[row], inorganicFloor)}
+                  {recipeEffect(row, cfg.params.recipes[row], inorganicFloor, plans)}
                 </Td>
               </Tr>
             ))}
@@ -516,8 +522,8 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
           Batch is its only number. Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
           by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Google exponent: how far apart
           famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
-          counts in the Inorganic lane; at the same distance and stars a 2X place passes a 5X place only with
-          2.5 ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: Organic rows show where
+          counts in the Inorganic lane; at the same distance and stars a Pro place passes a Max place only with
+          (Max ÷ Pro) ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: Organic rows show where
           Proximity is ½ and its value at 2 km; Inorganic rows show how far a Premier place can be and still
           take an inorganic slot at the saved Inorganic floor ({inorganicFloor}).
         </Meta>
@@ -581,7 +587,7 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={MIX_BOUNDS.adFloor.max}
               decimals
               disabled={off}
-              hint="0 lets every Premier place take an ad slot. Higher means it must be closer."
+              hint="How close a paid place must be to get an ad slot. 0 = any distance; higher = closer only."
               onChange={(adFloor) => patchMix({ adFloor })}
             />
             <NumberField
@@ -592,10 +598,35 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               disabled={off}
               hint={
                 mix.adEvery === 0
-                  ? "No inorganic places."
-                  : `${mix.adEvery === 1 ? "One organic place" : `${mix.adEvery} organic places`}, then one inorganic place, again and again.`
+                  ? "No ads."
+                  : `Normal places between ads: ${mix.adEvery === 1 ? "one normal place" : `${mix.adEvery} normal places`}, then one ad, again and again.`
               }
               onChange={(adEvery) => patchMix({ adEvery })}
+            />
+          </div>
+        </Group>
+        <Group title="Premier plans">
+          <Meta>What each paid plan multiplies a place&apos;s score by. A free place is 1.</Meta>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <NumberField
+              label="Premier Pro"
+              value={mix.proFactor}
+              min={MIX_BOUNDS.proFactor.min}
+              max={MIX_BOUNDS.proFactor.max}
+              decimals
+              disabled={off}
+              hint={`A Pro place counts ${mix.proFactor}× in the ad lane. Default 2.`}
+              onChange={(proFactor) => patchMix({ proFactor })}
+            />
+            <NumberField
+              label="Premier Max"
+              value={mix.maxFactor}
+              min={MIX_BOUNDS.maxFactor.min}
+              max={MIX_BOUNDS.maxFactor.max}
+              decimals
+              disabled={off}
+              hint={`A Max place counts ${mix.maxFactor}× in the ad lane. Default 5.`}
+              onChange={(maxFactor) => patchMix({ maxFactor })}
             />
           </div>
         </Group>
@@ -611,12 +642,12 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
             shuffled.
           </Meta>
           <Meta>
-            The Inorganic floor compares Proximity × the plan&apos;s 2 or 5 (not the exponent). At cadence 0
+            The Inorganic floor compares Proximity × the plan&apos;s Premier Pro or Premier Max number (not the exponent). At cadence 0
             the list is the Organic lane alone, on Home and on the Map. A place already shown is skipped and
             its slot takes the next place of its lane. An inorganic slot with no Premier place left is
             dropped and the organic list continues. A place appears once; guests see it marked
             &ldquo;Ad&rdquo; only in an inorganic slot. On Home a Premier place takes an inorganic slot only
-            when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s 2 or 5 reaches the
+            when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s Pro or Max number reaches the
             Inorganic floor; on the Map the screen is the cut, and inorganic pins count against Most pins
             shown.
           </Meta>

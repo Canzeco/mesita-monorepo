@@ -41,7 +41,6 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
 import { applyGeneralGateQuery, type FilterableQuery } from "./discovery-general-gate.ts";
 import { FAMILIES, familiesForPlace } from "./place-taxonomy.ts";
-import { PREMIER_FACTOR } from "./boost.ts";
 import {
   type AreaBounds,
   type AreaCandidate,
@@ -58,6 +57,7 @@ import {
   laneBatch,
   mixFor,
   NO_SCREEN_RADIUS_KM,
+  premierFactors,
   recipeFor,
   recipeRow,
   type RecipeRow,
@@ -301,6 +301,7 @@ export function selectAreaPool<T extends PoolRow>(
     ties: catalog ? "distance" : "id",
     growth: deps.growth,
     growthWeightCap: mixFor(deps.cfg).growthWeightCap,
+    premierFactors: premierFactors(deps.cfg),
   });
   const items = deps.mesitaRows.map((row) => ({
     candidate: mesitaCandidate(row),
@@ -669,7 +670,7 @@ const KNOWN_FAMILY_SLUGS: readonly string[] = FAMILIES
   .filter((s) => s !== "undefined");
 
 function gateArgs(
-  cfg: Pick<DiscoveryConfig, "general">,
+  cfg: Pick<DiscoveryConfig, "general" | "params">,
   location: AreaLocation,
   families: readonly string[],
 ) {
@@ -677,8 +678,8 @@ function gateArgs(
   return {
     p_lat: anchor?.lat ?? null,
     p_lng: anchor?.lng ?? null,
-    p_premier_1: PREMIER_FACTOR[1],
-    p_premier_2: PREMIER_FACTOR[2],
+    p_premier_1: premierFactors(cfg)[1],
+    p_premier_2: premierFactors(cfg)[2],
     p_families: [...families],
     p_known_families: [...KNOWN_FAMILY_SLUGS],
     p_require_active: cfg.general.requireActive === true,
@@ -1066,6 +1067,7 @@ export function rankMesitaPlaces<T extends Record<string, unknown>>(
       recipe: recipeFor("family", "organic", { params: opts.params }),
       growth: opts.growth,
       growthWeightCap: mixFor({ params: opts.params }).growthWeightCap,
+      premierFactors: premierFactors({ params: opts.params }),
     },
   );
   const out = ranked.map(({ item }) => ({

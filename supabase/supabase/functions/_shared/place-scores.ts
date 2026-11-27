@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { PREMIER_FACTOR } from "./boost.ts";
-import { loadDiscoveryConfig } from "./discovery-config.ts";
+import { loadDiscoveryConfig, premierFactors } from "./discovery-config.ts";
 import { FAMILIES } from "./place-taxonomy.ts";
 import { foursquareBoost, googlePopularity, premierBoost } from "./pipeline-signals.ts";
 import { establishedBase, fetchGrowthTerms, growthWeight, type GrowthTerm } from "./review-growth.ts";
@@ -44,6 +44,8 @@ export function explainPlaceScores(input: {
   foursquarePopularity: number | null;
   foursquareUrl: string | null;
   tier: number;
+  /** Each plan's factor from the saved mix (MESITA-5028); absent = 1 · 2 · 5. */
+  factors?: Record<0 | 1 | 2, number>;
   googleExp: number;
   foursquareFactor: number;
   foursquareExponent: number;
@@ -66,9 +68,10 @@ export function explainPlaceScores(input: {
     input.term,
   );
   const boost = foursquareBoost(input.foursquarePopularity, input.foursquareFactor, input.foursquareExponent);
-  const factor = input.tier === 2 ? PREMIER_FACTOR[2] : input.tier === 1 ? PREMIER_FACTOR[1] : 1;
+  const factors = input.factors ?? PREMIER_FACTOR;
+  const factor = input.tier === 2 ? factors[2] : input.tier === 1 ? factors[1] : 1;
   const effective = premierBoost(factor, input.premierExp);
-  const plan = input.tier === 2 ? "5X" : input.tier === 1 ? "2X" : "No plan";
+  const plan = input.tier === 2 ? "Max" : input.tier === 1 ? "Pro" : "No plan";
   const stars = typeof input.rating === "number" ? num(input.rating) : "—";
   const reviews = typeof input.reviewCount === "number" ? String(Math.round(input.reviewCount)) : "—";
   const raw = input.foursquarePopularity;
@@ -184,6 +187,7 @@ export async function loadPlaceScores(admin: SupabaseClient, placeId: string): P
     foursquareFactor: recipe.foursquareFactor,
     foursquareExponent: recipe.foursquareExponent,
     premierExp: recipe.premierExp,
+    factors: premierFactors(cfg),
     history: historySentence(observations, term),
   });
 }

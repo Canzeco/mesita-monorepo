@@ -63,6 +63,8 @@ export type AreaContext = {
   growth?: ReadonlyMap<string, GrowthTerm>;
   /** Shared cap from `params.mix.growthWeightCap`. */
   growthWeightCap?: number;
+  /** Each plan's factor from `params.mix` (MESITA-5028); absent = 1 · 2 · 5. */
+  premierFactors?: Record<0 | 1 | 2, number>;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -136,11 +138,14 @@ function factor(x: number): number {
 /** The Premier factor a candidate's score is multiplied by (MESITA-2925,
  *  was Boost MESITA-2789): a Premier place's tier, ×2 · ×5
  *  (PREMIER_FACTOR); 1 for every other place and for a Google stub. */
-export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">): number {
+export function premierFactor(
+  c: Pick<AreaCandidate, "source" | "premierTier">,
+  factors: Record<0 | 1 | 2, number> = PREMIER_FACTOR,
+): number {
   const tier = c.source === "google" ? 0 : c.premierTier ?? 0;
   // A tier outside 0..2 (impossible past the DB check) earns no paid reach
   // (MESITA-3041): it reads 1, never the top rung.
-  return tier === 2 ? PREMIER_FACTOR[2] : tier === 1 ? PREMIER_FACTOR[1] : 1;
+  return tier === 2 ? factors[2] : tier === 1 ? factors[1] : 1;
 }
 
 /** Popularity, or null (n/a) when the place has no rating or no review
@@ -209,7 +214,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const radius = loc.kind === "point" && loc.radiusKm !== null
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
-  const sel = premierFactor(c);
+  const sel = premierFactor(c, ctx.premierFactors);
   // The Map's rows carry no half distance: distance screens, never sorts
   // (MESITA-2909). A place that cannot be measured from a point (no
   // coordinates) has Proximity 0.

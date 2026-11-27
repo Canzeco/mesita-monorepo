@@ -19,6 +19,7 @@ import {
   normalizeDiscoveryConfig,
   normalizeMapConfig,
   normalizeMix,
+  premierFactors,
   normalizeRecipes,
   normalizeSignalParams,
   PREMIER_YEARLY_CENTS_MAX,
@@ -509,6 +510,8 @@ Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 wh
     temperature: { nearby: 5, family: 0, popular: 0.33 },
     adFloor: 1,
     adEvery: 4,
+    proFactor: 2,
+    maxFactor: 5,
     growthWeightCap: 0.5,
   });
   assertEquals(normalizeMix({ growthWeightCap: 0.8 }).growthWeightCap, 0.8);
@@ -516,6 +519,13 @@ Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 wh
   assertEquals(seen.sort(), ["params.mix.adFloor", "params.mix.temperature.family", "params.mix.temperature.nearby"]);
   assertEquals(normalizeMix({ adEvery: 0 }).adEvery, 0);
   assertEquals(normalizeMix({ adEvery: 99 }).adEvery, 10);
+});
+
+Deno.test("Premier Pro and Max are Mixing numbers, 1–10, defaults 2 and 5 (MESITA-5028)", () => {
+  const m = normalizeMix({ proFactor: 0, maxFactor: 20 });
+  assertEquals([m.proFactor, m.maxFactor], [1, 10]);
+  assertEquals(premierFactors({ params: {} }), { 0: 1, 1: 2, 2: 5 });
+  assertEquals(premierFactors({ params: { mix: normalizeMix({ proFactor: 1, maxFactor: 3 }) } }), { 0: 1, 1: 1, 2: 3 });
 });
 
 Deno.test("unknown keys under params and map survive a normalize and a round trip (H-2)", () => {

@@ -221,6 +221,10 @@ export const AD_FLOOR_MIN = 0;
 export const AD_FLOOR_MAX = 1;
 export const AD_EVERY_MIN = 0;
 export const AD_EVERY_MAX = 10;
+/** Pro and Max factors (MESITA-5028): the multiplier each paid plan earns;
+ *  1 = no lift over a free place. Defaults 2 and 5 (PREMIER_FACTOR). */
+export const PLAN_FACTOR_MIN = 1;
+export const PLAN_FACTOR_MAX = 10;
 /** Growth's share of Popularity once a place has 30 days of review history. */
 export const GROWTH_WEIGHT_CAP_MIN = 0;
 export const GROWTH_WEIGHT_CAP_MAX = 0.8;

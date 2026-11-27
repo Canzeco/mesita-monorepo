@@ -66,6 +66,9 @@ export type MixParams = {
   temperature: Record<RankMode, number>;
   adFloor: number;
   adEvery: number;
+  /** Premier Pro's and Premier Max's factor (MESITA-5028). Free is 1. */
+  proFactor: number;
+  maxFactor: number;
   /** Growth's share of Popularity after 30 days of review history. 0.50 at launch. */
   growthWeightCap: number;
 };
@@ -214,6 +217,9 @@ export const AD_FLOOR_MIN = 0;
 export const AD_FLOOR_MAX = 1;
 export const AD_EVERY_MIN = 0;
 export const AD_EVERY_MAX = 10;
+/** Mirrors PLAN_FACTOR_* in _shared/pipeline-signals.ts (MESITA-5028). */
+export const PLAN_FACTOR_MIN = 1;
+export const PLAN_FACTOR_MAX = 10;
 export const GROWTH_WEIGHT_CAP_MIN = 0;
 export const GROWTH_WEIGHT_CAP_MAX = 0.8;
 
@@ -232,6 +238,8 @@ export const MIX_BOUNDS = {
   temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
   adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
   adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
+  proFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
+  maxFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
   growthWeightCap: { min: GROWTH_WEIGHT_CAP_MIN, max: GROWTH_WEIGHT_CAP_MAX, decimals: 2 },
 } as const;
 
@@ -266,6 +274,8 @@ export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
   adFloor: 0.2,
   adEvery: 1,
+  proFactor: 2,
+  maxFactor: 5,
   growthWeightCap: 0.5,
 };
 
@@ -467,6 +477,8 @@ export function coerceMix(raw: unknown): MixParams {
     temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
     adFloor: bounds(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor),
     adEvery: bounds(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery),
+    proFactor: bounds(r.proFactor, DEFAULT_MIX.proFactor, MIX_BOUNDS.proFactor),
+    maxFactor: bounds(r.maxFactor, DEFAULT_MIX.maxFactor, MIX_BOUNDS.maxFactor),
     growthWeightCap: bounds(r.growthWeightCap, DEFAULT_MIX.growthWeightCap, MIX_BOUNDS.growthWeightCap),
   };
 }
