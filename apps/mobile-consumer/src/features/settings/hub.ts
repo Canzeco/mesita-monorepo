@@ -139,7 +139,7 @@ export function getPlan(signal?: AbortSignal): Promise<Plan> {
     name: row.plan === "premium" ? "Pro" : "Free",
     used: row.used,
     cap: row.cap,
-    price: money(row.price_cents, row.currency) ?? "",
+    price: row.price_cents % 100 === 0 ? `$${row.price_cents / 100}` : `$${(row.price_cents / 100).toFixed(2)}`,
   }));
 }
 
