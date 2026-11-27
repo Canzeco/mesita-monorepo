@@ -15,17 +15,22 @@ import { birthYears, checkDraft, draftOf, SEXES, type Draft } from "../model";
 import { useSaveDetails } from "../queries";
 
 /** First name, last name, sex, and year of birth. The same fields as the web. */
-export function ProfileScreen({ onSaved }: { onSaved: () => void }) {
+export function ProfileScreen() {
   const profile = useMyProfile().data;
   const [typed, setTyped] = useState<Partial<Draft>>({});
+  const [savedUntil, setSavedUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const save = useSaveDetails();
   const copy = useErrorCopy(save.error);
   const draft: Draft = { ...draftOf(profile), ...typed };
   const set = (key: keyof Draft) => (value: string) => setTyped((current) => ({ ...current, [key]: value }));
   const { details, errors } = checkDraft(draft);
+  const dirty = Object.keys(typed).length > 0;
   useEffect(() => {
-    if (save.isSuccess) onSaved();
-  }, [save.isSuccess, onSaved]);
+    if (savedUntil <= Date.now()) return;
+    const timer = setTimeout(() => setNow(Date.now()), savedUntil - Date.now());
+    return () => clearTimeout(timer);
+  }, [savedUntil]);
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <Field label="First name" value={draft.firstName} onChangeText={set("firstName")} autoCapitalize="words" textContentType="givenName" />
@@ -64,7 +69,20 @@ export function ProfileScreen({ onSaved }: { onSaved: () => void }) {
       {save.error ? (
         <FieldError>{isOutcomeUnknown(save.error) ? "We could not confirm this was saved. Try again." : copy.offline ? "No connection." : copy.message}</FieldError>
       ) : null}
-      <Button label="Save" onPress={() => details && save.mutate(details)} busy={save.isPending} disabled={!details} />
+      <Button
+        label={save.isPending ? "Saving…" : now < savedUntil && !dirty ? "Saved" : "Save"}
+        onPress={() =>
+          details &&
+          save.mutate(details, {
+            onSuccess: () => {
+              setTyped({});
+              setSavedUntil(Date.now() + 2000);
+            },
+          })
+        }
+        busy={save.isPending}
+        disabled={!details}
+      />
     </ScrollView>
   );
 }
