@@ -41,7 +41,13 @@ const config: ExpoConfig = {
     bundleIdentifier: variant.id,
     supportsTablet: false,
     // Each screen says its own status bar (statusBarStyle): the photo's is light.
-    infoPlist: { ITSAppUsesNonExemptEncryption: false, UIViewControllerBasedStatusBarAppearance: true },
+    // Stripe's card scanner links the camera API, so App Store Connect rejects
+    // the upload (ITMS-90683) without a camera purpose string (MESITA-5035).
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+      UIViewControllerBasedStatusBarAppearance: true,
+      NSCameraUsageDescription: "Mesita uses the camera to scan a payment card.",
+    },
   },
   android: {
     package: variant.id,
