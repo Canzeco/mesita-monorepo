@@ -107,7 +107,7 @@ export function PlaceFactsRun({
  * THREE BLACK LINES under the name (Pato, 2026-11-27, MESITA-5041):
  *
  *   $ · Taco Restaurant
- *   ★ 4.4 (3.9K) · 0.3 km
+ *   ★ 4.4 (3.9K) · ➤ 0.3 km
  *   Open · until 05:00
  *
  * The neighborhood is gone. Every word and icon is ink, and every black
@@ -141,7 +141,12 @@ export function PlaceFactsLines({ place }: { place: Place }) {
             </span>
           ) : null}
           {facts.rating && facts.distance ? <span>·</span> : null}
-          {facts.distance ? <span className="truncate">{facts.distance}</span> : null}
+          {facts.distance ? (
+            <span className="inline-flex min-w-0 items-center gap-0.5 truncate">
+              <Navigation className={cn(icon, "fill-foreground")} aria-hidden />
+              {facts.distance}
+            </span>
+          ) : null}
         </p>
       ) : null}
       {facts.open !== null ? (
