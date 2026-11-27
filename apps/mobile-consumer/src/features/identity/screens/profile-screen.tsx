@@ -58,7 +58,7 @@ export function ProfileScreen({ onSaved }: { onSaved: () => void }) {
             </Host>
           </View>
         </View>
-        <Text role="note" tone="muted">It confirms you're old enough for Mesita. On a public profile, guests see your age.</Text>
+        <Text role="note" tone="muted">{"It confirms you're old enough for Mesita. On a public profile, guests see your age."}</Text>
         {errors?.birthYear ? <FieldError>{errors.birthYear}</FieldError> : null}
       </View>
       {save.error ? (
@@ -77,6 +77,6 @@ const styles = StyleSheet.create({
   chip: { flex: 1, height: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.field, backgroundColor: colors.paper },
   chipOn: { backgroundColor: colors.ink },
   year: { minHeight: 44, borderRadius: radius.field, backgroundColor: colors.paper, paddingHorizontal: space.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  picker: { ...StyleSheet.absoluteFillObject },
-  host: { flex: 1, opacity: 0.02 },
+  picker: { ...StyleSheet.absoluteFill, overflow: "hidden", opacity: 0.02 },
+  host: { flex: 1 },
 });
