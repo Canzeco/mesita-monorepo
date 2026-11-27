@@ -49,6 +49,7 @@ export function listReservations(signal?: AbortSignal): Promise<Reservation[]> {
 }
 
 export type ReserveNotify = "app" | "call";
+export type ReserveWindow = 0 | 30 | 60;
 
 export type ReserveInput = {
   placeId: string;
@@ -60,6 +61,7 @@ export type ReserveInput = {
   requestId: string;
   onConfirm: ReserveNotify;
   onReject: ReserveNotify;
+  windowMinutes: ReserveWindow;
 };
 
 export async function createReservation(input: ReserveInput): Promise<string> {
@@ -75,6 +77,7 @@ export async function createReservation(input: ReserveInput): Promise<string> {
       request_id: input.requestId,
       consumer_notify: input.onReject,
       confirm_notify: input.onConfirm,
+      time_window_minutes: input.windowMinutes,
       ...(notes ? { notes } : {}),
     },
     z.object({ reservation: z.object({ id: z.string() }) }),

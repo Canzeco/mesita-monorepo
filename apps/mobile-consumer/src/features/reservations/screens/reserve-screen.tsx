@@ -7,10 +7,10 @@ import { Button } from "@/components/button";
 import { Text } from "@/components/text";
 import { useMyProfile, useSession } from "@/features/auth";
 import { getPlaceDetail } from "@/features/place";
-import { placeInstantIso } from "@/generated/shared/lib/place-time";
+import { pad, placeInstantIso, slotMinutes } from "@/generated/shared/lib/place-time";
 import { colors, maxFontSizeMultiplier, space, type } from "@/theme";
 
-import { createReservation, type ReserveNotify } from "../api";
+import { createReservation, type ReserveNotify, type ReserveWindow } from "../api";
 import { buildDateOptions, openSlots, parseHoursTable, resolveSlot } from "../slots";
 
 const MAX_PARTY = 10;
@@ -49,6 +49,7 @@ export function ReserveScreen({
   const [moreDates, setMoreDates] = useState(false);
   const [onConfirm, setOnConfirm] = useState<ReserveNotify>("app");
   const [onReject, setOnReject] = useState<ReserveNotify>("app");
+  const [windowMinutes, setWindowMinutes] = useState<ReserveWindow>(30);
   const place = useQuery({
     queryKey: ["place-detail", draft.placeId],
     queryFn: ({ signal }) => getPlaceDetail(draft.placeId, signal),
@@ -126,6 +127,7 @@ export function ReserveScreen({
         requestId: draft.requestId,
         onConfirm,
         onReject,
+        windowMinutes,
       });
       setDone(true);
       await queryClient.invalidateQueries({ queryKey: ["reservations"] });
@@ -190,6 +192,7 @@ export function ReserveScreen({
           </View>
         ))
       )}
+      {groups.length > 0 ? <WindowPicker time={draft.time} value={windowMinutes} onChange={setWindowMinutes} /> : null}
       <View style={styles.heading}>
         <Text role="label">People</Text>
         <View style={styles.stepper}>
@@ -223,6 +226,54 @@ export function ReserveScreen({
       {error ? <Text role="small" tone="danger">{error}</Text> : null}
       <Button label={submitLabel(busy, member, draft, party, options)} onPress={() => void send()} busy={busy} disabled={member && !draft.time} />
     </ScrollView>
+  );
+}
+
+function shiftHhmm(time: string, minutes: number): string {
+  const total = ((slotMinutes(time) + minutes) % 1440 + 1440) % 1440;
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+
+function WindowPicker({
+  time,
+  value,
+  onChange,
+}: {
+  time: string;
+  value: ReserveWindow;
+  onChange: (next: ReserveWindow) => void;
+}) {
+  const options: { value: ReserveWindow; label: string }[] = [
+    { value: 0, label: "Exact" },
+    { value: 30, label: "± 30 min" },
+    { value: 60, label: "± 1 hour" },
+  ];
+  const range = !time ? null : value === 0 ? time : `${shiftHhmm(time, -value)}–${shiftHhmm(time, value)}`;
+  return (
+    <View style={styles.window}>
+      <Text role="body">How flexible?</Text>
+      <View style={styles.notify}>
+        {options.map((option) => {
+          const on = value === option.value;
+          return (
+            <Pressable
+              key={option.value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              onPress={() => onChange(option.value)}
+              style={[styles.notifyChoice, on && styles.dayOn]}
+            >
+              <Text role="label" tone={on ? "onInk" : "ink"}>{option.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {range ? (
+        <Text role="body" tone="muted">
+          {value === 0 ? `We ask for ${range} only.` : `We try for ${time} first. If it's taken, we book ${range} without asking.`}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -316,6 +367,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: colors.paper,
   },
+  window: { gap: 6, marginTop: space.sm, paddingTop: space.sm, borderTopWidth: 1, borderColor: colors.border },
   notify: { flexDirection: "row", gap: 6, padding: 4, borderWidth: 1, borderColor: colors.border, borderRadius: 12 },
   notifyChoice: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: 8 },
   field: {
