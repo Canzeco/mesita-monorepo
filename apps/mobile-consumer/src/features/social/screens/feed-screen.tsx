@@ -135,7 +135,12 @@ export function FeedScreen({
       ) : null}
       {query.data && !blocked ? (
         <ScrollView contentContainerStyle={styles.list}>
-          {items.length === 0 ? <Text role="body">Nothing nearby</Text> : null}
+          {items.length === 0 ? (
+            <View style={styles.pad}>
+              <Text role="heading">No activity yet</Text>
+              <Text role="body" tone="muted">When members like or view a place, it shows up here.</Text>
+            </View>
+          ) : null}
           {items.map((item) => (
             <Row
               key={`${item.placeId}-${item.kind}-${item.at}-${item.name}`}
