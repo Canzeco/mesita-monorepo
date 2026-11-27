@@ -232,20 +232,20 @@ export function PlaceBannerRow({
   );
 }
 
-/** A Premier place on a card (MESITA-5046): a blue bar the size of Reserve,
- *  sitting above it. The corner seal is gone from the card. A label, so a
- *  tap falls through to the card. */
+/** A Premier place on a card (MESITA-5046): a bar the size of Reserve,
+ *  sitting above it. Gold, the VIP gold, with dark type (MESITA-5049).
+ *  A label, so a tap falls through to the card. */
 export function PremierBar({ className }: { className?: string }) {
   return (
     <p
       className={cn(
         CARD_BUTTON_BOX,
-        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#1D9BF0] font-sans text-xs font-semibold text-white",
+        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#E9C46A] font-sans text-xs font-semibold text-[#141414]",
         className,
       )}
       data-card-premier
     >
-      <PremierRosette className="h-4 w-4" fill="#fff" check="#1D9BF0" decorative />
+      <PremierRosette className="h-4 w-4" fill="#fff" check="#E9C46A" decorative />
       Premier
     </p>
   );
