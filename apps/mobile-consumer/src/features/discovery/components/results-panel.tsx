@@ -17,6 +17,7 @@ export function ResultsPanel({
   onLocate,
   onGenerate,
   onRetry,
+  onClear,
 }: {
   rows: Suggestion[];
   searching: boolean;
@@ -26,6 +27,7 @@ export function ResultsPanel({
   onLocate: (id: string, name: string) => void;
   onGenerate: (row: Suggestion) => void;
   onRetry: () => void;
+  onClear?: () => void;
 }) {
   return (
     <View style={styles.box}>
@@ -40,6 +42,11 @@ export function ResultsPanel({
           <View style={styles.note}>
             <Text role="label">No matches found</Text>
             <Text role="caption" tone="muted">Try the full name, or clear the search to browse the map.</Text>
+            {onClear ? (
+              <Pressable accessibilityRole="button" onPress={onClear} style={styles.clear}>
+                <Text role="label">Clear search</Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
         {rows.map((row) => {
@@ -64,6 +71,7 @@ export function ResultsPanel({
 
 const styles = StyleSheet.create({
   box: { marginHorizontal: space.md, marginBottom: space.sm, borderRadius: radius.card, backgroundColor: colors.paper, overflow: "hidden" },
-  note: { padding: space.md },
+  note: { padding: space.md, gap: space.xs },
+  clear: { alignSelf: "center", marginTop: space.xs, height: 36, paddingHorizontal: space.md, borderRadius: radius.panel, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   row: { paddingHorizontal: space.md, paddingVertical: space.sm, gap: 2 },
 });
