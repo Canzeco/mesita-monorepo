@@ -14,7 +14,7 @@ const call = callEdge as jest.Mock;
 const reread = rereadMyProfile as jest.Mock;
 
 const ANA: Details = { firstName: "Ana", lastName: "López", sex: "female", birthYear: 1990 };
-const saved: Profile = { id: "g1", phone: null, isVip: false, instagramHandle: null, ...ANA };
+const saved: Profile = { id: "g1", phone: null, isVip: false, instagramHandle: null, instagramProvedAt: null, instagramVipStatus: null, instagramFollowers: null, ...ANA };
 const noWait = async () => undefined;
 const failure = (retry: EdgeError["retry"]) =>
   new EdgeError({ fn: "f", kind: "network", retry, code: "x", status: null, message: "m", body: {}, requestId: null });

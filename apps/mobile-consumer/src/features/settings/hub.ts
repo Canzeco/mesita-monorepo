@@ -215,11 +215,56 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
   });
 }
 
-export function startInstagramDm(): Promise<{ code: string; account: string }> {
+export type InstagramChannel = { channel: "dm"; account: string; link: string } | { channel: "off" };
+
+export function instagramChannel(signal?: AbortSignal): Promise<InstagramChannel> {
   return callEdge(
     "consumer-web-claim-instagram",
-    { action: "start_dm", vipCheck: false },
-    z.object({ code: z.string(), account: z.string() }),
+    { action: "channel" },
+    z.object({ channel: z.enum(["dm", "off"]).catch("off"), account: z.string().optional(), link: z.string().optional() }),
+    { signal },
+  ).then((row) => (row.channel === "dm" && row.account && row.link ? { channel: "dm", account: row.account, link: row.link } : { channel: "off" }));
+}
+
+export type InstagramClaim = { code: string; handle: string; account: string; link: string };
+
+export function startInstagramDm(vipCheck: boolean): Promise<InstagramClaim> {
+  return callEdge(
+    "consumer-web-claim-instagram",
+    { action: "start_dm", vipCheck },
+    z.object({ code: z.string(), handle: z.string().catch(""), account: z.string(), link: z.string().catch("") }),
     { mutation: true },
   );
+}
+
+export type InstagramDmStatus = {
+  status: "pending" | "wrong_account" | "expired" | "none";
+  handle: string | null;
+  provedAt: string | null;
+};
+
+export function instagramDmStatus(signal?: AbortSignal): Promise<InstagramDmStatus> {
+  return callEdge(
+    "consumer-web-claim-instagram",
+    { action: "dm_status" },
+    z.object({
+      status: z.enum(["pending", "wrong_account", "expired", "none"]).catch("none"),
+      handle: z.string().nullish().catch(null),
+      provedAt: z.string().nullish().catch(null),
+    }),
+    { signal },
+  ).then((row) => ({ status: row.status, handle: row.handle ?? null, provedAt: row.provedAt ?? null }));
+}
+
+export function disconnectInstagram(): Promise<void> {
+  return callEdge("consumer-web-claim-instagram", { action: "disconnect" }, z.object({}).passthrough(), { mutation: true }).then(() => undefined);
+}
+
+export function instagramVipLine(status: string | null, followers: number | null): string | null {
+  const count = typeof followers === "number" ? `${followers.toLocaleString("en-US")} followers. ` : "";
+  if (status === "eligible") return "Your Instagram made you VIP.";
+  if (status === "not_enough") return `${count}VIP needs more than 5,000.`;
+  if (status === "not_public") return `${count}Your account is private; VIP needs a public one.`;
+  if (status === "unconfirmed") return `${count}Instagram didn't confirm your account is public.`;
+  return null;
 }

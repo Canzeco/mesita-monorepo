@@ -23,7 +23,7 @@ export function InstagramScreen() {
     setBusy(true);
     setSaid(null);
     void setInstagramHandle(trimmed)
-      .then(() => startInstagramDm())
+      .then(() => startInstagramDm(false))
       .then((answer) => {
         setCode(answer.code);
         setSaid(`Send ${answer.code} in a DM to @${answer.account}.`);

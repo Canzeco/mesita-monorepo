@@ -8,7 +8,7 @@ import { authMessage, gateOf, SIGNED_OUT, toE164, type Profile, type Session } f
 import { isAppPath, ME_PAGES, ROUTE_GROUPS } from "./routes";
 
 const ANA: Profile = {
-  id: "g1", firstName: "Ana", lastName: "López", sex: "female", birthYear: 1990, phone: null, isVip: false, instagramHandle: null,
+  id: "g1", firstName: "Ana", lastName: "López", sex: "female", birthYear: 1990, phone: null, isVip: false, instagramHandle: null, instagramProvedAt: null, instagramVipStatus: null, instagramFollowers: null,
 };
 const at = (patch: Partial<Session>): Session => ({ ...SIGNED_OUT, settled: true, ...patch });
 
@@ -44,7 +44,7 @@ describe("the gate", () => {
 
 test("a profile keeps only what it can read", () => {
   expect(consumerSchema.parse({ id: "g1", first_name: "Ana", birth_year: "1990", new_field: {} })).toMatchObject({
-    id: "g1", firstName: "Ana", birthYear: null, isVip: false, instagramHandle: null,
+    id: "g1", firstName: "Ana", birthYear: null, isVip: false, instagramHandle: null, instagramProvedAt: null, instagramVipStatus: null, instagramFollowers: null,
   });
   expect(consumerSchema.safeParse({ first_name: "Ana" }).success).toBe(false);
 });

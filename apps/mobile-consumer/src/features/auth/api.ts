@@ -17,6 +17,9 @@ export const consumerSchema = z
     phone: text,
     guest_class: text,
     instagram_handle: text,
+    instagram_proved_at: text,
+    instagram_vip_status: text,
+    instagram_followers_count: z.number().nullish().catch(null),
   })
   .transform(
     (c): Profile => ({
@@ -28,6 +31,15 @@ export const consumerSchema = z
       phone: c.phone ?? null,
       isVip: c.guest_class === "vip",
       instagramHandle: c.instagram_handle ?? null,
+      instagramProvedAt: c.instagram_proved_at ?? null,
+      instagramVipStatus:
+        c.instagram_vip_status === "eligible" ||
+        c.instagram_vip_status === "not_enough" ||
+        c.instagram_vip_status === "not_public" ||
+        c.instagram_vip_status === "unconfirmed"
+          ? c.instagram_vip_status
+          : null,
+      instagramFollowers: c.instagram_followers_count ?? null,
     }),
   );
 
