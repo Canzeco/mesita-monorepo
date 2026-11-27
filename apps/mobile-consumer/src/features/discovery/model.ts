@@ -57,7 +57,8 @@ export type Facts = {
   rating: string | null;
   reviews: string | null;
   open: { now: boolean; when: string | null } | null;
-  where: string | null;
+  /** Kilometres only. The neighborhood stays off the card (MESITA-5041). */
+  distance: string | null;
 };
 
 /** A card's lines. A fact that is missing drops; nothing is guessed. */
@@ -77,7 +78,7 @@ export function factsOf(p: CatalogPlace): Facts {
       state.open_now === null
         ? null
         : { now: state.open_now, when: when ? `${state.open_now ? "until" : "opens"} ${when}` : null },
-    where: [distance, p.zone?.trim() || null].filter(Boolean).join(" · ") || null,
+    distance,
   };
 }
 

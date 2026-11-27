@@ -45,14 +45,14 @@ export function PlaceFactsRun({
   const candidates: (Cell | false | null | undefined | "")[] = [
     price && {
       key: "price",
-      node: <span className="text-fact-price font-semibold">{price}</span>,
+      node: <span className="font-semibold">{price}</span>,
     },
     facts.rating && {
       key: "stars",
       node: (
         <span className="whitespace-nowrap">
           <Star
-            className={cn(icon, "fill-fact-star text-fact-star mr-0.5")}
+            className={cn(icon, "fill-foreground mr-0.5")}
             aria-hidden
           />
           {facts.rating}
@@ -65,11 +65,7 @@ export function PlaceFactsRun({
       node: (
         <span className="whitespace-nowrap">
           <Clock
-            className={cn(
-              icon,
-              "mr-0.5",
-              facts.open ? "text-fact-open" : "text-fact-closed",
-            )}
+            className={cn(icon, "mr-0.5")}
             strokeWidth={2.5}
             aria-hidden
           />
@@ -82,7 +78,7 @@ export function PlaceFactsRun({
       node: (
         <span className="whitespace-nowrap">
           <Navigation
-            className={cn(icon, "fill-fact-distance text-fact-distance mr-0.5")}
+            className={cn(icon, "fill-foreground mr-0.5")}
             aria-hidden
           />
           {facts.distance}
@@ -108,15 +104,14 @@ export function PlaceFactsRun({
 }
 
 /**
- * ONE FACT PER LINE (Pato, 2026-11-18, MESITA-4418: "make the text bigger,
- * and add more text: Name / Google Category / Price Range, Google Stars /
- * Opening Status / Zone, distance / BUTTONS"): Home's row card under the
- * name, 14px, each line truncated, a missing fact dropping its line:
+ * THREE BLACK LINES under the name (Pato, 2026-11-27, MESITA-5041):
  *
- *   Taco Restaurant                 the Google category (back from MESITA-3786)
- *   $$ · ★ 4.7 (8.6K)
- *   ◷ Open · until 3:00             or Closed · opens 13:00
- *   ➤ 0.4 km · Tecnológico          distance first (MESITA-4422)
+ *   $ · Taco Restaurant
+ *   ★ 4.4 (3.9K) · 0.3 km
+ *   Open · until 05:00
+ *
+ * The neighborhood is gone. Every word and icon is ink. Reserve and
+ * Discounts, outside this block, are the card's only color.
  */
 export function PlaceFactsLines({ place }: { place: Place }) {
   const facts = cardFacts(place);
@@ -124,54 +119,37 @@ export function PlaceFactsLines({ place }: { place: Place }) {
   const price = facts.price ?? priceSymbolsFromRange(place.price_range);
   const icon = "h-3.5 w-3.5 shrink-0";
   const line = "flex min-w-0 items-center gap-1 truncate";
-  const zone = place.zone?.trim() || null;
   const until = facts.open === true ? overview.closes_at : null;
   const opens = facts.open === false ? overview.opens_at : null;
   return (
     <div className="text-foreground flex min-w-0 flex-col gap-0.5 text-sm leading-5" data-row-facts>
-      {facts.kind ? (
-        <p className="text-muted-foreground truncate" data-row-kind>
-          {facts.kind}
+      {price || facts.kind ? (
+        <p className={line} data-row-kind>
+          {price ? <span className="shrink-0 font-semibold">{price}</span> : null}
+          {price && facts.kind ? <span>·</span> : null}
+          {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
         </p>
       ) : null}
-      {price || facts.rating ? (
-        <p className={line}>
-          {price ? <span className="text-fact-price font-semibold">{price}</span> : null}
-          {price && facts.rating ? <span className="text-muted-foreground">·</span> : null}
+      {facts.rating || facts.distance ? (
+        <p className={line} data-row-stars>
           {facts.rating ? (
-            <span className="flex min-w-0 items-center gap-0.5 truncate">
-              <Star className={cn(icon, "fill-fact-star text-fact-star")} aria-hidden />
+            <span className="flex shrink-0 items-center gap-0.5">
+              <Star className={cn(icon, "fill-foreground")} aria-hidden />
               {facts.rating}
-              {facts.reviews ? (
-                <span className="text-muted-foreground">({facts.reviews})</span>
-              ) : null}
+              {facts.reviews ? <span>({facts.reviews})</span> : null}
             </span>
           ) : null}
+          {facts.rating && facts.distance ? <span>·</span> : null}
+          {facts.distance ? <span className="truncate">{facts.distance}</span> : null}
         </p>
       ) : null}
       {facts.open !== null ? (
         <p className={line} data-row-open>
-          <Clock
-            // ONE GREEN (Pato, MESITA-4423: "money and time must be same
-            // green"): Open wears the $$'s green.
-            className={cn(icon, facts.open ? "text-fact-price" : "text-fact-closed")}
-            strokeWidth={2.5}
-            aria-hidden
-          />
-          <span className={cn("font-semibold", facts.open ? "text-fact-price" : "text-fact-closed")}>
-            {facts.open ? "Open" : "Closed"}
-          </span>
+          <Clock className={icon} strokeWidth={2.5} aria-hidden />
+          <span className="shrink-0 font-semibold">{facts.open ? "Open" : "Closed"}</span>
           {until || opens ? (
-            <span className="text-muted-foreground truncate">
-              · {until ? `until ${until}` : `opens ${opens}`}
-            </span>
+            <span className="truncate">· {until ? `until ${until}` : `opens ${opens}`}</span>
           ) : null}
-        </p>
-      ) : null}
-      {zone || facts.distance ? (
-        <p className={cn(line, "text-muted-foreground")} data-row-where>
-          <Navigation className={cn(icon, "fill-fact-distance text-fact-distance")} aria-hidden />
-          <span className="truncate">{[facts.distance, zone].filter(Boolean).join(" · ")}</span>
         </p>
       ) : null}
     </div>

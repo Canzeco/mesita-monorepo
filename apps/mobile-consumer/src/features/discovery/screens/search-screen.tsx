@@ -455,12 +455,12 @@ function RailCard({
           <View style={styles.cardLine}>
             {facts.rating ? (
               <>
-                <Icon name="star-filled" size={12} color={colors.star} />
+                <Icon name="star-filled" size={12} color={colors.ink} />
                 <Text role="caption">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text>
               </>
             ) : null}
             {facts.open ? (
-              <Text role="caption" tone={facts.open.now ? "price" : "closed"}>{facts.open.now ? "Open" : "Closed"}</Text>
+              <Text role="caption">{facts.open.now ? "Open" : "Closed"}</Text>
             ) : null}
           </View>
           <View style={styles.cardActions}>

@@ -118,10 +118,9 @@ function ScoreLabel({
  *
  *   ┌─────────┐ ┌────────────────┐
  *   │  photo  │ │ Name ✪          │   16px, up to two lines, Premier seal
- *   │         │ │ Taco Restaurant │   one fact per line, 14px (MESITA-4418)
- *   │         │ │ $$ · ★4.7 (8.6K)│
+ *   │         │ │ $ · Tacos       │   ink only (MESITA-5041)
+ *   │         │ │ ★ 4.7 · 0.4 km  │
  *   │         │ │ ◷ Open · until 3│
- *   │         │ │ ➤ Tec · 0.4 km  │
  *   │         │ │[Welcome +100%]  │   every offer as a chip (MESITA-4207)
  *   │         │ │[Small +10%] …   │
  *   └─────────┘ │[♡ Save][Share]  │
