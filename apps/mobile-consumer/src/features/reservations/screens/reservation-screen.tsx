@@ -10,6 +10,7 @@ import { useErrorCopy } from "@/lib/error-copy";
 import { colors, space } from "@/theme";
 
 import { cancelReservation, listReservations } from "../api";
+import { whenLine } from "../when";
 
 export function ReservationScreen({
   id,
@@ -36,11 +37,12 @@ export function ReservationScreen({
       </ScrollView>
     );
   }
-  const when = row.when ? new Date(row.when) : null;
+  const when = whenLine(row.when, row.timezone);
+  const at = row.when ? new Date(row.when) : null;
   const add = () => {
-    if (!when) return;
-    const stamp = when.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    const end = new Date(when.getTime() + 90 * 60 * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    if (!at || Number.isNaN(at.getTime())) return;
+    const stamp = at.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const end = new Date(at.getTime() + 90 * 60 * 1000).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
     const title = encodeURIComponent(row.placeName || "Reservation");
     void Linking.openURL(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${stamp}/${end}`);
   };
@@ -60,7 +62,7 @@ export function ReservationScreen({
       <Progress state={row.state} />
       {banner(row.state) ? <Text role="body" tone="muted">{banner(row.state)}</Text> : null}
       <Text role="body">{stateLabel(row.state, row.when, now)}</Text>
-      {when ? <Text role="body">{when.toLocaleString()}</Text> : null}
+      {when ? <Text role="body">{when}</Text> : null}
       {row.party ? <Text role="body">{`Table for ${row.party}`}</Text> : null}
       {row.reference ? <Text role="small" tone="muted">{row.reference}</Text> : null}
       {row.notes ? <Text role="body">{row.notes}</Text> : null}
@@ -72,7 +74,7 @@ export function ReservationScreen({
       {ask ? (
         <View style={styles.ask}>
           <Text role="heading">Cancel this reservation?</Text>
-          <Text role="body" tone="muted">{`${row.placeName || "Reservation"} · ${when ? when.toLocaleString() : ""}. We'll stop calling and let the place know. You can always book again.`}</Text>
+          <Text role="body" tone="muted">{`${row.placeName || "Reservation"} · ${when}. We'll stop calling and let the place know. You can always book again.`}</Text>
           <Button label={busy ? "Cancelling…" : "Yes, cancel it"} busy={busy} disabled={busy} onPress={() => void cancel()} />
           <Button label="Keep it" kind="secondary" disabled={busy} onPress={() => setAsk(false)} />
         </View>
