@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { Icon, type IconName } from "@/components/icon";
+import { Icon, PremierSeal, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
 import { colors, motion, pressedOpacity, radius, space } from "@/theme";
 
@@ -86,6 +86,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
         </Pressable>
         {place.isPremier ? (
           <View style={styles.premier}>
+            <PremierSeal size={16} color={colors.onInk} check={colors.ad} />
             <Text role="label" tone="onInk">Premier</Text>
           </View>
         ) : null}
@@ -144,8 +145,10 @@ const styles = StyleSheet.create({
   words: { flex: 1, gap: 2 },
   premier: {
     height: 32,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     borderRadius: radius.control,
     backgroundColor: colors.ad,
   },
