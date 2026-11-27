@@ -25,6 +25,23 @@ function money(cents: number, currency: string): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: currency.toUpperCase() });
 }
 
+const LIMIT: Record<VoucherKey, string> = {
+  voucher_welcome: "One per place.",
+  voucher_vip: "One per visit.",
+  voucher_200: "As many as you like.",
+  voucher_1000: "As many as you like.",
+  voucher_5000: "As many as you like.",
+};
+
+function offerFacts(key: VoucherKey, line: { price_cents: number; credit_cents: number; bonus_cents: number }, currency: string) {
+  const bonus = line.price_cents > 0 ? `${Math.round((line.bonus_cents / line.price_cents) * 100)}% bonus` : null;
+  return {
+    pay: `Pay ${money(line.price_cents, currency)}, get ${money(line.credit_cents, currency)}.`,
+    limit: LIMIT[key],
+    bonus,
+  };
+}
+
 function isVoucherKey(value: string): value is VoucherKey {
   return value in NAME;
 }
@@ -62,9 +79,9 @@ export function OffersScreen({ id, offerKey = "" }: { id: string; offerKey?: str
         <Text role="title">{NAME[asked]}</Text>
         {line ? (
           <View style={styles.facts}>
-            <Text role="body">{`${money(line.price_cents, currency)} to pay`}</Text>
-            <Text role="body">{`${money(line.credit_cents, currency)} credit`}</Text>
-            {line.bonus_cents > 0 ? <Text role="caption" tone="muted">{`${money(line.bonus_cents, currency)} extra`}</Text> : null}
+            <Text role="body">{offerFacts(asked, line, currency).pay}</Text>
+            <Text role="small" tone="muted">{LIMIT[asked]}</Text>
+            {line.bonus_cents > 0 ? <Text role="caption" tone="muted">{offerFacts(asked, line, currency).bonus}</Text> : null}
           </View>
         ) : (
           <Text role="body">{"This offer isn't priced yet."}</Text>
@@ -90,7 +107,8 @@ export function OffersScreen({ id, offerKey = "" }: { id: string; offerKey?: str
         <SettingsGroup>
           {sell.map((key) => {
             const line = moneyBox?.catalog[key];
-            const sub = line ? `${money(line.price_cents, moneyBox?.currency ?? "mxn")} · ${money(line.credit_cents, moneyBox?.currency ?? "mxn")} credit` : "On the web";
+            const facts = line && moneyBox ? offerFacts(key, line, moneyBox.currency ?? "mxn") : null;
+            const sub = facts ? `${facts.pay} ${facts.limit}` : "On the web";
             return (
               <SettingsRow
                 key={key}
