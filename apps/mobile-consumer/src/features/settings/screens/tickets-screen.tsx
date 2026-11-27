@@ -24,7 +24,7 @@ function ticketLine(row: { place: string; status?: string; amount?: string | nul
 }
 
 /** Visits, Vouchers, and Gifts, the web Tickets tabs. */
-export function TicketsScreen() {
+export function TicketsScreen({ onVisit }: { onVisit: (id: string) => void }) {
   const [tab, setTab] = useState<Tab>("visits");
   const visits = useQuery({ queryKey: ["tickets"], queryFn: ({ signal }) => listTickets(signal) });
   const vouchers = useQuery({ queryKey: ["voucher-tickets"], queryFn: ({ signal }) => listVoucherTickets(signal) });
@@ -49,9 +49,15 @@ export function TicketsScreen() {
       ) : null}
       {query.isSuccess && query.data.length > 0 ? (
         <ScrollView contentContainerStyle={styles.page}>
-          {query.data.map((row) => (
-            <Text key={row.id} role="body">{ticketLine(row)}</Text>
-          ))}
+          {query.data.map((row) =>
+            tab === "visits" ? (
+              <Pressable key={row.id} accessibilityRole="button" onPress={() => onVisit(row.id)}>
+                <Text role="body">{ticketLine(row)}</Text>
+              </Pressable>
+            ) : (
+              <Text key={row.id} role="body">{ticketLine(row)}</Text>
+            ),
+          )}
         </ScrollView>
       ) : null}
     </View>
