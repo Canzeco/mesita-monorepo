@@ -14,6 +14,10 @@ import { formatCompactCount, formatDistanceKm, formatRating } from "@/generated/
 import { toAmPm } from "@/generated/shared/lib/place-time";
 
 import { getPlaceDetail } from "../api";
+import { MenuTab } from "./menu-panel";
+import { Overview } from "./overview";
+import { Reviews } from "./reviews";
+import { Social } from "./social";
 
 type Nav = {
   onMenu: () => void;
@@ -47,7 +51,6 @@ export function PlaceView({ place, center = null, onMenu, onContact, onReport, o
   const width = useWindowDimensions().width;
   const [tab, setTab] = useState<Tab>("Overview");
   const [photo, setPhoto] = useState(0);
-  const photos = place.photos.length ? place.photos : place.profilePhoto ? [place.profilePhoto] : [];
   const open = place.open_now;
   const when = open ? place.closes_at : place.opens_at;
   const price = priceChip(place);
@@ -115,39 +118,10 @@ export function PlaceView({ place, center = null, onMenu, onContact, onReport, o
           </Pressable>
         ))}
       </View>
-      {tab === "Overview" ? (
-        photos.length ? (
-          <View>
-            <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={(e) => {
-              const width = e.nativeEvent.layoutMeasurement.width || 1;
-              setPhoto(Math.round(e.nativeEvent.contentOffset.x / width));
-            }}>
-              {photos.map((uri) => <Image key={uri} source={uri} style={[styles.hero, { width }]} contentFit="cover" />)}
-            </ScrollView>
-            <View style={styles.count}>
-              <Text role="caption" tone="onInk">{`${photo + 1} / ${photos.length}`}</Text>
-            </View>
-          </View>
-        ) : (
-          <Text role="body" tone="muted">No photos yet</Text>
-        )
-      ) : null}
-      {tab === "Reviews" ? (
-        place.google_reviews.length ? place.google_reviews.map((review, i) => (
-          <View key={`${review.date}-${i}`} style={styles.block}>
-            <Text role="label">{`${review.rating} stars`}</Text>
-            <Text role="body">{review.quote}</Text>
-          </View>
-        )) : <Text role="body" tone="muted">No reviews yet</Text>
-      ) : null}
-      {tab === "Social" ? <Text role="body">{place.long_description || "Nothing here yet"}</Text> : null}
-      {tab === "Menu" ? (
-        place.products.menu.length ? place.products.menu.map((item) => (
-          <Pressable key={item.url} onPress={() => void Linking.openURL(item.url)} style={styles.block}>
-            <Text role="label">{item.name || "Menu"}</Text>
-          </Pressable>
-        )) : <Pressable onPress={onMenu}><Text role="label">Open the menu</Text></Pressable>
-      ) : null}
+      {tab === "Overview" ? <Overview place={place} width={width} photo={photo} onPhoto={setPhoto} /> : null}
+      {tab === "Reviews" ? <Reviews place={place} /> : null}
+      {tab === "Social" ? <Social place={place} /> : null}
+      {tab === "Menu" ? <MenuTab place={place} onMenu={onMenu} /> : null}
     </ScrollView>
   );
 }
