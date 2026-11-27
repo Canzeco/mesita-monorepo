@@ -53,6 +53,14 @@ export type Credit = {
   canPay: boolean;
   canGift: boolean;
   bonusStep: { pay: string; waiting: boolean; bonus: string; ready: string | null } | null;
+  refundCard: {
+    bought: { when: string; value: string } | null;
+    refundedOn: string;
+    amount: string;
+    taken: string | null;
+    original: { when: string; value: string } | null;
+    purchase: string;
+  } | null;
 };
 
 function money(cents: number, currency: string): string {
@@ -121,6 +129,47 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
       .sort((a, b) => Math.abs(b.amount_cents) - Math.abs(a.amount_cents))[0];
     if (!balance || !entry) return null;
     const currency = balance.currency;
+    if (entry.kind === "reversal" && entry.purchase_id && !entry.payment_id) {
+      const pid = entry.purchase_id;
+      const reversals = balance.entries
+        .filter((row) => row.kind === "reversal" && !row.payment_id && row.purchase_id === pid)
+        .sort((a, b) => Math.abs(b.amount_cents) - Math.abs(a.amount_cents));
+      const refund = reversals[0] ?? entry;
+      const refunded = reversals.find((row) => row.refunded_cents != null)?.refunded_cents ?? Math.abs(reversals.reduce((n, row) => n + row.amount_cents, 0));
+      const taken = reversals.reduce((n, row) => n + Math.abs(row.amount_cents), 0);
+      const original = balance.entries.find((row) => BOUGHT.has(row.kind) && row.purchase_id === pid);
+      const place = balance.place?.name ?? "A Mesita place";
+      return {
+        place,
+        placeId,
+        headline: money(refunded, currency),
+        state: "Refunded",
+        when: when(refund.at),
+        note: "Refunded to the card you paid with.",
+        testMode: wallet.test_mode,
+        bought: null,
+        bonus: null,
+        totalCredit: null,
+        type: null,
+        refund: null,
+        refundWhen: null,
+        available: money(balance.available_cents, currency),
+        pending: null,
+        spendable: money(balance.spendable_cents, currency),
+        purchase: pid.slice(0, 8).toUpperCase(),
+        canPay: false,
+        canGift: false,
+        bonusStep: null,
+        refundCard: {
+          bought: original ? { when: when(original.at), value: money(Math.abs(original.amount_cents), currency) } : null,
+          refundedOn: when(refund.at),
+          amount: money(refunded, currency),
+          taken: taken !== refunded ? money(taken, currency) : null,
+          original: original ? { when: when(original.at), value: money(Math.abs(original.amount_cents), currency) } : null,
+          purchase: pid.slice(0, 8).toUpperCase(),
+        },
+      };
+    }
     const amount = Math.abs(entry.amount_cents);
     const bought = BOUGHT.has(entry.kind);
     const bonus = bought
@@ -175,6 +224,7 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
             ready: bonus.pending && bonus.available_at ? bonus.available_at : null,
           }
         : null,
+      refundCard: null,
     };
   });
 }
