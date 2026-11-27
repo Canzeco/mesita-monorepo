@@ -92,12 +92,16 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn
             onLocate={pickSuggestion}
             onGenerate={(row) => setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText })}
             onRetry={() => void suggestions.refetch()}
+            onClear={() => setTerm("")}
           />
         ) : null}
         {querying && !member ? (
           <View style={styles.signBox}>
             <Text role="label">Sign in to search by name</Text>
             <Text role="caption" tone="muted">Or clear the search to browse the map.</Text>
+            <Pressable accessibilityRole="button" onPress={() => setTerm("")} style={styles.signIn}>
+              <Text role="label">Clear search</Text>
+            </Pressable>
             <Pressable accessibilityRole="button" onPress={onSignIn} style={styles.signIn}>
               <Text role="label">Sign in</Text>
             </Pressable>
