@@ -112,6 +112,12 @@ export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; t
   }));
 }
 
+export function removeCard(id: string): Promise<void> {
+  return callEdge("consumer-web-remove-card", { payment_method_id: id }, z.object({}).passthrough(), { mutation: true }).then(
+    () => undefined,
+  );
+}
+
 export type Plan = { name: string; used: number; cap: number; price: string };
 
 export function getPlan(signal?: AbortSignal): Promise<Plan> {
