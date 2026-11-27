@@ -8,6 +8,7 @@ export default function Route() {
     <TicketsScreen
       onVisit={(id) => router.push({ pathname: "/me/visit", params: { id } })}
       onGift={(id) => router.push({ pathname: "/me/gift", params: { id } })}
+      onVoucher={(place, line) => router.push({ pathname: "/me/credit", params: { place, line } })}
     />
   );
 }
