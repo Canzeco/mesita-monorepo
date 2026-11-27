@@ -16,9 +16,8 @@ import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 // MESITA-2651: "the preview must show the same preview information").
 //
 // ONE TYPE SCALE (MESITA-2645): Inter, 14px on a 20px line, every row full
-// ink (MESITA-2665: "that is too light, I cannot read"). THE ICON CARRIES
-// THE COLOUR, the words stay ink (MESITA-2668, Pato: "for hour use a clock,
-// green if open, red if closed, for distance use blue … for stars yellow").
+// ink (MESITA-2665). MESITA-5041: the icons are ink too. Reserve and
+// Discounts are the only color on a card.
 
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
@@ -72,16 +71,14 @@ function Dot() {
   );
 }
 
-/** Home card row two: $$ · category · ★ rating (reviews), the price first
- *  (Pato, MESITA-2674: "price before category, it's easier and faster to see"),
- *  green; the star yellow. */
+/** $$ · category · ★ rating (reviews), the price first (MESITA-2674). Ink
+ *  only (MESITA-5041). */
 export function KindRow({ facts }: { facts: CardFacts }) {
   if (!facts.kind && !facts.price && !facts.rating) return null;
   return (
     <p className={ROW}>
       {facts.price ? (
-        // The price in green (Pato, MESITA-2673: "price tag green").
-        <span className="text-fact-price shrink-0 font-semibold">
+        <span className="shrink-0 font-semibold">
           {facts.price}
         </span>
       ) : null}
@@ -91,7 +88,7 @@ export function KindRow({ facts }: { facts: CardFacts }) {
       {facts.rating ? (
         <span className="inline-flex shrink-0 items-center gap-1">
           <Star
-            className={cn(MARK, "fill-fact-star text-fact-star")}
+            className={cn(MARK, "fill-foreground")}
             aria-hidden
           />
           {facts.rating}
@@ -102,9 +99,7 @@ export function KindRow({ facts }: { facts: CardFacts }) {
   );
 }
 
-/** Home card row three: the clock, green Open or red Closed, never until when
- *  (Pato, MESITA-3229: "just open or closed, to save space"); then the blue
- *  arrow and the distance. */
+/** The clock and Open or Closed, then the distance. Ink only (MESITA-5041). */
 export function HoursRow({ facts }: { facts: CardFacts }) {
   if (facts.open === null && !facts.distance) return null;
   return (
@@ -112,10 +107,7 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
       {facts.open !== null ? (
         <span className="inline-flex shrink-0 items-center gap-1">
           <Clock
-            className={cn(
-              MARK,
-              facts.open ? "text-fact-open" : "text-fact-closed",
-            )}
+            className={MARK}
             strokeWidth={2.5}
             aria-hidden
           />
@@ -126,7 +118,7 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
       {facts.distance ? (
         <span className="inline-flex shrink-0 items-center gap-1">
           <Navigation
-            className={cn(MARK, "fill-fact-distance text-fact-distance")}
+            className={cn(MARK, "fill-foreground")}
             aria-hidden
           />
           {facts.distance}
@@ -136,13 +128,13 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
   );
 }
 
-/** Search card row two (MESITA-2674): $$ (green) · category. */
+/** Search card row two (MESITA-2674): $$ · category, in ink. */
 export function PriceKindRow({ facts }: { facts: CardFacts }) {
   if (!facts.kind && !facts.price) return null;
   return (
     <p className={ROW}>
       {facts.price ? (
-        <span className="text-fact-price shrink-0 font-semibold">
+        <span className="shrink-0 font-semibold">
           {facts.price}
         </span>
       ) : null}
@@ -152,10 +144,9 @@ export function PriceKindRow({ facts }: { facts: CardFacts }) {
   );
 }
 
-/** Search card row three (Pato, MESITA-2859: "stars, open/close thats it
- *  don't mention the hour"): ★ rating (reviews), the star yellow; then the
- *  clock, green Open or red Closed, no hours; then, when `withDistance` (Me ›
- *  Favorites), the blue arrow and the distance. */
+/** Search card row three (MESITA-2859): ★ rating (reviews), then Open or
+ *  Closed, no hours. With `withDistance` (Me › Favorites), the kilometres.
+ *  Ink only (MESITA-5041). */
 export function StarsOpenRow({
   facts,
   withDistance = false,
@@ -170,7 +161,7 @@ export function StarsOpenRow({
       {facts.rating ? (
         <span className="inline-flex shrink-0 items-center gap-1">
           <Star
-            className={cn(MARK, "fill-fact-star text-fact-star")}
+            className={cn(MARK, "fill-foreground")}
             aria-hidden
           />
           {facts.rating}
@@ -181,10 +172,7 @@ export function StarsOpenRow({
       {facts.open !== null ? (
         <span className="inline-flex shrink-0 items-center gap-1">
           <Clock
-            className={cn(
-              MARK,
-              facts.open ? "text-fact-open" : "text-fact-closed",
-            )}
+            className={MARK}
             strokeWidth={2.5}
             aria-hidden
           />
@@ -195,7 +183,7 @@ export function StarsOpenRow({
       {distance ? (
         <span className="inline-flex min-w-0 items-center gap-1">
           <Navigation
-            className={cn(MARK, "fill-fact-distance text-fact-distance")}
+            className={cn(MARK, "fill-foreground")}
             aria-hidden
           />
           <span className="truncate">{distance}</span>
@@ -228,7 +216,8 @@ const CARD_BUTTON = `${CARD_BUTTON_BOX} bg-border/60 text-foreground hover:bg-bo
 /**
  * SAVE AND SHARE, side by side (MESITA-2650). The word is Save, the mark the
  * heart (Pato, MESITA-2668: "instead of like use Save as word but keep the
- * heart"); saved, it reads Saved over a red heart. Siblings of the card's
+ * heart"); saved, it reads Saved over a black heart (MESITA-5041: Reserve
+ * and Discounts are the card's only color). Siblings of the card's
  * own link or button, so a tap never navigates. The parent places the row
  * 12px from the card's sides and bottom, the same as its text column
  * (MESITA-2668: "its not the same vertical margin as horizontal margin").
@@ -290,7 +279,7 @@ export function CardActions({
         <Heart
           className={cn(
             "h-4 w-4 shrink-0",
-            saved && "fill-destructive text-destructive",
+            saved && "fill-foreground",
           )}
           strokeWidth={2.25}
           aria-hidden

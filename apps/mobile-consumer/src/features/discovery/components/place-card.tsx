@@ -43,56 +43,52 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
             </Text>
             {place.isPremier ? <PremierSeal color={place.isAd ? colors.ad : colors.premier} /> : null}
           </View>
-          {facts.kind ? (
-            <Text role="small" tone="muted" numberOfLines={1}>
-              {facts.kind}
-            </Text>
-          ) : null}
-          {facts.price || facts.rating ? (
+          {facts.price || facts.kind ? (
             <View style={styles.line}>
               {facts.price ? (
-                <Text role="label" tone="price" testID="place-price">
+                <Text role="label" testID="place-price">
                   {facts.price}
                 </Text>
               ) : null}
-              {facts.price && facts.rating ? (
-                <Text role="small" tone="muted">
-                  ·
+              {facts.price && facts.kind ? <Text role="small">·</Text> : null}
+              {facts.kind ? (
+                <Text role="small" numberOfLines={1} style={styles.name}>
+                  {facts.kind}
                 </Text>
               ) : null}
+            </View>
+          ) : null}
+          {facts.rating || facts.distance ? (
+            <View style={styles.line}>
               {facts.rating ? (
                 <>
-                  <Icon name="star-filled" size={14} color={colors.star} />
+                  <Icon name="star-filled" size={14} color={colors.ink} />
                   <Text role="small">{facts.rating}</Text>
-                  {facts.reviews ? <Text role="small" tone="muted">{`(${facts.reviews})`}</Text> : null}
+                  {facts.reviews ? <Text role="small">{`(${facts.reviews})`}</Text> : null}
                 </>
+              ) : null}
+              {facts.rating && facts.distance ? <Text role="small">·</Text> : null}
+              {facts.distance ? (
+                <Text role="small" numberOfLines={1} style={styles.name}>
+                  {facts.distance}
+                </Text>
               ) : null}
             </View>
           ) : null}
           {facts.open ? (
             <View style={styles.line}>
-              <Icon name="clock" size={14} color={facts.open.now ? colors.price : colors.closed} />
-              <Text role="label" tone={facts.open.now ? "price" : "closed"}>
-                {facts.open.now ? "Open" : "Closed"}
-              </Text>
+              <Icon name="clock" size={14} color={colors.ink} />
+              <Text role="label">{facts.open.now ? "Open" : "Closed"}</Text>
               {facts.open.when ? (
-                <Text role="small" tone="muted" numberOfLines={1} style={styles.name} testID="place-hours">{`· ${facts.open.when}`}</Text>
+                <Text role="small" numberOfLines={1} style={styles.name} testID="place-hours">{`· ${facts.open.when}`}</Text>
               ) : null}
-            </View>
-          ) : null}
-          {facts.where ? (
-            <View style={styles.line}>
-              <Icon name="navigation-filled" size={14} color={colors.distance} />
-              <Text role="small" tone="muted" numberOfLines={1} style={styles.name}>
-                {facts.where}
-              </Text>
             </View>
           ) : null}
         </Pressable>
         <View style={styles.actions}>
           <CardButton
             icon={saved ? "heart-filled" : "heart"}
-            color={saved ? colors.danger : colors.ink}
+            color={colors.ink}
             label={saved ? "Saved" : "Save"}
             spoken={saved ? `Remove ${place.name} from favorites` : `Add ${place.name} to favorites`}
             onPress={onSave}

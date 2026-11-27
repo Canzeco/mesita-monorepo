@@ -26,7 +26,7 @@ test("a place keeps only what it can read", () => {
 
 test("a card prints what it knows and guesses nothing", () => {
   expect(factsOf(PLACE)).toEqual({
-    kind: "Bar", price: "$$", rating: "4.4", reviews: "2.1K", open: null, where: "0.3 km · Centro",
+    kind: "Bar", price: "$$", rating: "4.4", reviews: "2.1K", open: null, distance: "0.3 km",
   });
   const bare = { ...PLACE, category: "undefined", priceLevel: null, rating: null, reviews: 0, zone: " ", distanceKm: 0 };
   expect(Object.values(factsOf(bare)).every((v) => v === null)).toBe(true);
