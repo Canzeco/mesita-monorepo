@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
@@ -27,6 +28,7 @@ export function PayScreen({
   onCode: (id: string) => void;
   onTickets: () => void;
 }) {
+  const router = useRouter();
   const location = useActiveLocation();
   const at = location.location ? { lat: location.location.lat, lng: location.location.lng } : null;
   const places = useQuery({
@@ -40,6 +42,7 @@ export function PayScreen({
     enabled: signedIn,
   });
   const [open, setOpen] = useState<Kind | null>(null);
+  const [addCard, setAddCard] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const openBill = useQuery({
     queryKey: ["open-bill"],
@@ -96,13 +99,27 @@ export function PayScreen({
                 <Text role="numeric">{money(row.spendableCents, row.currency)}</Text>
               </Pressable>
             ))
-          ) : (
+          ) : credits.isError ? null : (
             <Pressable accessibilityRole="button" onPress={() => setOpen("prepay")}>
               <Text role="label" tone="onInk" style={styles.empty}>Find a place</Text>
             </Pressable>
           )}
+          {credits.isError ? (
+            <View style={styles.failed}>
+              <Text role="label">{"Couldn't load your credits"}</Text>
+              <Text role="small" tone="muted">Check your connection and try again.</Text>
+              <Pressable accessibilityRole="button" onPress={() => void credits.refetch()}>
+                <Text role="label">Try again</Text>
+              </Pressable>
+            </View>
+          ) : credits.isPending ? null : (
+            <Pressable accessibilityRole="button" onPress={() => setAddCard(true)} style={styles.creditRow}>
+              <Text role="strong">Add Loyalty Card</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </View>
+      <AddCard open={addCard} onClose={() => setAddCard(false)} onFind={() => { setAddCard(false); router.push("/search"); }} />
       <PlacesSheet
         kind={open}
         places={places.data ?? []}
@@ -117,6 +134,29 @@ export function PayScreen({
         }}
       />
     </View>
+  );
+}
+
+function AddCard({ open, onClose, onFind }: { open: boolean; onClose: () => void; onFind: () => void }) {
+  return (
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.scrim}>
+        <View style={styles.dialog}>
+          <Text role="strong">Loyalty Cards add themselves</Text>
+          <Text role="small" tone="muted">{"A place's card appears here the first time you get credits there."}</Text>
+          <Text role="label">Buy credits at a place</Text>
+          <Text role="small" tone="muted">Buy credits on its page and get a bonus.</Text>
+          <Text role="label">Get a gift</Text>
+          <Text role="small" tone="muted">A friend sends you credits for a place.</Text>
+          <Pressable accessibilityRole="button" onPress={onFind} style={styles.find}>
+            <Text role="label" tone="onInk">Find a place</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={onClose} style={styles.close}>
+            <Text role="label" tone="muted">Close</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -147,6 +187,11 @@ const styles = StyleSheet.create({
   creditContent: { paddingVertical: space.xs },
   creditRow: { minHeight: 56, paddingHorizontal: space.md, flexDirection: "row", alignItems: "center", gap: space.md },
   creditName: { flex: 1 },
+  failed: { padding: space.md, gap: space.xs },
+  scrim: { flex: 1, backgroundColor: colors.scrim, justifyContent: "center", padding: space.lg },
+  dialog: { backgroundColor: colors.paper, borderRadius: radius.card, padding: space.lg, gap: space.sm },
+  find: { minHeight: 44, borderRadius: radius.field, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  close: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   empty: { padding: space.lg },
   signedOut: { flex: 1, backgroundColor: colors.paper, padding: space.xl, gap: space.md, justifyContent: "center" },
   signIn: { backgroundColor: colors.ink, borderRadius: radius.control, minHeight: 48, alignItems: "center", justifyContent: "center" },
