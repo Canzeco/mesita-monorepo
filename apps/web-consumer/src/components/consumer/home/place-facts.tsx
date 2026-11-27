@@ -103,12 +103,23 @@ export function PlaceFactsRun({
   );
 }
 
+/** The third line after Open or Closed. A close that is tomorrow drops the
+ *  clock ("Open tomorrow") so the row does not truncate. Open keeps the
+ *  hour. Closed later today keeps the hour. */
+function hoursTail(open: boolean, when: string | null | undefined): string | null {
+  const label = when?.trim();
+  if (!label) return null;
+  if (!open && /^tomorrow\b/i.test(label)) return "Open tomorrow";
+  return open ? `until ${label}` : `opens ${label}`;
+}
+
 /**
  * THREE BLACK LINES under the name (Pato, 2026-11-27, MESITA-5041):
  *
  *   $ · Taco Restaurant
  *   ★ 4.4 (3.9K) · ➤ 0.3 km
  *   Open · until 05:00
+ *   Closed · Open tomorrow
  *
  * The neighborhood is gone. Every word and icon is ink, and every black
  * word but the name is this one 14px regular face (MESITA-5042), Save and
@@ -120,8 +131,10 @@ export function PlaceFactsLines({ place }: { place: Place }) {
   const price = facts.price ?? priceSymbolsFromRange(place.price_range);
   const icon = "h-3.5 w-3.5 shrink-0";
   const line = "flex min-w-0 items-center gap-1 truncate";
-  const until = facts.open === true ? overview.closes_at : null;
-  const opens = facts.open === false ? overview.opens_at : null;
+  const tail =
+    facts.open === null
+      ? null
+      : hoursTail(facts.open, facts.open ? overview.closes_at : overview.opens_at);
   return (
     <div className="text-foreground flex min-w-0 flex-col gap-0.5 text-sm leading-5" data-row-facts>
       {price || facts.kind ? (
@@ -153,9 +166,7 @@ export function PlaceFactsLines({ place }: { place: Place }) {
         <p className={line} data-row-open>
           <Clock className={icon} strokeWidth={2} aria-hidden />
           <span className="shrink-0">{facts.open ? "Open" : "Closed"}</span>
-          {until || opens ? (
-            <span className="truncate">· {until ? `until ${until}` : `opens ${opens}`}</span>
-          ) : null}
+          {tail ? <span className="truncate">· {tail}</span> : null}
         </p>
       ) : null}
     </div>

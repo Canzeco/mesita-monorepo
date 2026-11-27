@@ -61,6 +61,15 @@ export type Facts = {
   distance: string | null;
 };
 
+/** The words after Open or Closed. Tomorrow drops the clock so the row
+ *  fits; a close later today, or an open place, keeps the hour. */
+function hoursTail(openNow: boolean, when: string | null | undefined): string | null {
+  const label = when?.trim();
+  if (!label) return null;
+  if (!openNow && /^tomorrow\b/i.test(label)) return "Open tomorrow";
+  return openNow ? `until ${label}` : `opens ${label}`;
+}
+
 /** A card's lines. A fact that is missing drops; nothing is guessed. */
 export function factsOf(p: CatalogPlace): Facts {
   const kind = p.category?.trim() && p.category.trim().toLowerCase() !== "undefined" ? p.category : null;
@@ -77,7 +86,7 @@ export function factsOf(p: CatalogPlace): Facts {
     open:
       state.open_now === null
         ? null
-        : { now: state.open_now, when: when ? `${state.open_now ? "until" : "opens"} ${when}` : null },
+        : { now: state.open_now, when: hoursTail(state.open_now, when) },
     distance,
   };
 }
