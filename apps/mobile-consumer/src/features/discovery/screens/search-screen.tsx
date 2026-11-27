@@ -13,6 +13,7 @@ import { useErrorCopy } from "@/lib/error-copy";
 import { colors, maxFontSizeMultiplier, pressedOpacity, radius, space, type } from "@/theme";
 
 import { FamilyStrip } from "../components/family-strip";
+import { GenerateSheet, type GenerateTarget } from "../components/generate-sheet";
 import { ResultsPanel } from "../components/results-panel";
 import { chipsFor, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
@@ -31,6 +32,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
   const [term, setTerm] = useState("");
   const [token] = useState(() => Crypto.randomUUID());
   const [chosen, setChosen] = useState<string | null>(null);
+  const [generate, setGenerate] = useState<GenerateTarget | null>(null);
   const suggestions = usePlaceSearch(term, token, member);
   const resolve = useResolveLocation();
   const height = useWindowDimensions().height;
@@ -89,7 +91,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
               maxHeight={Math.round(height * 0.55)}
               onOpen={onOpen}
               onLocate={pickSuggestion}
-              onGenerate={() => onAdd?.()}
+              onGenerate={(row) => setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText })}
               onRetry={() => void suggestions.refetch()}
             />
           ) : null}
@@ -101,6 +103,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
         </Pressable>
       ) : null}
       {querying ? null : <FamilyStrip chips={chipsFor(false)} chosen={shown} onSelect={selectChip} onMenu={onMenu} />}
+      <GenerateSheet target={generate} onClose={() => setGenerate(null)} onOpen={onOpen} />
       <View style={styles.mapBox}>
         <MapView
           provider={PROVIDER_GOOGLE}

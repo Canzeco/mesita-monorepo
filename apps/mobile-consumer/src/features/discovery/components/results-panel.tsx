@@ -24,7 +24,7 @@ export function ResultsPanel({
   maxHeight: number;
   onOpen: (id: string) => void;
   onLocate: (id: string, name: string) => void;
-  onGenerate: (id: string) => void;
+  onGenerate: (row: Suggestion) => void;
   onRetry: () => void;
 }) {
   return (
@@ -43,7 +43,7 @@ export function ResultsPanel({
             <Pressable
               key={row.placeId}
               accessibilityRole="button"
-              onPress={() => (place ? onOpen(row.placeId) : row.kind === "location" ? onLocate(row.placeId, row.mainText) : onGenerate(row.placeId))}
+              onPress={() => (place ? onOpen(row.placeId) : row.kind === "location" ? onLocate(row.placeId, row.mainText) : onGenerate(row))}
               style={styles.row}
             >
               <Text role="label" numberOfLines={1}>{row.mainText}</Text>
