@@ -14,7 +14,9 @@ export type Visit = {
   credit: string;
   creditCents: number;
   card: string;
+  cardCents: number;
   cash: string;
+  cashCents: number;
   tip: string;
   tipCents: number;
   suggestedTip: string | null;
@@ -88,7 +90,9 @@ export function getVisit(id: string, signal?: AbortSignal): Promise<Visit | null
       credit: money(tab.credit_cents, tab.currency),
       creditCents: tab.credit_cents,
       card: money(card, tab.currency),
+      cardCents: card,
       cash: money(cash, tab.currency),
+      cashCents: cash,
       tip: money(tip, tab.currency),
       tipCents: tip,
       suggestedTip: tab.tip_suggested_cents && tab.tip_suggested_cents !== tip ? money(tab.tip_suggested_cents, tab.currency) : null,
