@@ -1,9 +1,10 @@
 import { FlashList } from "@shopify/flash-list";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, RefreshControl, Share, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
+import { RemoveSaved } from "@/components/remove-saved";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
@@ -46,6 +47,7 @@ export function HomeScreen(nav: Nav) {
   const catalog = useCatalog(location ?? null, shown);
   const saved = useSaved();
   const toggle = useToggleSaved();
+  const [drop, setDrop] = useState<CatalogPlace | null>(null);
   const recordShare = useRecordShare();
   const requireAccount = useRequireAccount();
   const onSaved = shown === "saved";
@@ -79,6 +81,15 @@ export function HomeScreen(nav: Nav) {
   };
 
   return (
+    <>
+    <RemoveSaved
+      name={drop?.name ?? null}
+      onCancel={() => setDrop(null)}
+      onConfirm={() => {
+        if (drop) toggle.mutate({ place: drop, on: false });
+        setDrop(null);
+      }}
+    />
     <HomeView
       {...nav}
       state={state()}
@@ -88,7 +99,9 @@ export function HomeScreen(nav: Nav) {
       onChip={selectChip}
       isSaved={isSaved}
       onSave={(place) => {
-        if (requireAccount("/")) toggle.mutate({ place, on: !isSaved(place.id) });
+        if (!requireAccount("/")) return;
+        if (isSaved(place.id)) setDrop(place);
+        else toggle.mutate({ place, on: true });
       }}
       onShare={(place) => void share(place)}
       refreshing={read.isRefetching && !catalog.isFetchingNextPage}
@@ -97,6 +110,7 @@ export function HomeScreen(nav: Nav) {
         if (!onSaved && catalog.hasNextPage && !catalog.isFetching) void catalog.fetchNextPage();
       }}
     />
+    </>
   );
 }
 
