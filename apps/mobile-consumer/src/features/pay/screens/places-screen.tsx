@@ -45,7 +45,7 @@ export function PlacesSheet({
     <Modal visible={kind !== null} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.sheet, { paddingTop: insets.top }]}>
         <View style={styles.head}>
-          <Text role="title" style={styles.title}>{kind === "prepay" ? "Prepay" : "Pay"}</Text>
+          <Text role="title" style={styles.title}>{kind === "prepay" ? "Prepay" : "Pay Bill"}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
             <Icon name="x" size={24} />
           </Pressable>
@@ -54,7 +54,7 @@ export function PlacesSheet({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search"
+            placeholder="Search a place"
             placeholderTextColor={colors.muted}
             style={styles.search}
             autoCorrect={false}
@@ -72,6 +72,9 @@ export function PlacesSheet({
           onShow={setShow}
           onClose={() => setFilters(false)}
         />
+        <View style={styles.banner}>
+          <Text role="small" style={{ color: colors.testBannerInk }}>Test mode. No real money is moving, and the offers are fake.</Text>
+        </View>
         {kind === "pay" ? <PayHeads /> : <PrepayHeads />}
         {failed ? <Text role="body" tone="muted" style={styles.note}>The places did not load.</Text> : null}
         {loading ? <Text role="body" tone="muted" style={styles.note}>Loading places.</Text> : null}
@@ -251,6 +254,7 @@ const styles = StyleSheet.create({
   tools: { flexDirection: "row", alignItems: "center", gap: space.sm, marginHorizontal: space.lg, marginBottom: space.sm },
   search: { flex: 1, minHeight: 44, borderRadius: radius.field, backgroundColor: colors.fill, paddingHorizontal: space.md, color: colors.ink },
   filter: { minHeight: 44, justifyContent: "center", paddingHorizontal: space.sm },
+  banner: { backgroundColor: colors.testBanner, paddingHorizontal: space.lg, paddingVertical: space.md },
   group: { paddingHorizontal: space.lg, paddingTop: space.md },
   choice: { minHeight: 48, marginHorizontal: space.md, paddingHorizontal: space.md, borderRadius: radius.field, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   choiceOn: { backgroundColor: colors.fill },

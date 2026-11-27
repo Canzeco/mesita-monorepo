@@ -50,6 +50,8 @@ export const colors = {
 
   /** Behind a window. */
   dim: "rgba(0, 0, 0, 0.45)",
+  /** A photo counter sitting on the picture. */
+  scrim: "rgba(0, 0, 0, 0.55)",
   /** An icon's soft ground, ink at ten percent. */
   inkSoft: "rgba(23, 23, 23, 0.1)",
 
@@ -60,6 +62,10 @@ export const colors = {
 
   /** The mark, and nothing else. */
   brand: BRAND.pink,
+
+  /** Pay's test-mode strip (the web's amber banner). */
+  testBanner: "#fde68a",
+  testBannerInk: "#451a03",
 } as const;
 
 const fontFamily = "Inter";

@@ -14,6 +14,7 @@ export default function Route() {
       onSignIn={() => router.push("/sign-in")}
       onPlace={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
       onCode={(id) => router.push({ pathname: "/pay/code", params: { placeId: id } })}
+      onTickets={() => router.push("/me/tickets")}
     />
   );
 }
