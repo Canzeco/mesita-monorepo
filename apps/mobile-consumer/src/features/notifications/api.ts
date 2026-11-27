@@ -2,9 +2,11 @@ import { z } from "zod";
 
 import { callEdge } from "@/lib/edge";
 
-import { noticeSentence } from "./copy";
+import { noticeSentence, type NoticeView } from "./copy";
 
-export type Notice = { id: string; kind: string; when: string; place: string; sentence: string };
+const SHOWN = new Set(["reservation", "booking", "credit_ready"]);
+
+export type Notice = { id: string; kind: string; when: string; place: string; sentence: string; view: NoticeView | null };
 
 export function listNotices(signal?: AbortSignal): Promise<Notice[]> {
   return callEdge(
@@ -24,9 +26,10 @@ export function listNotices(signal?: AbortSignal): Promise<Notice[]> {
     }),
     { signal },
   ).then((answer) =>
-    answer.notifications.map((row) => {
+    answer.notifications.flatMap((row) => {
+      if (!SHOWN.has(row.kind)) return [];
       const said = noticeSentence(row.kind, row.payload ?? null);
-      return { id: row.id, kind: row.kind, when: row.created_at, place: said.place, sentence: said.sentence };
+      return [{ id: row.id, kind: row.kind, when: row.created_at, place: said.place, sentence: said.sentence, view: said.view }];
     }),
   );
 }
