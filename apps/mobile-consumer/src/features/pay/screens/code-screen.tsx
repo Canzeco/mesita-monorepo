@@ -161,14 +161,17 @@ export function CodeScreen({ placeId, onClose }: { placeId: string; onClose: () 
       {phase === "over" && bill ? <Over bill={bill} /> : null}
       {phase === "confirming" || phase === "paid" ? <Text role="title">{phase === "paid" ? "Paid" : "Confirming…"}</Text> : null}
       {(phase === "sent" || phase === "accepted" || phase === "paid") && bill?.quote && !stale ? (
-        <Ticket bill={bill} onWhy={() => setWhy(true)} />
+        <Ticket bill={bill} openedId={placeId} onWhy={() => setWhy(true)} />
       ) : null}
       {phase === "sent" || phase === "accepted" ? <Handshake you={bill?.state === "accepted"} waiter={bill?.waiterReady === true} /> : null}
       {phase === "accepted" && !stale ? <Text role="small" tone="muted">Waiting for your waiter · {left}</Text> : null}
       {phase === "sent" && !stale ? (
-        <Text role="small" tone="muted">
-          Answer in {left}
-        </Text>
+        <View style={styles.answer}>
+          <Text role="small" tone="muted">Answer in {left}</Text>
+          <Pressable accessibilityRole="button" disabled={busy !== null} onPress={() => void answer("not_mine")}>
+            <Text role="small">Not my bill</Text>
+          </Pressable>
+        </View>
       ) : null}
       {note ? <Text role="body" tone="danger">{note}</Text> : null}
       <Why open={why} bill={bill} onClose={() => setWhy(false)} />
@@ -221,11 +224,14 @@ function Footer({
     return (
       <View style={styles.payRow}>
         <Button label={busy === "decline" ? "Declining" : "Decline"} kind="quiet" busy={busy === "decline"} disabled={busy !== null} onPress={() => onAnswer("decline")} />
-        <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={busy !== null || armed} onPress={() => onAnswer("accept")} style={styles.pay}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={owed === 0 ? `Use ${money(bill.quote.creditCents, bill.currency)} of my credits` : `I paid ${money(owed, bill.currency)} to my waiter`}
+          disabled={busy !== null || armed}
+          onPress={() => onAnswer("accept")}
+          style={styles.pay}
+        >
           <Text role="label" tone="onPay">{busy === "accept" ? "Confirming" : label}</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" disabled={busy !== null} onPress={() => onAnswer("not_mine")} style={styles.notMine}>
-          <Text role="small">Not my bill</Text>
         </Pressable>
       </View>
     );
@@ -276,22 +282,29 @@ function Qr({ code, failed, open, onRetry }: { code: PayCode | null; failed: boo
 
 function Over({ bill }: { bill: GuestBill }) {
   const words = bill.state === "declined" ? "You declined this bill." : bill.state === "expired" ? "Time ran out on this bill." : "This bill was cancelled.";
+  const took = bill.tookCents;
+  const note = bill.state === "declined"
+    ? `Your waiter can fix it and send it again. It shows up here.${took !== null && took > 0 ? ` If you paid ${money(took, bill.currency)}, ask for it back.` : ""}`
+    : took !== null && took > 0
+      ? `No credits were used. Your waiter said they took ${money(took, bill.currency)}. Show them this screen.`
+      : "No credits were used. If you already paid, show this screen to the staff.";
   return (
     <View style={styles.center}>
       <Text role="title">{bill.state === "declined" ? "Declined" : "Not paid"}</Text>
       <Text role="body">{words}</Text>
-      <Text role="small" tone="muted">No credits were used. If you already paid, show this screen to the staff.</Text>
+      <Text role="small" tone="muted">{note}</Text>
     </View>
   );
 }
 
-function Ticket({ bill, onWhy }: { bill: GuestBill; onWhy: () => void }) {
+function Ticket({ bill, openedId, onWhy }: { bill: GuestBill; openedId: string; onWhy: () => void }) {
   const quote = bill.quote;
   if (!quote) return null;
   const big = money(quote.outsideCents, bill.currency);
   return (
     <View>
       <Text role="strong">{bill.place.name ?? "A Mesita place"}</Text>
+      {bill.place.id && openedId && bill.place.id !== openedId ? <Text role="small" tone="muted">Not the place you opened</Text> : null}
       <Text role="title">Pay this to waiter, in cash or card</Text>
       <View style={styles.amount}>
         <Text role="title" tone="onPay">{big}</Text>
@@ -321,7 +334,7 @@ function Why({ open, bill, onClose }: { open: boolean; bill: GuestBill | null; o
             <Line label="Bill" value={money(bill.billCents ?? 0, bill.currency)} />
             {quote.discountCents > 0 ? <Line label={`${quote.discountBps / 100}% Discount`} value={`−${money(quote.discountCents, bill.currency)}`} /> : null}
             {quote.creditCents > 0 ? <Line label="Your credits" value={`−${money(quote.creditCents, bill.currency)}`} /> : null}
-            {bill.tipCents > 0 ? <Line label="Tip" value={money(bill.tipCents, bill.currency)} /> : null}
+            {bill.tipCents > 0 ? <Line label={bill.billCents ? `Tip · ${Math.round((bill.tipCents * 100) / bill.billCents)}%` : "Tip"} value={money(bill.tipCents, bill.currency)} /> : null}
           </View>
         ) : null}
         <Button label="Close" kind="secondary" onPress={onClose} />
@@ -363,7 +376,7 @@ const styles = StyleSheet.create({
   row: { gap: space.sm },
   payRow: { gap: space.sm },
   pay: { minHeight: 48, borderRadius: radius.card, backgroundColor: colors.pay, alignItems: "center", justifyContent: "center" },
-  notMine: { minHeight: 44, alignItems: "center", justifyContent: "center" },
+  answer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm },
   sheet: { flex: 1, backgroundColor: colors.paper, padding: space.lg, gap: space.md },
   lines: { gap: space.sm },
   line: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
