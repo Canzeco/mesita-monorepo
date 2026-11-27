@@ -75,7 +75,7 @@ export function bookingWindowDays(tz?: string | null, at: number = Date.now()): 
 }
 
 /** Hours the overview already shows, read back into shifts. Seven "Closed" rows mean unknown. */
-export function parseHoursTable(table: Array<{ day: string; range: string }> | null | undefined): WeeklyHours | null {
+export function parseHoursTable(table: { day: string; range: string }[] | null | undefined): WeeklyHours | null {
   if (!table?.length) return null;
   const out: WeeklyHours = {};
   let found = 0;
@@ -96,11 +96,11 @@ export function parseHoursTable(table: Array<{ day: string; range: string }> | n
   return found > 0 ? out : null;
 }
 
-function windowsForDate(dateIso: string, hours: WeeklyHours): Array<{ from: number; to: number }> {
+function windowsForDate(dateIso: string, hours: WeeklyHours): { from: number; to: number }[] {
   const { weekday } = placeDateParts(dateIso);
   const today = WEEK_KEYS[weekday];
   const yesterday = WEEK_KEYS[(weekday + 6) % 7];
-  const out: Array<{ from: number; to: number }> = [];
+  const out: { from: number; to: number }[] = [];
   for (const range of hours[today] ?? []) {
     const open = parseHhmm(range.open);
     const close = parseHhmm(range.close);

@@ -1,36 +1,20 @@
 import { useNavigation } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/button";
 import { Text } from "@/components/text";
 import { useMyProfile, useSession } from "@/features/auth";
+import { getPlaceDetail } from "@/features/place";
+import { placeInstantIso } from "@/generated/shared/lib/place-time";
 import { colors, maxFontSizeMultiplier, space, type } from "@/theme";
 
 import { createReservation, type ReserveNotify } from "../api";
+import { buildDateOptions, openSlots, parseHoursTable, resolveSlot } from "../slots";
 
 const MAX_PARTY = 10;
-
-function dayIso(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function upcomingDays(count: number): { iso: string; weekday: string; day: number }[] {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return {
-      iso: dayIso(date),
-      weekday: date.toLocaleDateString("en-US", { weekday: "short" }),
-      day: date.getDate(),
-    };
-  });
-}
+const DINNER_FROM = "17:00";
 
 type Draft = {
   placeId: string;
@@ -65,13 +49,41 @@ export function ReserveScreen({
   const [moreDates, setMoreDates] = useState(false);
   const [onConfirm, setOnConfirm] = useState<ReserveNotify>("app");
   const [onReject, setOnReject] = useState<ReserveNotify>("app");
-  const days = upcomingDays(moreDates ? 28 : 7);
+  const place = useQuery({
+    queryKey: ["place-detail", draft.placeId],
+    queryFn: ({ signal }) => getPlaceDetail(draft.placeId, signal),
+    enabled: draft.placeId.length > 0,
+  });
+  const hours = useMemo(() => parseHoursTable(place.data?.hours_table), [place.data]);
+  const tz = place.data?.timezone;
+  const options = useMemo(() => buildDateOptions(hours, tz), [hours, tz]);
+  const days = moreDates ? options : options.slice(0, 7);
   const party = Number(draft.party) || 2;
+  const slots = openSlots(draft.date, hours, tz);
+  const lunch = slots.filter((slot) => !slot.afterMidnight && slot.time < DINNER_FROM);
+  const dinner = [
+    ...slots.filter((slot) => !slot.afterMidnight && slot.time >= DINNER_FROM),
+    ...slots.filter((slot) => slot.afterMidnight),
+  ];
+  const groups = [
+    { label: "Lunch", slots: lunch },
+    { label: "Dinner", slots: dinner },
+  ].filter((group) => group.slots.length > 0);
   const dirty = draft.notes.length > 0 || draft.party !== "2" || draft.date.length > 0 || draft.time.length > 0;
 
   useEffect(() => {
     if (profile && !draft.firstName && profile.firstName) onChange({ ...draft, firstName: profile.firstName, lastName: profile.lastName ?? "" });
   }, [profile, draft, onChange]);
+
+  useEffect(() => {
+    if (place.isPending) return;
+    const date = options.some((day) => day.iso === draft.date && !day.disabled)
+      ? draft.date
+      : (options.find((day) => !day.disabled)?.iso ?? "");
+    const time = resolveSlot(date, draft.time || null, hours, tz) ?? "";
+    if (date === draft.date && time === draft.time) return;
+    onChange({ ...draft, date, time });
+  }, [place.isPending, options, hours, tz, draft, onChange]);
 
   useEffect(() => {
     const sub = navigation.addListener("beforeRemove" as never, ((event: { preventDefault: () => void; data?: { action?: object } }) => {
@@ -103,9 +115,7 @@ export function ReserveScreen({
     setBusy(true);
     setError(null);
     try {
-      const [year, month, day] = draft.date.split("-").map(Number);
-      const [hour, minute] = draft.time.split(":").map(Number);
-      const reservedAt = new Date(year, (month ?? 1) - 1, day, hour, minute).toISOString();
+      const reservedAt = placeInstantIso(draft.date, draft.time, tz);
       const id = await createReservation({
         placeId: draft.placeId,
         reservedAt,
@@ -135,24 +145,51 @@ export function ReserveScreen({
         </Pressable>
       </View>
       <View style={styles.days}>
-        {days.map((day) => {
+        {days.map((day, index) => {
           const on = draft.date === day.iso;
+          const top = index > 0 && day.day === 1 ? day.month : day.weekday;
           return (
             <Pressable
               key={day.iso}
               accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
-              accessibilityLabel={`${day.weekday} ${day.day}`}
-              onPress={() => set({ date: day.iso })}
-              style={[styles.day, on && styles.dayOn]}
+              accessibilityState={{ selected: on, disabled: day.disabled }}
+              accessibilityLabel={`${day.weekday} ${day.day} ${day.month}${day.disabled ? ", no times" : ""}`}
+              disabled={day.disabled}
+              onPress={() => set({ date: day.iso, time: resolveSlot(day.iso, draft.time || null, hours, tz) ?? "" })}
+              style={[styles.day, on && styles.dayOn, day.disabled && styles.dayDead]}
             >
-              <Text role="caption" tone={on ? "onInk" : "muted"}>{day.weekday}</Text>
+              <Text role="caption" tone={on ? "onInk" : "muted"}>{top}</Text>
               <Text role="strong" tone={on ? "onInk" : "ink"}>{String(day.day)}</Text>
             </Pressable>
           );
         })}
       </View>
-      <Field label="Time" value={draft.time} placeholder="20:00" onChangeText={(time) => set({ time })} />
+      <Text role="label">Time</Text>
+      {groups.length === 0 ? (
+        <Text role="body" tone="muted">No times left on this day. Pick another date.</Text>
+      ) : (
+        groups.map((group) => (
+          <View key={group.label} style={styles.times}>
+            {groups.length > 1 ? <Text role="body" tone="muted">{group.label}</Text> : null}
+            <View style={styles.pills}>
+              {group.slots.map((slot) => {
+                const on = draft.time === slot.time;
+                return (
+                  <Pressable
+                    key={slot.time}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    onPress={() => set({ time: slot.time })}
+                    style={[styles.pill, on && styles.dayOn]}
+                  >
+                    <Text role="label" tone={on ? "onInk" : "ink"}>{slot.time}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ))
+      )}
       <View style={styles.heading}>
         <Text role="label">People</Text>
         <View style={styles.stepper}>
@@ -184,9 +221,25 @@ export function ReserveScreen({
       <NotifyRow label="Reservation confirmed" value={onConfirm} onChange={setOnConfirm} />
       <NotifyRow label="Reservation not possible" value={onReject} onChange={setOnReject} />
       {error ? <Text role="small" tone="danger">{error}</Text> : null}
-      <Button label={busy ? "Requesting…" : member ? "Reserve" : "Sign in to reserve"} onPress={() => void send()} busy={busy} />
+      <Button label={submitLabel(busy, member, draft, party, options)} onPress={() => void send()} busy={busy} disabled={member && !draft.time} />
     </ScrollView>
   );
+}
+
+function submitLabel(
+  busy: boolean,
+  member: boolean,
+  draft: Draft,
+  party: number,
+  options: { iso: string; weekday: string }[],
+): string {
+  if (busy) return "Requesting…";
+  if (!member) return "Sign in to reserve";
+  if (!draft.time) return "No times left";
+  if (!draft.firstName.trim() || !draft.lastName.trim()) return "Add the name the table is under";
+  const day = options.find((option) => option.iso === draft.date);
+  const noun = party === 1 ? "person" : "people";
+  return `Reserve · ${day?.weekday ?? ""} ${draft.time} · ${party} ${noun}`;
 }
 
 function NotifyRow({
@@ -243,6 +296,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   dayOn: { backgroundColor: colors.ink },
+  dayDead: { opacity: 0.4 },
+  times: { gap: 6 },
+  pills: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  pill: {
+    width: "22%",
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: colors.paper,
+  },
   stepper: { flexDirection: "row", alignItems: "center", gap: 12 },
   step: {
     width: 44,
