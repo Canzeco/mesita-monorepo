@@ -17,6 +17,7 @@ const TITLE: Record<string, string> = {
   feedback: "Send feedback",
   refunds: "Refunds",
   integrations: "Integrations",
+  calendar: "Calendar",
   "vip-code": "Invitation code",
   "vip-instagram": "Instagram",
   "vip-agency": "Bring your people",
