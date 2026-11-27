@@ -187,6 +187,51 @@ export function answerBill(
   }).then(() => undefined);
 }
 
+export type Receipt = {
+  id: string;
+  place: string;
+  status: string;
+  amount: string;
+  credit: string;
+  tip: string;
+  refunded: string | null;
+  paidAt: string | null;
+  seenAt: string | null;
+  testMode: boolean;
+};
+
+export function getReceipt(id: string, signal?: AbortSignal): Promise<Receipt> {
+  return callEdge(
+    "consumer-web-get-payment",
+    { payment_id: id },
+    z.object({
+      payment_id: z.string(),
+      status: z.string().catch(""),
+      amount_cents: z.number().catch(0),
+      credit_cents: z.number().catch(0),
+      tip_cents: z.number().catch(0),
+      refunded_cents: z.number().catch(0),
+      currency: z.string().catch("mxn"),
+      paid_at: z.string().nullish().catch(null),
+      proof_seen_at: z.string().nullish().catch(null),
+      test_mode: z.boolean().catch(false),
+      place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+    }),
+    { signal },
+  ).then((row) => ({
+    id: row.payment_id,
+    place: row.place?.name ?? "A Mesita place",
+    status: row.status,
+    amount: money(row.amount_cents, row.currency),
+    credit: money(row.credit_cents, row.currency),
+    tip: money(row.tip_cents, row.currency),
+    refunded: row.refunded_cents > 0 ? money(row.refunded_cents, row.currency) : null,
+    paidAt: row.paid_at ?? null,
+    seenAt: row.proof_seen_at ?? null,
+    testMode: row.test_mode,
+  }));
+}
+
 export function money(cents: number, currency: string): string {
   try {
     return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
