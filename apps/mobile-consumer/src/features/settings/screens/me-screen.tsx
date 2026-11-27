@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
-import { Alert, StyleSheet } from "react-native";
+import { useQuery } from "@tanstack/react-query";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
-import { Button } from "@/components/button";
-import { Card } from "@/components/card";
 import { ErrorState } from "@/components/error-state";
-import { Row } from "@/components/row";
-import { Screen } from "@/components/screen";
+import { Icon, type IconName } from "@/components/icon";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
-import { signOut, useMyProfile, useSession, type Profile } from "@/features/auth";
-import { CONTRACT, updateId, variant } from "@/lib/build";
+import { useMyProfile, useSession, type Profile } from "@/features/auth";
+import { listNotices } from "@/features/notifications";
+import { listReservations } from "@/features/reservations";
 import { useErrorCopy } from "@/lib/error-copy";
+import { colors, pressedOpacity, radius, space } from "@/theme";
 
 export type MeState =
   | { kind: "anonymous" }
@@ -18,106 +18,169 @@ export type MeState =
   | { kind: "error"; message: string; offline: boolean; requestId: string | null }
   | { kind: "profile"; profile: Profile; lastUpdated: number | null };
 
-/** Me: who I am, and the way out. Its pages arrive with step 5. Signed out,
- *  the tab is Sign: `signIn` fills it. */
-export function MeScreen({
-  signIn,
-  onProfile,
-  onClass,
-  onNotifications,
-  onSettings,
-  onDelete,
-}: {
-  signIn: ReactNode;
+export type MeNav = {
   onProfile: () => void;
   onClass: () => void;
+  onReservations: () => void;
   onNotifications: () => void;
+  onTickets: () => void;
+  onCard: () => void;
+  onSaved: () => void;
+  onPlan: () => void;
+  onShare: () => void;
   onSettings: () => void;
-  onDelete: () => void;
-}) {
+};
+
+const TILES: { key: keyof MeNav; label: string; icon: IconName }[] = [
+  { key: "onProfile", label: "Profile", icon: "user" },
+  { key: "onClass", label: "Class", icon: "crown" },
+  { key: "onReservations", label: "Reservations", icon: "calendar" },
+  { key: "onNotifications", label: "Notifications", icon: "bell" },
+  { key: "onTickets", label: "Tickets", icon: "ticket" },
+  { key: "onCard", label: "Card", icon: "card" },
+  { key: "onSaved", label: "Saved", icon: "heart" },
+  { key: "onPlan", label: "Plan", icon: "gem" },
+  { key: "onShare", label: "Share", icon: "share-2" },
+  { key: "onSettings", label: "Settings", icon: "settings" },
+];
+
+/** Me: the name and Class, then the web's ten cells. Signed out, the tab is Sign. */
+export function MeScreen({ signIn, nav }: { signIn: ReactNode; nav: MeNav }) {
   const member = useSession().guestId !== null;
   const profile = useMyProfile();
   const copy = useErrorCopy(profile.error);
+  const notices = useQuery({ queryKey: ["notices"], queryFn: ({ signal }) => listNotices(signal), enabled: member });
+  const reservations = useQuery({
+    queryKey: ["reservations"],
+    queryFn: ({ signal }) => listReservations(signal),
+    enabled: member,
+  });
 
   const state = (): MeState => {
     if (!member) return { kind: "anonymous" };
-    const paused = profile.fetchStatus === "paused";
-    if (profile.data) {
-      const lastUpdated = profile.isError || paused ? profile.dataUpdatedAt : null;
-      return { kind: "profile", profile: profile.data, lastUpdated };
-    }
-    if (paused) return { kind: "error", message: "", offline: true, requestId: null };
+    if (profile.data) return { kind: "profile", profile: profile.data, lastUpdated: profile.isError ? profile.dataUpdatedAt : null };
+    if (profile.fetchStatus === "paused") return { kind: "error", message: "", offline: true, requestId: null };
     return profile.isError ? { kind: "error", ...copy } : { kind: "loading" };
   };
 
-  const askSignOut = () =>
-    Alert.alert("Sign out?", undefined, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign out", style: "destructive", onPress: () => void signOut() },
-    ]);
+  const upcoming = (reservations.data ?? []).filter((row) => row.state !== "cancelled" && row.state !== "completed").length;
+  const badges: Partial<Record<keyof MeNav, number>> = {
+    onNotifications: notices.data?.length ?? 0,
+    onReservations: upcoming,
+  };
 
-  return (
-    <MeView
-      state={state()}
-      signIn={signIn}
-      onRetry={() => void profile.refetch()}
-      onSignOut={askSignOut}
-      onProfile={onProfile}
-      onClass={onClass}
-      onNotifications={onNotifications}
-      onSettings={onSettings}
-      onDelete={onDelete}
-    />
-  );
+  return <MeView state={state()} signIn={signIn} nav={nav} badges={badges} onRetry={() => void profile.refetch()} />;
 }
 
-type ViewProps = {
+export function MeView({
+  state,
+  signIn,
+  nav,
+  badges = {},
+  onRetry,
+}: {
   state: MeState;
   signIn: ReactNode;
-  onRetry: () => void;
-  onSignOut: () => void;
-  onProfile?: () => void;
-  onClass?: () => void;
-  onNotifications?: () => void;
-  onSettings?: () => void;
-  onDelete?: () => void;
-};
-
-const clock = (at: number) => new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-export function MeView({ state, signIn, onRetry, onSignOut, onProfile, onClass, onNotifications, onSettings, onDelete }: ViewProps) {
-  if (state.kind === "anonymous") {
-    return signIn;
-  }
+  nav?: Partial<MeNav>;
+  badges?: Partial<Record<keyof MeNav, number>>;
+  onRetry?: () => void;
+}) {
+  if (state.kind === "anonymous") return signIn;
   return (
-    <Screen>
+    <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       {state.kind === "loading" ? <Skeleton style={styles.loading} /> : null}
       {state.kind === "error" ? (
-        <ErrorState message={state.message} offline={state.offline} requestId={state.requestId} onRetry={onRetry} />
+        <ErrorState message={state.message} offline={state.offline} requestId={state.requestId} onRetry={onRetry ?? (() => undefined)} />
       ) : null}
       {state.kind === "profile" ? (
-        <Card>
-          <Text role="title">{[state.profile.firstName, state.profile.lastName].filter(Boolean).join(" ")}</Text>
-          <Row label="Phone" value={state.profile.phone ?? undefined} />
-          <Row label="Class" value={state.profile.isVip ? "VIP" : "Regular"} />
-          {state.lastUpdated ? (
-            <Text role="caption" tone="muted">{`Last updated ${clock(state.lastUpdated)}`}</Text>
-          ) : null}
-        </Card>
+        <>
+          <View style={styles.identity}>
+            <View style={styles.avatar} />
+            <View style={styles.nameBar}>
+              <Text role="strong">{state.profile.firstName?.trim() || "Mesita member"}</Text>
+              <View style={styles.classPill}>
+                <Text role="caption" tone="muted">{state.profile.isVip ? "VIP" : "Regular"}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.grid}>
+            {TILES.map((tile) => (
+              <Pressable
+                key={tile.label}
+                accessibilityRole="button"
+                accessibilityLabel={tile.label}
+                onPress={nav?.[tile.key]}
+                style={({ pressed }) => [styles.tile, pressed && { opacity: pressedOpacity }]}
+              >
+                <View style={styles.chip}>
+                  <Icon name={tile.icon} size={18} />
+                </View>
+                <Text role="label" numberOfLines={1} style={styles.tileLabel}>{tile.label}</Text>
+                {(badges[tile.key] ?? 0) > 0 ? (
+                  <View style={styles.badge}>
+                    <Text role="caption" tone="onInk">{badges[tile.key]}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </>
       ) : null}
-      <Button kind="secondary" label="Sign out" onPress={onSignOut} testID="sign-out" />
-      {state.kind === "profile" ? (
-        <Card>
-          <Row label="Profile" onPress={onProfile} />
-          <Row label="Your class" onPress={onClass} />
-          <Row label="Notifications" onPress={onNotifications} />
-          <Row label="Settings" onPress={onSettings} />
-          <Row label="Delete account" onPress={onDelete} />
-        </Card>
-      ) : null}
-      <Text role="caption" tone="muted" selectable>{`${variant} · ${updateId} · contract ${CONTRACT}`}</Text>
-    </Screen>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({ loading: { height: 120 } });
+const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: colors.page },
+  content: { padding: space.lg, gap: space.md, paddingBottom: space.xl },
+  loading: { height: 120 },
+  identity: { alignItems: "center", gap: space.md },
+  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.fill },
+  nameBar: {
+    alignSelf: "stretch",
+    minHeight: 48,
+    borderRadius: radius.control,
+    backgroundColor: colors.paper,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: space.sm,
+  },
+  classPill: { backgroundColor: colors.fill, borderRadius: 999, paddingHorizontal: space.sm, paddingVertical: 2 },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
+  tile: {
+    width: "48%",
+    flexGrow: 1,
+    flexBasis: "46%",
+    minHeight: 56,
+    backgroundColor: colors.paper,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+  },
+  chip: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: colors.fill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileLabel: { flex: 1 },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+});

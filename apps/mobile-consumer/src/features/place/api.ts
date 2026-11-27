@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { EdgeError, callEdge } from "@/lib/edge";
+import { placeRowToDetail, type ResolvedTag } from "@/generated/shared/place-to-detail";
+import type { PlaceDetail } from "@/generated/shared/place-detail";
 
 const text = z.string().nullish().catch(null);
 const number = z.coerce.number().nullish().catch(null);
@@ -71,6 +73,31 @@ export async function getPlace(id: string, signal?: AbortSignal): Promise<Place 
       { signal },
     );
     return answer.place;
+  } catch (err) {
+    if (err instanceof EdgeError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/** The web's place profile, from the same row. Null when the server says it is gone. */
+export async function getPlaceDetail(id: string, signal?: AbortSignal): Promise<PlaceDetail | null> {
+  try {
+    const answer = await callEdge(
+      "consumer-web-get-place",
+      { id },
+      z.object({
+        place: z.record(z.string(), z.unknown()),
+        tags: z.array(z.object({
+          slug: z.string(),
+          label_es: z.string().catch(""),
+          label_en: z.string().catch(""),
+          facet: z.string().catch(""),
+          sort_order: z.number().catch(0),
+        })).catch([]),
+      }),
+      { signal },
+    );
+    return placeRowToDetail(answer.place, answer.tags satisfies ResolvedTag[]);
   } catch (err) {
     if (err instanceof EdgeError && err.status === 404) return null;
     throw err;

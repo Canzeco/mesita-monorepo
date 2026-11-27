@@ -58,7 +58,7 @@ const me: MeState[] = [
   { kind: "profile", profile, lastUpdated: null }, { kind: "profile", profile, lastUpdated: 1 },
 ];
 test.each(me)("Me: $kind", async (state) => {
-  const view = await render(<MeView state={state} signIn={<EmptyState title="Sign" />} onRetry={nothing} onSignOut={nothing} />);
+  const view = await render(<MeView state={state} signIn={<EmptyState title="Sign" />} onRetry={nothing} />);
   expect(view.toJSON()).not.toBeNull();
 });
 
