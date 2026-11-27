@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Icon } from "@/components/icon";
@@ -7,7 +7,9 @@ import { Text } from "@/components/text";
 import { useActiveLocation } from "@/features/discovery";
 import { colors, radius, space } from "@/theme";
 
-import { listCredits, listPayPlaces, money } from "../api";
+import { listCredits, listPayPlaces, money, readPayCode } from "../api";
+import { pendingLine } from "../open-bill";
+import { needsGuest } from "../visit";
 import { PlacesSheet } from "./places-screen";
 
 type Kind = "prepay" | "pay";
@@ -38,6 +40,18 @@ export function PayScreen({
     enabled: signedIn,
   });
   const [open, setOpen] = useState<Kind | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const openBill = useQuery({
+    queryKey: ["open-bill"],
+    queryFn: ({ signal }) => readPayCode({}, signal),
+    enabled: signedIn,
+  });
+  const bill = needsGuest(openBill.data?.bill ?? null) ? openBill.data?.bill ?? null : null;
+  useEffect(() => {
+    if (!bill) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [bill]);
 
   if (!signedIn) {
     return (
@@ -60,9 +74,17 @@ export function PayScreen({
           <Text role="label">Tickets</Text>
         </Pressable>
       </View>
+      {bill ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Pending Tickets" onPress={() => onCode(bill.place.id ?? "")} style={styles.pending}>
+          <Text role="strong">Pending Tickets</Text>
+          <Text role="label" numberOfLines={1}>{bill.place.name ?? "Your bill"}</Text>
+          <Text role="small" tone="muted">{pendingLine(bill, now)}</Text>
+          <Text role="numeric">{money((bill.quote ? bill.quote.outsideCents : (bill.billCents ?? 0) + bill.tipCents), bill.currency)}</Text>
+        </Pressable>
+      ) : null}
       <View style={styles.tiles}>
         <Tile label="Prepay" line="Get Bonus" mark="%" color={colors.prepay} ink={colors.onPrepay} bubble={colors.paper} bubbleInk={colors.prepay} onPress={() => setOpen("prepay")} />
-        <Tile label="Pay Bill" line="Cash, Card, or Credits" mark="QR" color={colors.pay} ink={colors.onPay} bubble={colors.ink} bubbleInk={colors.onInk} onPress={() => setOpen("pay")} />
+        <Tile label="Pay Bill" line={bill ? "See your bill" : "Cash, Card, or Credits"} mark="QR" color={colors.pay} ink={colors.onPay} bubble={colors.ink} bubbleInk={colors.onInk} onPress={() => (bill ? onCode(bill.place.id ?? "") : setOpen("pay"))} />
       </View>
       <View style={styles.credits}>
         <Text role="strong" tone="onInk" style={styles.creditsTitle}>Credits</Text>
@@ -112,6 +134,7 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: space.sm },
   word: { paddingVertical: space.sm },
   tickets: { flexDirection: "row", alignItems: "center", gap: space.xs, backgroundColor: colors.fill, borderRadius: radius.control, paddingHorizontal: space.md, minHeight: 40 },
+  pending: { backgroundColor: colors.paper, borderRadius: radius.field, padding: space.md, gap: 2, marginTop: space.sm },
   tiles: { flexDirection: "row", gap: space.sm },
   tile: { flex: 1, aspectRatio: 3 / 2, borderRadius: radius.card, alignItems: "center", justifyContent: "center", gap: 4 },
   bubble: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
