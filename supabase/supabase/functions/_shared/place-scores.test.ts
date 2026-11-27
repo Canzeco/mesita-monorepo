@@ -29,7 +29,7 @@ Deno.test("the profile card uses Popular Organic and the same boost as ranking",
   assertEquals(unavailable.rows[4].value, "Unavailable");
   assertEquals(unavailable.rows[4].detail, "Unavailable · 1×");
   assertEquals(unavailable.rows[4].href, "https://foursquare.com/v/abc");
-  assertEquals(unavailable.rows[5].detail.includes("Your plan is 5X"), true);
+  assertEquals(unavailable.rows[5].detail.includes("Your plan is Max"), true);
   assertEquals(unavailable.rows[5].value, "1×");
   assertEquals(unavailable.rows[6].detail, "Distance depends on the guest's location.");
 });

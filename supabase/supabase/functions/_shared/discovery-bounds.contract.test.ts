@@ -83,6 +83,8 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
     ["MIX_TEMPERATURE", MIX_BOUNDS.temperature],
     ["AD_FLOOR", MIX_BOUNDS.adFloor],
     ["AD_EVERY", MIX_BOUNDS.adEvery],
+    ["PLAN_FACTOR", MIX_BOUNDS.proFactor],
+    ["PLAN_FACTOR", MIX_BOUNDS.maxFactor],
     ["GROWTH_WEIGHT_CAP", MIX_BOUNDS.growthWeightCap],
   ] as const) {
     assertEquals(constant(`${name}_MIN`), b.min, name);
@@ -121,7 +123,7 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
     );
   }
   const mix = admin.match(
-    /export const DEFAULT_MIX: MixParams = \{\s*temperature: \{ nearby: ([0-9.]+), family: ([0-9.]+), popular: ([0-9.]+) \},\s*adFloor: ([0-9.]+),\s*adEvery: ([0-9]+),\s*growthWeightCap: ([0-9.]+),\s*\};/,
+    /export const DEFAULT_MIX: MixParams = \{\s*temperature: \{ nearby: ([0-9.]+), family: ([0-9.]+), popular: ([0-9.]+) \},\s*adFloor: ([0-9.]+),\s*adEvery: ([0-9]+),\s*proFactor: ([0-9.]+),\s*maxFactor: ([0-9.]+),\s*growthWeightCap: ([0-9.]+),\s*\};/,
   );
   assertEquals(
     mix
@@ -129,7 +131,9 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
         temperature: { nearby: Number(mix[1]), family: Number(mix[2]), popular: Number(mix[3]) },
         adFloor: Number(mix[4]),
         adEvery: Number(mix[5]),
-        growthWeightCap: Number(mix[6]),
+        proFactor: Number(mix[6]),
+        maxFactor: Number(mix[7]),
+        growthWeightCap: Number(mix[8]),
       }
       : null,
     DEFAULT_MIX,
