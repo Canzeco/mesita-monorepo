@@ -51,22 +51,30 @@ export function ReservationScreen({
       <Text role="title">{row.placeName || "Reservation"}</Text>
       <Text role="body">{stateLabel(row.state, row.when, now)}</Text>
       {when ? <Text role="body">{when.toLocaleString()}</Text> : null}
-      {row.party ? <Text role="body">{row.party} guests</Text> : null}
+      {row.party ? <Text role="body">{`Table for ${row.party}`}</Text> : null}
       {row.reference ? <Text role="small" tone="muted">{row.reference}</Text> : null}
       {row.notes ? <Text role="body">{row.notes}</Text> : null}
       <Button label="Add to calendar" kind="secondary" onPress={add} />
-      <Button label="Reschedule" kind="secondary" onPress={onReschedule} />
-      <Button
-        label="Cancel reservation"
-        kind="danger"
-        onPress={() => Alert.alert("Cancel this reservation", undefined, [
-          { text: "Keep it", style: "cancel" },
-          { text: "Yes, cancel it", style: "destructive", onPress: () => void cancel() },
-        ])}
-      />
+      {canMove(row.state, row.when, now) ? <Button label="Reschedule" kind="secondary" onPress={onReschedule} /> : null}
+      {canMove(row.state, row.when, now) ? (
+        <Button
+          label="Cancel reservation"
+          kind="danger"
+          onPress={() => Alert.alert("Cancel this reservation", undefined, [
+            { text: "Keep it", style: "cancel" },
+            { text: "Yes, cancel it", style: "destructive", onPress: () => void cancel() },
+          ])}
+        />
+      ) : null}
       <Button label="Your reservations" kind="quiet" onPress={onList} />
     </ScrollView>
   );
+}
+
+function canMove(state: string, when: string, now: number): boolean {
+  const live = state === "created" || state === "booking" || state === "confirmed";
+  const at = Date.parse(when);
+  return live && Number.isFinite(at) && at >= now;
 }
 
 function stateLabel(state: string, when: string, now: number): string {
