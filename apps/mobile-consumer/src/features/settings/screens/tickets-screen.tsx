@@ -24,7 +24,7 @@ function ticketLine(row: { place: string; status?: string; amount?: string | nul
 }
 
 /** Visits, Vouchers, and Gifts, the web Tickets tabs. */
-export function TicketsScreen({ onVisit }: { onVisit: (id: string) => void }) {
+export function TicketsScreen({ onVisit, onGift }: { onVisit: (id: string) => void; onGift: (id: string) => void }) {
   const [tab, setTab] = useState<Tab>("visits");
   const visits = useQuery({ queryKey: ["tickets"], queryFn: ({ signal }) => listTickets(signal) });
   const vouchers = useQuery({ queryKey: ["voucher-tickets"], queryFn: ({ signal }) => listVoucherTickets(signal) });
@@ -52,6 +52,10 @@ export function TicketsScreen({ onVisit }: { onVisit: (id: string) => void }) {
           {query.data.map((row) =>
             tab === "visits" ? (
               <Pressable key={row.id} accessibilityRole="button" onPress={() => onVisit(row.id)}>
+                <Text role="body">{ticketLine(row)}</Text>
+              </Pressable>
+            ) : tab === "gifts" ? (
+              <Pressable key={row.id} accessibilityRole="button" onPress={() => onGift(row.id)}>
                 <Text role="body">{ticketLine(row)}</Text>
               </Pressable>
             ) : (
