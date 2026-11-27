@@ -52,7 +52,7 @@ test.each(home)("Home: $kind", async (state) => {
   expect(view.toJSON()).not.toBeNull();
 });
 
-const profile = { id: "g", firstName: "Ana", lastName: null, sex: null, birthYear: null, phone: null, isVip: true, instagramHandle: null, instagramProvedAt: null, instagramVipStatus: null, instagramFollowers: null, fullName: null, avatarUrl: null };
+const profile = { id: "g", firstName: "Ana", lastName: null, sex: null, birthYear: null, phone: null, isVip: true, instagramHandle: null, instagramProvedAt: null, instagramVipStatus: null, instagramFollowers: null, fullName: null, avatarUrl: null, socialLevel: null, socialLock: null };
 const me: MeState[] = [
   { kind: "anonymous" }, { kind: "loading" }, error, { ...error, offline: true },
   { kind: "profile", profile, lastUpdated: null }, { kind: "profile", profile, lastUpdated: 1 },

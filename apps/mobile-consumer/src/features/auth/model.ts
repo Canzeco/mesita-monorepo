@@ -8,6 +8,8 @@ export type Profile = {
   lastName: string | null;
   fullName: string | null;
   avatarUrl: string | null;
+  socialLevel: "private" | "public" | null;
+  socialLock: "minor" | "no_birth_year" | null;
   sex: string | null;
   birthYear: number | null;
   phone: string | null;
