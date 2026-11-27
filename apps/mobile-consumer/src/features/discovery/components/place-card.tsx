@@ -69,9 +69,12 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
               ) : null}
               {facts.rating && facts.distance ? <Text role="small">·</Text> : null}
               {facts.distance ? (
-                <Text role="small" numberOfLines={1} style={styles.name}>
-                  {facts.distance}
-                </Text>
+                <>
+                  <Icon name="navigation-filled" size={14} color={colors.ink} />
+                  <Text role="small" numberOfLines={1} style={styles.name}>
+                    {facts.distance}
+                  </Text>
+                </>
               ) : null}
             </View>
           ) : null}
