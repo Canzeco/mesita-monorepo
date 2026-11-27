@@ -70,7 +70,7 @@ export function ReserveScreen({
       return;
     }
     if (!draft.firstName.trim() || !draft.lastName.trim()) {
-      setError("Add the name the table is under.");
+      setError("Add the first and last name the table is under.");
       return;
     }
     setBusy(true);
@@ -92,7 +92,7 @@ export function ReserveScreen({
       await queryClient.invalidateQueries({ queryKey: ["reservations"] });
       onBooked(id);
     } catch {
-      setError("Could not reserve that table.");
+      setError("Couldn't request the reservation.");
       setBusy(false);
     }
   };
@@ -104,9 +104,9 @@ export function ReserveScreen({
       <Field label="Guests" value={draft.party} placeholder="2" onChangeText={(party) => set({ party })} />
       <Field label="First name" value={draft.firstName} placeholder="First name" onChangeText={(firstName) => set({ firstName })} />
       <Field label="Last name" value={draft.lastName} placeholder="Last name" onChangeText={(lastName) => set({ lastName })} />
-      <Field label="Note" value={draft.notes} placeholder="Anything the place should know" onChangeText={(notes) => set({ notes })} />
+      <Field label="Note" value={draft.notes} placeholder="Birthday, high chair, window table…" onChangeText={(notes) => set({ notes })} />
       {error ? <Text role="small" tone="danger">{error}</Text> : null}
-      <Button label={member ? "Reserve" : "Sign in to reserve"} onPress={() => void send()} busy={busy} />
+      <Button label={busy ? "Requesting…" : member ? "Reserve" : "Sign in to reserve"} onPress={() => void send()} busy={busy} />
     </ScrollView>
   );
 }
