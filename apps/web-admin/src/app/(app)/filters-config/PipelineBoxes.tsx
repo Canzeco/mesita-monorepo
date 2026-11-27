@@ -565,8 +565,8 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               disabled={off}
               hint={
                 mix.adEvery === 0
-                  ? "No ads."
-                  : `Normal places between ads: ${mix.adEvery === 1 ? "one normal place" : `${mix.adEvery} normal places`}, then one ad, again and again.`
+                  ? "No inorganic places."
+                  : `${mix.adEvery === 1 ? "One organic place" : `${mix.adEvery} organic places`}, then one inorganic place, again and again.`
               }
               onChange={(adEvery) => patchMix({ adEvery })}
             />
@@ -582,7 +582,7 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={MIX_BOUNDS.proFactor.max}
               decimals
               disabled={off}
-              hint={`A Pro place counts ${mix.proFactor}× in the ad lane. Default 2.`}
+              hint={`A Pro place counts ${mix.proFactor}× in the Inorganic lane. Default 2.`}
               onChange={(proFactor) => patchMix({ proFactor })}
             />
             <NumberField
@@ -592,7 +592,7 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
               max={MIX_BOUNDS.maxFactor.max}
               decimals
               disabled={off}
-              hint={`A Max place counts ${mix.maxFactor}× in the ad lane. Default 5.`}
+              hint={`A Max place counts ${mix.maxFactor}× in the Inorganic lane. Default 5.`}
               onChange={(maxFactor) => patchMix({ maxFactor })}
             />
           </div>
