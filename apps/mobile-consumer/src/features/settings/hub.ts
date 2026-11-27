@@ -80,7 +80,7 @@ export function listTickets(signal?: AbortSignal): Promise<Ticket[]> {
   );
 }
 
-export type SavedCard = { id: string; brand: string; last4: string; exp: string };
+export type SavedCard = { id: string; brand: string; last4: string; exp: string; inUse: boolean; expired: boolean };
 
 export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; testMode: boolean }> {
   return callEdge(
@@ -96,6 +96,7 @@ export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; t
             last4: z.string().catch(""),
             exp_month: z.number().catch(0),
             exp_year: z.number().catch(0),
+            in_use: z.boolean().catch(false),
           }),
         )
         .catch([]),
@@ -107,7 +108,9 @@ export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; t
       id: card.id,
       brand: card.brand,
       last4: card.last4,
-      exp: card.exp_month && card.exp_year ? `${card.exp_month}/${card.exp_year}` : "",
+      exp: card.exp_month && card.exp_year ? `${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year % 100).padStart(2, "0")}` : "",
+      inUse: card.in_use,
+      expired: card.exp_month > 0 && card.exp_year > 0 && new Date(card.exp_year, card.exp_month, 0).getTime() < Date.now(),
     })),
   }));
 }
