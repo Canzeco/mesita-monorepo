@@ -51,20 +51,12 @@ function scoreNumber(n: number | null | undefined): string {
  */
 /** A lane key's name on the tag (MESITA-4517). */
 const LANE_NAMES: Record<string, string> = {
-  catalogNearbyOrganic: "Organic Nearby Lane",
-  catalogNearbyInorganic: "Inorganic Nearby Lane",
-  catalogNearbyBoth: "Organic Local Favorites Lane",
-  catalogNearbyBothInorganic: "Inorganic Local Favorites Lane",
-  catalogFamilyClose: "Organic Nearby Lane",
-  catalogFamilyCloseInorganic: "Inorganic Nearby Lane",
-  catalogFamilyWellKnown: "Organic Popular Lane",
-  catalogFamilyWellKnownInorganic: "Inorganic Popular Lane",
-  catalogFamilyBoth: "Organic Local Favorites Lane",
-  catalogFamilyBothInorganic: "Inorganic Local Favorites Lane",
-  catalogPopularOrganic: "Organic Popular Lane",
-  catalogPopularInorganic: "Inorganic Popular Lane",
-  catalogPopularBoth: "Organic Local Favorites Lane",
-  catalogPopularBothInorganic: "Inorganic Local Favorites Lane",
+  catalogNearbyOrganic: "Home Nearby Organic",
+  catalogNearbyInorganic: "Home Nearby Inorganic",
+  catalogPopularOrganic: "Home Popular Organic",
+  catalogPopularInorganic: "Home Popular Inorganic",
+  catalogFamilyClose: "Home Family Organic",
+  catalogFamilyCloseInorganic: "Home Family Inorganic",
 };
 
 function ScoreLabel({

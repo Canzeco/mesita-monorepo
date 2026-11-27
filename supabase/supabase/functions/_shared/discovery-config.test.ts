@@ -447,39 +447,44 @@ Deno.test("Premier prices: the admin twin mirrors the bounds and the defaults", 
 Deno.test("recipes: the table by default; organic Premier exponent forced 0; map rows have no distance; bounds clamp and report", () => {
   assertEquals(normalizeDiscoveryConfig({}).params.recipes, DEFAULT_RECIPES);
   assertEquals(normalizeDiscoveryConfig({}).params.mix, DEFAULT_MIX);
-  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
-  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: null });
+  assertEquals(DEFAULT_RECIPES.catalogNearbyOrganic, { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: 10 });
+  assertEquals(DEFAULT_RECIPES.mapInorganic, { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, offersExp: 0, batch: null });
+  assertEquals(DEFAULT_RECIPES.pay.offersExp, 1);
   const clamps: Array<[string, unknown]> = [];
   const r = normalizeRecipes({
-    catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2 },
+    catalogPopularOrganic: { halfKm: 500, distanceExp: 0.1, googleExp: 0.01, premierExp: 2, offersExp: 2 },
     catalogPopularInorganic: { premierExp: 3, googleExp: "0.5" },
-    catalogFamilyBoth: { halfKm: null, distanceExp: "x", batch: 99 },
+    catalogFamilyClose: { halfKm: null, distanceExp: "x", batch: 99, premierExp: 2 },
     mapOrganic: { halfKm: 3, distanceExp: 2, premierExp: 1 },
+    pay: { offersExp: 9, premierExp: 0.24 },
   }, (key, raw) => clamps.push([key, raw]));
-  // C1: an Organic row never carries a plan, whatever is stored.
-  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 });
+  // C1: an Organic row never carries a plan, and Home Offers stays 0.
+  assertEquals(r.catalogPopularOrganic, { halfKm: 100, distanceExp: 0.5, googleExp: 0.1, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: 10 });
   assertEquals(r.catalogPopularInorganic.premierExp, 2);
   assertEquals(r.catalogPopularInorganic.googleExp, 0.5);
+  assertEquals(r.catalogPopularInorganic.offersExp, 0);
   // L-1: a null on a Catalog row reads the default and is reported.
-  assertEquals([r.catalogFamilyBoth.halfKm, r.catalogFamilyBoth.distanceExp], [2, 2]);
-  // A lane's batch is 1–25 whole (MESITA-4517).
-  assertEquals(r.catalogFamilyBoth.batch, 25);
+  assertEquals([r.catalogFamilyClose.halfKm, r.catalogFamilyClose.distanceExp], [0.1, 4]);
+  assertEquals(r.catalogFamilyClose.batch, 25);
+  assertEquals(r.catalogFamilyClose.premierExp, 0);
   // A Map row has no Proximity: its distance numbers are always null.
-  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null });
-  // A missing Foursquare pair is the default. An explicit factor of 0 stays 0.
-  assertEquals(r.catalogFamilyBoth.foursquareFactor, 1);
-  assertEquals(r.catalogFamilyBoth.foursquareExponent, 20);
-  const kept = normalizeRecipes({ catalogNearbyOrganic: { foursquareFactor: 0, foursquareExponent: 20 } });
-  assertEquals(kept.catalogNearbyOrganic.foursquareFactor, 0);
+  assertEquals(r.mapOrganic, { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: null });
+  // The Foursquare factor is always 1, and an old 0.5 is not reported.
+  assertEquals(r.catalogFamilyClose.foursquareFactor, 1);
+  const kept = normalizeRecipes({ catalogNearbyOrganic: { foursquareFactor: 0.5, foursquareExponent: 20 } });
+  assertEquals(kept.catalogNearbyOrganic.foursquareFactor, 1);
   assertEquals(kept.catalogNearbyOrganic.foursquareExponent, 20);
+  // Pay edits Premier and Offers. 9 clamps to 2. 0.24 rounds to 0.2.
+  assertEquals([r.pay.offersExp, r.pay.premierExp], [2, 0.2]);
   assertEquals(clamps.map(([k]) => k).sort(), [
-    "params.recipes.catalogFamilyBoth.batch",
-    "params.recipes.catalogFamilyBoth.distanceExp",
-    "params.recipes.catalogFamilyBoth.halfKm",
+    "params.recipes.catalogFamilyClose.batch",
+    "params.recipes.catalogFamilyClose.distanceExp",
+    "params.recipes.catalogFamilyClose.halfKm",
     "params.recipes.catalogPopularInorganic.premierExp",
     "params.recipes.catalogPopularOrganic.distanceExp",
     "params.recipes.catalogPopularOrganic.googleExp",
     "params.recipes.catalogPopularOrganic.halfKm",
+    "params.recipes.pay.offersExp",
   ]);
   // An absent key is not a clamp.
   const quiet: string[] = [];
@@ -488,16 +493,13 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
   assertEquals(quiet, []);
 });
 
-Deno.test("recipes: a save from before MESITA-4517 keeps its Family Organic row as Family both; close and well known read their defaults", () => {
-  const old = { halfKm: 3, distanceExp: 2, googleExp: 0.25, premierExp: 0 };
-  const r = normalizeRecipes({ catalogFamilyOrganic: old });
-  assertEquals([r.catalogFamilyBoth.halfKm, r.catalogFamilyBoth.googleExp], [3, 0.25]);
+Deno.test("recipes: a save from before the twelve lanes keeps Family Inorganic on Home Family Inorganic", () => {
+  const old = { halfKm: 3, distanceExp: 2, googleExp: 0.25, premierExp: 1 };
+  const r = normalizeRecipes({ catalogFamilyInorganic: old });
+  assertEquals([r.catalogFamilyCloseInorganic.halfKm, r.catalogFamilyCloseInorganic.googleExp], [3, 0.25]);
   assertEquals(r.catalogFamilyClose, DEFAULT_RECIPES.catalogFamilyClose);
-  assertEquals(r.catalogFamilyWellKnown, DEFAULT_RECIPES.catalogFamilyWellKnown);
-  // Once Family both is saved, the old key is ignored.
-  const both = normalizeRecipes({ catalogFamilyOrganic: old, catalogFamilyBoth: { halfKm: 1 } });
-  assertEquals(both.catalogFamilyBoth.halfKm, 1);
-  assertEquals("catalogFamilyOrganic" in both, false);
+  const saved = normalizeRecipes({ catalogFamilyInorganic: old, catalogFamilyCloseInorganic: { halfKm: 1 } });
+  assertEquals(saved.catalogFamilyCloseInorganic.halfKm, 1);
 });
 
 Deno.test("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 whole", () => {

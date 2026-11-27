@@ -94,8 +94,8 @@ Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
     mrow("near-twin", { lat: CENTER.lat + 0.001 }),
   ], selOpts);
   assertEquals(ids(out), ["near-twin", "far-twin"]);
-  // Family Organic (2 km, exponent 2, stars² , 0.33): quiet at 0 km:
-  // (3.1² × 5)^0.33 ≈ 3.6; loved at 1.1 km: 0.77 × (4.9² × 3000)^0.33 ≈ 30.8.
+  // Home Family Organic is 0.1 km and exponent 4, so a quiet place at the
+  // guest outranks a famous place a kilometre away.
   const loved = rankMesitaPlaces([
     mrow("quiet", { google_stars_overall: 3.1, google_review_count: 5 }),
     mrow("loved", {
@@ -104,10 +104,10 @@ Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
       google_review_count: 3000,
     }),
   ], selOpts);
-  assertEquals(ids(loved), ["loved", "quiet"]);
+  assertEquals(ids(loved), ["quiet", "loved"]);
 });
 
-Deno.test("chat: Chat ranks by the Family well-known row's half distance (MESITA-2909, MESITA-4517)", () => {
+Deno.test("chat: Chat ranks by Home Family Organic's half distance (MESITA-2909, MESITA-5030)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
@@ -118,7 +118,7 @@ Deno.test("chat: Chat ranks by the Family well-known row's half distance (MESITA
       ...selOpts.params,
       recipes: {
         ...selOpts.params.recipes,
-        catalogFamilyWellKnown: { ...selOpts.params.recipes.catalogFamilyWellKnown, halfKm },
+        catalogFamilyClose: { ...selOpts.params.recipes.catalogFamilyClose, halfKm },
       },
     },
   });

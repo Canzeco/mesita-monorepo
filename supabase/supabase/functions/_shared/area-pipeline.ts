@@ -15,9 +15,9 @@
 //     is shuffled by the mode's Temperature (`cutAndShuffle`), and only that
 //     page's cards are read; the client pages the rest by id
 //
-// DISCOVERY RANKING v2 (MESITA-4454): every score is one formula with a
-// recipe row per screen, mode and lane (`recipeFor`, discovery-config.ts):
-// Premier boost × (Google popularity × Foursquare boost) × Proximity.
+// DISCOVERY RANKING v2 (MESITA-4454, MESITA-5030): every score is one formula
+// with a recipe row per lane (`recipeFor`, discovery-config.ts):
+// Premier × Google × Foursquare × Offers × Proximity.
 // Google popularity is ((1 − w) × stars × reviews + w × growth)^GoogleExp.
 // w is 0 with no usable review history. A missing Foursquare score is 1×.
 //
@@ -51,7 +51,7 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
-import { cutAndShuffle, mergeLanes, type RankMode, strongOnBoth, weaveLanes } from "./pipeline-signals.ts";
+import { cutAndShuffle, mergeLanes, type RankMode, weaveLanes } from "./pipeline-signals.ts";
 import {
   type DiscoveryConfig,
   laneBatch,
@@ -292,8 +292,14 @@ export function selectAreaPool<T extends PoolRow>(
 ): Promise<{ places: AreaPoolPlace[]; summary: AreaPoolSummary; dots: MapDot[] }> {
   const catalog = deps.surface === "catalog";
   const mode = catalog ? deps.mode ?? "popular" : "map";
-  const organicRecipe = recipeFor(mode, "organic", deps.cfg);
-  const adRecipe = recipeFor(mode, "inorganic", deps.cfg);
+  // Map Nearby is Map Popular. A family chip reads Map Family (MESITA-5030).
+  const mapFamily = !catalog && deps.families.length > 0;
+  const organicRecipe = mapFamily
+    ? recipeRow("mapFamilyOrganic", deps.cfg)
+    : recipeFor(mode, "organic", deps.cfg);
+  const adRecipe = mapFamily
+    ? recipeRow("mapFamilyInorganic", deps.cfg)
+    : recipeFor(mode, "inorganic", deps.cfg);
   const ctx = (recipe: AreaContext["recipe"]): AreaContext => ({
     location: deps.location,
     families: deps.families,
@@ -714,6 +720,7 @@ export function catalogRankLanesArgs(
     p_organic_premier_exp: org.premierExp,
     p_organic_fsq_factor: org.foursquareFactor,
     p_organic_fsq_exp: org.foursquareExponent,
+    p_organic_offers_exp: org.offersExp,
     p_ad_half_km: ad.halfKm,
     p_ad_distance_exp: ad.distanceExp,
     p_ad_stars_exp: 1, // Legacy RPC signature.
@@ -721,6 +728,7 @@ export function catalogRankLanesArgs(
     p_ad_premier_exp: ad.premierExp,
     p_ad_fsq_factor: ad.foursquareFactor,
     p_ad_fsq_exp: ad.foursquareExponent,
+    p_ad_offers_exp: ad.offersExp,
     // No p_ad_floor: the SQL ignores it since MESITA-5029.
   };
 }
@@ -780,47 +788,17 @@ export const CATALOG_ORDER_CAP = 1000;
 const ids = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
 const count = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
-/** The lanes of each feed (MESITA-4548): every lane has an Organic and an
- *  Inorganic row. `rank` names the organic row whose SQL ranking the lane
- *  is; a "both" lane is derived from its feed's close and well-known
- *  rankings. Lane order is weave order: both first. */
-const FEEDS: Record<RankMode, {
-  close: RecipeRow;
-  wellKnown: RecipeRow;
-  lanes: Array<{ organic: RecipeRow; inorganic: RecipeRow; rank: "close" | "wellKnown" | "both" }>;
-}> = {
-  nearby: {
-    close: "catalogNearbyOrganic",
-    wellKnown: "catalogPopularOrganic",
-    lanes: [
-      { organic: "catalogNearbyBoth", inorganic: "catalogNearbyBothInorganic", rank: "both" },
-      { organic: "catalogNearbyOrganic", inorganic: "catalogNearbyInorganic", rank: "close" },
-    ],
-  },
-  popular: {
-    close: "catalogNearbyOrganic",
-    wellKnown: "catalogPopularOrganic",
-    lanes: [
-      { organic: "catalogPopularBoth", inorganic: "catalogPopularBothInorganic", rank: "both" },
-      { organic: "catalogPopularOrganic", inorganic: "catalogPopularInorganic", rank: "wellKnown" },
-    ],
-  },
-  family: {
-    close: "catalogFamilyClose",
-    wellKnown: "catalogFamilyWellKnown",
-    lanes: [
-      { organic: "catalogFamilyBoth", inorganic: "catalogFamilyBothInorganic", rank: "both" },
-      { organic: "catalogFamilyClose", inorganic: "catalogFamilyCloseInorganic", rank: "close" },
-      { organic: "catalogFamilyWellKnown", inorganic: "catalogFamilyWellKnownInorganic", rank: "wellKnown" },
-    ],
-  },
+/** One lane per Home chip (MESITA-5030): organic plus inorganic. Local
+ *  Favorites and the extra Family lanes are gone. */
+const FEEDS: Record<RankMode, Array<{ organic: RecipeRow; inorganic: RecipeRow }>> = {
+  nearby: [{ organic: "catalogNearbyOrganic", inorganic: "catalogNearbyInorganic" }],
+  popular: [{ organic: "catalogPopularOrganic", inorganic: "catalogPopularInorganic" }],
+  family: [{ organic: "catalogFamilyClose", inorganic: "catalogFamilyCloseInorganic" }],
 };
 
-/** A feed's lanes, ranked and woven (MESITA-4517, MESITA-4548): Home's rank. Each lane's Inorganic row ranks Premier
- *  places in the same SQL call as an organic ranking; the close and
- *  well-known rankings feed the "both" lane. Every lane's batch is its
- *  row's. `answer` is the first SQL answer (its read and Inorganic
- *  counts). */
+/** A feed's one lane, ranked and woven (MESITA-5030): Home's rank. The
+ *  Inorganic row ranks Premier places in the same SQL call. The lane's
+ *  batch is its row's. `answer` is that SQL answer. */
 export async function weaveCatalog(
   rankLanes: CatalogRankRpc,
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
@@ -833,30 +811,19 @@ export async function weaveCatalog(
   premier: string[];
   woven: ReturnType<typeof weaveLanes>;
 }> {
-  const feed = FEEDS[mode];
+  const lanes = FEEDS[mode];
   const rankWith = async (organicRow: RecipeRow, adRow: RecipeRow) => {
     const { data, error } = await rankLanes(catalogRankLanesArgs(cfg, location, families, mode, organicRow, adRow));
     if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
     return (data ?? {}) as Record<string, unknown>;
   };
-  // One SQL call per lane: its ranking row (close, well known, or for a
-  // both lane the well-known row) with that lane's Inorganic row.
-  const answers = await Promise.all(feed.lanes.map((l) =>
-    rankWith(l.rank === "close" ? feed.close : feed.wellKnown, l.inorganic)
-  ));
-  const closeAt = feed.lanes.findIndex((l) => l.rank === "close");
-  const closeIds = closeAt >= 0
-    ? ids(answers[closeAt].ids)
-    : ids((await rankWith(feed.close, feed.lanes[0].inorganic)).ids);
-  const wellIds = ids(answers[feed.lanes.findIndex((l) => l.rank !== "close")].ids);
+  const answers = await Promise.all(lanes.map((l) => rankWith(l.organic, l.inorganic)));
   const lane = (key: RecipeRow, list: string[]) => ({ key, ids: list, batch: laneBatch(recipeRow(key, cfg)) });
-  const organicLanes = feed.lanes.map((l) =>
-    lane(l.organic, l.rank === "both" ? strongOnBoth(closeIds, wellIds) : l.rank === "close" ? closeIds : wellIds)
-  );
-  const inorganicLanes = feed.lanes.map((l, i) => lane(l.inorganic, ids(answers[i].premier)));
+  const organicLanes = lanes.map((l, i) => lane(l.organic, ids(answers[i].ids)));
+  const inorganicLanes = lanes.map((l, i) => lane(l.inorganic, ids(answers[i].premier)));
   const premier = [...new Set(inorganicLanes.flatMap((l) => l.ids))];
   const woven = weaveLanes(organicLanes, inorganicLanes, mixFor(cfg).adEvery);
-  return { answer: answers[closeAt >= 0 ? closeAt : 0], organicLanes, premier, woven };
+  return { answer: answers[0] ?? {}, organicLanes, premier, woven };
 }
 
 /**
@@ -1045,9 +1012,8 @@ export type MesitaOpts = {
   growth?: ReadonlyMap<string, GrowthTerm>;
 };
 
-/** Ready Mesita rows ranked by the Catalog Family well-known row (M-f,
- *  MESITA-4454, MESITA-4517: no Inorganic lane, no ads, no shuffle), inside
- *  the radius. */
+/** Ready Mesita rows ranked by Home Family Organic (M-f, MESITA-4454,
+ *  MESITA-5030: no Inorganic lane, no ads, no shuffle), inside the radius. */
 export function rankMesitaPlaces<T extends Record<string, unknown>>(
   rows: readonly T[],
   opts: MesitaOpts,

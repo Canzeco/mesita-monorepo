@@ -45,6 +45,7 @@ import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "
 import {
   isMapRow,
   isOrganicRow,
+  offersOpen,
   MAP_DOTS_SHOWN_MAX,
   SOCIAL_LATEST_EVENTS_MAX,
   SOCIAL_LATEST_EVENTS_MIN,
@@ -225,58 +226,45 @@ function proximityAt(d: number, halfKm: number, exp: number): number {
 
 const fmtProx = (p: number) => (p >= 0.01 ? p.toFixed(2) : p.toPrecision(1));
 
-/** The Ranking table, one flat list (MESITA-4517). A Mode is what the guest
- *  picks (Nearby, Family, Popular); a Lane is one ranked row inside it:
- *  Nearby Lane (close), Popular Lane (well known), Local Favorites Lane (near
- *  AND popular). Every lane has an Organic and an Inorganic row. Names are
- *  labels only (MESITA-4557): the stored keys never change. */
-const LANE_ROWS: readonly { row: RecipeRow; lane: string; mode: string }[] = [
-  { row: "catalogNearbyOrganic", lane: "Nearby Lane", mode: "Nearby Mode" },
-  { row: "catalogNearbyInorganic", lane: "Nearby Lane", mode: "Nearby Mode" },
-  { row: "catalogNearbyBoth", lane: "Local Favorites Lane", mode: "Nearby Mode" },
-  { row: "catalogNearbyBothInorganic", lane: "Local Favorites Lane", mode: "Nearby Mode" },
-  { row: "catalogFamilyClose", lane: "Nearby Lane", mode: "Family Mode" },
-  { row: "catalogFamilyCloseInorganic", lane: "Nearby Lane", mode: "Family Mode" },
-  { row: "catalogFamilyWellKnown", lane: "Popular Lane", mode: "Family Mode" },
-  { row: "catalogFamilyWellKnownInorganic", lane: "Popular Lane", mode: "Family Mode" },
-  { row: "catalogFamilyBoth", lane: "Local Favorites Lane", mode: "Family Mode" },
-  { row: "catalogFamilyBothInorganic", lane: "Local Favorites Lane", mode: "Family Mode" },
-  { row: "catalogPopularOrganic", lane: "Popular Lane", mode: "Popular Mode" },
-  { row: "catalogPopularInorganic", lane: "Popular Lane", mode: "Popular Mode" },
-  { row: "catalogPopularBoth", lane: "Local Favorites Lane", mode: "Popular Mode" },
-  { row: "catalogPopularBothInorganic", lane: "Local Favorites Lane", mode: "Popular Mode" },
-  { row: "mapOrganic", lane: "Map Lane", mode: "Map" },
-  { row: "mapInorganic", lane: "Map Lane", mode: "Map" },
+/** The Ranking table (MESITA-5030). The first column is the lane. Names do
+ *  not repeat "Lane". Map Nearby is Map Popular. Pay and Prepay are one
+ *  lane each. Stored keys stay the old names where the lane is the same. */
+const LANE_ROWS: readonly { row: RecipeRow; name: string; group: string }[] = [
+  { row: "catalogNearbyOrganic", name: "Home Nearby Organic", group: "Home" },
+  { row: "catalogNearbyInorganic", name: "Home Nearby Inorganic", group: "Home" },
+  { row: "catalogPopularOrganic", name: "Home Popular Organic", group: "Home" },
+  { row: "catalogPopularInorganic", name: "Home Popular Inorganic", group: "Home" },
+  { row: "catalogFamilyClose", name: "Home Family Organic", group: "Home" },
+  { row: "catalogFamilyCloseInorganic", name: "Home Family Inorganic", group: "Home" },
+  { row: "mapOrganic", name: "Map Popular Organic", group: "Map" },
+  { row: "mapInorganic", name: "Map Popular Inorganic", group: "Map" },
+  { row: "mapFamilyOrganic", name: "Map Family Organic", group: "Map" },
+  { row: "mapFamilyInorganic", name: "Map Family Inorganic", group: "Map" },
+  { row: "pay", name: "Pay", group: "Pay" },
+  { row: "prepay", name: "Prepay", group: "Prepay" },
 ];
 
-/** The organic Local Favorites rows (MESITA-4674): nearest first, nothing
- *  else, so Batch is their only number. */
-const isFavoritesRow = (row: RecipeRow) =>
-  row === "catalogNearbyBoth" || row === "catalogFamilyBoth" || row === "catalogPopularBoth";
-
-/** "Organic Nearby Lane" / "Inorganic Local Favorites Lane". */
-const laneName = (row: RecipeRow, lane: string) => `${isOrganicRow(row) ? "Organic" : "Inorganic"} ${lane}`;
-
-/** Under the name: the Mode and how close (½ at N km). */
-function laneNote(row: RecipeRow, mode: string, recipe: Recipe): string {
-  const parts = [mode];
-  if (isFavoritesRow(row)) parts.push("nearest first");
-  else if (recipe.halfKm != null) parts.push(`½ at ${recipe.halfKm} km`);
+/** Under the name: where it is used, and how close. */
+function laneNote(row: RecipeRow, group: string, recipe: Recipe): string {
+  const parts = [group];
+  if (recipe.halfKm != null) parts.push(`½ at ${recipe.halfKm} km`);
   else parts.push("no distance");
-  if (!isOrganicRow(row)) parts.push("Premier only");
+  if (row.endsWith("Inorganic")) parts.push("Premier places");
   return parts.join(" · ");
 }
 
 // 1 ─ How places are ranked ───────────────────────────────────────────────
 export function HowRankedCard() {
   const uses: readonly [string, string][] = [
-    ["Home › Nearby chip (Nearby Mode)", "Nearby Lane + Local Favorites Lane, each Organic and Inorganic"],
-    ["Home › a family chip (Family Mode)", "Nearby Lane + Popular Lane + Local Favorites Lane of one family, each Organic and Inorganic"],
-    ["Home › Popular chip (Popular Mode)", "Popular Lane + Local Favorites Lane, each Organic and Inorganic"],
-    ["Chat", "Family Mode's Organic Popular Lane, inside its 15 km circle. No Inorganic lane, no shuffle."],
-    ["The place screen's score", "Popular Organic"],
-    ["Search map", "Map Organic + Map Inorganic"],
-    ["Pay, Wallet and the Reward tab", "Nearest first. No rows, no Inorganic lane, no shuffle."],
+    ["Home › Nearby", "Home Nearby Organic + Home Nearby Inorganic"],
+    ["Home › Popular", "Home Popular Organic + Home Popular Inorganic"],
+    ["Home › a family chip", "Home Family Organic + Home Family Inorganic, that family"],
+    ["Chat", "Home Family Organic, inside its 15 km circle. No Inorganic lane, no shuffle."],
+    ["The place screen's score", "Home Popular Organic"],
+    ["Search map › Nearby or Popular", "Map Popular Organic + Map Popular Inorganic. Nearby is Popular."],
+    ["Search map › a family chip", "Map Family Organic + Map Family Inorganic"],
+    ["Pay", "The Pay row. The Pay list still orders by distance."],
+    ["Prepay", "The Prepay row. The Prepay list still orders by distance."],
   ];
   return (
     <SectionCard
@@ -290,7 +278,7 @@ export function HowRankedCard() {
       <Collapsible summary="Read it">
       <div className="flex flex-col gap-4">
         <code className="bg-muted w-fit max-w-full rounded-md px-2 py-1 text-xs break-words whitespace-normal">
-          Score = Premier ^ Premier exponent × (((1 − w) × stars × reviews + w × growth) ^ Google exponent × (1 + Foursquare factor × raw ^ Foursquare exponent)) × Proximity
+          Score = Premier × Google × Foursquare × Offers × Proximity
         </code>
         <div className="text-foreground flex max-w-3xl flex-col gap-2 text-sm leading-relaxed">
           <p>
@@ -303,21 +291,16 @@ export function HowRankedCard() {
             the score is Premier ^ Premier exponent.
           </p>
           <p>
-            A <strong>feed</strong> is what the guest sees; a <strong>lane</strong> is one ranked row inside
-            it, and every lane has an <strong>Organic</strong> row and an <strong>Inorganic</strong> row.
-            A <strong>Mode</strong> is what the guest picks. Nearby Mode is the <strong>Nearby Lane</strong>{" "}
-            (close) + the <strong>Local Favorites Lane</strong>; Popular Mode is the{" "}
-            <strong>Popular Lane</strong> (well known) + the Local Favorites Lane, every family. Family Mode is
-            one family in all three. The Local Favorites Lane is the places that are both near and popular:
-            the better half of the Nearby ranking and the better half of the Popular ranking, nearest first and
-            nothing else. Organic rows have Premier exponent 0, so a plan never
-            moves them. Inorganic rows rank Premier places only; guests see them marked &ldquo;Ad&rdquo;.
+            Home has three chips. Each chip is one organic lane and one inorganic lane. Family is one
+            list, not three. Local Favorites is gone. On the map, Nearby is a shortcut to Popular. A family
+            chip on the map reads Map Family. Pay and Prepay are one lane each, with no organic split.
+            Organic lanes keep Premier exponent 0, so a plan never moves them. Inorganic lanes rank Premier
+            places only; guests see them marked &ldquo;Ad&rdquo;.
           </p>
           <p>
-            Each row gives its <strong>batch</strong> per weave. A weave takes the next batch of every organic
-            lane, one from each in turn (both first), and puts one inorganic place after every cadence organic
-            places, taken in turn from the feed&apos;s Inorganic rows, each up to its batch. A place appears once. Weaves repeat until the lanes run out; the first
-            weave is Home&apos;s first screen. With every Family batch at 10 the three organic lanes give 30.
+            Each Home lane gives its <strong>batch</strong> per weave. A weave takes that batch, then one
+            inorganic place after every cadence organic places, up to the inorganic batch. A place appears
+            once. The first weave is Home&apos;s first screen. The Map has no batch: Most pins shown cuts it.
           </p>
           <p>
             w is the growth share. It is 0 until Fast Update has two snapshots at least 7 days apart in the
@@ -327,10 +310,15 @@ export function HowRankedCard() {
             local review base. A place we watched that did not gain reviews mixes in zero.
           </p>
           <p>
-            Foursquare boost = 1 + Foursquare factor × raw ^ Foursquare exponent. It multiplies Google
-            popularity after the Google exponent. Factor 1 allows up to 2×. A higher exponent concentrates
-            that boost near the top of Foursquare&apos;s 0–1 scale. A missing score, or a measured 0, is 1×.
-            Factor 0 turns the boost off.
+            Foursquare = 1 + raw ^ Foursquare exponent. The factor is always 1, so the boost is at most 2×.
+            A higher exponent concentrates it near the top of Foursquare&apos;s 0–1 scale. A missing score,
+            or a measured 0, is 1×.
+          </p>
+          <p>
+            Offers = offer points ^ Offers exponent. The points are the percents that place has on, added
+            once: small, medium and big bonus, plus welcome, returning, welcome VIP and returning VIP.
+            Discount and cashback are the same percent. Exponent 0 means the multiplier is 1. Exponent above
+            0 and no points means the score is 0. Home and Map stay at 0 for now. Pay and Prepay edit it.
           </p>
           <p>A place with no reviews or no stars scores 0 and ranks last; it is never hidden.</p>
         </div>
@@ -380,9 +368,9 @@ type RecipeKey =
   | "halfKm"
   | "distanceExp"
   | "googleExp"
-  | "foursquareFactor"
   | "foursquareExponent"
   | "premierExp"
+  | "offersExp"
   | "batch";
 
 const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
@@ -390,18 +378,18 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
   { key: "halfKm", label: "Half distance (km)" },
   { key: "distanceExp", label: "Distance exponent" },
   { key: "googleExp", label: "Google exponent" },
-  { key: "foursquareFactor", label: "Foursquare factor" },
   { key: "foursquareExponent", label: "Foursquare exponent" },
   { key: "premierExp", label: "Premier exponent" },
+  { key: "offersExp", label: "Offers exponent" },
 ];
 
 /** What the row's numbers do, computed from the row as edited (1A). */
 function recipeEffect(row: RecipeRow, recipe: Recipe): string {
-  const organic = isOrganicRow(row);
-  if (isFavoritesRow(row)) return "Order: nearest first";
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
-  if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
+  if (h == null || e == null) {
+    return isOrganicRow(row) ? "No distance on the Map" : "Any Premier place on screen";
+  }
   return `½ at ${h} km · 2 km ${fmtProx(proximityAt(2, h, e))}`;
 }
 
@@ -425,8 +413,8 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
   const cell = (row: RecipeRow, rowName: string, key: RecipeKey, label: string) => {
     const recipe = cfg.params.recipes[row];
     if (isMapRow(row) && (key === "halfKm" || key === "distanceExp" || key === "batch")) return <Fixed>—</Fixed>;
-    if (isFavoritesRow(row) && key !== "batch") return <Fixed>—</Fixed>;
     if (isOrganicRow(row) && key === "premierExp") return <Fixed>0</Fixed>;
+    if (!offersOpen(row) && key === "offersExp") return <Fixed>0</Fixed>;
     return (
       <NumberCell
         ariaLabel={`${rowName}, ${label}`}
@@ -445,18 +433,18 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
       id="s-ranking"
       icon={<LayoutGrid />}
       title="Ranking"
-      subtitle="One row per lane: its batch and the numbers in its formula."
+      subtitle="One lane, and the numbers in its score."
       right={unsaved(dirty)}
       className="scroll-mt-20"
     >
       <div className="mt-4 flex flex-col gap-3">
         <code className="bg-muted w-fit max-w-full rounded-md px-2 py-1 text-xs break-words whitespace-normal">
-          Score = Premier × Popularity × Proximity
+          Score = Premier × Google × Foursquare × Offers × Proximity
         </code>
         <Table>
           <THead>
             <Tr>
-              <Th sticky>Row</Th>
+              <Th sticky>Lane</Th>
               {RECIPE_COLUMNS.map(({ key, label }) => (
                 <Th key={key} numeric className="align-bottom whitespace-normal">
                   <span className="block">{label}</span>
@@ -469,17 +457,17 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
             </Tr>
           </THead>
           <TBody>
-            {LANE_ROWS.map(({ row, lane, mode }) => (
+            {LANE_ROWS.map(({ row, name, group }) => (
               <Tr key={row}>
                 <Td sticky className="font-medium">
-                  {laneName(row, lane)}
+                  {name}
                   <span className="text-muted-foreground type-meta block font-normal">
-                    {laneNote(row, mode, cfg.params.recipes[row])}
+                    {laneNote(row, group, cfg.params.recipes[row])}
                   </span>
                 </Td>
                 {RECIPE_COLUMNS.map(({ key, label }) => (
                   <Td key={key} numeric>
-                    {cell(row, `${laneName(row, lane)}, ${mode}`, key, label)}
+                    {cell(row, name, key, label)}
                   </Td>
                 ))}
                 <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">
@@ -495,19 +483,15 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
         <div className="flex flex-col gap-3">
         <Meta>
           Batch {RECIPE_BOUNDS.batch.min}–{RECIPE_BOUNDS.batch.max}: how many places the lane gives each
-          weave; a lane with fewer left gives fewer, so a feed can be shorter than its batches add up to.
-          The Map has no batch: Most pins shown cuts it. The Organic Local Favorites Lane is nearest first, so
-          Batch is its only number. Half distance {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km: about 0.5 km on foot, 2–3 km
-          by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Google exponent: how far apart
-          famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
-          counts in the Inorganic lane; at the same distance and stars a Pro place passes a Max place only with
-          (Max ÷ Pro) ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: where Proximity is ½ and its
-          value at 2 km.
+          weave. The Map leaves it blank: Most pins shown already cuts the map. Half distance{" "}
+          {RECIPE_BOUNDS.halfKm.min}–{RECIPE_BOUNDS.halfKm.max} km, blank on the Map. Distance exponent{" "}
+          {RECIPE_BOUNDS.distanceExp.min}–{RECIPE_BOUNDS.distanceExp.max}, blank on the Map. Google exponent{" "}
+          {RECIPE_BOUNDS.googleExp.min}–{RECIPE_BOUNDS.googleExp.max}. Foursquare exponent{" "}
+          {RECIPE_BOUNDS.foursquareExponent.min}–{RECIPE_BOUNDS.foursquareExponent.max}; the factor is always 1.
+          Premier exponent {RECIPE_BOUNDS.premierExp.min}–{RECIPE_BOUNDS.premierExp.max}. Pro is 2 and Max is 5,
+          set in Mixing. Organic lanes stay at 0. Offers exponent {RECIPE_BOUNDS.offersExp.min}–{RECIPE_BOUNDS.offersExp.max}.
+          Home and Map stay at 0. Pay and Prepay edit it. Effect: where Proximity is ½, and its value at 2 km.
         </Meta>
-        <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
-          Foursquare factor 1 allows a boost of up to 2×. A higher Foursquare exponent concentrates that
-          boost near the top of the 0–1 scale. A missing Foursquare score stays at 1×.
-        </p>
         </div>
       </Collapsible>
     </SectionCard>

@@ -79,6 +79,7 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
     ["FOURSQUARE_FACTOR", RECIPE_BOUNDS.foursquareFactor],
     ["FOURSQUARE_EXPONENT", RECIPE_BOUNDS.foursquareExponent],
     ["PREMIER_EXP", RECIPE_BOUNDS.premierExp],
+    ["OFFERS_EXP", RECIPE_BOUNDS.offersExp],
     ["LANE_BATCH", RECIPE_BOUNDS.batch],
     ["MIX_TEMPERATURE", MIX_BOUNDS.temperature],
     ["AD_EVERY", MIX_BOUNDS.adEvery],
@@ -104,7 +105,7 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
   for (const row of RECIPE_ROWS) {
     const m = admin.match(
       new RegExp(
-        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), googleExp: ([0-9.]+), foursquareFactor: ([0-9.]+), foursquareExponent: ([0-9.]+), premierExp: ([0-9.]+), batch: (null|[0-9]+) \\},`,
+        `  ${row}: \\{ halfKm: (null|[0-9.]+), distanceExp: (null|[0-9.]+), googleExp: ([0-9.]+), foursquareFactor: ([0-9.]+), foursquareExponent: ([0-9.]+), premierExp: ([0-9.]+), offersExp: ([0-9.]+), batch: (null|[0-9]+) \\},`,
       ),
     );
     assertEquals(
@@ -115,7 +116,8 @@ Deno.test("Ranking and Mixing bounds, the recipe table and the mix defaults matc
         foursquareFactor: num(m[4]),
         foursquareExponent: num(m[5]),
         premierExp: num(m[6]),
-        batch: num(m[7]),
+        offersExp: num(m[7]),
+        batch: num(m[8]),
       } : null,
       { ...DEFAULT_RECIPES[row], batch: DEFAULT_RECIPES[row].batch ?? null },
       row,
