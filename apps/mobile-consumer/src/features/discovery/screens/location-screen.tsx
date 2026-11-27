@@ -12,7 +12,7 @@ import { colors, maxFontSizeMultiplier, pressedOpacity, radius, type } from "@/t
 
 import { useActiveLocation } from "../location-context";
 import { DISTRITO_TEC, type Point } from "../model";
-import { useLocationSearch, useResolveLocation } from "../queries";
+import { useLocationSearch, useResolveLocation, useSavePin, useSavedPins } from "../queries";
 
 const FIX_MS = 10_000;
 
@@ -52,11 +52,14 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
   const member = useSession().guestId !== null;
   const { location, choose } = useActiveLocation();
   const [device, setDevice] = useState<Device>("idle");
+  const [adding, setAdding] = useState(false);
   const [input, setInput] = useState("");
   const [sessionToken] = useState(() => Crypto.randomUUID());
   const search = useLocationSearch(input, sessionToken, member);
   const resolve = useResolveLocation();
-  const failed = resolve.error ?? search.error;
+  const pins = useSavedPins(member);
+  const save = useSavePin();
+  const failed = resolve.error ?? search.error ?? save.error;
   const copy = useErrorCopy(failed);
 
   const done = (point: Point, name: string) => {
@@ -108,7 +111,21 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
               title={s.mainText}
               line={s.secondaryText ?? null}
               busy={resolve.isPending && resolve.variables === s.placeId}
-              onPress={() => resolve.mutate(s.placeId, { onSuccess: (point) => done(point, s.mainText) })}
+              onPress={() =>
+                resolve.mutate(s.placeId, {
+                  onSuccess: (point) => {
+                    if (!adding) return done(point, s.mainText);
+                    const pin = {
+                      id: Crypto.randomUUID(),
+                      lat: point.lat,
+                      lng: point.lng,
+                      name: s.mainText,
+                      line: s.secondaryText ?? null,
+                    };
+                    save.mutate(pin, { onSuccess: () => done(pin, pin.name) });
+                  },
+                })
+              }
             />
           ))
         ) : (
@@ -123,6 +140,16 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
               onPress={() => void locate()}
               testID="use-device"
             />
+            {(pins.data ?? []).map((pin) => (
+              <LocationRow
+                key={pin.id}
+                icon="map-pin"
+                title={pin.name}
+                line={pin.line}
+                chosen={location?.name === pin.name && location.lat === pin.lat && location.lng === pin.lng}
+                onPress={() => done(pin, pin.name)}
+              />
+            ))}
             <LocationRow
               icon="map-pin"
               title={DISTRITO_TEC.name}
@@ -131,6 +158,15 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
               onPress={() => done(DISTRITO_TEC, DISTRITO_TEC.name)}
               testID="distrito-tec"
             />
+            {member ? (
+              <LocationRow
+                icon="mark"
+                title="Add a location"
+                line={adding ? "Search above, then save the pin" : "Home, office, or anywhere you look from"}
+                onPress={() => setAdding(true)}
+                testID="add-location"
+              />
+            ) : null}
             {member ? null : (
               <LocationRow
                 icon="log-in"

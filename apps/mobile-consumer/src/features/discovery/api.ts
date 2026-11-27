@@ -224,3 +224,69 @@ export async function previewGooglePlace(placeId: string, signal?: AbortSignal):
     message: answer.addable?.message ?? "",
   };
 }
+
+export type SavedPin = {
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  line: string | null;
+};
+
+const pinSchema = z.object({
+  id: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  suggestedName: z.string().nullish().catch(null),
+  customName: z.string().nullish().catch(null),
+  formattedAddress: z.string().nullish().catch(null),
+});
+
+function pinName(row: z.infer<typeof pinSchema>): string {
+  const custom = row.customName?.trim();
+  const suggested = row.suggestedName?.trim();
+  return custom || suggested || "Saved location";
+}
+
+/** The signed-in guest's pins, newest first. */
+export async function listSavedPins(signal?: AbortSignal): Promise<SavedPin[]> {
+  const answer = await callEdge(
+    "consumer-web-list-saved-locations",
+    {},
+    z.object({ locations: z.array(pinSchema).catch([]) }),
+    { signal },
+  );
+  return answer.locations.map((row) => ({
+    id: row.id,
+    lat: row.lat,
+    lng: row.lng,
+    name: pinName(row),
+    line: row.formattedAddress?.trim() || null,
+  }));
+}
+
+/** Save a confirmed pin and put it first. */
+export function savePin(pin: SavedPin): Promise<unknown> {
+  return callEdge(
+    "consumer-web-save-location",
+    {
+      op: "upsert",
+      front: true,
+      location: {
+        id: pin.id,
+        lat: pin.lat,
+        lng: pin.lng,
+        suggestedName: pin.name,
+        customName: null,
+        formattedAddress: pin.line,
+        nameEdited: false,
+        namedAt: Date.now(),
+        needsName: false,
+        unconfirmed: false,
+        legacyName: null,
+      },
+    },
+    z.object({ ok: z.boolean().optional() }).passthrough(),
+    { mutation: true },
+  );
+}
