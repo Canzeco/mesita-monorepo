@@ -207,8 +207,8 @@ Deno.test("the Catalog never walks: one SQL rank, then only the first page's car
   const order = rows.map((r) => r.id).reverse();
   const { run, seen, lanesCalls } = pool(rows, order, { pageSize: 100 });
   const out = await run;
-  // Popular: its two lanes and its close ranking (MESITA-4548).
-  assertEquals(lanesCalls.length, 3);
+  // Popular is one lane (MESITA-5030).
+  assertEquals(lanesCalls.length, 1);
   // No scoring-column walk at all, so no 10,000-row cap.
   assertEquals(seen.filter((s) => s.columns === CATALOG_SCORING_COLUMNS).length, 0);
   const asked = seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
@@ -250,6 +250,7 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
     [near.p_organic_fsq_factor, near.p_organic_fsq_exp, near.p_ad_fsq_factor, near.p_ad_fsq_exp],
     [o.foursquareFactor, o.foursquareExponent, i.foursquareFactor, i.foursquareExponent],
   );
+  assertEquals([near.p_organic_offers_exp, near.p_ad_offers_exp], [o.offersExp, i.offersExp]);
   // No ad floor since MESITA-5029: none is sent.
   assert(!("p_ad_floor" in near));
   // No repeat penalty since MESITA-4463: no mode sends one.
@@ -260,7 +261,7 @@ Deno.test("catalog_rank_lanes' arguments are the mode's two recipe rows, the gat
   assertEquals(popular.p_organic_half_km, cfg.params.recipes.catalogPopularOrganic.halfKm);
   assertEquals(
     catalogRankLanesArgs(cfg, resolveAreaLocation(CENTER, null), ["tacos"], "family").p_organic_half_km,
-    cfg.params.recipes.catalogFamilyWellKnown.halfKm,
+    cfg.params.recipes.catalogFamilyClose.halfKm,
   );
   // Family's close lane ranks with its own row (MESITA-4517).
   assertEquals(
@@ -295,8 +296,8 @@ Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad ca
   const premier = [pid(28), pid(25)];
   const { run, lanesCalls } = pool(rows, organic, { premier, pageSize: 10 });
   const out = await run;
-  // Popular: its two lanes and its close ranking (MESITA-4548).
-  assertEquals(lanesCalls.length, 3);
+  // Popular is one lane (MESITA-5030).
+  assertEquals(lanesCalls.length, 1);
   assertEquals(out.order.slice(0, 5), [pid(0), pid(28), pid(1), pid(25), pid(2)]);
   assertEquals(out.order.length, 30);
   assertEquals(new Set(out.order).size, 30);
@@ -309,8 +310,7 @@ Deno.test("the lanes merge: ad slots carry adIds over the whole order, the ad ca
     premier: 2,
     inorganicTotal: 4,
     adsFirstPage: 2,
-    // Ads round-robin over Popular's two Inorganic lanes (MESITA-4548).
-    byLane: { catalogPopularOrganic: 28, catalogPopularBothInorganic: 1, catalogPopularInorganic: 1 },
+    byLane: { catalogPopularOrganic: 28, catalogPopularInorganic: 2 },
   });
   // adEvery 0: no ad slots at all.
   const off = await pool(rows, organic, { premier, adEvery: 0 }).run;

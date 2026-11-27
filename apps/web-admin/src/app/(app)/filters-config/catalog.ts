@@ -24,8 +24,9 @@ import { num } from "@/lib/config-coerce";
  *  any family chip. Mirrors RankMode in _shared/pipeline-signals.ts. */
 export type RankMode = "nearby" | "popular" | "family";
 
-/** One recipe row (MESITA-4454). `halfKm` and `distanceExp` are null on the
- *  Map's rows (no Proximity there); `premierExp` is 0 on every Organic row.
+/** One recipe row (MESITA-5030). `halfKm` and `distanceExp` are null on the
+ *  Map's rows (no Proximity there); `premierExp` is 0 on every Organic row;
+ *  `offersExp` is 0 except on Pay and Prepay.
  *  Mirrors Recipe in _shared/pipeline-signals.ts. */
 export type Recipe = {
   halfKm: number | null;
@@ -34,29 +35,25 @@ export type Recipe = {
   foursquareFactor: number;
   foursquareExponent: number;
   premierExp: number;
+  offersExp: number;
   /** A Catalog lane's batch per weave (MESITA-4517); null on the Map. */
   batch: number | null;
 };
 
-/** The rows (MESITA-4548: every lane Organic + Inorganic), Catalog modes × lanes plus the Map's two. Mirrors
- *  RECIPE_ROWS in _shared/discovery-config.ts. */
+/** The twelve lanes (MESITA-5030). Mirrors RECIPE_ROWS in _shared/discovery-config.ts. */
 export const RECIPE_ROWS = [
   "catalogNearbyOrganic",
   "catalogNearbyInorganic",
-  "catalogNearbyBoth",
-  "catalogNearbyBothInorganic",
-  "catalogFamilyClose",
-  "catalogFamilyCloseInorganic",
-  "catalogFamilyWellKnown",
-  "catalogFamilyWellKnownInorganic",
-  "catalogFamilyBoth",
-  "catalogFamilyBothInorganic",
   "catalogPopularOrganic",
   "catalogPopularInorganic",
-  "catalogPopularBoth",
-  "catalogPopularBothInorganic",
+  "catalogFamilyClose",
+  "catalogFamilyCloseInorganic",
   "mapOrganic",
   "mapInorganic",
+  "mapFamilyOrganic",
+  "mapFamilyInorganic",
+  "pay",
+  "prepay",
 ] as const;
 export type RecipeRow = (typeof RECIPE_ROWS)[number];
 export type Recipes = Record<RecipeRow, Recipe>;
@@ -72,9 +69,12 @@ export type MixParams = {
   growthWeightCap: number;
 };
 
-/** Every row but "…Inorganic" is organic (Family close, well known and
- *  both, MESITA-4517). */
-export const isOrganicRow = (row: RecipeRow) => !row.endsWith("Inorganic");
+/** An organic lane locks Premier exponent at 0. Pay and Prepay are neither.
+ *  Home Family Organic keeps the key `catalogFamilyClose`. */
+export const isOrganicRow = (row: RecipeRow) =>
+  row.endsWith("Organic") || row === "catalogFamilyClose";
+/** Home and Map keep Offers exponent at 0. Pay and Prepay edit it. */
+export const offersOpen = (row: RecipeRow) => row === "pay" || row === "prepay";
 export const isMapRow = (row: RecipeRow) => row.startsWith("map");
 
 /**
@@ -204,6 +204,8 @@ export const GOOGLE_EXP_MIN = 0.1;
 export const GOOGLE_EXP_MAX = 1;
 export const PREMIER_EXP_MIN = 0;
 export const PREMIER_EXP_MAX = 2;
+export const OFFERS_EXP_MIN = 0;
+export const OFFERS_EXP_MAX = 2;
 export const FOURSQUARE_FACTOR_MIN = 0;
 export const FOURSQUARE_FACTOR_MAX = 5;
 export const FOURSQUARE_EXPONENT_MIN = 1;
@@ -228,6 +230,7 @@ export const RECIPE_BOUNDS = {
   foursquareFactor: { min: FOURSQUARE_FACTOR_MIN, max: FOURSQUARE_FACTOR_MAX, decimals: 2 },
   foursquareExponent: { min: FOURSQUARE_EXPONENT_MIN, max: FOURSQUARE_EXPONENT_MAX, decimals: 0 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
+  offersExp: { min: OFFERS_EXP_MIN, max: OFFERS_EXP_MAX, decimals: 1 },
   batch: { min: LANE_BATCH_MIN, max: LANE_BATCH_MAX, decimals: 0 },
 } as const;
 
@@ -239,30 +242,20 @@ export const MIX_BOUNDS = {
   growthWeightCap: { min: GROWTH_WEIGHT_CAP_MIN, max: GROWTH_WEIGHT_CAP_MAX, decimals: 2 },
 } as const;
 
-/** The recipe table (Pato, 2026-11-19). Mirrors DEFAULT_RECIPES. */
+/** The recipe table (Pato, 2026-11-26). Mirrors DEFAULT_RECIPES. */
 export const DEFAULT_RECIPES: Recipes = {
-  // MESITA-4557: Inorganic rows take half the Foursquare boost (max 1.5×),
-  // as they take half the Google exponent.
-  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  // MESITA-4548: Nearby both copies Nearby close; each new Inorganic row
-  // copies its feed's Inorganic row.
-  catalogNearbyBoth: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogNearbyBothInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  // MESITA-4517: close copies Nearby Organic, well known copies Popular
-  // Organic, both keeps the old Family Organic knobs.
-  catalogFamilyClose: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogFamilyCloseInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  catalogFamilyWellKnown: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogFamilyWellKnownInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  catalogFamilyBoth: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogFamilyBothInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  catalogPopularBoth: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: 10 },
-  catalogPopularBothInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: 10 },
-  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, batch: null },
-  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 0.5, foursquareExponent: 20, premierExp: 1, batch: null },
+  catalogNearbyOrganic: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: 10 },
+  catalogNearbyInorganic: { halfKm: 0.5, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, offersExp: 0, batch: 10 },
+  catalogPopularOrganic: { halfKm: 10, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: 10 },
+  catalogPopularInorganic: { halfKm: 10, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, offersExp: 0, batch: 10 },
+  catalogFamilyClose: { halfKm: 0.1, distanceExp: 4, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: 10 },
+  catalogFamilyCloseInorganic: { halfKm: 2, distanceExp: 2, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, offersExp: 0, batch: 10 },
+  mapOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: null },
+  mapInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, offersExp: 0, batch: null },
+  mapFamilyOrganic: { halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: null },
+  mapFamilyInorganic: { halfKm: null, distanceExp: null, googleExp: 0.17, foursquareFactor: 1, foursquareExponent: 20, premierExp: 1, offersExp: 0, batch: null },
+  pay: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0.2, offersExp: 1, batch: 20 },
+  prepay: { halfKm: 2, distanceExp: 2, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0.2, offersExp: 1, batch: 20 },
 };
 
 /** Mirrors DEFAULT_MIX. */
@@ -428,15 +421,12 @@ function bounds(raw: unknown, fallback: number, b: { min: number; max: number; d
   return Math.round(v * factor) / factor;
 }
 
-/** A row saved under an older key (MESITA-4517, MESITA-4548): Family Organic
- *  is Family both; the one Family Inorganic seeds all three Family Inorganic
- *  rows until the next save writes them. */
+/** A row saved under an older key. The one Family Inorganic row seeds Home
+ *  Family Inorganic until a save writes the new key. */
 function legacyRow(row: RecipeRow, r: Record<string, unknown>): unknown {
-  if (row === "catalogFamilyBoth") return r.catalogFamilyOrganic;
-  if (
-    row === "catalogFamilyCloseInorganic" || row === "catalogFamilyWellKnownInorganic" ||
-    row === "catalogFamilyBothInorganic"
-  ) return r.catalogFamilyInorganic;
+  if (row === "catalogFamilyCloseInorganic") return r.catalogFamilyInorganic;
+  if (row === "mapFamilyOrganic") return r.mapOrganic;
+  if (row === "mapFamilyInorganic") return r.mapInorganic;
   return undefined;
 }
 
@@ -454,9 +444,10 @@ export function coerceRecipes(raw: unknown): Recipes {
       halfKm: map ? null : bounds(v.halfKm, d.halfKm as number, RECIPE_BOUNDS.halfKm),
       distanceExp: map ? null : bounds(v.distanceExp, d.distanceExp as number, RECIPE_BOUNDS.distanceExp),
       googleExp: bounds(v.googleExp, d.googleExp, RECIPE_BOUNDS.googleExp),
-      foursquareFactor: bounds(v.foursquareFactor, d.foursquareFactor, RECIPE_BOUNDS.foursquareFactor),
+      foursquareFactor: 1,
       foursquareExponent: bounds(v.foursquareExponent, d.foursquareExponent, RECIPE_BOUNDS.foursquareExponent),
       premierExp: isOrganicRow(row) ? 0 : bounds(v.premierExp, d.premierExp, RECIPE_BOUNDS.premierExp),
+      offersExp: offersOpen(row) ? bounds(v.offersExp, d.offersExp, RECIPE_BOUNDS.offersExp) : 0,
       batch: map ? null : bounds(v.batch, d.batch as number, RECIPE_BOUNDS.batch),
     };
   }

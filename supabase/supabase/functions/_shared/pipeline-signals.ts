@@ -207,6 +207,9 @@ export const GOOGLE_EXP_MIN = 0.1;
 export const GOOGLE_EXP_MAX = 1;
 export const PREMIER_EXP_MIN = 0;
 export const PREMIER_EXP_MAX = 2;
+/** Offers exponent (MESITA-5030). 0 means the multiplier is 1. */
+export const OFFERS_EXP_MIN = 0;
+export const OFFERS_EXP_MAX = 2;
 /** Foursquare boost: 1 + factor × raw^exponent. Factor 0 turns the boost off. */
 export const FOURSQUARE_FACTOR_MIN = 0;
 export const FOURSQUARE_FACTOR_MAX = 5;
@@ -239,6 +242,8 @@ export type Recipe = {
   /** Applied to raw Foursquare popularity (0–1) before the factor. */
   foursquareExponent: number;
   premierExp: number;
+  /** 0 means Offers is 1. Above 0, offer points raised to this. */
+  offersExp: number;
   /** A Catalog lane's batch (MESITA-4517): how many places it gives each
    *  weave. Null on the Map's rows; absent on a caller's literal = 10. */
   batch?: number | null;
@@ -287,6 +292,15 @@ export function premierBoost(premierFactor: number, premierExp: number): number 
   return Math.pow(f, e);
 }
 
+/** Offer points ^ Offers exponent. Exponent 0 is 1, even when the place has
+ *  nothing on. Exponent above 0 and no points is 0, so the score is 0. */
+export function offersMultiplier(points: number | null | undefined, offersExp: number): number {
+  const e = Number.isFinite(offersExp) && offersExp > 0 ? offersExp : 0;
+  if (e === 0) return 1;
+  const p = typeof points === "number" && Number.isFinite(points) && points > 0 ? points : 0;
+  return p > 0 ? Math.pow(p, e) : 0;
+}
+
 /** One place's v2 score and its parts. `proximity` is null when the recipe
  *  has no Proximity (a Map row) or there is no anchor to measure from — it
  *  then counts as 1 (abstains). */
@@ -305,7 +319,13 @@ export type RecipeScore = {
  * anchor, has Proximity 0.
  */
 export function recipeScore(
-  candidate: { rating?: number | null; reviewCount?: number | null; foursquarePopularity?: number | null },
+  candidate: {
+    rating?: number | null;
+    reviewCount?: number | null;
+    foursquarePopularity?: number | null;
+    /** Sum of the percents the place has on. Absent counts as 0. */
+    offerPoints?: number | null;
+  },
   distanceKm: number | null,
   hasAnchor: boolean,
   premierFactor: number,
@@ -319,6 +339,7 @@ export function recipeScore(
     recipe.foursquareExponent ?? FOURSQUARE_EXPONENT_DEFAULT,
   );
   const boost = premierBoost(premierFactor, recipe.premierExp);
+  const offers = offersMultiplier(candidate.offerPoints, recipe.offersExp ?? 0);
   let prox: number | null = null;
   if (recipe.halfKm !== null && hasAnchor) {
     prox = distanceKm === null
@@ -330,7 +351,7 @@ export function recipeScore(
     popularity,
     premierFactor,
     premierBoost: boost,
-    final: (prox ?? 1) * popularity * boost,
+    final: (prox ?? 1) * popularity * boost * offers,
   };
 }
 

@@ -54,13 +54,14 @@ describe("the How places are ranked card draws the runtime model (MESITA-2338)",
 describe("Ranking shows every lane row (MESITA-4454, MESITA-4517)", () => {
   it("renders without a page stamp and offers no field the server forces (C1, L-1)", () => {
     const html = render(<RankingBox {...seed} />);
-    // MESITA-4548: fourteen Catalog rows × 7 fields (Batch included) less
-    // 7 forced organic Premier exponents; two Map rows × 4 editable fields
-    // (no distance, no batch) less 1 forced; the three organic Local
-    // Favorites rows keep Batch only (MESITA-4674), 5 fewer inputs each.
-    expect(html.match(/<input/g)?.length).toBe(14 * 7 - 7 + 2 * 4 - 1 - 3 * 5);
-    for (const name of ["Organic Nearby Lane", "Inorganic Local Favorites Lane", "Organic Popular Lane", "Family Mode", "½ at 0.1 km"]) {
+    // MESITA-5030: 3 Home organic × 5, 3 Home inorganic × 6, 2 Map organic × 2,
+    // 2 Map inorganic × 3, Pay and Prepay × 7. Premier is fixed on organic.
+    // Offers is fixed except on Pay and Prepay. Map has no batch or distance.
+    expect(html.match(/<input/g)?.length).toBe(3 * 5 + 3 * 6 + 2 * 2 + 2 * 3 + 2 * 7);
+    for (const name of ["Home Nearby Organic", "Map Popular Inorganic", "Pay", "Prepay", "½ at 0.1 km", ">Lane<"]) {
       expect(html).toContain(name);
     }
+    expect(html).not.toContain("Local Favorites");
+    expect(html).not.toContain("Foursquare factor");
   });
 });

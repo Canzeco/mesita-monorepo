@@ -5,6 +5,7 @@ import {
   cutAndShuffle,
   foursquareBoost,
   googlePopularity,
+  offersMultiplier,
   mergeLanes,
   premierBoost,
   rankModeForChip,
@@ -201,7 +202,7 @@ Deno.test("shuffleByRank: temperature 0 keeps the sort, any temperature keeps ev
 // Organic {1 km, 2, 2, 0.5, 0}, Inorganic {1 km, 2, 2, 0.5, 1}, so
 // Popularity = stars × √reviews and Proximity = 1 ÷ (1 + km²).
 
-const ORG = { halfKm: 1, distanceExp: 2, googleExp: 0.5, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0 };
+const ORG = { halfKm: 1, distanceExp: 2, googleExp: 0.5, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0 };
 const INORG = { ...ORG, premierExp: 1 };
 
 Deno.test("v2 score: Proximity × (stars × reviews)^GoogleExp × premierFactor^PremierExp, by hand", () => {
@@ -218,6 +219,17 @@ Deno.test("v2 score: Proximity × (stars × reviews)^GoogleExp × premierFactor^
   assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, 9, true, 1, { ...ORG, halfKm: null, distanceExp: null }).final, 20);
   // Measured from an anchor without coordinates: Proximity 0.
   assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, null, true, 1, ORG).final, 0);
+});
+
+Deno.test("offers: exponent 0 is 1, and points to that power otherwise", () => {
+  assertEquals(offersMultiplier(0, 0), 1);
+  assertEquals(offersMultiplier(75, 0), 1);
+  assertEquals(offersMultiplier(0, 1), 0);
+  assertEquals(offersMultiplier(75, 1), 75);
+  assertAlmostEquals(offersMultiplier(4, 0.5), 2, 1e-9);
+  const row = { ...ORG, halfKm: null, distanceExp: null, offersExp: 1 };
+  assertEquals(recipeScore({ rating: 4, reviewCount: 100, offerPoints: 0 }, 0, true, 1, row).final, 0);
+  assertEquals(recipeScore({ rating: 4, reviewCount: 100, offerPoints: 4 }, 0, true, 1, row).final, 80);
 });
 
 Deno.test("growth blend keeps GoogleExp once, and cold start is the linear-stars formula", () => {

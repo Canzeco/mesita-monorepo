@@ -8,7 +8,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(19);
+select plan(20);
 
 insert into public.place_profiles
   (id, google_name, family_keys, enrichment_sources, lat, lng, google_stars_overall, google_review_count, business_state) values
@@ -56,26 +56,38 @@ $$;
 
 -- ━━━ The function and its door ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- MESITA-4515 appends four defaulted Foursquare arguments. Named calls that
--- omit them still resolve; the stored signature is the full 23.
+-- MESITA-5030 appends two defaulted Offers exponents. Named calls that omit
+-- them still resolve; the stored signature is the full 25.
 select has_function('public', 'catalog_rank_lanes',
   array['double precision', 'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision', 'double precision', 'double precision',
         'text[]', 'text[]', 'boolean', 'double precision', 'double precision',
-        'double precision', 'double precision', 'double precision', 'double precision'],
+        'double precision', 'double precision', 'double precision', 'double precision',
+        'double precision', 'double precision'],
   'catalog_rank_lanes exists with its one signature');
 
 select ok(
-  has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
-  and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
-  and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute'),
+  has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
+  and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
+  and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute'),
   'service role only');
 
 -- ━━━ Both lanes from a point ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'ids'), 'ADEFBC',
   'Organic: the formula orders A, D, E, F; 0 reviews and no stars score 0 and sort last by distance');
+
+select is(
+  pg_temp.letters(public.catalog_rank_lanes(
+    p_lat => 25.67, p_lng => -100.30,
+    p_organic_half_km => 1, p_organic_distance_exp => 2, p_organic_stars_exp => 2, p_organic_google_exp => 0.5, p_organic_premier_exp => 0,
+    p_ad_half_km => 1, p_ad_distance_exp => 2, p_ad_stars_exp => 2, p_ad_google_exp => 0.5, p_ad_premier_exp => 1,
+    p_premier_1 => 2, p_premier_2 => 5, p_families => array[]::text[],
+    p_known_families => array['tacos', 'coffee', 'dinner'], p_require_active => false,
+    p_organic_offers_exp => 1, p_ad_offers_exp => 1) -> 'ids'),
+  'ABCDEF',
+  'Offers exponent 1 and no offer points scores every place 0, so distance orders them');
 
 select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'premier'), 'EDF',
   'Inorganic: Premier places only, 5X E above 2X D; far F is last, never cut (MESITA-5029)');
