@@ -12,8 +12,8 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiAnswerBill, apiGetPayCode, type BillTyping, billNeedsGuest, type GuestBill, type PayCode } from "@/lib/api/pay-bill";
 import { apiListVisits } from "@/lib/api/tab";
 import { money, payPlaceDiscountBps, WALLET_CACHE_KEY } from "@/lib/api/wallet";
-import { payBillPath } from "@/lib/consumer-route-contract";
-import { goBack, navigateTo } from "@/lib/navigate";
+import { CONSUMER_ROUTES, payBillPath } from "@/lib/consumer-route-contract";
+import { navigateTo } from "@/lib/navigate";
 import { fetchCached, invalidateCached } from "@/lib/screen-cache";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useWakeLock } from "@/lib/use-wake-lock";
@@ -310,7 +310,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     void mint();
   }
 
-  const leave = () => goBack(router);
+  // CLOSE LANDS ON PAY (Pato, 2026-11-26, MESITA-5033). Picking a place
+  // replaces the consumer page under this screen, so Back can miss it.
+  const leave = () => navigateTo(router, CONSUMER_ROUTES.pay, { replace: true, motion: "pop" });
   const frame = (title: string, body: React.ReactNode, footer: React.ReactNode, step: number | "done") => (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col" data-pay-code={bill?.state ?? "qr"}>
       <TicketHeader title={title} onClose={leave} closeLabel="Close" />
@@ -681,7 +683,7 @@ export function PayCodeLoading() {
   const router = useRouter();
   return (
     <div className="bg-card flex h-full min-h-0 flex-1 flex-col">
-      <TicketHeader title="Your QR" onClose={() => goBack(router)} closeLabel="Close" />
+      <TicketHeader title="Your QR" onClose={() => navigateTo(router, CONSUMER_ROUTES.pay, { replace: true, motion: "pop" })} closeLabel="Close" />
       <div className="flex flex-1 flex-col px-4 py-4">
         <Skeleton className="min-h-0 w-full flex-1 rounded-2xl" aria-hidden />
       </div>
