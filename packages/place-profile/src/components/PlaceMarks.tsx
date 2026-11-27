@@ -19,14 +19,22 @@ export function PlaceMarks({
   tier,
   compact = false,
   ad = false,
+  className,
+  sealClassName,
 }: {
   tier: number | null | undefined;
   compact?: boolean;
   ad?: boolean;
+  className?: string;
+  sealClassName?: string;
 }) {
   return (
-    <>
-      <PremierBadge tier={tier} compact={compact} ad={ad} />
-    </>
+    <PremierBadge
+      tier={tier}
+      compact={compact}
+      ad={ad}
+      className={className}
+      sealClassName={sealClassName}
+    />
   );
 }

@@ -445,23 +445,27 @@ function RailCard({
           <View style={styles.thumb} />
         )}
         <View style={styles.facts}>
-          <View style={styles.nameRow}>
-            <Text role="strong" numberOfLines={1} style={styles.name}>{place.name}</Text>
-            {place.isPremier ? <PremierSeal size={16} /> : null}
-          </View>
-          {facts.kind ? (
-            <Text role="small" numberOfLines={1}>{facts.kind}</Text>
+          {place.isPremier ? (
+            <View pointerEvents="none" style={styles.seal}>
+              <PremierSeal size={32} color={place.isAd ? colors.ad : colors.premier} />
+            </View>
           ) : null}
-          <View style={styles.cardLine}>
-            {facts.rating ? (
-              <>
-                <Icon name="star-filled" size={14} color={colors.ink} />
-                <Text role="small">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text>
-              </>
+          <View style={place.isPremier ? styles.besideSeal : undefined}>
+            <Text role="strong" numberOfLines={1}>{place.name}</Text>
+            {facts.kind ? (
+              <Text role="small" numberOfLines={1}>{facts.kind}</Text>
             ) : null}
-            {facts.open ? (
-              <Text role="small">{facts.open.now ? "Open" : "Closed"}</Text>
-            ) : null}
+            <View style={styles.cardLine}>
+              {facts.rating ? (
+                <>
+                  <Icon name="star-filled" size={14} color={colors.ink} />
+                  <Text role="small">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text>
+                </>
+              ) : null}
+              {facts.open ? (
+                <Text role="small">{facts.open.now ? "Open" : "Closed"}</Text>
+              ) : null}
+            </View>
           </View>
           <View style={styles.cardActions}>
             <Pressable accessibilityRole="button" accessibilityLabel={saved ? "Saved" : "Save"} onPress={onSave} style={styles.action}>
@@ -630,6 +634,8 @@ const styles = StyleSheet.create({
   cardBody: { flexDirection: "row", height: 132 },
   thumb: { width: 132, height: 132, backgroundColor: colors.fill },
   facts: { flex: 1, paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.sm },
+  besideSeal: { paddingRight: 40 },
+  seal: { position: "absolute", top: space.md, right: space.md, zIndex: 2 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
   name: { flexShrink: 1 },
   cardLine: { flexDirection: "row", alignItems: "center", gap: space.xs, marginTop: 2 },

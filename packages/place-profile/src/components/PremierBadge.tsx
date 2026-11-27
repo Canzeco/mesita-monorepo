@@ -60,12 +60,15 @@ export function PremierBadge({
   tier,
   ad = false,
   className,
+  sealClassName,
 }: {
   tier: number | null | undefined;
   /** Kept for callers; the seal has no words to shorten (MESITA-3420). */
   compact?: boolean;
   ad?: boolean;
   className?: string;
+  /** The rosette's size. Cards pin a taller seal in the corner. */
+  sealClassName?: string;
 }) {
   if (!premierLabel(tier)) return null;
   return (
@@ -75,7 +78,7 @@ export function PremierBadge({
     >
       {/* An ad slot is the blue seal and no word (Pato, 2026-11-26,
           MESITA-5018). A Premier place that is not an ad stays red. */}
-      <PremierRosette fill={ad ? AD_BLUE : PREMIER_RED} />
+      <PremierRosette className={sealClassName} fill={ad ? AD_BLUE : PREMIER_RED} />
     </span>
   );
 }

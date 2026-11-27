@@ -30,19 +30,20 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
         />
       </Pressable>
       <View style={styles.info}>
-        <Pressable accessible={false} onPress={onOpen} style={styles.words}>
-          <View style={styles.title}>
-            <Text
-              role="strong"
-              numberOfLines={2}
-              style={styles.name}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${place.name}`}
-            >
-              {place.name}
-            </Text>
-            {place.isPremier ? <PremierSeal color={place.isAd ? colors.ad : colors.premier} /> : null}
+        {place.isPremier ? (
+          <View pointerEvents="none" style={styles.seal}>
+            <PremierSeal size={32} color={place.isAd ? colors.ad : colors.premier} />
           </View>
+        ) : null}
+        <Pressable accessible={false} onPress={onOpen} style={[styles.words, place.isPremier && styles.besideSeal]}>
+          <Text
+            role="strong"
+            numberOfLines={2}
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${place.name}`}
+          >
+            {place.name}
+          </Text>
           {facts.price || facts.kind ? (
             <View style={styles.line}>
               {facts.price ? (
@@ -141,7 +142,8 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: radius.card,
   },
   words: { flex: 1, gap: 2 },
-  title: { flexDirection: "row", alignItems: "flex-start", gap: 4 },
+  besideSeal: { paddingRight: 40 },
+  seal: { position: "absolute", top: space.sm, right: space.sm, zIndex: 2 },
   name: { flexShrink: 1 },
   line: { flexDirection: "row", alignItems: "center", gap: 4 },
   actions: { flexDirection: "row", gap: space.sm },

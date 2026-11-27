@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { PlaceMarks, SizedImage } from "@mesita/place-profile";
+import { isPremierPlace, PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import { placeReservePath } from "@/lib/consumer-route-contract";
@@ -241,16 +241,21 @@ export function RailCard({
             )}
             {photoOverlay}
           </div>
-          <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
-            <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
-              <span className="truncate">{place.name}</span>
-              {/* "Ad" only on an ad pin (MESITA-4454, H4): the Map sends
-                  `ad: true` for a place in an ad slot; a Premier place in
-                  an organic slot wears its seal only. */}
-              <PlaceMarks tier={place.boost_tier} compact ad={ad} />
-            </p>
-            <PriceKindRow facts={facts} />
-            <StarsOpenRow facts={facts} withDistance={withDistance} />
+          <div className={cn("text-foreground relative", RAIL_CARD_TEXT)}>
+            <div className={cn("min-w-0", isPremierPlace(place) && "pr-10")}>
+              <p className="truncate font-sans text-base leading-5 font-semibold tracking-tight">
+                {place.name}
+              </p>
+              <PriceKindRow facts={facts} />
+              <StarsOpenRow facts={facts} withDistance={withDistance} />
+            </div>
+            <PlaceMarks
+              tier={place.boost_tier}
+              compact
+              ad={ad}
+              className="pointer-events-none absolute top-3 right-3 z-10"
+              sealClassName="h-8 w-8"
+            />
           </div>
         </div>
       </button>
