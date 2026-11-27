@@ -66,7 +66,47 @@ export const colors = {
   /** Pay's test-mode strip (the web's amber banner). */
   testBanner: "#fde68a",
   testBannerInk: "#451a03",
+
+  /** Search map. Black places, red Premier, purple selected, blue for you. */
+  mapPin: "#111111",
+  mapSelected: "#7c3aed",
+  mapYou: "#007aff",
+  mapPremier: "#ff2357",
+  mapWait: "#cdeec4",
+  mapLand: "#f8f8f7",
+  mapWater: "#b9dcf5",
+  mapWaterInk: "#5d87a8",
+  mapPoi: "#f1f1ef",
+  mapCover: "#e2f2da",
+  mapRoadEdge: "#e4e4e2",
+  mapHighwayEdge: "#d9d9d6",
+  mapLabel: "#9a9a9a",
+  mapArea: "#7a7a7a",
+  /** The search ring's whisper of white. */
+  mapRing: "rgba(255,255,255,0.06)",
 } as const;
+
+/** The web Search basemap: light land, mint parks, roads, fewer names. */
+export const searchMapStyle = [
+  { featureType: "landscape", elementType: "geometry", stylers: [{ color: colors.mapLand }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: colors.mapWater }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: colors.mapWaterInk }] },
+  { featureType: "poi", elementType: "geometry", stylers: [{ color: colors.mapPoi }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: colors.mapWait }] },
+  { featureType: "landscape.natural.landcover", elementType: "geometry", stylers: [{ color: colors.mapCover }] },
+  { featureType: "road", elementType: "geometry.fill", stylers: [{ color: colors.paper }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: colors.mapRoadEdge }] },
+  { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: colors.paper }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: colors.mapHighwayEdge }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: colors.mapLabel }] },
+  { featureType: "administrative", elementType: "labels.text.fill", stylers: [{ color: colors.mapArea }] },
+  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "road.local", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
+];
 
 const fontFamily = "Inter";
 

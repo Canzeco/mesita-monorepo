@@ -29,6 +29,8 @@ export const placeSchema = z
     distance_km: number,
     boost_tier: number,
     ad: z.boolean().optional().catch(false),
+    reservations_enabled: z.boolean().nullish().catch(null),
+    phone: text,
     lat: number,
     lng: number,
   })
@@ -48,6 +50,7 @@ export const placeSchema = z
       distanceKm: orNull(p.distance_km),
       isPremier: (p.boost_tier ?? 0) > 0,
       isAd: p.ad === true,
+      reservable: p.reservations_enabled === true && (p.phone ?? "").trim() !== "",
       lat: orNull(p.lat),
       lng: orNull(p.lng),
     }),

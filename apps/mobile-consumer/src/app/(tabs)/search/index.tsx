@@ -11,6 +11,7 @@ export default function Route() {
       onChooseLocation={() => router.push("/location")}
       onMenu={() => router.push("/categories")}
       onOpen={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
+      onReserve={(id) => router.push({ pathname: "/reserve/[placeId]", params: { placeId: id } })}
       onAdd={() => router.push("/place/add")}
       onSignIn={() => router.push("/me")}
     />
