@@ -82,8 +82,6 @@ import { asRecord, bool, num } from "./config-coerce.ts";
 import {
   AD_EVERY_MAX,
   AD_EVERY_MIN,
-  AD_FLOOR_MAX,
-  AD_FLOOR_MIN,
   PLAN_FACTOR_MAX,
   PLAN_FACTOR_MIN,
   FOURSQUARE_EXPONENT_MAX,
@@ -169,17 +167,16 @@ export type RecipeRow = (typeof RECIPE_ROWS)[number];
 export type Recipes = Record<RecipeRow, Recipe>;
 
 /** `params.mix` (MESITA-4454). `temperature` per mode (the first-page
- *  shuffle; 0 = the merged order exactly); `adFloor`: Proximity ×
- *  premierFactor an ad needs; `adEvery`: one ad slot after every N organic
+ *  shuffle; 0 = the merged order exactly); `adEvery`: one ad slot after every N organic
  *  places, 0 = no ads (Catalog and Map). `growthWeightCap` is still loaded so
  *  an old save round-trips. Ranking ignores it: recent weight is fixed at
  *  0.20 + 0.60 × min(observedDays / 30, 1), capped at 80%. */
 export type MixParams = {
   temperature: Record<RankMode, number>;
-  adFloor: number;
   adEvery: number;
   /** Premier Pro's and Premier Max's factor (MESITA-5028): what each plan
-   *  multiplies a score by and what the ad floor compares. Free is 1. */
+   *  multiplies a score by. Free is 1. (The ad floor that
+   *  compared them is gone, MESITA-5029; a saved `adFloor` is dropped.) */
   proFactor: number;
   maxFactor: number;
   growthWeightCap: number;
@@ -225,7 +222,6 @@ export const LANE_BATCH_MAX = 25;
 
 export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
-  adFloor: 0.2,
   adEvery: 1,
   proFactor: PREMIER_FACTOR[1],
   maxFactor: PREMIER_FACTOR[2],
@@ -245,7 +241,6 @@ export const RECIPE_BOUNDS = {
 
 export const MIX_BOUNDS = {
   temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
-  adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
   adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
   proFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
   maxFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
@@ -870,7 +865,6 @@ export function normalizeMix(raw: unknown, onClamp?: OnClamp): MixParams {
     reportedParam(t[mode], DEFAULT_MIX.temperature[mode], MIX_BOUNDS.temperature, `params.mix.temperature.${mode}`, onClamp);
   return {
     temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
-    adFloor: reportedParam(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor, "params.mix.adFloor", onClamp),
     adEvery: reportedParam(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery, "params.mix.adEvery", onClamp),
     proFactor: reportedParam(r.proFactor, DEFAULT_MIX.proFactor, MIX_BOUNDS.proFactor, "params.mix.proFactor", onClamp),
     maxFactor: reportedParam(r.maxFactor, DEFAULT_MIX.maxFactor, MIX_BOUNDS.maxFactor, "params.mix.maxFactor", onClamp),

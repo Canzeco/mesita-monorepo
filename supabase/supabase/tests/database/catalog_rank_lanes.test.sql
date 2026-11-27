@@ -1,7 +1,8 @@
 -- MESITA-4454 — catalog_rank_lanes: the Organic and Inorganic lanes in one
 -- statement, and the seed that adds
 -- only absent config keys (E3, DX-n). Six fixture places (M-e): 0 reviews,
--- no stars, a 2X, a 5X, a 2X below the ad floor, and a family filter.
+-- no stars, a 2X, a 5X, a far 2X, and a family filter. No ad floor since
+-- MESITA-5029: every Premier place is in the Inorganic lane.
 --
 begin;
 
@@ -31,7 +32,7 @@ update public.places set boost_tier = 2 where id = '00000000-0000-4000-8000-0000
 update public.places set content_state = 'generating'
  where id::text not like '00000000-0000-4000-8000-0000004454%';
 
--- One call shape: the recipe rows above, the 0.2 floor.
+-- One call shape: the recipe rows above; p_ad_floor 0.2 is sent to prove it is ignored.
 create or replace function pg_temp.lanes(p_lat double precision, p_lng double precision, p_families text[])
 returns jsonb language sql as $$
   select public.catalog_rank_lanes(
@@ -76,14 +77,14 @@ select ok(
 select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'ids'), 'ADEFBC',
   'Organic: the formula orders A, D, E, F; 0 reviews and no stars score 0 and sort last by distance');
 
-select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'premier'), 'ED',
-  'Inorganic: Premier places only, 5X E above 2X D; F under the floor is out');
+select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'premier'), 'EDF',
+  'Inorganic: Premier places only, 5X E above 2X D; far F is last, never cut (MESITA-5029)');
 
-select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'below_floor')::int, 1,
-  'below_floor counts the Premier place under the ad floor');
+select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'below_floor')::int, 0,
+  'no ad floor: below_floor is always 0, and p_ad_floor 0.2 is ignored');
 
 select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'inorganic_total')::int, 3,
-  'inorganic_total counts every gated Premier place, before the floor');
+  'inorganic_total counts every gated Premier place');
 
 select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'read')::int, 6,
   'read counts the gated places');
@@ -118,16 +119,16 @@ select is(
     'below_floor', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'below_floor',
     'inorganic_total', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'inorganic_total',
     'read', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'read'),
-  '{"premier": [], "below_floor": 1, "inorganic_total": 1, "read": 2}'::jsonb,
-  'coffee has one Premier place, under the floor: no ad');
+  '{"premier": ["00000000-0000-4000-8000-000000445406"], "below_floor": 0, "inorganic_total": 1, "read": 2}'::jsonb,
+  'coffee has one Premier place, far away: still an ad (MESITA-5029)');
 
 -- ━━━ No point: Proximity abstains at 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select is(pg_temp.letters(pg_temp.lanes(null, null, array[]::text[]) -> 'premier'), 'EFD',
-  'no point: every Premier place clears the floor, ordered by Popularity × premierFactor');
+  'no point: every Premier place, ordered by Popularity × premierFactor');
 
 select is((pg_temp.lanes(null, null, array[]::text[]) ->> 'below_floor')::int, 0,
-  'no point: nothing is under the floor');
+  'no point: below_floor is 0');
 
 -- ━━━ The seed: absent keys only ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -149,8 +150,8 @@ select is(
 
 select is(
   (select c.discovery_config #> '{params,mix}' from public.app_config c where c.id = 1),
-  '{"temperature": {"nearby": 0.33, "family": 0.5, "popular": 1}, "adFloor": 0.2, "adEvery": 1}'::jsonb,
-  'params.mix is seeded');
+  '{"temperature": {"nearby": 0.33, "family": 0.5, "popular": 1}, "adEvery": 1}'::jsonb,
+  'params.mix is seeded, and its adFloor is gone (MESITA-5029)');
 
 select ok(
   (select public.jsonb_fill_absent(c.discovery_config, c.discovery_config) = c.discovery_config

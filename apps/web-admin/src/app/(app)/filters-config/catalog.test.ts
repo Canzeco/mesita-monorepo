@@ -253,7 +253,6 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
   it("mix: Temperature 0–5 per mode, ad floor 0–1, ad cadence 0–10 whole", () => {
     expect(coerceMix({ temperature: { nearby: 9, family: -1, popular: 0.333 }, adFloor: 2, adEvery: 3.6 })).toEqual({
       temperature: { nearby: 5, family: 0, popular: 0.33 },
-      adFloor: 1,
       adEvery: 4,
       proFactor: 2,
       maxFactor: 5,

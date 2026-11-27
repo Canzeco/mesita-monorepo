@@ -1,7 +1,6 @@
 // The four Discovery signals (MESITA-2327): formulas and missing-data policy.
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
-  clearsAdFloor,
   clearsPopularityFloor,
   cutAndShuffle,
   foursquareBoost,
@@ -212,15 +211,9 @@ Deno.test("v2 score: Proximity × (stars × reviews)^GoogleExp × premierFactor^
   assertAlmostEquals(recipeScore({ rating: 4, reviewCount: 100 }, 1, true, 2, INORG).final, 20, 1e-9);
   assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, ORG).final, 0.2 * Math.sqrt(2400), 1e-3);
   assertAlmostEquals(recipeScore({ rating: 4.8, reviewCount: 500 }, 2, true, 5, INORG).final, Math.sqrt(2400), 1e-3);
-  // F: 2X at 50 km is under the 0.2 floor (0.0004 × 2); D and E clear it.
-  const fProx = recipeScore({ rating: 4.6, reviewCount: 300 }, 50, true, 2, INORG).proximity;
-  assertEquals(clearsAdFloor(fProx, 2, 0.2), false);
-  assertEquals(clearsAdFloor(0.5, 2, 0.2), true);
-  assertEquals(clearsAdFloor(0.2, 5, 0.2), true);
-  // No anchor: Proximity abstains (null, counted as 1), every Premier place clears.
+  // No anchor: Proximity abstains (null, counted as 1).
   const none = recipeScore({ rating: 4, reviewCount: 100 }, null, false, 2, INORG);
   assertEquals([none.proximity, none.final], [null, 40]);
-  assertEquals(clearsAdFloor(none.proximity, 2, 0.2), true);
   // A Map row has no Proximity even with an anchor.
   assertEquals(recipeScore({ rating: 4, reviewCount: 100 }, 9, true, 1, { ...ORG, halfKm: null, distanceExp: null }).final, 20);
   // Measured from an anchor without coordinates: Proximity 0.

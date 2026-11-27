@@ -721,7 +721,7 @@ export function catalogRankLanesArgs(
     p_ad_premier_exp: ad.premierExp,
     p_ad_fsq_factor: ad.foursquareFactor,
     p_ad_fsq_exp: ad.foursquareExponent,
-    p_ad_floor: mixFor(cfg).adFloor,
+    // No p_ad_floor: the SQL ignores it since MESITA-5029.
   };
 }
 
@@ -742,11 +742,10 @@ export type CatalogRankSummary = AreaPoolSummary & {
 export type CatalogLaneStats = {
   /** Places in the Organic lane. */
   organic: number;
-  /** Premier places past the ad floor (the Inorganic lane). */
+  /** Premier places in the Inorganic lane (every gated Premier place, no
+   *  floor since MESITA-5029). */
   premier: number;
-  /** Premier places under the ad floor, across the whole lane. */
-  belowFloor: number;
-  /** Premier places past the gates, before the floor. */
+  /** Premier places past the gates. */
   inorganicTotal: number;
   /** Ad-slot places on the first page, after the shuffle. */
   adsFirstPage: number;
@@ -917,7 +916,6 @@ export async function selectCatalogPool<T extends PoolRow>(
   const lanes: CatalogLaneStats = {
     organic: organicCount,
     premier: premier.length,
-    belowFloor: count(answer.below_floor),
     inorganicTotal: count(answer.inorganic_total),
     adsFirstPage: order.slice(0, page).filter((id) => ads.has(id)).length,
     byLane,
