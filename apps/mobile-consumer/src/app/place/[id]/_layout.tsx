@@ -9,6 +9,7 @@ export default function Layout() {
       <Stack.Screen name="menu" options={{ title: "Menu" }} />
       <Stack.Screen name="contact" options={{ title: "Contact" }} />
       <Stack.Screen name="report" options={{ title: "Report" }} />
+      <Stack.Screen name="offers" options={{ title: "Offers" }} />
     </Stack>
   );
 }
