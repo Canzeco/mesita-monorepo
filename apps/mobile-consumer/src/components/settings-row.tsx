@@ -20,11 +20,13 @@ export function SettingsRow({
   icon,
   label,
   sub,
+  badge,
   onPress,
 }: {
   icon: IconName;
   label: string;
   sub?: string;
+  badge?: string;
   onPress?: () => void;
 }) {
   const body = (
@@ -33,7 +35,10 @@ export function SettingsRow({
         <Icon name={icon} size={18} />
       </View>
       <View style={styles.copy}>
-        <Text role="label">{label}</Text>
+        <View style={styles.title}>
+          <Text role="label">{label}</Text>
+          {badge ? <Text role="meta" tone="muted" style={styles.badge}>{badge}</Text> : null}
+        </View>
         {sub ? <Text role="caption" tone="muted" numberOfLines={1}>{sub}</Text> : null}
       </View>
       {onPress ? <Icon name="chevron-right" size={16} color={colors.muted} /> : null}
@@ -52,4 +57,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: space.md, minHeight: 44 },
   chip: { width: 36, height: 36, borderRadius: radius.field, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
   copy: { flex: 1, gap: 2 },
+  title: { flexDirection: "row", alignItems: "center", gap: space.xs },
+  badge: { backgroundColor: colors.fill, borderRadius: radius.panel, paddingHorizontal: space.xs },
 });
