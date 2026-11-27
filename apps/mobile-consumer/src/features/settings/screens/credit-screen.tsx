@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
@@ -10,6 +11,7 @@ import { useErrorCopy } from "@/lib/error-copy";
 import { colors, radius, space } from "@/theme";
 
 import { getCredit, type Credit } from "../credit";
+import { readyIn } from "../gift";
 
 function Line({ label, value, sub }: { label: string; value: string; sub?: string | null }) {
   return (
@@ -32,8 +34,9 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Body({ credit }: { credit: Credit }) {
+function Body({ credit, now }: { credit: Credit; now: number }) {
   const router = useRouter();
+  const step = credit.bonusStep;
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
       {credit.testMode ? <Text role="small">Test mode. No real money is moving, and the offers are fake.</Text> : null}
@@ -42,6 +45,13 @@ function Body({ credit }: { credit: Credit }) {
       <Text role="body">{credit.place}</Text>
       <Text role="caption" tone="muted">{credit.when}</Text>
       {credit.note ? <Text role="small" tone="muted">{credit.note}</Text> : null}
+      {step ? (
+        <Panel title="Bonus">
+          <Line label="Pay" value={step.pay} />
+          <Line label="Wait 3 hours" value={step.waiting ? "Now" : "Done"} sub={step.ready && Date.parse(step.ready) > now ? `in ${readyIn(step.ready, now)}` : null} />
+          <Line label="Get Bonus" value={step.bonus} />
+        </Panel>
+      ) : null}
       {credit.bought ? (
         <Panel title="Your credit">
           <Line label="Bought" value={credit.bought} />
@@ -89,6 +99,7 @@ function Body({ credit }: { credit: Credit }) {
 /** One credit ticket. Buying and sending stay on the web. */
 export function CreditScreen({ placeId, entryKey }: { placeId: string; entryKey: string }) {
   const router = useRouter();
+  const [now] = useState(() => Date.now());
   const query = useQuery({
     queryKey: ["credit", placeId, entryKey],
     queryFn: ({ signal }) => getCredit(placeId, entryKey, signal),
@@ -121,7 +132,7 @@ export function CreditScreen({ placeId, entryKey }: { placeId: string; entryKey:
       </View>
     );
   }
-  return <Body credit={query.data} />;
+  return <Body credit={query.data} now={now} />;
 }
 
 const styles = StyleSheet.create({
