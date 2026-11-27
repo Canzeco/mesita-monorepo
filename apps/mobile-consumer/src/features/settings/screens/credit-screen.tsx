@@ -34,8 +34,38 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
+function RefundBody({ credit }: { credit: Credit }) {
+  const card = credit.refundCard;
+  if (!card) return null;
+  return (
+    <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
+      {credit.testMode ? <Text role="small">Test mode. No real money is moving, and the offers are fake.</Text> : null}
+      <Text role="title">{credit.headline}</Text>
+      <Text role="label">{credit.state}</Text>
+      <Text role="body">{credit.place}</Text>
+      <Text role="caption" tone="muted">{credit.when}</Text>
+      {credit.note ? <Text role="small" tone="muted">{credit.note}</Text> : null}
+      <Panel title="Timeline">
+        {card.bought ? <Line label="Bought" value={card.bought.value} sub={card.bought.when} /> : null}
+        <Line label="Refunded" value={card.amount} sub={card.refundedOn} />
+      </Panel>
+      <Panel title="Refund">
+        <Line label="Refunded amount" value={card.amount} />
+        {card.taken ? <Line label="Credit taken back" value={card.taken} /> : null}
+        <Line label="Refunded on" value={card.refundedOn} />
+        {card.original ? <Line label="Original purchase" value={card.original.value} sub={card.original.when} /> : null}
+        <Line label="Purchase number" value={card.purchase} />
+      </Panel>
+      <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://mesita.ai/wallet/place/${credit.placeId}`)}>
+        <Text role="button">Open the Loyalty Card</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
 function Body({ credit, now }: { credit: Credit; now: number }) {
   const router = useRouter();
+  if (credit.refundCard) return <RefundBody credit={credit} />;
   const step = credit.bonusStep;
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
