@@ -15,7 +15,7 @@ const TITLE: Record<string, string> = {
   card: "Payment methods",
   "saved-card": "Card",
   plan: "Plan",
-  share: "Share",
+  share: "Share Mesita",
   settings: "Settings",
   contact: "Contact",
   feedback: "Send feedback",
