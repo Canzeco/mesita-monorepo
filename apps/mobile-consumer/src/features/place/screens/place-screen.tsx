@@ -21,6 +21,7 @@ import { Social } from "./social";
 
 type Nav = {
   onMenu: () => void;
+  onOpenMenu: (index: number) => void;
   onContact: () => void;
   onReport: () => void;
   onReserve: () => void;
@@ -48,7 +49,7 @@ export function PlaceScreen({ id, center = null, ...nav }: Nav & { id: string; c
   return <PlaceView place={query.data} center={center} {...nav} />;
 }
 
-export function PlaceView({ place, center = null, onMenu, onContact, onReport, onReserve, onOffers, onBack, saved, onSave }: Nav & { place: PlaceDetail; center?: { lat: number; lng: number } | null }) {
+export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact, onReport, onReserve, onOffers, onBack, saved, onSave }: Nav & { place: PlaceDetail; center?: { lat: number; lng: number } | null }) {
   const width = useWindowDimensions().width;
   const [tab, setTab] = useState<Tab>("Overview");
   const [photo, setPhoto] = useState(0);
@@ -122,7 +123,7 @@ export function PlaceView({ place, center = null, onMenu, onContact, onReport, o
       {tab === "Overview" ? <Overview place={place} width={width} photo={photo} onPhoto={setPhoto} /> : null}
       {tab === "Reviews" ? <Reviews place={place} /> : null}
       {tab === "Social" ? <Social place={place} /> : null}
-      {tab === "Menu" ? <MenuTab place={place} onMenu={onMenu} /> : null}
+      {tab === "Menu" ? <MenuTab place={place} onMenu={onMenu} onOpen={onOpenMenu} /> : null}
     </ScrollView>
   );
 }

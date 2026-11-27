@@ -27,6 +27,7 @@ export default function Route() {
       onReserve={() => router.push({ pathname: "/reserve/[placeId]", params: { placeId } })}
       onOffers={() => go("offers")}
       onMenu={() => go("menu")}
+      onOpenMenu={(index) => router.push({ pathname: "/place/[id]/menu", params: { id: placeId, index: String(index) } })}
       onContact={() => go("contact")}
       onReport={() => go("report")}
       onBack={() => router.back()}
