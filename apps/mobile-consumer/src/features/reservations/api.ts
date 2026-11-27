@@ -48,6 +48,8 @@ export function listReservations(signal?: AbortSignal): Promise<Reservation[]> {
   }).then((answer) => answer.reservations);
 }
 
+export type ReserveNotify = "app" | "call";
+
 export type ReserveInput = {
   placeId: string;
   reservedAt: string;
@@ -56,6 +58,8 @@ export type ReserveInput = {
   firstName: string;
   lastName: string;
   requestId: string;
+  onConfirm: ReserveNotify;
+  onReject: ReserveNotify;
 };
 
 export async function createReservation(input: ReserveInput): Promise<string> {
@@ -69,8 +73,8 @@ export async function createReservation(input: ReserveInput): Promise<string> {
       first_name: input.firstName.trim(),
       last_name: input.lastName.trim(),
       request_id: input.requestId,
-      consumer_notify: "app",
-      confirm_notify: "app",
+      consumer_notify: input.onReject,
+      confirm_notify: input.onConfirm,
       ...(notes ? { notes } : {}),
     },
     z.object({ reservation: z.object({ id: z.string() }) }),
