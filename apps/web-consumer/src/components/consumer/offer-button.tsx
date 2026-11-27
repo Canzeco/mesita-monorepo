@@ -231,6 +231,24 @@ export function PlaceBannerRow({
   );
 }
 
+/** A Premier place on a card (MESITA-5046): a blue bar the size of Reserve,
+ *  sitting above it. The corner seal is gone from the card. A label, so a
+ *  tap falls through to the card. */
+export function PremierBar({ className }: { className?: string }) {
+  return (
+    <p
+      className={cn(
+        CARD_BUTTON_BOX,
+        "pointer-events-none flex w-full items-center justify-center bg-[#1D9BF0] font-sans text-xs font-semibold text-white",
+        className,
+      )}
+      data-card-premier
+    >
+      Premier
+    </p>
+  );
+}
+
 /** One still banner cell: a mark and a word, centred. */
 const BANNER_CELL =
   "pointer-events-auto relative flex items-center justify-center gap-1.5 px-2 font-sans text-xs font-semibold focus-visible:ring-primary outline-none focus-visible:ring-2";

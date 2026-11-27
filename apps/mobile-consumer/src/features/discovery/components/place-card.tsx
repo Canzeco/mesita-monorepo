@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { Icon, PremierSeal, type IconName } from "@/components/icon";
+import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
 import { colors, motion, pressedOpacity, radius, space } from "@/theme";
 
@@ -30,12 +30,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
         />
       </Pressable>
       <View style={styles.info}>
-        {place.isPremier ? (
-          <View pointerEvents="none" style={styles.seal}>
-            <PremierSeal size={32} color={place.isAd ? colors.ad : colors.premier} />
-          </View>
-        ) : null}
-        <Pressable accessible={false} onPress={onOpen} style={[styles.words, place.isPremier && styles.besideSeal]}>
+        <Pressable accessible={false} onPress={onOpen} style={styles.words}>
           <Text
             role="strong"
             numberOfLines={2}
@@ -89,6 +84,11 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
             </View>
           ) : null}
         </Pressable>
+        {place.isPremier ? (
+          <View style={styles.premier}>
+            <Text role="label" tone="onInk">Premier</Text>
+          </View>
+        ) : null}
         <View style={styles.actions}>
           <CardButton
             icon={saved ? "heart-filled" : "heart"}
@@ -142,8 +142,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: radius.card,
   },
   words: { flex: 1, gap: 2 },
-  besideSeal: { paddingRight: 40 },
-  seal: { position: "absolute", top: space.sm, right: space.sm, zIndex: 2 },
+  premier: {
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.control,
+    backgroundColor: colors.ad,
+  },
   name: { flexShrink: 1 },
   line: { flexDirection: "row", alignItems: "center", gap: 4 },
   actions: { flexDirection: "row", gap: space.sm },
