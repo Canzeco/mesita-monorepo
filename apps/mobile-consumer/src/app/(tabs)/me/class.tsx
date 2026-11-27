@@ -10,6 +10,7 @@ export default function Route() {
         onInstagram: () => router.push("/me/vip-instagram"),
         onCode: () => router.push("/me/vip-code"),
         onAgency: () => router.push("/me/vip-agency"),
+        onExplore: () => router.push("/"),
       }}
     />
   );

@@ -10,6 +10,7 @@ export type Profile = {
   birthYear: number | null;
   phone: string | null;
   isVip: boolean;
+  instagramHandle: string | null;
 };
 
 export type Session = {

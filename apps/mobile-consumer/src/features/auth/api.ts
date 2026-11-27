@@ -16,6 +16,7 @@ export const consumerSchema = z
     birth_year: z.number().nullish().catch(null),
     phone: text,
     guest_class: text,
+    instagram_handle: text,
   })
   .transform(
     (c): Profile => ({
@@ -26,6 +27,7 @@ export const consumerSchema = z
       birthYear: c.birth_year ?? null,
       phone: c.phone ?? null,
       isVip: c.guest_class === "vip",
+      instagramHandle: c.instagram_handle ?? null,
     }),
   );
 
