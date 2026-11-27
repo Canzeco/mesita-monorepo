@@ -1,9 +1,11 @@
+import { Image } from "expo-image";
 import * as Crypto from "expo-crypto";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 import { Button } from "@/components/button";
+import { RemoveSaved } from "@/components/remove-saved";
 import { ErrorState } from "@/components/error-state";
 import { Icon } from "@/components/icon";
 import { Skeleton } from "@/components/skeleton";
@@ -17,8 +19,8 @@ import { GenerateSheet, type GenerateTarget } from "../components/generate-sheet
 import { ResultsPanel } from "../components/results-panel";
 import { chipsFor, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
-import { factsOf, type CatalogPlace } from "../model";
-import { useMapPlaces, usePlaceSearch, useResolveLocation } from "../queries";
+import { factsOf, shareUrl, type CatalogPlace } from "../model";
+import { useMapPlaces, usePlaceSearch, useResolveLocation, useSaved, useToggleSaved } from "../queries";
 
 type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void; onSignIn: () => void };
 
@@ -26,6 +28,9 @@ type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId:
 export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn }: Nav) {
   const { location, choose, chip, selectChip } = useActiveLocation();
   const member = useSession().guestId !== null;
+  const saved = useSaved();
+  const toggle = useToggleSaved();
+  const [drop, setDrop] = useState<CatalogPlace | null>(null);
   const shown: ChipKey = chip === "saved" ? "near" : chip;
   const map = useMapPlaces(location ?? null, shown);
   const copy = useErrorCopy(map.error);
@@ -115,6 +120,14 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn
       ) : null}
       {querying ? null : <FamilyStrip chips={chipsFor(false)} chosen={shown} onSelect={selectChip} onMenu={onMenu} />}
       <GenerateSheet target={generate} onClose={() => setGenerate(null)} onOpen={onOpen} />
+      <RemoveSaved
+        name={drop?.name ?? null}
+        onCancel={() => setDrop(null)}
+        onConfirm={() => {
+          if (drop) toggle.mutate({ place: drop, on: false });
+          setDrop(null);
+        }}
+      />
       <View style={styles.mapBox}>
         <MapView
           provider={PROVIDER_GOOGLE}
@@ -149,6 +162,16 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn
             onAdd={member ? onAdd : undefined}
             onPick={setChosen}
             onOpen={onOpen}
+            saved={(id) => saved.data?.ids.includes(id) ?? false}
+            onSave={(place) => {
+              if (!member) {
+                onSignIn();
+                return;
+              }
+              if (saved.data?.ids.includes(place.id)) setDrop(place);
+              else toggle.mutate({ place, on: true });
+            }}
+            onShare={(place) => void Share.share({ message: `${place.name}\n${shareUrl(place)}` })}
           />
         )}
       </View>
@@ -171,6 +194,9 @@ function Rail({
   onAdd,
   onPick,
   onOpen,
+  saved,
+  onSave,
+  onShare,
 }: {
   places: readonly CatalogPlace[];
   picked: string | null;
@@ -178,6 +204,9 @@ function Rail({
   onAdd?: () => void;
   onPick: (id: string) => void;
   onOpen: (id: string) => void;
+  saved: (id: string) => boolean;
+  onSave: (place: CatalogPlace) => void;
+  onShare: (place: CatalogPlace) => void;
 }) {
   if (places.length === 0) {
     return (
@@ -210,36 +239,59 @@ function Rail({
         </Pressable>
       ) : null}
       {places.map((place) => (
-        <RailCard key={place.id} place={place} on={place.id === picked} onPress={() => { onPick(place.id); onOpen(place.id); }} />
+        <RailCard
+          key={place.id}
+          place={place}
+          on={place.id === picked}
+          saved={saved(place.id)}
+          onPress={() => { onPick(place.id); onOpen(place.id); }}
+          onSave={() => onSave(place)}
+          onShare={() => onShare(place)}
+        />
       ))}
     </ScrollView>
   );
 }
 
-function RailCard({ place, on, onPress }: { place: CatalogPlace; on: boolean; onPress: () => void }) {
+function RailCard({
+  place,
+  on,
+  saved,
+  onPress,
+  onSave,
+  onShare,
+}: {
+  place: CatalogPlace;
+  on: boolean;
+  saved: boolean;
+  onPress: () => void;
+  onSave: () => void;
+  onShare: () => void;
+}) {
   const facts = factsOf(place);
+  const open = facts.open ? `${facts.open.now ? "Open" : "Closed"}${facts.open.when ? ` ${facts.open.when}` : ""}` : null;
   return (
-    <Pressable
-      accessible={false}
-      onPress={onPress}
-      style={[styles.card, on && styles.cardOn]}
-    >
-      <Text role="label" numberOfLines={2}>
-        {place.name}
-      </Text>
-      <View style={styles.cardLine}>
-        {facts.price ? (
-          <Text role="label" tone="price" testID="search-price">
-            {facts.price}
-          </Text>
-        ) : null}
-        {facts.kind ? (
-          <Text role="small" tone="muted" numberOfLines={1}>
-            {facts.kind}
-          </Text>
-        ) : null}
+    <View style={[styles.card, on && styles.cardOn]}>
+      <Pressable accessible={false} onPress={onPress}>
+        {place.photo ? <Image source={place.photo} style={styles.cardPhoto} contentFit="cover" /> : <View style={styles.cardPhoto} />}
+        <Text role="label" numberOfLines={2}>{place.name}</Text>
+        <View style={styles.cardLine}>
+          {facts.price ? <Text role="label" tone="price" testID="search-price">{facts.price}</Text> : null}
+          {facts.kind ? <Text role="small" tone="muted" numberOfLines={1}>{facts.kind}</Text> : null}
+        </View>
+        {facts.rating ? <Text role="caption" tone="muted">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text> : null}
+        {open ? <Text role="caption" tone={facts.open?.now ? "price" : "closed"}>{open}</Text> : null}
+        {facts.where ? <Text role="caption" tone="muted" numberOfLines={1}>{facts.where}</Text> : null}
+      </Pressable>
+      <View style={styles.cardActions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={saved ? "Saved" : "Save"} onPress={onSave}>
+          <Icon name={saved ? "heart-filled" : "heart"} size={18} />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={onShare}>
+          <Icon name="share-2" size={18} />
+        </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -340,14 +392,15 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 220,
-    height: 112,
     padding: space.md,
-    justifyContent: "space-between",
+    gap: space.xs,
     borderRadius: radius.card,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.border,
   },
   cardOn: { borderColor: colors.ink },
+  cardPhoto: { height: 96, borderRadius: radius.field, backgroundColor: colors.fill, marginBottom: space.xs },
   cardLine: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  cardActions: { flexDirection: "row", gap: space.md, marginTop: space.xs },
 });
