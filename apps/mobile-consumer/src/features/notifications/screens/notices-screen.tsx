@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { useRouter } from "expo-router";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
@@ -24,6 +25,7 @@ async function allowNotices(): Promise<void> {
 }
 
 export function NoticesScreen() {
+  const router = useRouter();
   const [now] = useState(() => Date.now());
   const query = useQuery({ queryKey: ["notices"], queryFn: ({ signal }) => listNotices(signal) });
   const copy = useErrorCopy(query.error);
@@ -43,6 +45,7 @@ export function NoticesScreen() {
     return (
       <ScrollView contentContainerStyle={styles.page}>
         <Text role="body">Nothing new yet</Text>
+        <Button label="Find a place" onPress={() => router.push("/")} />
         <Button kind="secondary" label="Allow notifications" onPress={() => void allowNotices().catch((err) => report(err))} />
       </ScrollView>
     );
