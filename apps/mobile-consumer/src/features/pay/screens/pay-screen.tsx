@@ -97,7 +97,9 @@ export function PayScreen({
               </Pressable>
             ))
           ) : (
-            <Text role="small" tone="muted" style={styles.empty}>No credits yet.</Text>
+            <Pressable accessibilityRole="button" onPress={() => setOpen("prepay")}>
+              <Text role="label" tone="onInk" style={styles.empty}>Find a place</Text>
+            </Pressable>
           )}
         </ScrollView>
       </View>
