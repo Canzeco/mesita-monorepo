@@ -111,15 +111,23 @@ export function listCardReservable(place: {
   return place.reservations_enabled === true && (place.phone ?? "").trim() !== "";
 }
 
+/** The green button's word (Pato, 2026-11-27, MESITA-5050: "instead of
+ *  discounts maybe mention Off or Bonus"). A visit discount says Off, the
+ *  card's short word (MESITA-5012). A prepay with no discount says Bonus.
+ *  Both say Off: the discount slide leads. */
+export function offerBannerWord(slides: OfferSlide[]): "Off" | "Bonus" {
+  return slides.some((s) => s.key === "cashback") ? "Off" : "Bonus";
+}
+
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
  *  "when seeing shit in home, don't move banenrs / just red say icon reserve
  *  / and green say icon discounts / use icons"; then "discounts in green").
  *  Nothing moves. Reservations only: one red Reserve, the full width
  *  (MESITA-5021: the left half grows from 50% to 100%). Offers only: one
- *  green Discounts, the full width (the right half grows from 50% to 100%).
- *  Both: Reserve left, Discounts right, each half. Neither: nothing, and
+ *  green Off or Bonus, the full width (the right half grows from 50% to 100%).
+ *  Both: Reserve left, Off or Bonus right, each half. Neither: nothing, and
  *  Save · Share stay.
- *  Reserve opens Reserve; Discounts opens the place (MESITA-4455). A live
+ *  Reserve opens Reserve; Off or Bonus opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
  *  (MESITA-5014). The open times that rotated in Reserve (MESITA-5011) are
  *  gone from the card; the place screen keeps them. */
@@ -224,7 +232,7 @@ export function PlaceBannerRow({
             data-tile-bonus
           >
             <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
-            Discounts
+            {offerBannerWord(slides)}
           </PushLink>
         ),
       )}
