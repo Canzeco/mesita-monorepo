@@ -220,7 +220,7 @@ function Footer({
     const label = owed === 0 ? "Use my credits" : `I paid ${money(owed, bill.currency)}`;
     return (
       <View style={styles.payRow}>
-        <Button label="Decline" kind="quiet" busy={busy === "decline"} disabled={busy !== null} onPress={() => onAnswer("decline")} />
+        <Button label={busy === "decline" ? "Declining" : "Decline"} kind="quiet" busy={busy === "decline"} disabled={busy !== null} onPress={() => onAnswer("decline")} />
         <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={busy !== null || armed} onPress={() => onAnswer("accept")} style={styles.pay}>
           <Text role="label" tone="onPay">{busy === "accept" ? "Confirming" : label}</Text>
         </Pressable>
@@ -347,8 +347,8 @@ function Cancel({ open, bill, busy, onKeep, onCancel }: { open: boolean; bill: G
         <Text role="title">Cancel this bill?</Text>
         {credits > 0 && bill ? <Text role="body" tone="muted">Your {money(credits, bill.currency)} of credits stay in your Wallet.</Text> : null}
         <Text role="body" tone="danger">Money you already gave the place is not returned by Mesita. Ask the place for it.</Text>
-        <Button label="Cancel bill" kind="danger" busy={busy} onPress={onCancel} />
-        <Button label="Keep the bill" kind="secondary" onPress={onKeep} />
+        <Button label={busy ? "Cancelling…" : "Cancel bill"} kind="danger" busy={busy} onPress={onCancel} />
+        <Button label="Keep it" kind="secondary" onPress={onKeep} />
       </View>
     </Modal>
   );
