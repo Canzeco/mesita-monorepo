@@ -52,6 +52,7 @@ export type Credit = {
   purchase: string | null;
   canPay: boolean;
   canGift: boolean;
+  bonusStep: { pay: string; waiting: boolean; bonus: string; ready: string | null } | null;
 };
 
 function money(cents: number, currency: string): string {
@@ -166,6 +167,14 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
       purchase: entry.purchase_id ? entry.purchase_id.slice(0, 8).toUpperCase() : null,
       canPay: !given && balance.spendable_cents > 0,
       canGift: wallet.can_send && balance.spendable_cents > 0,
+      bonusStep: bought && bonus && !refund
+        ? {
+            pay: money(amount, currency),
+            waiting: entry.pending || bonus.pending,
+            bonus: `+${money(bonus.amount_cents, currency)}`,
+            ready: bonus.pending && bonus.available_at ? bonus.available_at : null,
+          }
+        : null,
     };
   });
 }
