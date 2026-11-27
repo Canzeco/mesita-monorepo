@@ -10,7 +10,7 @@ import Svg, { Path } from "react-native-svg";
 import { Button } from "@/components/button";
 import { RemoveSaved } from "@/components/remove-saved";
 import { ErrorState } from "@/components/error-state";
-import { Icon } from "@/components/icon";
+import { Icon, PremierSeal } from "@/components/icon";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/features/auth";
@@ -434,6 +434,7 @@ function RailCard({
     <View style={[styles.card, { width }, on && styles.cardOn]}>
       {place.isPremier ? (
         <View style={styles.premier}>
+          <PremierSeal size={16} color={colors.onInk} check={colors.ad} />
           <Text role="label" tone="onInk">Premier</Text>
         </View>
       ) : null}
@@ -636,8 +637,10 @@ const styles = StyleSheet.create({
   facts: { flex: 1, paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.sm },
   premier: {
     height: 32,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     backgroundColor: colors.ad,
   },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },

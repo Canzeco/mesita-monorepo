@@ -63,11 +63,19 @@ const SEAL =
 const CHECK = "M10.54 16.2 6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77Z";
 
 /** The seal after a place's name. Red for Premier, blue for an ad slot. */
-export function PremierSeal({ size = 20, color = colors.premier }: { size?: number; color?: string }) {
+export function PremierSeal({
+  size = 20,
+  color = colors.premier,
+  check = colors.onInk,
+}: {
+  size?: number;
+  color?: string;
+  check?: string;
+}) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityLabel="Mesita Premier">
       <Path d={SEAL} fill={color} />
-      <Path d={CHECK} fill={colors.onInk} />
+      <Path d={CHECK} fill={check} />
     </Svg>
   );
 }

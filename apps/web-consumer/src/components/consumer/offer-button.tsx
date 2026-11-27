@@ -6,6 +6,7 @@ import { BadgePercent, CalendarCheck } from "lucide-react";
 
 import {
   OfferTrack,
+  PremierRosette,
   offerSlides as slidesFor,
   offersLabel,
   useOfferSlide,
@@ -239,11 +240,12 @@ export function PremierBar({ className }: { className?: string }) {
     <p
       className={cn(
         CARD_BUTTON_BOX,
-        "pointer-events-none flex w-full items-center justify-center bg-[#1D9BF0] font-sans text-xs font-semibold text-white",
+        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#1D9BF0] font-sans text-xs font-semibold text-white",
         className,
       )}
       data-card-premier
     >
+      <PremierRosette className="h-4 w-4" fill="#fff" check="#1D9BF0" decorative />
       Premier
     </p>
   );

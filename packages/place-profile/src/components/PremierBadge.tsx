@@ -33,8 +33,9 @@ export const AD_BLUE = "#1D9BF0";
 export function PremierRosette({
   className,
   fill = PREMIER_RED,
+  check = "#fff",
   decorative = false,
-}: { className?: string; fill?: string; decorative?: boolean } = {}) {
+}: { className?: string; fill?: string; check?: string; decorative?: boolean } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -50,7 +51,7 @@ export function PremierRosette({
       />
       <path
         d="M10.54 16.2 6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77Z"
-        fill="#fff"
+        fill={check}
       />
     </svg>
   );
