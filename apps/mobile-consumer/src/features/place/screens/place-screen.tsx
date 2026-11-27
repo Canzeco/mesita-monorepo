@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { ErrorState } from "@/components/error-state";
 import { Icon } from "@/components/icon";
@@ -102,12 +102,12 @@ export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact,
         <Black label="Upgrade" icon="rocket" onPress={() => void Linking.openURL(`https://mesita.ai/place/${place.id}/upgrade`)} />
       </View>
       <View style={styles.split}>
-        <Pressable accessibilityRole="button" onPress={reserveOn ? onReserve : undefined} style={styles.half}>
+        <Pressable accessibilityRole="button" onPress={() => (reserveOn ? onReserve() : Alert.alert("Reserve", "This place doesn't offer reservations."))} style={styles.half}>
           <Icon name="calendar" size={16} color={colors.onInk} />
           <Text role="label" tone="onInk">Reserve</Text>
           <Text role="caption" tone="onInk" style={styles.off}>{reserveOn ? "" : "Off"}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={offersOn ? onOffers : undefined} style={styles.half}>
+        <Pressable accessibilityRole="button" onPress={() => (offersOn ? onOffers() : Alert.alert("Offers", "This place has no offers right now."))} style={styles.half}>
           <Text role="label" tone="onInk">Offers</Text>
           <Text role="caption" tone="onInk" style={styles.off}>{offersOn ? "" : "Off"}</Text>
         </Pressable>
