@@ -32,7 +32,7 @@ update public.places set boost_tier = 2 where id = '00000000-0000-4000-8000-0000
 update public.places set content_state = 'generating'
  where id::text not like '00000000-0000-4000-8000-0000004454%';
 
--- One call shape: the recipe rows above; p_ad_floor 0.2 is sent to prove it is ignored.
+-- One call shape: the recipe rows above.
 create or replace function pg_temp.lanes(p_lat double precision, p_lng double precision, p_families text[])
 returns jsonb language sql as $$
   select public.catalog_rank_lanes(
@@ -42,9 +42,7 @@ returns jsonb language sql as $$
     p_premier_1 => 2, p_premier_2 => 5,
     p_families => p_families,
     p_known_families => array['tacos', 'coffee', 'dinner'],
-    p_require_active => false,
-    p_repeat => 1,
-    p_ad_floor => 0.2)
+    p_require_active => false)
 $$;
 
 -- Ids as their fixture letters, in order.
@@ -57,20 +55,20 @@ $$;
 -- ━━━ The function and its door ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- MESITA-5030 appends two defaulted Offers exponents. Named calls that omit
--- them still resolve; the stored signature is the full 25.
+-- them still resolve. MESITA-5036 drops p_repeat and p_ad_floor: 23.
 select has_function('public', 'catalog_rank_lanes',
   array['double precision', 'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision', 'double precision', 'double precision',
-        'text[]', 'text[]', 'boolean', 'double precision', 'double precision',
+        'text[]', 'text[]', 'boolean',
         'double precision', 'double precision', 'double precision', 'double precision',
         'double precision', 'double precision'],
   'catalog_rank_lanes exists with its one signature');
 
 select ok(
-  has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
-  and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
-  and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute'),
+  has_function_privilege('service_role', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
+  and not has_function_privilege('anon', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute')
+  and not has_function_privilege('authenticated', 'public.catalog_rank_lanes(double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, double precision, text[], text[], boolean, double precision, double precision, double precision, double precision, double precision, double precision)', 'execute'),
   'service role only');
 
 -- ━━━ Both lanes from a point ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -92,8 +90,8 @@ select is(
 select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array[]::text[]) -> 'premier'), 'EDF',
   'Inorganic: Premier places only, 5X E above 2X D; far F is last, never cut (MESITA-5029)');
 
-select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'below_floor')::int, 0,
-  'no ad floor: below_floor is always 0, and p_ad_floor 0.2 is ignored');
+select ok(not (pg_temp.lanes(25.67, -100.30, array[]::text[]) ? 'below_floor'),
+  'no ad floor (MESITA-5029): the answer has no below_floor (MESITA-5036)');
 
 select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'inorganic_total')::int, 3,
   'inorganic_total counts every gated Premier place');
@@ -103,18 +101,13 @@ select is((pg_temp.lanes(25.67, -100.30, array[]::text[]) ->> 'read')::int, 6,
 
 -- ━━━ No repeat penalty (MESITA-4463) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
--- Under the old penalty, p_repeat 0.001 dropped D (the 2nd dinner) below F
--- (AEFDBC). The argument is ignored now, so the order is the formula's.
-select is(
-  pg_temp.letters(public.catalog_rank_lanes(
-    p_lat => 25.67, p_lng => -100.30,
-    p_organic_half_km => 1, p_organic_distance_exp => 2, p_organic_stars_exp => 2, p_organic_google_exp => 0.5, p_organic_premier_exp => 0,
-    p_ad_half_km => 1, p_ad_distance_exp => 2, p_ad_stars_exp => 2, p_ad_google_exp => 0.5, p_ad_premier_exp => 1,
-    p_premier_1 => 2, p_premier_2 => 5, p_families => array[]::text[],
-    p_known_families => array['tacos', 'coffee', 'dinner'], p_require_active => false,
-    p_repeat => 0.001, p_ad_floor => 0.2) -> 'ids'),
-  'ADEFBC',
-  'p_repeat is ignored: two places of a kind keep the formula order');
+-- The penalty's argument and the floor's are gone from the signature
+-- (MESITA-5036), so no caller can send them.
+select ok(
+  not exists (select 1 from pg_proc p
+               where p.proname = 'catalog_rank_lanes' and p.pronamespace = 'public'::regnamespace
+                 and p.proargnames && array['p_repeat', 'p_ad_floor']),
+  'catalog_rank_lanes takes no p_repeat and no p_ad_floor');
 
 select ok(
   (select c.discovery_config #> '{params,variety}' is null from public.app_config c where c.id = 1),
@@ -128,10 +121,9 @@ select is(pg_temp.letters(pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'ids
 select is(
   jsonb_build_object(
     'premier', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'premier',
-    'below_floor', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'below_floor',
     'inorganic_total', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'inorganic_total',
     'read', pg_temp.lanes(25.67, -100.30, array['coffee']) -> 'read'),
-  '{"premier": ["00000000-0000-4000-8000-000000445406"], "below_floor": 0, "inorganic_total": 1, "read": 2}'::jsonb,
+  '{"premier": ["00000000-0000-4000-8000-000000445406"], "inorganic_total": 1, "read": 2}'::jsonb,
   'coffee has one Premier place, far away: still an ad (MESITA-5029)');
 
 -- ━━━ No point: Proximity abstains at 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -139,8 +131,8 @@ select is(
 select is(pg_temp.letters(pg_temp.lanes(null, null, array[]::text[]) -> 'premier'), 'EFD',
   'no point: every Premier place, ordered by Popularity × premierFactor');
 
-select is((pg_temp.lanes(null, null, array[]::text[]) ->> 'below_floor')::int, 0,
-  'no point: below_floor is 0');
+select is((pg_temp.lanes(null, null, array[]::text[]) ->> 'inorganic_total')::int, 3,
+  'no point: every gated Premier place is counted');
 
 -- ━━━ The seed: absent keys only ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
