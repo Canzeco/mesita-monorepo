@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/text";
 import type { PlaceDetail } from "@/generated/shared/place-detail";
@@ -24,10 +25,40 @@ export function Overview({ place, width, photo, onPhoto }: { place: PlaceDetail;
           </View>
         </View>
       ) : <Text role="body" tone="muted">No photos yet</Text>}
-      {place.long_description ? <Text role="body">{place.long_description}</Text> : null}
+      <Presentation text={place.long_description} />
       {place.address ? <Text role="small" tone="muted">{place.address}</Text> : null}
       {place.hours_table.length ? <Hours place={place} /> : null}
       <Tags place={place} />
+    </View>
+  );
+}
+
+const FOLD_OVER = 400;
+
+function presentationText(text: string): string {
+  const normalized = text.replace(/\r\n/g, "\n").trim();
+  const blankSplit = normalized.split(/\n\s*\n+/).map((part) => part.replace(/\n+/g, " ").replace(/[ \t]+/g, " ").trim()).filter(Boolean);
+  if (blankSplit.length > 1) return blankSplit.join("\n\n");
+  const soft = normalized.split(/\n+/).map((part) => part.replace(/[ \t]+/g, " ").trim()).filter(Boolean);
+  return soft.length > 1 ? soft.join("\n\n") : normalized;
+}
+
+function Presentation({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const body = presentationText(text);
+  if (!body) return null;
+  const folded = body.length > FOLD_OVER && !open;
+  return (
+    <View style={styles.block}>
+      <Text role="strong">Presentation</Text>
+      <View style={styles.hours}>
+        <Text role="body">{folded ? `${body.slice(0, FOLD_OVER).trim()}…` : body}</Text>
+        {folded ? (
+          <Pressable accessibilityRole="button" onPress={() => setOpen(true)}>
+            <Text role="label">Show more</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
