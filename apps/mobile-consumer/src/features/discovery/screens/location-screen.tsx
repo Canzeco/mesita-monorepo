@@ -44,7 +44,7 @@ const HERE = "Current location";
 type Device = "idle" | "asking" | "denied" | "failed";
 const HELP: Partial<Record<Device, string>> = {
   denied: "Location is off for Mesita. Tap to open Settings.",
-  failed: "Your location could not be found. Try again.",
+  failed: "Your device couldn't find you. Turn on Location Services, then tap Use my location.",
 };
 
 /** Where Home looks from: the phone's own place, or one typed in. */
@@ -115,7 +115,7 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
           <>
             <LocationRow
               icon="navigation"
-              title={here ? HERE : "Use my location"}
+              title={device === "asking" ? "Locating…" : here ? HERE : "Use my location"}
               line={HELP[device] ?? "Tap to share where you are"}
               alert={HELP[device] !== undefined}
               busy={device === "asking"}

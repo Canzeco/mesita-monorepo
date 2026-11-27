@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { ScrollView, StyleSheet } from "react-native";
+import { useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
@@ -11,6 +12,7 @@ import { report } from "@/lib/report";
 import { space } from "@/theme";
 
 import { listNotices } from "../api";
+import { shortAgo } from "../when";
 
 async function allowNotices(): Promise<void> {
   const Notifications = await import("expo-notifications");
@@ -22,14 +24,25 @@ async function allowNotices(): Promise<void> {
 }
 
 export function NoticesScreen() {
+  const [now] = useState(() => Date.now());
   const query = useQuery({ queryKey: ["notices"], queryFn: ({ signal }) => listNotices(signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
-  if (query.isError) return <ErrorState message={copy.message} offline={copy.offline} onRetry={() => void query.refetch()} />;
+  if (query.isError) {
+    return (
+      <ErrorState
+        title="Couldn't load notifications."
+        message="Check your connection and try again."
+        offline={copy.offline}
+        requestId={copy.requestId}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  }
   if (query.data.length === 0) {
     return (
       <ScrollView contentContainerStyle={styles.page}>
-        <Text role="body">No notifications yet</Text>
+        <Text role="body">Nothing new yet</Text>
         <Button kind="secondary" label="Allow notifications" onPress={() => void allowNotices().catch((err) => report(err))} />
       </ScrollView>
     );
@@ -38,8 +51,12 @@ export function NoticesScreen() {
     <ScrollView contentContainerStyle={styles.page}>
       <Button kind="secondary" label="Allow notifications" onPress={() => void allowNotices().catch((err) => report(err))} />
       {query.data.map((row) => (
-        <Text key={row.id} role="body">{`${row.place} ${row.sentence}`}</Text>
+        <View key={row.id} style={styles.row}>
+          <Text role="body">{`${row.place} ${row.sentence}`}</Text>
+          <Text role="caption" tone="muted">{shortAgo(row.when, now)}</Text>
+        </View>
       ))}
+      {query.data.length >= 40 ? <Text role="caption" tone="muted" style={styles.older}>{"Older notifications aren't shown"}</Text> : null}
     </ScrollView>
   );
 }
@@ -47,4 +64,6 @@ export function NoticesScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: space.lg, gap: space.md },
+  row: { gap: 2 },
+  older: { textAlign: "center", paddingVertical: space.lg },
 });
