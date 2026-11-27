@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
@@ -22,6 +22,8 @@ export function ReservationScreen({
 }) {
   const queryClient = useQueryClient();
   const [now] = useState(() => Date.now());
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
   const query = useQuery({ queryKey: ["reservations"], queryFn: ({ signal }) => listReservations(signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
@@ -43,8 +45,14 @@ export function ReservationScreen({
     void Linking.openURL(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${stamp}/${end}`);
   };
   const cancel = async () => {
-    await cancelReservation(row.id);
-    await queryClient.invalidateQueries({ queryKey: ["reservations"] });
+    setBusy(true);
+    try {
+      await cancelReservation(row.id);
+      await queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      setAsk(false);
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <ScrollView contentContainerStyle={styles.page} testID="reservation">
@@ -58,15 +66,16 @@ export function ReservationScreen({
       {row.notes ? <Text role="body">{row.notes}</Text> : null}
       <Button label="Add to calendar" kind="secondary" onPress={add} />
       {canMove(row.state, row.when, now) ? <Button label="Reschedule" kind="secondary" onPress={onReschedule} /> : null}
-      {canMove(row.state, row.when, now) ? (
-        <Button
-          label="Cancel reservation"
-          kind="danger"
-          onPress={() => Alert.alert("Cancel this reservation?", undefined, [
-            { text: "Keep it", style: "cancel" },
-            { text: "Yes, cancel it", style: "destructive", onPress: () => void cancel() },
-          ])}
-        />
+      {canMove(row.state, row.when, now) && !ask ? (
+        <Button label="Cancel reservation" kind="danger" onPress={() => setAsk(true)} />
+      ) : null}
+      {ask ? (
+        <View style={styles.ask}>
+          <Text role="heading">Cancel this reservation?</Text>
+          <Text role="body" tone="muted">{`${row.placeName || "Reservation"} · ${when ? when.toLocaleString() : ""}. We'll stop calling and let the place know. You can always book again.`}</Text>
+          <Button label={busy ? "Cancelling…" : "Yes, cancel it"} busy={busy} disabled={busy} onPress={() => void cancel()} />
+          <Button label="Keep it" kind="secondary" disabled={busy} onPress={() => setAsk(false)} />
+        </View>
       ) : null}
       <Button label="Your reservations" kind="quiet" onPress={onList} />
     </ScrollView>
@@ -116,6 +125,7 @@ function Progress({ state }: { state: string }) {
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: space.lg, gap: space.sm },
+  ask: { gap: space.sm },
   flow: { flexDirection: "row", gap: 6 },
   step: { flex: 1, gap: 6 },
   bar: { height: 4, borderRadius: 2, backgroundColor: colors.border },
