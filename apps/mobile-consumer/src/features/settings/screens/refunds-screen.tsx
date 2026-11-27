@@ -14,7 +14,7 @@ export function RefundsScreen() {
   const query = useQuery({ queryKey: ["refunds"], queryFn: ({ signal }) => listRefunds(signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
-  if (query.isError) return <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
+  if (query.isError) return <ErrorState title={"Couldn't load your refunds"} message="Check your connection and try again." offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
   if (query.data.length === 0) {
     return (
       <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
