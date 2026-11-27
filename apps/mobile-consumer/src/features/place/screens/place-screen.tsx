@@ -122,7 +122,7 @@ export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact,
       </View>
       {tab === "Overview" ? <Overview place={place} width={width} photo={photo} onPhoto={setPhoto} /> : null}
       {tab === "Reviews" ? <Reviews place={place} /> : null}
-      {tab === "Social" ? <Social place={place} /> : null}
+      {tab === "Social" ? <Social placeId={place.id} /> : null}
       {tab === "Menu" ? <MenuTab place={place} onMenu={onMenu} onOpen={onOpenMenu} /> : null}
     </ScrollView>
   );
