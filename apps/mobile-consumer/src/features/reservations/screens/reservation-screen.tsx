@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Linking, ScrollView, StyleSheet } from "react-native";
 
 import { Button } from "@/components/button";
@@ -20,6 +21,7 @@ export function ReservationScreen({
   onList: () => void;
 }) {
   const queryClient = useQueryClient();
+  const [now] = useState(() => Date.now());
   const query = useQuery({ queryKey: ["reservations"], queryFn: ({ signal }) => listReservations(signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
@@ -47,7 +49,7 @@ export function ReservationScreen({
   return (
     <ScrollView contentContainerStyle={styles.page} testID="reservation">
       <Text role="title">{row.placeName || "Reservation"}</Text>
-      <Text role="body">{row.state}</Text>
+      <Text role="body">{stateLabel(row.state, row.when, now)}</Text>
       {when ? <Text role="body">{when.toLocaleString()}</Text> : null}
       {row.party ? <Text role="body">{row.party} guests</Text> : null}
       {row.reference ? <Text role="small" tone="muted">{row.reference}</Text> : null}
@@ -58,6 +60,16 @@ export function ReservationScreen({
       <Button label="Your reservations" kind="quiet" onPress={onList} />
     </ScrollView>
   );
+}
+
+function stateLabel(state: string, when: string, now: number): string {
+  const live = state === "created" || state === "booking" || state === "confirmed";
+  const at = Date.parse(when);
+  if (state === "passed" || (live && Number.isFinite(at) && at < now)) return "Passed";
+  if (state === "confirmed") return "Confirmed";
+  if (state === "cancelled") return "Cancelled";
+  if (state === "declined" || state === "failed") return "Couldn't take the table";
+  return state ? state[0].toUpperCase() + state.slice(1) : "Reservation";
 }
 
 const styles = StyleSheet.create({

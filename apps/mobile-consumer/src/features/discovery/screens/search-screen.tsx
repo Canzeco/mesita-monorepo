@@ -1,6 +1,6 @@
 import * as Crypto from "expo-crypto";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 import { Button } from "@/components/button";
@@ -13,10 +13,11 @@ import { useErrorCopy } from "@/lib/error-copy";
 import { colors, maxFontSizeMultiplier, pressedOpacity, radius, space, type } from "@/theme";
 
 import { FamilyStrip } from "../components/family-strip";
+import { ResultsPanel } from "../components/results-panel";
 import { chipsFor, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
 import { factsOf, type CatalogPlace } from "../model";
-import { useLocationSearch, useMapPlaces, useResolveLocation } from "../queries";
+import { useMapPlaces, usePlaceSearch, useResolveLocation } from "../queries";
 
 type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void };
 
@@ -30,8 +31,10 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
   const [term, setTerm] = useState("");
   const [token] = useState(() => Crypto.randomUUID());
   const [chosen, setChosen] = useState<string | null>(null);
-  const suggestions = useLocationSearch(term, token, member);
+  const suggestions = usePlaceSearch(term, token, member);
   const resolve = useResolveLocation();
+  const height = useWindowDimensions().height;
+  const querying = term.trim().length >= 2;
 
   if (location === undefined) return <Skeleton style={styles.loading} />;
   if (location === null) {
@@ -78,16 +81,17 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
             style={styles.field}
             testID="search-field"
           />
-          {term.trim().length >= 3 && (suggestions.data?.length ?? 0) > 0 ? (
-            <View style={styles.suggestions}>
-              {suggestions.data?.map((row) => (
-                <Pressable key={row.placeId} onPress={() => pickSuggestion(row.placeId, row.mainText)} style={styles.suggestion}>
-                  <Text role="small" numberOfLines={1}>
-                    {row.mainText}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+          {querying ? (
+            <ResultsPanel
+              rows={suggestions.data ?? []}
+              searching={suggestions.isFetching && (suggestions.data?.length ?? 0) === 0}
+              failed={suggestions.isError}
+              maxHeight={Math.round(height * 0.55)}
+              onOpen={onOpen}
+              onLocate={pickSuggestion}
+              onGenerate={() => onAdd?.()}
+              onRetry={() => void suggestions.refetch()}
+            />
           ) : null}
         </View>
       ) : null}
@@ -96,7 +100,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
           <Text role="label">Add a place</Text>
         </Pressable>
       ) : null}
-      <FamilyStrip chips={chipsFor(false)} chosen={shown} onSelect={selectChip} onMenu={onMenu} />
+      {querying ? null : <FamilyStrip chips={chipsFor(false)} chosen={shown} onSelect={selectChip} onMenu={onMenu} />}
       <View style={styles.mapBox}>
         <MapView
           provider={PROVIDER_GOOGLE}

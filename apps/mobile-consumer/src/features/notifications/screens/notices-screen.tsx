@@ -38,7 +38,7 @@ export function NoticesScreen() {
     <ScrollView contentContainerStyle={styles.page}>
       <Button kind="secondary" label="Allow notifications" onPress={() => void allowNotices().catch((err) => report(err))} />
       {query.data.map((row) => (
-        <Text key={row.id} role="body">{row.kind.split("_").join(" ")}</Text>
+        <Text key={row.id} role="body">{`${row.place} ${row.sentence}`}</Text>
       ))}
     </ScrollView>
   );

@@ -1,5 +1,8 @@
+import { useRouter } from "expo-router";
+
 import { TicketsScreen } from "@/features/settings/screens/tickets-screen";
 
 export default function Route() {
-  return <TicketsScreen />;
+  const router = useRouter();
+  return <TicketsScreen onVisit={(id) => router.push({ pathname: "/me/visit", params: { id } })} />;
 }

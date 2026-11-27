@@ -7,6 +7,7 @@ export default function PayLayout() {
     <Stack screenOptions={headerOptions}>
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="code" options={{ title: "Pay" }} />
+      <Stack.Screen name="receipt" options={{ title: "Receipt" }} />
     </Stack>
   );
 }

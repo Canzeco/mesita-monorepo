@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { callEdge } from "@/lib/edge";
 
-export type Notice = { id: string; kind: string; when: string };
+import { noticeSentence } from "./copy";
+
+export type Notice = { id: string; kind: string; when: string; place: string; sentence: string };
 
 export function listNotices(signal?: AbortSignal): Promise<Notice[]> {
   return callEdge(
@@ -15,10 +17,16 @@ export function listNotices(signal?: AbortSignal): Promise<Notice[]> {
             id: z.string(),
             kind: z.string().catch(""),
             created_at: z.string().catch(""),
+            payload: z.record(z.string(), z.unknown()).nullish().catch(null),
           }),
         )
         .catch([]),
     }),
     { signal },
-  ).then((answer) => answer.notifications.map((row) => ({ id: row.id, kind: row.kind, when: row.created_at })));
+  ).then((answer) =>
+    answer.notifications.map((row) => {
+      const said = noticeSentence(row.kind, row.payload ?? null);
+      return { id: row.id, kind: row.kind, when: row.created_at, place: said.place, sentence: said.sentence };
+    }),
+  );
 }

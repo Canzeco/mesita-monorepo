@@ -145,6 +145,24 @@ export async function recordShare(placeId: string): Promise<void> {
 
 const suggestionSchema = z.object({ placeId: z.string(), mainText: z.string(), secondaryText: text, kind: text });
 
+export type Suggestion = { placeId: string; mainText: string; secondaryText: string | null; kind: string | null };
+
+/** Every suggestion the bar can show: a place or a location. */
+export async function suggestPlaces(input: string, sessionToken: string, signal?: AbortSignal): Promise<Suggestion[]> {
+  const answer = await callEdge(
+    "consumer-web-suggest-places",
+    { input, sessionToken, mode: "fast" },
+    z.object({ predictions: z.array(suggestionSchema) }),
+    { signal },
+  );
+  return answer.predictions.map((row) => ({
+    placeId: row.placeId,
+    mainText: row.mainText,
+    secondaryText: row.secondaryText ?? null,
+    kind: row.kind ?? null,
+  }));
+}
+
 /** A read that costs a Google lookup: members only, as on the web. */
 export async function suggestLocations(input: string, sessionToken: string, signal?: AbortSignal) {
   const answer = await callEdge(
