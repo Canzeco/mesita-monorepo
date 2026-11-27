@@ -7,8 +7,10 @@ import {
   listPlaces,
   listSaved,
   rankCatalog,
+  listSavedPins,
   recordShare,
   resolveLocation,
+  savePin,
   setSaved,
   suggestLocations,
   suggestPlaces,
@@ -125,4 +127,20 @@ export function useLocationSearch(input: string, sessionToken: string, member: b
 
 export function useResolveLocation() {
   return useMutation({ mutationFn: (placeId: string) => resolveLocation(placeId) });
+}
+
+export function useSavedPins(member: boolean) {
+  return useQuery({
+    queryKey: ["saved-pins"],
+    queryFn: ({ signal }) => listSavedPins(signal),
+    enabled: member,
+  });
+}
+
+export function useSavePin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: savePin,
+    onSuccess: () => client.invalidateQueries({ queryKey: ["saved-pins"] }),
+  });
 }

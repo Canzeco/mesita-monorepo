@@ -18,6 +18,7 @@ export function PlacesSheet({
   failed,
   onClose,
   onPick,
+  onRetry,
 }: {
   kind: Kind | null;
   places: PayPlace[];
@@ -25,6 +26,7 @@ export function PlacesSheet({
   failed: boolean;
   onClose: () => void;
   onPick: (id: string) => void;
+  onRetry?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
@@ -76,7 +78,17 @@ export function PlacesSheet({
           <Text role="small" style={{ color: colors.testBannerInk }}>Test mode. No real money is moving, and the offers are fake.</Text>
         </View>
         {kind === "pay" ? <PayHeads /> : <PrepayHeads />}
-        {failed ? <Text role="body" tone="muted" style={styles.note}>The places did not load.</Text> : null}
+        {failed ? (
+          <View style={styles.note}>
+            <Text role="label">{"Couldn't load the places"}</Text>
+            <Text role="small" tone="muted">Check your connection and try again.</Text>
+            {onRetry ? (
+              <Pressable accessibilityRole="button" onPress={onRetry}>
+                <Text role="label">Try again</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         {loading ? <Text role="body" tone="muted" style={styles.note}>Loading places.</Text> : null}
         <FlatList
           data={rows}

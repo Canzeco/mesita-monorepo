@@ -9,7 +9,7 @@ export function IntegrationsScreen({ onCalendar }: { onCalendar: () => void }) {
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <SettingsGroup>
         <SettingsRow icon="calendar" label="Calendar" sub="Google, Apple or Outlook" onPress={onCalendar} />
-        <SettingsRow icon="plug" label="MCP" sub="Soon · ChatGPT or Claude" />
+        <SettingsRow icon="plug" label="MCP" badge="Soon" sub="ChatGPT or Claude" />
       </SettingsGroup>
     </ScrollView>
   );

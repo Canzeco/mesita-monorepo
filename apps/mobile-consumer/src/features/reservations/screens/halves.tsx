@@ -1,16 +1,28 @@
 import { useState } from "react";
+import { Image } from "expo-image";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/text";
-import { colors, space } from "@/theme";
+import { colors, radius, space } from "@/theme";
 
 import type { Reservation } from "../api";
+import { whenLine } from "../when";
+
+export function statusOf(row: Reservation, nowMs: number): string {
+  const live = row.state === "created" || row.state === "booking" || row.state === "confirmed";
+  const at = Date.parse(row.when);
+  if (row.state === "passed" || (live && Number.isFinite(at) && at < nowMs)) return "Passed";
+  if (row.state === "booking") return "Booking…";
+  if (row.state === "confirmed") return "Confirmed";
+  if (row.state === "cancelled") return "Cancelled";
+  if (row.state === "declined" || row.state === "failed") return "Not booked";
+  if (row.state === "created") return "Created";
+  return row.state ? row.state[0].toUpperCase() + row.state.slice(1) : "Reservation";
+}
 
 export function lineOf(row: Reservation): string {
-  const when = row.when ? new Date(row.when).toLocaleString() : "";
   const people = row.party == null ? "" : `${row.party} ${row.party === 1 ? "person" : "people"}`;
-  const passed = row.state === "passed" ? "Passed" : row.state;
-  return [passed, when, people, row.reference ? `#${row.reference}` : ""].filter(Boolean).join(" · ");
+  return [people, row.reference ? `#${row.reference}` : ""].filter(Boolean).join(" · ");
 }
 
 export type ReservationHalf = "upcoming" | "past";
@@ -43,22 +55,37 @@ export function ReservationTabs({ half, onPick }: { half: ReservationHalf; onPic
   );
 }
 
-export function ReservationRows({ rows, empty, onOpen }: { rows: Reservation[]; empty: string; onOpen: (id: string) => void }) {
+export function ReservationRows({ rows, empty, action, onOpen }: { rows: Reservation[]; empty: string; action?: { label: string; onPress: () => void }; onOpen: (id: string) => void }) {
+  const nowMs = useNow();
   if (rows.length === 0) {
     return (
       <ScrollView contentContainerStyle={styles.page}>
         <Text role="body">{empty}</Text>
+        {action ? (
+          <Pressable accessibilityRole="button" onPress={action.onPress}>
+            <Text role="label">{action.label}</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     );
   }
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      {rows.map((row) => (
-        <Pressable key={row.id} onPress={() => onOpen(row.id)} style={styles.row}>
-          <Text role="label">{row.placeName || "Place"}</Text>
-          <Text role="small" tone="muted">{lineOf(row)}</Text>
-        </Pressable>
-      ))}
+      {rows.map((row) => {
+        const status = statusOf(row, nowMs);
+        const dim = status === "Passed" || row.state === "cancelled" || row.state === "failed" || row.state === "declined";
+        return (
+          <Pressable key={row.id} onPress={() => onOpen(row.id)} style={styles.row}>
+            {row.placePhoto ? <Image source={row.placePhoto} style={styles.photo} contentFit="cover" /> : <View style={styles.photo} />}
+            <View style={styles.words}>
+              <Text role="label" tone={dim ? "muted" : "ink"}>{row.placeName || "Place"}</Text>
+              <Text role="small" tone={status === "Confirmed" ? "price" : "muted"}>{status}</Text>
+              <Text role="body">{whenLine(row.when, row.timezone)}</Text>
+              {lineOf(row) ? <Text role="small" tone="muted">{lineOf(row)}</Text> : null}
+            </View>
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 }
@@ -73,5 +100,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: "center", paddingVertical: space.md, gap: space.xs },
   line: { height: 2, alignSelf: "stretch", backgroundColor: colors.ad },
   page: { padding: space.lg, gap: space.md },
-  row: { gap: space.xs, paddingVertical: space.sm },
+  row: { flexDirection: "row", gap: space.md, paddingVertical: space.sm, alignItems: "center" },
+  photo: { width: 48, height: 48, borderRadius: radius.field, backgroundColor: colors.fill },
+  words: { flex: 1, gap: 2 },
 });

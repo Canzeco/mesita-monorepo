@@ -50,7 +50,7 @@ export function listRefunds(signal?: AbortSignal): Promise<Refund[]> {
   });
 }
 
-export type Ticket = { id: string; place: string; status: string; amount: string | null };
+export type Ticket = { id: string; place: string; photo: string | null; status: string; mark: string; headline: string; amount: string | null };
 
 export function listTickets(signal?: AbortSignal): Promise<Ticket[]> {
   return callEdge(
@@ -64,23 +64,38 @@ export function listTickets(signal?: AbortSignal): Promise<Ticket[]> {
             status: z.string().catch(""),
             currency: z.string().catch("mxn"),
             bill_cents: z.number().nullish().catch(null),
-            place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+            discount_cents: z.number().nullish().catch(null),
+            tip_cents: z.number().nullish().catch(null),
+            place: z.object({
+              name: z.string().nullish().catch(null),
+              photo_url: z.string().nullish().catch(null),
+            }).nullish().catch(null),
           }),
         )
         .catch([]),
     }),
     { signal },
   ).then((answer) =>
-    answer.visits.map((row) => ({
-      id: row.tab_id,
-      place: row.place?.name ?? "A Mesita place",
-      status: row.status,
-      amount: money(row.bill_cents ?? null, row.currency),
-    })),
+    answer.visits.map((row) => {
+      const off = row.discount_cents ?? 0;
+      const tip = row.tip_cents ?? 0;
+      const total = row.bill_cents == null ? null : (row.bill_cents - off + tip);
+      const open = row.status === "waiting_bill" || row.status === "billed" || row.status === "paying";
+      const mark = row.status === "waiting_bill" ? "Open" : row.status === "billed" ? "Billed" : row.status === "paying" ? "Paying" : row.status === "paid" && off > 0 ? `Saved ${money(off, row.currency)}` : "";
+      return {
+        id: row.tab_id,
+        place: row.place?.name ?? "A Mesita place",
+        photo: row.place?.photo_url ?? null,
+        status: row.status,
+        mark,
+        headline: total == null ? (open ? "Waiting for the bill" : "") : (money(total, row.currency) ?? ""),
+        amount: money(row.bill_cents ?? null, row.currency),
+      };
+    }),
   );
 }
 
-export type SavedCard = { id: string; brand: string; last4: string; exp: string };
+export type SavedCard = { id: string; brand: string; last4: string; exp: string; inUse: boolean; expired: boolean };
 
 export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; testMode: boolean }> {
   return callEdge(
@@ -96,6 +111,7 @@ export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; t
             last4: z.string().catch(""),
             exp_month: z.number().catch(0),
             exp_year: z.number().catch(0),
+            in_use: z.boolean().catch(false),
           }),
         )
         .catch([]),
@@ -107,7 +123,9 @@ export function listCards(signal?: AbortSignal): Promise<{ cards: SavedCard[]; t
       id: card.id,
       brand: card.brand,
       last4: card.last4,
-      exp: card.exp_month && card.exp_year ? `${card.exp_month}/${card.exp_year}` : "",
+      exp: card.exp_month && card.exp_year ? `${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year % 100).padStart(2, "0")}` : "",
+      inUse: card.in_use,
+      expired: card.exp_month > 0 && card.exp_year > 0 && new Date(card.exp_year, card.exp_month, 0).getTime() < Date.now(),
     })),
   }));
 }
@@ -136,7 +154,7 @@ export function getPlan(signal?: AbortSignal): Promise<Plan> {
     name: row.plan === "premium" ? "Pro" : "Free",
     used: row.used,
     cap: row.cap,
-    price: money(row.price_cents, row.currency) ?? "",
+    price: row.price_cents % 100 === 0 ? `$${row.price_cents / 100}` : `$${(row.price_cents / 100).toFixed(2)}`,
   }));
 }
 
@@ -155,7 +173,7 @@ export function setInstagramHandle(handle: string): Promise<void> {
   }).then(() => undefined);
 }
 
-export type WalletLine = { id: string; place: string; line: string };
+export type WalletLine = { id: string; place: string; placeId: string; entryKey: string; line: string };
 
 const BOUGHT = new Set(["prepay", "voucher", "bonus"]);
 
@@ -173,7 +191,8 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
     {},
     z.object({
       balances: z.array(z.object({
-        place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+        place_id: z.string().catch(""),
+        place: z.object({ id: z.string().nullish().catch(null), name: z.string().nullish().catch(null) }).nullish().catch(null),
         currency: z.string().catch("mxn"),
         entries: z.array(z.object({
           kind: z.string().catch(""),
@@ -199,9 +218,12 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
       balance.entries.forEach((entry, index) => {
         if (!BOUGHT.has(entry.kind)) return;
         const amount = money(Math.abs(entry.amount_cents), balance.currency) ?? "";
+        const placeId = balance.place_id || balance.place?.id || "";
         vouchers.push({
-          id: `${entry.at}-${index}`,
+          id: `${placeId}-${entry.kind}-${entry.at}-${index}`,
           place: balance.place?.name ?? "A Mesita place",
+          placeId,
+          entryKey: `${entry.kind}.${Date.parse(entry.at)}`,
           line: `${entry.pending ? "Pending" : "Available"} · ${amount}`,
         });
       });
@@ -209,17 +231,64 @@ function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gi
     const gifts = answer.gifts.map((gift) => ({
       id: gift.gift_id,
       place: gift.place?.name ?? "A Mesita place",
+      placeId: "",
+      entryKey: "",
       line: `${gift.role === "sender" ? "Sent" : "Received"} · ${gift.status} · ${money(gift.amount_cents, gift.currency) ?? ""} · ${gift.sender.name}`,
     }));
     return { vouchers, gifts };
   });
 }
 
-export function startInstagramDm(): Promise<{ code: string; account: string }> {
+export type InstagramChannel = { channel: "dm"; account: string; link: string } | { channel: "off" };
+
+export function instagramChannel(signal?: AbortSignal): Promise<InstagramChannel> {
   return callEdge(
     "consumer-web-claim-instagram",
-    { action: "start_dm", vipCheck: false },
-    z.object({ code: z.string(), account: z.string() }),
+    { action: "channel" },
+    z.object({ channel: z.enum(["dm", "off"]).catch("off"), account: z.string().optional(), link: z.string().optional() }),
+    { signal },
+  ).then((row) => (row.channel === "dm" && row.account && row.link ? { channel: "dm", account: row.account, link: row.link } : { channel: "off" }));
+}
+
+export type InstagramClaim = { code: string; handle: string; account: string; link: string };
+
+export function startInstagramDm(vipCheck: boolean): Promise<InstagramClaim> {
+  return callEdge(
+    "consumer-web-claim-instagram",
+    { action: "start_dm", vipCheck },
+    z.object({ code: z.string(), handle: z.string().catch(""), account: z.string(), link: z.string().catch("") }),
     { mutation: true },
   );
+}
+
+export type InstagramDmStatus = {
+  status: "pending" | "wrong_account" | "expired" | "none";
+  handle: string | null;
+  provedAt: string | null;
+};
+
+export function instagramDmStatus(signal?: AbortSignal): Promise<InstagramDmStatus> {
+  return callEdge(
+    "consumer-web-claim-instagram",
+    { action: "dm_status" },
+    z.object({
+      status: z.enum(["pending", "wrong_account", "expired", "none"]).catch("none"),
+      handle: z.string().nullish().catch(null),
+      provedAt: z.string().nullish().catch(null),
+    }),
+    { signal },
+  ).then((row) => ({ status: row.status, handle: row.handle ?? null, provedAt: row.provedAt ?? null }));
+}
+
+export function disconnectInstagram(): Promise<void> {
+  return callEdge("consumer-web-claim-instagram", { action: "disconnect" }, z.object({}).passthrough(), { mutation: true }).then(() => undefined);
+}
+
+export function instagramVipLine(status: string | null, followers: number | null): string | null {
+  const count = typeof followers === "number" ? `${followers.toLocaleString("en-US")} followers. ` : "";
+  if (status === "eligible") return "Your Instagram made you VIP.";
+  if (status === "not_enough") return `${count}VIP needs more than 5,000.`;
+  if (status === "not_public") return `${count}Your account is private; VIP needs a public one.`;
+  if (status === "unconfirmed") return `${count}Instagram didn't confirm your account is public.`;
+  return null;
 }

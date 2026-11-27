@@ -13,6 +13,8 @@ export type Reservation = {
   notes: string | null;
   placeName: string | null;
   placeId: string | null;
+  placePhoto: string | null;
+  timezone: string | null;
   reference: string | null;
 };
 
@@ -25,7 +27,12 @@ const rowSchema = z
     notes: text,
     reference_code: text,
     place: z
-      .object({ id: text, name: text })
+      .object({
+        id: text,
+        name: text,
+        timezone: text,
+        photos: z.array(z.string()).nullish().catch(null),
+      })
       .nullish()
       .catch(null),
   })
@@ -38,6 +45,8 @@ const rowSchema = z
       notes: row.notes ?? null,
       placeName: row.place?.name ?? null,
       placeId: row.place?.id ?? null,
+      placePhoto: row.place?.photos?.[0] ?? null,
+      timezone: row.place?.timezone ?? null,
       reference: row.reference_code ?? null,
     }),
   );
@@ -48,6 +57,9 @@ export function listReservations(signal?: AbortSignal): Promise<Reservation[]> {
   }).then((answer) => answer.reservations);
 }
 
+export type ReserveNotify = "app" | "call";
+export type ReserveWindow = 0 | 30 | 60;
+
 export type ReserveInput = {
   placeId: string;
   reservedAt: string;
@@ -56,6 +68,9 @@ export type ReserveInput = {
   firstName: string;
   lastName: string;
   requestId: string;
+  onConfirm: ReserveNotify;
+  onReject: ReserveNotify;
+  windowMinutes: ReserveWindow;
 };
 
 export async function createReservation(input: ReserveInput): Promise<string> {
@@ -69,8 +84,9 @@ export async function createReservation(input: ReserveInput): Promise<string> {
       first_name: input.firstName.trim(),
       last_name: input.lastName.trim(),
       request_id: input.requestId,
-      consumer_notify: "app",
-      confirm_notify: "app",
+      consumer_notify: input.onReject,
+      confirm_notify: input.onConfirm,
+      time_window_minutes: input.windowMinutes,
       ...(notes ? { notes } : {}),
     },
     z.object({ reservation: z.object({ id: z.string() }) }),

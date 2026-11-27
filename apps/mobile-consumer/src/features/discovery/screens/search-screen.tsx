@@ -1,9 +1,11 @@
+import { Image } from "expo-image";
 import * as Crypto from "expo-crypto";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 
 import { Button } from "@/components/button";
+import { RemoveSaved } from "@/components/remove-saved";
 import { ErrorState } from "@/components/error-state";
 import { Icon } from "@/components/icon";
 import { Skeleton } from "@/components/skeleton";
@@ -13,24 +15,29 @@ import { useErrorCopy } from "@/lib/error-copy";
 import { colors, maxFontSizeMultiplier, pressedOpacity, radius, space, type } from "@/theme";
 
 import { FamilyStrip } from "../components/family-strip";
+import { GenerateSheet, type GenerateTarget } from "../components/generate-sheet";
 import { ResultsPanel } from "../components/results-panel";
 import { chipsFor, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
-import { factsOf, type CatalogPlace } from "../model";
-import { useMapPlaces, usePlaceSearch, useResolveLocation } from "../queries";
+import { factsOf, shareUrl, type CatalogPlace } from "../model";
+import { useMapPlaces, usePlaceSearch, useResolveLocation, useSaved, useToggleSaved } from "../queries";
 
-type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void };
+type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void; onSignIn: () => void };
 
 /** The web's Search: a map, the families, and a rail that is only as tall as its cards. */
-export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
+export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn }: Nav) {
   const { location, choose, chip, selectChip } = useActiveLocation();
   const member = useSession().guestId !== null;
+  const saved = useSaved();
+  const toggle = useToggleSaved();
+  const [drop, setDrop] = useState<CatalogPlace | null>(null);
   const shown: ChipKey = chip === "saved" ? "near" : chip;
   const map = useMapPlaces(location ?? null, shown);
   const copy = useErrorCopy(map.error);
   const [term, setTerm] = useState("");
   const [token] = useState(() => Crypto.randomUUID());
   const [chosen, setChosen] = useState<string | null>(null);
+  const [generate, setGenerate] = useState<GenerateTarget | null>(null);
   const suggestions = usePlaceSearch(term, token, member);
   const resolve = useResolveLocation();
   const height = useWindowDimensions().height;
@@ -70,37 +77,57 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
           {location.name}
         </Text>
       </Pressable>
-      {member ? (
-        <View>
-          <TextInput
-            value={term}
-            onChangeText={setTerm}
-            placeholder="Search"
-            placeholderTextColor={colors.muted}
-            maxFontSizeMultiplier={maxFontSizeMultiplier}
-            style={styles.field}
-            testID="search-field"
+      <View>
+        <TextInput
+          value={term}
+          onChangeText={setTerm}
+          placeholder="Search places…"
+          placeholderTextColor={colors.muted}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
+          style={styles.field}
+          testID="search-field"
+        />
+        {querying && member ? (
+          <ResultsPanel
+            rows={suggestions.data ?? []}
+            searching={suggestions.isFetching && (suggestions.data?.length ?? 0) === 0}
+            failed={suggestions.isError}
+            maxHeight={Math.round(height * 0.55)}
+            onOpen={onOpen}
+            onLocate={pickSuggestion}
+            onGenerate={(row) => setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText })}
+            onRetry={() => void suggestions.refetch()}
+            onClear={() => setTerm("")}
           />
-          {querying ? (
-            <ResultsPanel
-              rows={suggestions.data ?? []}
-              searching={suggestions.isFetching && (suggestions.data?.length ?? 0) === 0}
-              failed={suggestions.isError}
-              maxHeight={Math.round(height * 0.55)}
-              onOpen={onOpen}
-              onLocate={pickSuggestion}
-              onGenerate={() => onAdd?.()}
-              onRetry={() => void suggestions.refetch()}
-            />
-          ) : null}
-        </View>
-      ) : null}
+        ) : null}
+        {querying && !member ? (
+          <View style={styles.signBox}>
+            <Text role="label">Sign in to search by name</Text>
+            <Text role="caption" tone="muted">Or clear the search to browse the map.</Text>
+            <Pressable accessibilityRole="button" onPress={() => setTerm("")} style={styles.signIn}>
+              <Text role="label">Clear search</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" onPress={onSignIn} style={styles.signIn}>
+              <Text role="label">Sign in</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
       {member && onAdd ? (
         <Pressable onPress={onAdd} style={styles.where}>
           <Text role="label">Add a place</Text>
         </Pressable>
       ) : null}
       {querying ? null : <FamilyStrip chips={chipsFor(false)} chosen={shown} onSelect={selectChip} onMenu={onMenu} />}
+      <GenerateSheet target={generate} onClose={() => setGenerate(null)} onOpen={onOpen} />
+      <RemoveSaved
+        name={drop?.name ?? null}
+        onCancel={() => setDrop(null)}
+        onConfirm={() => {
+          if (drop) toggle.mutate({ place: drop, on: false });
+          setDrop(null);
+        }}
+      />
       <View style={styles.mapBox}>
         <MapView
           provider={PROVIDER_GOOGLE}
@@ -125,10 +152,27 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
         {map.isPending ? <Skeleton style={styles.mapWait} /> : null}
         {map.isError ? (
           <View style={styles.mapError}>
-            <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void map.refetch()} />
+            <ErrorState title="Couldn't load places in this area." message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void map.refetch()} />
           </View>
         ) : (
-          <Rail places={places} picked={picked?.id ?? null} onPick={setChosen} onOpen={onOpen} />
+          <Rail
+            places={places}
+            picked={picked?.id ?? null}
+            filterLabel={shown === "near" || shown === "all" ? null : chipsFor(false).find((row) => row.key === shown)?.label ?? null}
+            onAdd={member ? onAdd : undefined}
+            onPick={setChosen}
+            onOpen={onOpen}
+            saved={(id) => saved.data?.ids.includes(id) ?? false}
+            onSave={(place) => {
+              if (!member) {
+                onSignIn();
+                return;
+              }
+              if (saved.data?.ids.includes(place.id)) setDrop(place);
+              else toggle.mutate({ place, on: true });
+            }}
+            onShare={(place) => void Share.share({ message: `${place.name}\n${shareUrl(place)}` })}
+          />
         )}
       </View>
     </View>
@@ -146,20 +190,36 @@ function pinsOf(places: readonly CatalogPlace[], dots: readonly { id: string; la
 function Rail({
   places,
   picked,
+  filterLabel,
+  onAdd,
   onPick,
   onOpen,
+  saved,
+  onSave,
+  onShare,
 }: {
   places: readonly CatalogPlace[];
   picked: string | null;
+  filterLabel: string | null;
+  onAdd?: () => void;
   onPick: (id: string) => void;
   onOpen: (id: string) => void;
+  saved: (id: string) => boolean;
+  onSave: (place: CatalogPlace) => void;
+  onShare: (place: CatalogPlace) => void;
 }) {
   if (places.length === 0) {
     return (
       <View style={styles.emptyRail} testID="search-rail">
-        <Text role="small" tone="muted">
-          Nothing nearby
+        <Text role="label" tone="onInk">Add a new place to Mesita</Text>
+        <Text role="small" tone="onInk">
+          {filterLabel ? `Nothing here for ${filterLabel} yet. Takes under 10 seconds.` : "Nothing here yet. Takes under 10 seconds."}
         </Text>
+        {onAdd ? (
+          <Pressable accessibilityRole="button" onPress={onAdd} style={styles.addPill}>
+            <Text role="label" tone="onInk">Add a place</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -171,37 +231,67 @@ function Rail({
       contentContainerStyle={styles.railContent}
       testID="search-rail"
     >
+      {onAdd ? (
+        <Pressable accessibilityRole="button" onPress={onAdd} style={styles.addCard}>
+          <Text role="label" tone="onInk">Add a new place to Mesita</Text>
+          <Text role="small" tone="onInk">Not on Mesita yet? Takes under 10 seconds.</Text>
+          <Text role="label" style={styles.addPillText}>Add a place</Text>
+        </Pressable>
+      ) : null}
       {places.map((place) => (
-        <RailCard key={place.id} place={place} on={place.id === picked} onPress={() => { onPick(place.id); onOpen(place.id); }} />
+        <RailCard
+          key={place.id}
+          place={place}
+          on={place.id === picked}
+          saved={saved(place.id)}
+          onPress={() => { onPick(place.id); onOpen(place.id); }}
+          onSave={() => onSave(place)}
+          onShare={() => onShare(place)}
+        />
       ))}
     </ScrollView>
   );
 }
 
-function RailCard({ place, on, onPress }: { place: CatalogPlace; on: boolean; onPress: () => void }) {
+function RailCard({
+  place,
+  on,
+  saved,
+  onPress,
+  onSave,
+  onShare,
+}: {
+  place: CatalogPlace;
+  on: boolean;
+  saved: boolean;
+  onPress: () => void;
+  onSave: () => void;
+  onShare: () => void;
+}) {
   const facts = factsOf(place);
+  const open = facts.open ? `${facts.open.now ? "Open" : "Closed"}${facts.open.when ? ` ${facts.open.when}` : ""}` : null;
   return (
-    <Pressable
-      accessible={false}
-      onPress={onPress}
-      style={[styles.card, on && styles.cardOn]}
-    >
-      <Text role="label" numberOfLines={2}>
-        {place.name}
-      </Text>
-      <View style={styles.cardLine}>
-        {facts.price ? (
-          <Text role="label" tone="price" testID="search-price">
-            {facts.price}
-          </Text>
-        ) : null}
-        {facts.kind ? (
-          <Text role="small" tone="muted" numberOfLines={1}>
-            {facts.kind}
-          </Text>
-        ) : null}
+    <View style={[styles.card, on && styles.cardOn]}>
+      <Pressable accessible={false} onPress={onPress}>
+        {place.photo ? <Image source={place.photo} style={styles.cardPhoto} contentFit="cover" /> : <View style={styles.cardPhoto} />}
+        <Text role="label" numberOfLines={2}>{place.name}</Text>
+        <View style={styles.cardLine}>
+          {facts.price ? <Text role="label" tone="price" testID="search-price">{facts.price}</Text> : null}
+          {facts.kind ? <Text role="small" tone="muted" numberOfLines={1}>{facts.kind}</Text> : null}
+        </View>
+        {facts.rating ? <Text role="caption" tone="muted">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text> : null}
+        {open ? <Text role="caption" tone={facts.open?.now ? "price" : "closed"}>{open}</Text> : null}
+        {facts.where ? <Text role="caption" tone="muted" numberOfLines={1}>{facts.where}</Text> : null}
+      </Pressable>
+      <View style={styles.cardActions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={saved ? "Saved" : "Save"} onPress={onSave}>
+          <Icon name={saved ? "heart-filled" : "heart"} size={18} />
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={onShare}>
+          <Icon name="share-2" size={18} />
+        </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -221,6 +311,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   whereName: { flexShrink: 1 },
+  signBox: {
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    padding: space.md,
+    gap: space.xs,
+    borderRadius: radius.card,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+  },
+  signIn: {
+    marginTop: space.xs,
+    paddingHorizontal: space.md,
+    height: 36,
+    borderRadius: radius.panel,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   field: {
     marginHorizontal: space.md,
     marginBottom: space.sm,
@@ -251,19 +360,47 @@ const styles = StyleSheet.create({
     right: space.md,
     bottom: space.md,
     padding: space.md,
+    gap: space.xs,
     borderRadius: radius.card,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.ink,
   },
-  card: {
+  addCard: {
     width: 220,
     height: 112,
     padding: space.md,
     justifyContent: "space-between",
+    borderRadius: radius.card,
+    backgroundColor: colors.ink,
+  },
+  addPillText: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.paper,
+    borderRadius: radius.panel,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    overflow: "hidden",
+  },
+  addPill: {
+    alignSelf: "flex-start",
+    marginTop: space.xs,
+    height: 36,
+    paddingHorizontal: space.md,
+    borderRadius: radius.panel,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  card: {
+    width: 220,
+    padding: space.md,
+    gap: space.xs,
     borderRadius: radius.card,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.border,
   },
   cardOn: { borderColor: colors.ink },
+  cardPhoto: { height: 96, borderRadius: radius.field, backgroundColor: colors.fill, marginBottom: space.xs },
   cardLine: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  cardActions: { flexDirection: "row", gap: space.md, marginTop: space.xs },
 });

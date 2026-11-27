@@ -12,6 +12,7 @@ export default function Route() {
       onMenu={() => router.push("/categories")}
       onOpen={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
       onAdd={() => router.push("/place/add")}
+      onSignIn={() => router.push("/me")}
     />
   );
 }

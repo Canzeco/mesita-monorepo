@@ -6,10 +6,18 @@ export type Profile = {
   id: string;
   firstName: string | null;
   lastName: string | null;
+  fullName: string | null;
+  avatarUrl: string | null;
+  socialLevel: "private" | "public" | null;
+  socialLock: "minor" | "no_birth_year" | null;
   sex: string | null;
   birthYear: number | null;
   phone: string | null;
   isVip: boolean;
+  instagramHandle: string | null;
+  instagramProvedAt: string | null;
+  instagramVipStatus: "eligible" | "not_enough" | "not_public" | "unconfirmed" | null;
+  instagramFollowers: number | null;
 };
 
 export type Session = {

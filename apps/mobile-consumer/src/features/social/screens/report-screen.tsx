@@ -28,7 +28,7 @@ export function ReportPersonScreen({
       await reportPerson(event, reason, note);
       onSent();
     } catch {
-      setError("Could not send that.");
+      setError("Couldn't send that. Try again.");
       setBusy(false);
     }
   };

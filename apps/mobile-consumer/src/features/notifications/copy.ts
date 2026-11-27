@@ -31,14 +31,25 @@ function outcome(value: string | null): string {
   }
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type NoticeView = { reservationId: string } | { placeId: string };
+
+function routeId(payload: Record<string, unknown> | null, key: string): string | null {
+  const value = text(payload, key);
+  return value && UUID.test(value) ? value : null;
+}
+
 /** The sentence Me › Notifications shows, the same words as the web. */
-export function noticeSentence(kind: string, payload: Record<string, unknown> | null): { place: string; sentence: string } {
+export function noticeSentence(kind: string, payload: Record<string, unknown> | null): { place: string; sentence: string; view: NoticeView | null } {
   const place = text(payload, "place_name") ?? "Mesita";
   if (kind === "credit_ready") {
     const amount = cents(payload);
     const currency = text(payload, "currency");
     const line = amount !== null && amount > 0 && currency ? `${money(amount, currency)} is ready to spend` : "Your credit is ready to spend";
-    return { place, sentence: line };
+    const placeId = routeId(payload, "place_id");
+    return { place, sentence: `· ${line}.`, view: placeId ? { placeId } : null };
   }
-  return { place, sentence: outcome(text(payload, "outcome")) };
+  const reservationId = routeId(payload, "reservation_id");
+  return { place, sentence: outcome(text(payload, "outcome")), view: reservationId ? { reservationId } : null };
 }

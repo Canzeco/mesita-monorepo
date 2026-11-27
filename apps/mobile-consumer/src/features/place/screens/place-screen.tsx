@@ -1,10 +1,11 @@
 import { Image } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDimensions, View } from "react-native";
 
 import { ErrorState } from "@/components/error-state";
 import { Icon } from "@/components/icon";
+import { RemoveSaved } from "@/components/remove-saved";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useErrorCopy } from "@/lib/error-copy";
@@ -21,6 +22,7 @@ import { Social } from "./social";
 
 type Nav = {
   onMenu: () => void;
+  onOpenMenu: (index: number) => void;
   onContact: () => void;
   onReport: () => void;
   onReserve: () => void;
@@ -48,10 +50,11 @@ export function PlaceScreen({ id, center = null, ...nav }: Nav & { id: string; c
   return <PlaceView place={query.data} center={center} {...nav} />;
 }
 
-export function PlaceView({ place, center = null, onMenu, onContact, onReport, onReserve, onOffers, onBack, saved, onSave }: Nav & { place: PlaceDetail; center?: { lat: number; lng: number } | null }) {
+export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact, onReport, onReserve, onOffers, onBack, saved, onSave }: Nav & { place: PlaceDetail; center?: { lat: number; lng: number } | null }) {
   const width = useWindowDimensions().width;
   const [tab, setTab] = useState<Tab>("Overview");
   const [photo, setPhoto] = useState(0);
+  const [drop, setDrop] = useState(false);
   const open = place.open_now;
   const when = open ? place.closes_at : place.opens_at;
   const price = priceChip(place);
@@ -94,23 +97,31 @@ export function PlaceView({ place, center = null, onMenu, onContact, onReport, o
         {distance != null ? <Fact label={formatDistanceKm(distance)} /> : null}
       </View>
       <View style={styles.actions}>
-        <Black label={saved ? "Saved" : "Save"} icon={saved ? "heart-filled" : "heart"} onPress={onSave} />
+        <Black label={saved ? "Saved" : "Save"} icon={saved ? "heart-filled" : "heart"} onPress={() => (saved ? setDrop(true) : onSave())} />
         <Black label="Maps" icon="map-pin" onPress={maps} />
         <Black label="Contact" icon="phone" onPress={onContact} />
         <Black label="Share" icon="share-2" onPress={share} />
         <Black label="Upgrade" icon="rocket" onPress={() => void Linking.openURL(`https://mesita.ai/place/${place.id}/upgrade`)} />
       </View>
       <View style={styles.split}>
-        <Pressable accessibilityRole="button" onPress={reserveOn ? onReserve : undefined} style={styles.half}>
+        <Pressable accessibilityRole="button" onPress={() => (reserveOn ? onReserve() : Alert.alert("Reserve", "This place doesn't offer reservations."))} style={styles.half}>
           <Icon name="calendar" size={16} color={colors.onInk} />
           <Text role="label" tone="onInk">Reserve</Text>
           <Text role="caption" tone="onInk" style={styles.off}>{reserveOn ? "" : "Off"}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={offersOn ? onOffers : undefined} style={styles.half}>
+        <Pressable accessibilityRole="button" onPress={() => (offersOn ? onOffers() : Alert.alert("Offers", "This place has no offers right now."))} style={styles.half}>
           <Text role="label" tone="onInk">Offers</Text>
           <Text role="caption" tone="onInk" style={styles.off}>{offersOn ? "" : "Off"}</Text>
         </Pressable>
       </View>
+      <RemoveSaved
+        name={drop ? place.name : null}
+        onCancel={() => setDrop(false)}
+        onConfirm={() => {
+          setDrop(false);
+          onSave();
+        }}
+      />
       <View style={styles.tabs}>
         {TABS.map((name) => (
           <Pressable key={name} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} onPress={() => setTab(name)} style={styles.tab}>
@@ -121,8 +132,8 @@ export function PlaceView({ place, center = null, onMenu, onContact, onReport, o
       </View>
       {tab === "Overview" ? <Overview place={place} width={width} photo={photo} onPhoto={setPhoto} /> : null}
       {tab === "Reviews" ? <Reviews place={place} /> : null}
-      {tab === "Social" ? <Social place={place} /> : null}
-      {tab === "Menu" ? <MenuTab place={place} onMenu={onMenu} /> : null}
+      {tab === "Social" ? <Social placeId={place.id} /> : null}
+      {tab === "Menu" ? <MenuTab place={place} onMenu={onMenu} onOpen={onOpenMenu} /> : null}
     </ScrollView>
   );
 }

@@ -14,7 +14,7 @@ export function RefundsScreen() {
   const query = useQuery({ queryKey: ["refunds"], queryFn: ({ signal }) => listRefunds(signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
-  if (query.isError) return <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
+  if (query.isError) return <ErrorState title={"Couldn't load your refunds"} message="Check your connection and try again." offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
   if (query.data.length === 0) {
     return (
       <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
@@ -24,9 +24,11 @@ export function RefundsScreen() {
   }
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
-      {query.data.map((row) => (
-        <Text key={row.id} role="body">{`${row.place} · ${row.amount}`}</Text>
-      ))}
+      {query.data.map((row) => {
+        const date = new Date(row.when);
+        const when = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        return <Text key={row.id} role="body">{[row.place, row.amount, when].filter(Boolean).join(" · ")}</Text>;
+      })}
     </ScrollView>
   );
 }

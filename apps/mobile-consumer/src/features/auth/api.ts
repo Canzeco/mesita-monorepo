@@ -12,20 +12,42 @@ export const consumerSchema = z
     id: z.string(),
     first_name: text,
     last_name: text,
+    full_name: text,
+    avatar_url: text,
+    social_level: text,
+    social_lock: text,
     sex: text,
     birth_year: z.number().nullish().catch(null),
     phone: text,
     guest_class: text,
+    instagram_handle: text,
+    instagram_proved_at: text,
+    instagram_vip_status: text,
+    instagram_followers_count: z.number().nullish().catch(null),
   })
   .transform(
     (c): Profile => ({
       id: c.id,
       firstName: c.first_name ?? null,
       lastName: c.last_name ?? null,
+      fullName: c.full_name ?? null,
+      avatarUrl: c.avatar_url ?? null,
+      socialLevel: c.social_level === "private" || c.social_level === "public" ? c.social_level : null,
+      socialLock: c.social_lock === "minor" || c.social_lock === "no_birth_year" ? c.social_lock : null,
       sex: c.sex ?? null,
       birthYear: c.birth_year ?? null,
       phone: c.phone ?? null,
       isVip: c.guest_class === "vip",
+      instagramHandle: c.instagram_handle ?? null,
+      instagramProvedAt: c.instagram_proved_at ?? null,
+      instagramVipStatus:
+        c.instagram_vip_status === "eligible" ||
+        c.instagram_vip_status === "not_enough" ||
+        c.instagram_vip_status === "not_public" ||
+        c.instagram_vip_status === "unconfirmed"
+          ? c.instagram_vip_status
+          : null,
+      instagramFollowers: c.instagram_followers_count ?? null,
     }),
   );
 

@@ -106,13 +106,13 @@ export async function getPlaceDetail(id: string, signal?: AbortSignal): Promise<
 
 /** The reasons the web sheet offers, in its order. The keys are the server's. */
 export const REPORT_REASONS = [
-  { key: "closed", label: "Permanently closed" },
-  { key: "wrong_info", label: "Wrong information" },
-  { key: "wrong_links", label: "Wrong or broken link" },
-  { key: "wrong_location", label: "Wrong location" },
-  { key: "inappropriate_photos", label: "Inappropriate photos" },
-  { key: "duplicate", label: "Duplicate place" },
-  { key: "other", label: "Something else" },
+  { key: "closed", label: "Permanently closed", prompt: "Anything to add? (optional)" },
+  { key: "wrong_info", label: "Wrong information", prompt: "What's wrong? (optional)" },
+  { key: "wrong_links", label: "Wrong or broken link", prompt: "Which link? Instagram, Facebook, website, menu…" },
+  { key: "wrong_location", label: "Wrong location", prompt: "Anything to add? (optional)" },
+  { key: "inappropriate_photos", label: "Inappropriate photos", prompt: "Anything to add? (optional)" },
+  { key: "duplicate", label: "Duplicate place", prompt: "Anything to add? (optional)" },
+  { key: "other", label: "Something else", prompt: "Tell us what's wrong" },
 ] as const;
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["key"];
@@ -151,4 +151,46 @@ export async function createPlace(googlePlaceId: string): Promise<{ id: string; 
     { mutation: true },
   );
   return answer.place;
+}
+
+export type PlaceActivity = {
+  name: string;
+  kind: "saved" | "viewed";
+  at: string;
+};
+
+export type PlaceActivityPage = {
+  items: PlaceActivity[];
+  next: string | null;
+  blocked: "private" | "minor" | "no_birth_year" | null;
+};
+
+const activitySchema = z
+  .object({
+    kind: z.enum(["saved", "viewed"]).catch("viewed"),
+    at: z.string().catch(""),
+    person: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+  })
+  .transform((row): PlaceActivity => ({
+    name: row.person?.name?.trim() || "Guest",
+    kind: row.kind,
+    at: row.at,
+  }));
+
+/** Who viewed or liked this place, newest first. */
+export function listPlaceActivity(placeId: string, before?: string, signal?: AbortSignal): Promise<PlaceActivityPage> {
+  return callEdge(
+    "consumer-web-list-activity",
+    { place_id: placeId, ...(before ? { before } : {}) },
+    z.object({
+      items: z.array(activitySchema).catch([]),
+      next: z.string().nullish().catch(null),
+      blocked: z.enum(["private", "minor", "no_birth_year"]).nullish().catch(null),
+    }),
+    { signal },
+  ).then((answer) => ({
+    items: answer.items,
+    next: answer.next ?? null,
+    blocked: answer.blocked ?? null,
+  }));
 }

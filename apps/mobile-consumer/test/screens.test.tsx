@@ -52,7 +52,7 @@ test.each(home)("Home: $kind", async (state) => {
   expect(view.toJSON()).not.toBeNull();
 });
 
-const profile = { id: "g", firstName: "Ana", lastName: null, sex: null, birthYear: null, phone: null, isVip: true };
+const profile = { id: "g", firstName: "Ana", lastName: null, sex: null, birthYear: null, phone: null, isVip: true, instagramHandle: null, instagramProvedAt: null, instagramVipStatus: null, instagramFollowers: null, fullName: null, avatarUrl: null, socialLevel: null, socialLock: null };
 const me: MeState[] = [
   { kind: "anonymous" }, { kind: "loading" }, error, { ...error, offline: true },
   { kind: "profile", profile, lastUpdated: null }, { kind: "profile", profile, lastUpdated: 1 },
@@ -78,7 +78,7 @@ test("sign-in, suspended and the shared states", async () => {
     <WelcomeScreen key="6" onSignIn={nothing} onBrowse={nothing} />,
     <QueryClientProvider key="7" client={queryClient}>
       <LocationProvider>
-        <SearchScreen onChooseLocation={nothing} onMenu={nothing} onOpen={nothing} />
+        <SearchScreen onChooseLocation={nothing} onMenu={nothing} onOpen={nothing} onSignIn={nothing} />
       </LocationProvider>
     </QueryClientProvider>,
   ]) {

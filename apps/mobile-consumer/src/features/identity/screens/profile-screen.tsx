@@ -1,31 +1,48 @@
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Host, Picker } from "@expo/ui";
 
 import { Button } from "@/components/button";
 import { Field, FieldError } from "@/components/field";
 import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
-import { useMyProfile } from "@/features/auth";
+import { setMyProfile, useMyProfile } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
 import { isOutcomeUnknown } from "@/lib/reconcile";
 import { colors, pressedOpacity, radius, space } from "@/theme";
 
+import { saveSocialLevel } from "../api";
 import { birthYears, checkDraft, draftOf, SEXES, type Draft } from "../model";
 import { useSaveDetails } from "../queries";
 
+const LEVELS = [
+  { level: "private" as const, title: "Private", sub: "Other guests never see you or your activity, and you don't see theirs." },
+  { level: "public" as const, title: "Public", sub: "Your activity shows with your first name, age and sex. You see everyone's activity." },
+];
+
 /** First name, last name, sex, and year of birth. The same fields as the web. */
-export function ProfileScreen({ onSaved }: { onSaved: () => void }) {
+export function ProfileScreen() {
   const profile = useMyProfile().data;
   const [typed, setTyped] = useState<Partial<Draft>>({});
+  const [savedUntil, setSavedUntil] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   const save = useSaveDetails();
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const privacy = useMutation({
+    mutationFn: saveSocialLevel,
+    onSuccess: (next) => setMyProfile(next),
+  });
   const copy = useErrorCopy(save.error);
   const draft: Draft = { ...draftOf(profile), ...typed };
   const set = (key: keyof Draft) => (value: string) => setTyped((current) => ({ ...current, [key]: value }));
   const { details, errors } = checkDraft(draft);
+  const dirty = Object.keys(typed).length > 0;
   useEffect(() => {
-    if (save.isSuccess) onSaved();
-  }, [save.isSuccess, onSaved]);
+    if (savedUntil <= Date.now()) return;
+    const timer = setTimeout(() => setNow(Date.now()), savedUntil - Date.now());
+    return () => clearTimeout(timer);
+  }, [savedUntil]);
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <Field label="First name" value={draft.firstName} onChangeText={set("firstName")} autoCapitalize="words" textContentType="givenName" />
@@ -61,10 +78,55 @@ export function ProfileScreen({ onSaved }: { onSaved: () => void }) {
         <Text role="note" tone="muted">{"It confirms you're old enough for Mesita. On a public profile, guests see your age."}</Text>
         {errors?.birthYear ? <FieldError>{errors.birthYear}</FieldError> : null}
       </View>
+      {profile?.socialLevel ? (
+        <Pressable accessibilityRole="button" onPress={() => setPrivacyOpen(true)} style={styles.privacy}>
+          <Text role="tag" tone="muted">Privacy</Text>
+          <Text role="label">{LEVELS.find((row) => row.level === (privacy.isPending ? privacy.variables : profile.socialLevel))?.title}</Text>
+        </Pressable>
+      ) : null}
+      <Modal visible={privacyOpen} animationType="slide" onRequestClose={() => setPrivacyOpen(false)}>
+        <View style={styles.sheet}>
+          <Text role="title">Privacy</Text>
+          {profile?.socialLock ? (
+            <Text role="body" tone="muted">
+              {profile.socialLock === "minor"
+                ? "Profiles of guests under 18 are always private and don't see Social. This can't be changed."
+                : "Save your year of birth to choose who sees you and to see Social."}
+            </Text>
+          ) : LEVELS.map((row) => (
+            <Pressable
+              key={row.level}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: profile?.socialLevel === row.level }}
+              onPress={() => {
+                setPrivacyOpen(false);
+                if (row.level !== profile?.socialLevel) privacy.mutate(row.level);
+              }}
+            >
+              <Text role="label">{row.title}</Text>
+              <Text role="small" tone="muted">{row.sub}</Text>
+            </Pressable>
+          ))}
+          <Button label="Close" kind="secondary" onPress={() => setPrivacyOpen(false)} />
+        </View>
+      </Modal>
       {save.error ? (
         <FieldError>{isOutcomeUnknown(save.error) ? "We could not confirm this was saved. Try again." : copy.offline ? "No connection." : copy.message}</FieldError>
       ) : null}
-      <Button label="Save" onPress={() => details && save.mutate(details)} busy={save.isPending} disabled={!details} />
+      <Button
+        label={save.isPending ? "Saving…" : now < savedUntil && !dirty ? "Saved" : "Save"}
+        onPress={() =>
+          details &&
+          save.mutate(details, {
+            onSuccess: () => {
+              setTyped({});
+              setSavedUntil(Date.now() + 2000);
+            },
+          })
+        }
+        busy={save.isPending}
+        disabled={!details}
+      />
     </ScrollView>
   );
 }
@@ -79,4 +141,6 @@ const styles = StyleSheet.create({
   year: { minHeight: 44, borderRadius: radius.field, backgroundColor: colors.paper, paddingHorizontal: space.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   picker: { ...StyleSheet.absoluteFill, overflow: "hidden", opacity: 0.02 },
   host: { flex: 1 },
+  privacy: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sheet: { flex: 1, backgroundColor: colors.paper, padding: space.lg, gap: space.md },
 });
