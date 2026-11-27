@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
@@ -6,7 +7,7 @@ import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useErrorCopy } from "@/lib/error-copy";
-import { colors, space } from "@/theme";
+import { colors, radius, space } from "@/theme";
 
 import { listGiftTickets, listTickets, listVoucherTickets } from "../hub";
 
@@ -67,8 +68,13 @@ export function TicketsScreen({
       {tab === "visits" && visits.isSuccess && visits.data.length > 0 ? (
         <ScrollView contentContainerStyle={styles.page}>
           {visits.data.map((row) => (
-            <Pressable key={row.id} accessibilityRole="button" onPress={() => onVisit(row.id)}>
-              <Text role="body">{ticketLine(row)}</Text>
+            <Pressable key={row.id} accessibilityRole="button" onPress={() => onVisit(row.id)} style={styles.visit}>
+              {row.photo ? <Image source={row.photo} style={styles.photo} contentFit="cover" /> : <View style={styles.photo} />}
+              <View style={styles.words}>
+                <Text role="label">{row.place}</Text>
+                {row.mark ? <Text role="small" tone={row.mark.startsWith("Saved") ? "price" : "muted"}>{row.mark}</Text> : null}
+                {row.headline ? <Text role="body">{row.headline}</Text> : null}
+              </View>
             </Pressable>
           ))}
         </ScrollView>
@@ -101,4 +107,7 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: "center", paddingVertical: space.md, gap: space.xs },
   line: { height: 2, alignSelf: "stretch", backgroundColor: colors.ad },
   page: { padding: space.lg, gap: space.md },
+  visit: { flexDirection: "row", alignItems: "center", gap: space.md },
+  photo: { width: 48, height: 48, borderRadius: radius.field, backgroundColor: colors.fill },
+  words: { flex: 1, gap: 2 },
 });
