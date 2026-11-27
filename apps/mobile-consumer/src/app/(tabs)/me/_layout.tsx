@@ -10,6 +10,7 @@ const TITLE: Record<string, string> = {
   notifications: "Notifications",
   tickets: "Tickets",
   visit: "Visit",
+  gift: "Gift",
   card: "Card",
   "saved-card": "Card",
   plan: "Plan",
