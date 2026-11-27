@@ -15,10 +15,10 @@ import { getPlaceDetail } from "../api";
 
 const NAME: Record<VoucherKey, string> = {
   voucher_welcome: "Welcome",
-  voucher_200: "$200",
-  voucher_1000: "$1,000",
-  voucher_5000: "$5,000",
   voucher_vip: "VIP",
+  voucher_200: "Small Bonus",
+  voucher_1000: "Medium Bonus",
+  voucher_5000: "Big Bonus",
 };
 
 function money(cents: number, currency: string): string {
