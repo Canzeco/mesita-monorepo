@@ -12,7 +12,7 @@ const TITLE: Record<string, string> = {
   visit: "Visit",
   gift: "Gift",
   credit: "Credit",
-  card: "Card",
+  card: "Payment methods",
   "saved-card": "Card",
   plan: "Plan",
   share: "Share",
