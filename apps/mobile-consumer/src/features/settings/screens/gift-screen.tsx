@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
+import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
+import { EdgeError } from "@/lib/edge";
 import { useErrorCopy } from "@/lib/error-copy";
 import { colors, space } from "@/theme";
 
-import { getGift, giftMoney, giftOutcome, giftSentence, giftState, type Gift } from "../gift";
+import { getGift, giftMoney, giftOutcome, giftSentence, giftState, giftStep, readyIn, takeBackGift, type Gift } from "../gift";
 
 const STEPS = ["Send", "Receive", "Receipt"] as const;
 
@@ -29,14 +32,14 @@ function Line({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Body({ gift, step }: { gift: Gift; step: number }) {
+function Body({ gift, step, now }: { gift: Gift; step: number; now: number }) {
   const amount = giftMoney(gift.amountCents, gift.currency);
   const from = gift.sender.you ? "You" : gift.sender.name || "Someone";
   const to = gift.recipient ? (gift.recipient.you ? "You" : gift.recipient.name || "A friend") : "Nobody";
   return (
     <View style={styles.body}>
       <Text role="title">{giftSentence(gift)}</Text>
-      <Text role="label">{giftState(gift)}</Text>
+      <Text role="label">{giftState(gift, now)}</Text>
       <Text role="small" tone="muted">{gift.place}</Text>
       {step === 0 ? (
         <View style={styles.panel}>
@@ -60,6 +63,7 @@ function Body({ gift, step }: { gift: Gift; step: number }) {
             <>
               <Line label="Taken by" value={to} />
               {gift.claimedAt ? <Line label="When" value={when(gift.claimedAt)} /> : null}
+              {gift.availableAt && Date.parse(gift.availableAt) > now ? <Line label="Ready to spend" value={`in ${readyIn(gift.availableAt, now)}`} /> : null}
             </>
           ) : null}
         </View>
@@ -80,27 +84,68 @@ function Body({ gift, step }: { gift: Gift; step: number }) {
 }
 
 /** Send, Receive, and Receipt. Taking a gift back stays on the web. */
+const REFUSAL: Record<string, string> = {
+  claimed: "Someone already took this credit.",
+  taken_back: "Your friend took this credit back.",
+  gone: "That link isn't here.",
+};
+
 export function GiftScreen({ id }: { id: string }) {
-  const [step, setStep] = useState(0);
+  const router = useRouter();
+  const [now] = useState(() => Date.now());
+  const [picked, setPicked] = useState<{ status: string; view: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<string | null>(null);
   const query = useQuery({ queryKey: ["gift", id], queryFn: ({ signal }) => getGift(id, signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
   if (query.isError) return <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
   const gift = query.data;
   if (!gift) return <View style={styles.missing}><Text role="body">{"This gift isn't here."}</Text></View>;
+  const at = giftStep(gift);
+  const step = picked && picked.status === gift.status ? picked.view : at;
+  const go = (view: number) => setPicked({ status: gift.status, view });
+  const takeBack = () => {
+    const amount = giftMoney(gift.amountCents, gift.currency);
+    Alert.alert(`Take back ${amount}?`, `The link stops working and the credit is back in your balance at ${gift.place}.`, [
+      { text: "Keep it open", style: "cancel" },
+      {
+        text: "Take it back",
+        onPress: () => {
+          setBusy(true);
+          setSaid(null);
+          void takeBackGift(gift.id)
+            .then((row) => {
+              setSaid(`${giftMoney(row.amountCents, row.currency)} is back in your balance.`);
+              void query.refetch();
+            })
+            .catch((err: unknown) => {
+              const code = err instanceof EdgeError ? err.code : "";
+              setSaid(REFUSAL[code] ?? "Couldn't take it back. Try again.");
+              void query.refetch();
+            })
+            .finally(() => setBusy(false));
+        },
+      },
+    ]);
+  };
+  const primary = step < at
+    ? { label: "Next", onPress: () => go(step + 1) }
+    : gift.sender.you && gift.status === "open"
+      ? { label: busy ? "Taking it back…" : "Take back", onPress: takeBack }
+      : gift.recipient?.you && gift.status === "claimed"
+        ? { label: "Open the Loyalty Card", onPress: () => void Linking.openURL(`https://mesita.ai/wallet/place/${gift.placeId}`) }
+        : { label: "Done", onPress: () => router.push("/me/tickets") };
   return (
     <View style={styles.fill}>
       <ScrollView contentContainerStyle={styles.page}>
-        <Body gift={gift} step={step} />
-        {gift.status === "open" && gift.sender.you ? (
-          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(`https://mesita.ai/me/tickets/gift/${gift.id}`)}>
-            <Text role="label">Take back on the web</Text>
-          </Pressable>
-        ) : null}
+        <Body gift={gift} step={step} now={now} />
+        {said ? <Text role="small">{said}</Text> : null}
+        <Button label={primary.label} busy={busy} onPress={primary.onPress} />
       </ScrollView>
       <View style={styles.steps}>
         {STEPS.map((label, index) => (
-          <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected: step === index }} onPress={() => setStep(index)} style={styles.step}>
+          <Pressable key={label} accessibilityRole="tab" accessibilityState={{ selected: step === index }} onPress={() => go(index)} style={styles.step}>
             <Text role="caption" tone={step === index ? "ink" : "muted"}>{label}</Text>
           </Pressable>
         ))}
