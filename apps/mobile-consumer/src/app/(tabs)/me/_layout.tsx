@@ -22,8 +22,8 @@ const TITLE: Record<string, string> = {
   refunds: "Refunds",
   integrations: "Integrations",
   calendar: "Calendar",
-  "vip-code": "Invitation code",
-  "vip-instagram": "Instagram",
+  "vip-code": "Upgrade manually",
+  "vip-instagram": "Upgrade with Instagram",
   "vip-agency": "Bring your people",
   delete: "Delete account",
 };
