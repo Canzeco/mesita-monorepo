@@ -33,6 +33,18 @@ test("a card prints what it knows and guesses nothing", () => {
   const all = [{ open: "00:00", close: "24:00" }];
   const hours = Object.fromEntries(["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].map((d) => [d, all]));
   expect(factsOf({ ...PLACE, hours, timezone: "America/Monterrey" }).open).toEqual({ now: true, when: null });
+  const keys = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const today = new Intl.DateTimeFormat("en-US", { timeZone: "America/Monterrey", weekday: "long" })
+    .format(new Date())
+    .toLowerCase();
+  const tomorrow = keys[(keys.indexOf(today) + 1) % 7];
+  const shut = Object.fromEntries(
+    keys.map((d) => [d, d === tomorrow ? [{ open: "08:30", close: "22:00" }] : []]),
+  );
+  expect(factsOf({ ...PLACE, hours: shut, timezone: "America/Monterrey" }).open).toEqual({
+    now: false,
+    when: "Open tomorrow",
+  });
 });
 
 test("a chip asks its own question, and Saved is a member's", () => {
