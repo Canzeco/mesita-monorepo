@@ -61,10 +61,9 @@ export const RECIPE_ROWS = [
 export type RecipeRow = (typeof RECIPE_ROWS)[number];
 export type Recipes = Record<RecipeRow, Recipe>;
 
-/** `params.mix`: per-mode Temperature, the ad floor, the ad cadence. */
+/** `params.mix`: per-mode Temperature, the ad cadence, the Pro and Max factors (no ad floor since MESITA-5029). */
 export type MixParams = {
   temperature: Record<RankMode, number>;
-  adFloor: number;
   adEvery: number;
   /** Premier Pro's and Premier Max's factor (MESITA-5028). Free is 1. */
   proFactor: number;
@@ -213,8 +212,6 @@ export const LANE_BATCH_MIN = 1;
 export const LANE_BATCH_MAX = 25;
 export const MIX_TEMPERATURE_MIN = 0;
 export const MIX_TEMPERATURE_MAX = 5;
-export const AD_FLOOR_MIN = 0;
-export const AD_FLOOR_MAX = 1;
 export const AD_EVERY_MIN = 0;
 export const AD_EVERY_MAX = 10;
 /** Mirrors PLAN_FACTOR_* in _shared/pipeline-signals.ts (MESITA-5028). */
@@ -236,7 +233,6 @@ export const RECIPE_BOUNDS = {
 
 export const MIX_BOUNDS = {
   temperature: { min: MIX_TEMPERATURE_MIN, max: MIX_TEMPERATURE_MAX, decimals: 2 },
-  adFloor: { min: AD_FLOOR_MIN, max: AD_FLOOR_MAX, decimals: 2 },
   adEvery: { min: AD_EVERY_MIN, max: AD_EVERY_MAX, decimals: 0 },
   proFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
   maxFactor: { min: PLAN_FACTOR_MIN, max: PLAN_FACTOR_MAX, decimals: 1 },
@@ -272,7 +268,6 @@ export const DEFAULT_RECIPES: Recipes = {
 /** Mirrors DEFAULT_MIX. */
 export const DEFAULT_MIX: MixParams = {
   temperature: { nearby: 0.33, family: 0.5, popular: 1 },
-  adFloor: 0.2,
   adEvery: 1,
   proFactor: 2,
   maxFactor: 5,
@@ -475,7 +470,6 @@ export function coerceMix(raw: unknown): MixParams {
   const temp = (mode: RankMode) => bounds(t[mode], DEFAULT_MIX.temperature[mode], MIX_BOUNDS.temperature);
   return {
     temperature: { nearby: temp("nearby"), family: temp("family"), popular: temp("popular") },
-    adFloor: bounds(r.adFloor, DEFAULT_MIX.adFloor, MIX_BOUNDS.adFloor),
     adEvery: bounds(r.adEvery, DEFAULT_MIX.adEvery, MIX_BOUNDS.adEvery),
     proFactor: bounds(r.proFactor, DEFAULT_MIX.proFactor, MIX_BOUNDS.proFactor),
     maxFactor: bounds(r.maxFactor, DEFAULT_MIX.maxFactor, MIX_BOUNDS.maxFactor),

@@ -215,8 +215,7 @@ const Meta = ({ children }: { children: React.ReactNode }) => (
 );
 
 // ── The recipe arithmetic (M1, MESITA-4454) ───────────────────────────────
-// Mirrors proximityFromDistance and clearsAdFloor in
-// _shared/pipeline-signals.ts; the helper lines under each row are computed
+// Mirrors proximityFromDistance in _shared/pipeline-signals.ts; the helper lines under each row are computed
 // from that row's own numbers.
 
 /** Proximity at d km: 1 ÷ (1 + (d ÷ Half distance)^Distance exponent). */
@@ -224,19 +223,7 @@ function proximityAt(d: number, halfKm: number, exp: number): number {
   return 1 / (1 + Math.pow(d / halfKm, exp));
 }
 
-/** The farthest an Inorganic place clears the Inorganic floor: Proximity ×
- *  premierFactor (the plan's saved Pro or Max factor, never the exponent) ≥ floor, so
- *  d = Half distance × (premierFactor ÷ floor − 1)^(1 ÷ Distance exponent).
- *  A floor of 0 lets every distance through. */
-function adReachKm(premierFactor: number, floor: number, halfKm: number, exp: number): number {
-  if (floor <= 0) return Infinity;
-  const ratio = premierFactor / floor - 1;
-  return ratio <= 0 ? 0 : halfKm * Math.pow(ratio, 1 / exp);
-}
-
 const fmtProx = (p: number) => (p >= 0.01 ? p.toFixed(2) : p.toPrecision(1));
-const fmtKm = (km: number) =>
-  !Number.isFinite(km) ? "any distance" : `${Number(km.toPrecision(2)).toLocaleString("en-US")} km`;
 
 /** The Ranking table, one flat list (MESITA-4517). A Mode is what the guest
  *  picks (Nearby, Family, Popular); a Lane is one ranked row inside it:
@@ -409,19 +396,13 @@ const RECIPE_COLUMNS: readonly { key: RecipeKey; label: string }[] = [
 ];
 
 /** What the row's numbers do, computed from the row as edited (1A). */
-function recipeEffect(
-  row: RecipeRow,
-  recipe: Recipe,
-  inorganicFloor: number,
-  plans: { pro: number; max: number },
-): string {
+function recipeEffect(row: RecipeRow, recipe: Recipe): string {
   const organic = isOrganicRow(row);
   if (isFavoritesRow(row)) return "Order: nearest first";
   const h = recipe.halfKm;
   const e = recipe.distanceExp;
   if (h == null || e == null) return organic ? "No distance on the Map" : "Any Premier place on screen";
-  if (organic) return `½ at ${h} km · 2 km ${fmtProx(proximityAt(2, h, e))}`;
-  return `Pro up to ${fmtKm(adReachKm(plans.pro, inorganicFloor, h, e))} · Max up to ${fmtKm(adReachKm(plans.max, inorganicFloor, h, e))}`;
+  return `½ at ${h} km · 2 km ${fmtProx(proximityAt(2, h, e))}`;
 }
 
 /** A value the server forces: plain muted text, never an input (C1, L-1). */
@@ -441,9 +422,6 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
     }));
   };
   const dirty = !same(cfg.params.recipes, saved.params.recipes);
-  // The inorganic reach reads the SAVED floor: an unsaved edit in Mixing does not move it.
-  const inorganicFloor = saved.params.mix.adFloor;
-  const plans = { pro: saved.params.mix.proFactor, max: saved.params.mix.maxFactor };
   const cell = (row: RecipeRow, rowName: string, key: RecipeKey, label: string) => {
     const recipe = cfg.params.recipes[row];
     if (isMapRow(row) && (key === "halfKm" || key === "distanceExp" || key === "batch")) return <Fixed>—</Fixed>;
@@ -505,7 +483,7 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
                   </Td>
                 ))}
                 <Td className="text-muted-foreground type-meta min-w-48 whitespace-normal">
-                  {recipeEffect(row, cfg.params.recipes[row], inorganicFloor, plans)}
+                  {recipeEffect(row, cfg.params.recipes[row])}
                 </Td>
               </Tr>
             ))}
@@ -523,9 +501,8 @@ export function RankingBox(seed: ConfigSeed<DiscoveryConfig>) {
           by car. Distance exponent: 1 is gentle, over 1 the list falls off past the Half distance. Google exponent: how far apart
           famous and unknown places sit; lower squeezes them together. Premier exponent: how much a plan
           counts in the Inorganic lane; at the same distance and stars a Pro place passes a Max place only with
-          (Max ÷ Pro) ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: Organic rows show where
-          Proximity is ½ and its value at 2 km; Inorganic rows show how far a Premier place can be and still
-          take an inorganic slot at the saved Inorganic floor ({inorganicFloor}).
+          (Max ÷ Pro) ^ (Premier exponent ÷ Google exponent) times its reviews. Effect: where Proximity is ½ and its
+          value at 2 km.
         </Meta>
         <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed">
           Foursquare factor 1 allows a boost of up to 2×. A higher Foursquare exponent concentrates that
@@ -581,16 +558,6 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
         <Group title="Inorganic lane">
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField
-              label="Inorganic floor"
-              value={mix.adFloor}
-              min={MIX_BOUNDS.adFloor.min}
-              max={MIX_BOUNDS.adFloor.max}
-              decimals
-              disabled={off}
-              hint="How close a paid place must be to get an ad slot. 0 = any distance; higher = closer only."
-              onChange={(adFloor) => patchMix({ adFloor })}
-            />
-            <NumberField
               label="Inorganic cadence"
               value={mix.adEvery}
               min={MIX_BOUNDS.adEvery.min}
@@ -642,14 +609,13 @@ export function MixingBox(seed: ConfigSeed<DiscoveryConfig>) {
             shuffled.
           </Meta>
           <Meta>
-            The Inorganic floor compares Proximity × the plan&apos;s Premier Pro or Premier Max number (not the exponent). At cadence 0
+            At cadence 0
             the list is the Organic lane alone, on Home and on the Map. A place already shown is skipped and
             its slot takes the next place of its lane. An inorganic slot with no Premier place left is
             dropped and the organic list continues. A place appears once; guests see it marked
-            &ldquo;Ad&rdquo; only in an inorganic slot. On Home a Premier place takes an inorganic slot only
-            when its Proximity (from its mode&apos;s Inorganic row) × its plan&apos;s Pro or Max number reaches the
-            Inorganic floor; on the Map the screen is the cut, and inorganic pins count against Most pins
-            shown.
+            &ldquo;Ad&rdquo; only in an inorganic slot. Every Premier place can take an inorganic slot; the
+            nearest and most popular come first. On the Map the screen is the cut, and inorganic pins count
+            against Most pins shown.
           </Meta>
         </div>
       </Collapsible>
