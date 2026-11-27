@@ -149,6 +149,66 @@ export function setInstagramHandle(handle: string): Promise<void> {
   }).then(() => undefined);
 }
 
+export type WalletLine = { id: string; place: string; line: string };
+
+const BOUGHT = new Set(["prepay", "voucher", "bonus"]);
+
+export function listVoucherTickets(signal?: AbortSignal): Promise<WalletLine[]> {
+  return walletLines(signal).then((rows) => rows.vouchers);
+}
+
+export function listGiftTickets(signal?: AbortSignal): Promise<WalletLine[]> {
+  return walletLines(signal).then((rows) => rows.gifts);
+}
+
+function walletLines(signal?: AbortSignal): Promise<{ vouchers: WalletLine[]; gifts: WalletLine[] }> {
+  return callEdge(
+    "consumer-web-get-wallet",
+    {},
+    z.object({
+      balances: z.array(z.object({
+        place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+        currency: z.string().catch("mxn"),
+        entries: z.array(z.object({
+          kind: z.string().catch(""),
+          amount_cents: z.number().catch(0),
+          at: z.string().catch(""),
+          pending: z.boolean().catch(false),
+        })).catch([]),
+      })).catch([]),
+      gifts: z.array(z.object({
+        gift_id: z.string(),
+        amount_cents: z.number().catch(0),
+        currency: z.string().catch("mxn"),
+        status: z.string().catch(""),
+        role: z.string().catch(""),
+        place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+        sender: z.object({ name: z.string().catch("") }).catch({ name: "" }),
+      })).catch([]),
+    }),
+    { signal },
+  ).then((answer) => {
+    const vouchers: WalletLine[] = [];
+    for (const balance of answer.balances) {
+      balance.entries.forEach((entry, index) => {
+        if (!BOUGHT.has(entry.kind)) return;
+        const amount = money(Math.abs(entry.amount_cents), balance.currency) ?? "";
+        vouchers.push({
+          id: `${entry.at}-${index}`,
+          place: balance.place?.name ?? "A Mesita place",
+          line: `${entry.pending ? "Pending" : "Available"} · ${amount}`,
+        });
+      });
+    }
+    const gifts = answer.gifts.map((gift) => ({
+      id: gift.gift_id,
+      place: gift.place?.name ?? "A Mesita place",
+      line: `${gift.role === "sender" ? "Sent" : "Received"} · ${gift.status} · ${money(gift.amount_cents, gift.currency) ?? ""} · ${gift.sender.name}`,
+    }));
+    return { vouchers, gifts };
+  });
+}
+
 export function startInstagramDm(): Promise<{ code: string; account: string }> {
   return callEdge(
     "consumer-web-claim-instagram",
