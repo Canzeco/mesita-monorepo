@@ -31,6 +31,8 @@ export function Overview({ place, width, photo, onPhoto }: { place: PlaceDetail;
       {place.hours_table.length ? <Hours place={place} /> : null}
       <PopularTimes place={place} />
       <Tags place={place} />
+      <Stats place={place} />
+      <Score place={place} />
     </View>
   );
 }
@@ -182,6 +184,54 @@ function PopularTimes({ place }: { place: PlaceDetail }) {
   );
 }
 
+function scoreNumber(value: number | null | undefined, digits = 2): string {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "n/a";
+}
+
+function Stats({ place }: { place: PlaceDetail }) {
+  const stats = place.profile_stats;
+  if (!stats) return null;
+  const cells = [
+    { key: "viewed", label: "Mesita Views", n: stats.viewed },
+    { key: "saved", label: "Mesita Likes", n: stats.saved },
+  ];
+  return (
+    <View style={styles.block}>
+      <Text role="strong">Stats</Text>
+      <View style={styles.hour}>
+        {cells.map((cell) => (
+          <View key={cell.key} style={styles.stat}>
+            <Text role="caption" tone="muted">{cell.label}</Text>
+            <Text role="title">{cell.n.toLocaleString("en-US")}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function Score({ place }: { place: PlaceDetail }) {
+  const score = place.score;
+  if (!score) return null;
+  const rows = [
+    { key: "proximity", label: "Proximity", value: scoreNumber(score.proximity) },
+    { key: "popularity", label: "Popularity", value: scoreNumber(score.popularity) },
+    { key: "premier", label: "Premier", value: `×${scoreNumber(score.premier, 0)}` },
+    { key: "final", label: "Final", value: scoreNumber(score.final), strong: true },
+  ];
+  return (
+    <View style={styles.block}>
+      <Text role="strong">Score</Text>
+      {rows.map((row) => (
+        <View key={row.key} style={styles.hour}>
+          <Text role="small" tone={row.strong ? "ink" : "muted"}>{row.label}</Text>
+          <Text role="small">{row.value}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function Tags({ place }: { place: PlaceDetail }) {
   const familyLabels = new Set(place.families.map((row) => row.label.trim().toLowerCase()));
   const tags = place.tags.filter((tag) => !familyLabels.has(tag.label.trim().toLowerCase()));
@@ -216,6 +266,7 @@ const styles = StyleSheet.create({
   sorts: { flexDirection: "row", gap: 4 },
   dayChip: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.control, backgroundColor: colors.fill },
   dayChipOn: { backgroundColor: colors.ink },
+  stat: { flex: 1, gap: 4, padding: space.md, borderRadius: radius.field, backgroundColor: colors.fill },
   bars: { height: 72, flexDirection: "row", alignItems: "flex-end", gap: 4 },
   bar: { flex: 1, borderRadius: 99, backgroundColor: colors.ink },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
