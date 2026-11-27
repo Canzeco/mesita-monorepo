@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { ErrorState } from "@/components/error-state";
@@ -95,9 +96,13 @@ export function MeView({
       {state.kind === "profile" ? (
         <>
           <View style={styles.identity}>
-            <View style={styles.avatar} />
+            {state.profile.avatarUrl ? (
+              <Image source={state.profile.avatarUrl} style={styles.avatar} contentFit="cover" />
+            ) : (
+              <View style={styles.avatar} />
+            )}
             <View style={styles.nameBar}>
-              <Text role="strong">{state.profile.firstName?.trim() || "Mesita member"}</Text>
+              <Text role="strong">{state.profile.firstName?.trim() || state.profile.fullName?.trim() || "Mesita member"}</Text>
               <View style={styles.classPill}>
                 <Text role="caption" tone="muted">{state.profile.isVip ? "VIP" : "Regular"}</Text>
               </View>
@@ -135,7 +140,7 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.md, paddingBottom: space.xl },
   loading: { height: 120 },
   identity: { alignItems: "center", gap: space.md },
-  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.fill },
+  avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.fill, overflow: "hidden" },
   nameBar: {
     alignSelf: "stretch",
     minHeight: 48,
