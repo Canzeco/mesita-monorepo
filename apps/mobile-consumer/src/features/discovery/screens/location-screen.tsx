@@ -104,7 +104,9 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
           </View>
         ) : null}
         {input.trim().length >= 3 ? (
-          (search.data ?? []).map((s) => (
+          (search.data ?? []).length === 0 ? (
+            <Text role="body" tone="muted" style={styles.error}>{search.isFetching ? "Searching…" : "No matches yet"}</Text>
+          ) : (search.data ?? []).map((s) => (
             <LocationRow
               key={s.placeId}
               icon="map-pin"
@@ -162,7 +164,7 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
               <LocationRow
                 icon="mark"
                 title="Add a location"
-                line={adding ? "Search above, then save the pin" : "Home, office, or anywhere you look from"}
+                line={(pins.data?.length ?? 0) >= 8 ? "8 saved · remove one first" : "Home, work — any spot on the map"}
                 onPress={() => setAdding(true)}
                 testID="add-location"
               />
