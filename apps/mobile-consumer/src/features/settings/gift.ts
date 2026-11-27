@@ -17,6 +17,10 @@ const giftSchema = z.object({
   created_at: z.string().catch(""),
   claimed_at: z.string().nullish().catch(null),
   taken_back_at: z.string().nullish().catch(null),
+  entry: z.object({
+    kind: z.string().catch(""),
+    available_at: z.string().nullish().catch(null),
+  }).nullish().catch(null),
   place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
   sender: person,
   recipient: person,
@@ -29,7 +33,9 @@ export type Gift = {
   amountCents: number;
   currency: string;
   status: string;
+  role: string;
   createdAt: string;
+  availableAt: string | null;
   claimedAt: string | null;
   takenBackAt: string | null;
   sender: { name: string; you: boolean };
@@ -53,7 +59,9 @@ export function getGift(id: string, signal?: AbortSignal): Promise<Gift | null> 
       amountCents: gift.amount_cents,
       currency: gift.currency,
       status: gift.status,
+      role: gift.role,
       createdAt: gift.created_at,
+      availableAt: gift.entry?.kind === "gift_in" ? gift.entry.available_at ?? null : null,
       claimedAt: gift.claimed_at ?? null,
       takenBackAt: gift.taken_back_at ?? null,
       sender: gift.sender ?? { name: "Someone", you: false },
@@ -88,8 +96,32 @@ export function giftOutcome(gift: Gift): string {
   return `${who(gift.recipient, "A friend")} took ${amount}.`;
 }
 
-export function giftState(gift: Gift): string {
+/** A waiting gift stands on Receive. A taken or taken-back gift stands on Receipt. */
+export function giftStep(gift: Pick<Gift, "status">): 1 | 2 {
+  return gift.status === "open" ? 1 : 2;
+}
+
+export function readyIn(iso: string, now = Date.now()): string {
+  const left = Math.max(Date.parse(iso) - now, 0);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  if (left < hour) return `${Math.max(Math.ceil(left / minute), 1)} min`;
+  if (left < 48 * hour) return `${Math.round(left / hour)} hr`;
+  return `${Math.round(left / (24 * hour))} days`;
+}
+
+export function giftState(gift: Gift, now = Date.now()): string {
   if (gift.status === "open") return "Waiting for a friend";
   if (gift.status === "taken_back") return "Taken back";
+  if (gift.availableAt && Date.parse(gift.availableAt) > now) return `Taken · ready in ${readyIn(gift.availableAt, now)}`;
   return "Taken";
+}
+
+export function takeBackGift(id: string): Promise<{ amountCents: number; currency: string }> {
+  return callEdge(
+    "consumer-web-take-back-credit",
+    { gift_id: id },
+    z.object({ amount_cents: z.number(), currency: z.string().catch("mxn") }),
+    { mutation: true },
+  ).then((row) => ({ amountCents: row.amount_cents, currency: row.currency }));
 }
