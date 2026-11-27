@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 
 import { Icon } from "@/components/icon";
@@ -26,18 +27,21 @@ export function GenerateSheet({
     enabled: target !== null,
     queryFn: ({ signal }) => previewGooglePlace(target?.gid ?? "", signal),
   });
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const create = useMutation({
     mutationFn: () => createPlace(target?.gid ?? ""),
-    onSuccess: (place) => {
-      onClose();
-      onOpen(place.id);
-    },
+    onSuccess: (place) => setOpeningId(place.id),
   });
+  useEffect(() => {
+    if (!openingId) return;
+    const id = setTimeout(() => onOpen(openingId), 400);
+    return () => clearTimeout(id);
+  }, [openingId, onOpen]);
   const facts = preview.data;
   const refused = facts !== undefined && !facts.canAdd;
   const name = facts?.name || target?.name || "";
   const address = facts?.address || target?.address;
-  const title = create.isPending ? "Generating profile…" : create.isError ? "Couldn't generate this profile" : refused ? "Can't add this place" : "Generate a profile?";
+  const title = openingId ? "Opening profile…" : create.isPending ? "Generating profile…" : create.isError ? "Couldn't generate this profile" : refused ? "Can't add this place" : "Generate a profile?";
   const body = create.isError ? "Try again." : refused ? facts?.message || "Can't add this place" : "We'll build its profile from Google.";
   return (
     <Modal visible={target !== null} transparent animationType="fade" onRequestClose={() => { if (!create.isPending) onClose(); }}>
@@ -59,7 +63,7 @@ export function GenerateSheet({
               {address ? <Text role="caption" tone="muted" numberOfLines={2}>{address}</Text> : null}
             </View>
           </View>
-          {create.isPending ? null : (
+          {create.isPending || openingId ? null : (
             <View style={styles.row}>
               <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancel}>
                 <Text role="strong">Cancel</Text>
