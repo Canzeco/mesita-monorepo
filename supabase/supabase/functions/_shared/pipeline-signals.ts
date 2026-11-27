@@ -192,7 +192,7 @@ export function shuffleByRank<T>(
 //   Score     = Premier boost × Popularity × Proximity
 //   Popularity = Google popularity × Foursquare boost
 //   Google popularity = ((1 − w) × stars × reviews + w × growthBase) ^ GoogleExp
-//   Foursquare boost = 1 + factor × raw ^ exponent   (missing or 0 raw → 1×)
+//   Foursquare boost = 1 + factor × raw ^ exponent   (missing or 0 raw → 1×; exponent 0 → 2× at factor 1)
 //   Proximity = 1 ÷ (1 + (distance ÷ HalfDistance) ^ DistanceExp)   (Map: none)
 //   premierFactor = 1 · 2 · 5 (no plan · 2X · 5X); premierBoost = premierFactor ^ PremierExp
 //   w = 0 with no usable review history, so a cold place is (stars × reviews) ^ GoogleExp
@@ -210,10 +210,11 @@ export const PREMIER_EXP_MAX = 2;
 /** Offers exponent (MESITA-5030). 0 means the multiplier is 1. */
 export const OFFERS_EXP_MIN = 0;
 export const OFFERS_EXP_MAX = 2;
-/** Foursquare boost: 1 + factor × raw^exponent. Factor 0 turns the boost off. */
+/** Foursquare boost: 1 + factor × raw^exponent. Factor 0 turns the boost off.
+ *  Exponent 0 is raw^0, so any present score is 1 + factor. */
 export const FOURSQUARE_FACTOR_MIN = 0;
 export const FOURSQUARE_FACTOR_MAX = 5;
-export const FOURSQUARE_EXPONENT_MIN = 1;
+export const FOURSQUARE_EXPONENT_MIN = 0;
 export const FOURSQUARE_EXPONENT_MAX = 40;
 export const FOURSQUARE_FACTOR_DEFAULT = 1;
 export const FOURSQUARE_EXPONENT_DEFAULT = 20;
@@ -270,7 +271,8 @@ export function googlePopularity(
 /**
  * 1 + factor × raw^exponent. A missing score, a measured 0, or factor 0 is
  * exactly 1×. Raw is Foursquare's 0–1 popularity; values outside that clip.
- * The exponent must be positive.
+ * Exponent 0 is raw^0 = 1, so any present score is 1 + factor (2× at factor 1).
+ * A missing exponent falls back to the default. A negative one is 1×.
  */
 export function foursquareBoost(
   raw: number | null | undefined,
@@ -280,7 +282,8 @@ export function foursquareBoost(
   const f = Number.isFinite(factor) ? factor : FOURSQUARE_FACTOR_DEFAULT;
   if (!(f > 0)) return 1;
   if (typeof raw !== "number" || !Number.isFinite(raw) || raw <= 0) return 1;
-  const e = Number.isFinite(exponent) && exponent > 0 ? exponent : FOURSQUARE_EXPONENT_DEFAULT;
+  const e = Number.isFinite(exponent) ? exponent : FOURSQUARE_EXPONENT_DEFAULT;
+  if (e < 0) return 1;
   const clipped = Math.min(1, Math.max(0, raw));
   return 1 + f * Math.pow(clipped, e);
 }

@@ -332,6 +332,10 @@ Deno.test("foursquare boost: null and 0 are 1×, 0.95 is about 1.36×, 1 is 2×,
   assertEquals(foursquareBoost(1, 1, 20), 2);
   assertEquals(foursquareBoost(0.95, 0, 20), 1);
   assertEquals(foursquareBoost(1, 0, 20), 1);
+  assertEquals(foursquareBoost(0.5, 1, 0), 2);
+  assertEquals(foursquareBoost(1, 1, 0), 2);
+  assertEquals(foursquareBoost(null, 1, 0), 1);
+  assertEquals(foursquareBoost(0, 1, 0), 1);
   const google = googlePopularity({ rating: 4, reviewCount: 100 }, 0.5);
   const scored = recipeScore(
     { rating: 4, reviewCount: 100, foursquarePopularity: 1 },
