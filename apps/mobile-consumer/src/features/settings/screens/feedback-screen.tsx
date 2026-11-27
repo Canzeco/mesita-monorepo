@@ -22,20 +22,19 @@ export function FeedbackScreen() {
     void sendFeedback(trimmed)
       .then(() => {
         setNote("");
-        setSaid("Sent. Thank you.");
+        setSaid("Thanks for your feedback");
       })
       .catch((err: unknown) => {
-        const code = err instanceof EdgeError ? err.code : "";
-        setSaid(code === "too_much_feedback" ? "That's enough for now. Try again in an hour." : "Couldn't send that. Try again.");
+        const status = err instanceof EdgeError ? err.status : null;
+        setSaid(status === 429 ? "You've sent a lot of feedback. Try again later." : "Couldn't send your feedback. Try again.");
       })
       .finally(() => setBusy(false));
   };
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
-      <Text role="body">Tell us what to fix.</Text>
-      <Field label="Note" value={note} onChangeText={setNote} multiline maxLength={FEEDBACK_MAX} style={styles.note} />
+      <Field label="Your feedback" placeholder="Tell us about the app" value={note} onChangeText={setNote} multiline maxLength={FEEDBACK_MAX} style={styles.note} />
       {said ? <Text role="small">{said}</Text> : null}
-      <Button label="Send" busy={busy} disabled={trimmed.length < 1} onPress={send} />
+      <Button label={busy ? "Sending…" : "Send"} busy={busy} disabled={trimmed.length < 1} onPress={send} />
     </ScrollView>
   );
 }
