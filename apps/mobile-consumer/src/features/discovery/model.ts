@@ -32,6 +32,8 @@ export type CatalogPlace = {
   distanceKm: number | null;
   isPremier: boolean;
   isAd: boolean;
+  /** Reserve shows when the place takes reservations and has a phone. */
+  reservable?: boolean;
   lat: number | null;
   lng: number | null;
 };
