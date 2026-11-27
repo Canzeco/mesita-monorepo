@@ -22,6 +22,17 @@ export async function saveMyDetails(details: Details): Promise<Profile> {
   return answer.consumer;
 }
 
+/** Private or Public. The server refuses a locked account. */
+export async function saveSocialLevel(level: "private" | "public"): Promise<Profile> {
+  const answer = await callEdge(
+    "consumer-web-update-profile",
+    { social_level: level },
+    z.object({ consumer: consumerSchema }),
+    { mutation: true },
+  );
+  return answer.consumer;
+}
+
 /** Names only. Sex and year stay as the profile already has them. */
 export async function saveNames(firstName: string, lastName: string, sex: string | null, birthYear: number | null): Promise<Profile> {
   const answer = await callEdge(
