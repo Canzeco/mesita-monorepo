@@ -11,9 +11,9 @@ import { colors, space } from "@/theme";
 import { listGiftTickets, listTickets, listVoucherTickets } from "../hub";
 
 const TABS = [
-  { id: "visits", label: "Visits", empty: "No visits yet" },
-  { id: "vouchers", label: "Vouchers", empty: "No vouchers yet" },
-  { id: "gifts", label: "Gifts", empty: "No gifts yet" },
+  { id: "visits", label: "Visits", empty: "No visits yet", action: "Pay" },
+  { id: "vouchers", label: "Vouchers", empty: "No vouchers yet", action: "Find a place" },
+  { id: "gifts", label: "Gifts", empty: "No gifts yet", action: "Send Gift" },
 ] as const;
 
 type Tab = (typeof TABS)[number]["id"];
@@ -28,10 +28,12 @@ export function TicketsScreen({
   onVisit,
   onGift,
   onVoucher,
+  onEmpty,
 }: {
   onVisit: (id: string) => void;
   onGift: (id: string) => void;
   onVoucher: (place: string, line: string) => void;
+  onEmpty: (tab: Tab) => void;
 }) {
   const [tab, setTab] = useState<Tab>("visits");
   const visits = useQuery({ queryKey: ["tickets"], queryFn: ({ signal }) => listTickets(signal) });
@@ -39,7 +41,7 @@ export function TicketsScreen({
   const gifts = useQuery({ queryKey: ["gift-tickets"], queryFn: ({ signal }) => listGiftTickets(signal) });
   const query = tab === "visits" ? visits : tab === "vouchers" ? vouchers : gifts;
   const copy = useErrorCopy(query.error);
-  const empty = TABS.find((row) => row.id === tab)?.empty ?? "";
+  const emptyTab = TABS.find((row) => row.id === tab);
   return (
     <View style={styles.fill}>
       <View style={styles.tabs}>
@@ -53,7 +55,14 @@ export function TicketsScreen({
       {query.isPending ? <Skeleton style={styles.fill} /> : null}
       {query.isError ? <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} /> : null}
       {query.isSuccess && query.data.length === 0 ? (
-        <ScrollView contentContainerStyle={styles.page}><Text role="body">{empty}</Text></ScrollView>
+        <ScrollView contentContainerStyle={styles.page}>
+          <Text role="body">{emptyTab?.empty}</Text>
+          {emptyTab ? (
+            <Pressable accessibilityRole="button" onPress={() => onEmpty(tab)}>
+              <Text role="label">{emptyTab.action}</Text>
+            </Pressable>
+          ) : null}
+        </ScrollView>
       ) : null}
       {query.isSuccess && query.data.length > 0 ? (
         <ScrollView contentContainerStyle={styles.page}>
