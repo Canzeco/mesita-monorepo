@@ -7,5 +7,5 @@ export { RouteError as ErrorBoundary } from "@/features/auth";
 export default function Route() {
   const router = useRouter();
   const { placeId } = useLocalSearchParams<{ placeId?: string }>();
-  return <CodeScreen placeId={placeId ?? ""} onClose={() => router.replace("/pay")} />;
+  return <CodeScreen placeId={placeId ?? ""} onClose={() => router.back()} />;
 }
