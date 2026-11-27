@@ -13,7 +13,7 @@ export function CardScreen({ onOpen }: { onOpen: (id: string) => void }) {
   const query = useQuery({ queryKey: ["cards"], queryFn: ({ signal }) => listCards(signal) });
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
-  if (query.isError) return <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
+  if (query.isError) return <ErrorState title="Couldn't load your cards." message="Check your connection and try again." offline={copy.offline} requestId={copy.requestId} onRetry={() => void query.refetch()} />;
   return (
     <ScrollView contentContainerStyle={styles.page}>
       {query.data.testMode ? <Text role="small" tone="muted">Test mode. No real money is moving.</Text> : null}
