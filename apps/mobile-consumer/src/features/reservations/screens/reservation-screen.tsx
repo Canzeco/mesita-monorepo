@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Linking, ScrollView, StyleSheet } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet } from "react-native";
 
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
@@ -56,7 +56,14 @@ export function ReservationScreen({
       {row.notes ? <Text role="body">{row.notes}</Text> : null}
       <Button label="Add to calendar" kind="secondary" onPress={add} />
       <Button label="Reschedule" kind="secondary" onPress={onReschedule} />
-      <Button label="Cancel reservation" kind="danger" onPress={() => void cancel()} />
+      <Button
+        label="Cancel reservation"
+        kind="danger"
+        onPress={() => Alert.alert("Cancel this reservation", undefined, [
+          { text: "Keep it", style: "cancel" },
+          { text: "Yes, cancel it", style: "destructive", onPress: () => void cancel() },
+        ])}
+      />
       <Button label="Your reservations" kind="quiet" onPress={onList} />
     </ScrollView>
   );
