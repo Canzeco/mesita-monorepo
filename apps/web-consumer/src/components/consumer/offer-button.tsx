@@ -240,7 +240,7 @@ export function PremierBar({ className }: { className?: string }) {
     <p
       className={cn(
         CARD_BUTTON_BOX,
-        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#E9C46A] font-sans text-xs font-semibold text-[#141414]",
+        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#E9C46A] font-sans text-xs font-semibold text-neutral-950",
         className,
       )}
       data-card-premier
