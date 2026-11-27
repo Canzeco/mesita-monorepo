@@ -11,6 +11,7 @@ import {
   resolveLocation,
   setSaved,
   suggestLocations,
+  suggestPlaces,
   type CatalogRank,
   type SavedPlaces,
 } from "./api";
@@ -102,6 +103,16 @@ export function useRecordShare() {
 }
 
 /** `sessionToken` groups one search's keystrokes for Google's billing. */
+export function usePlaceSearch(input: string, sessionToken: string, member: boolean) {
+  const term = input.trim();
+  return useQuery({
+    queryKey: ["place-search", term],
+    queryFn: ({ signal }) => suggestPlaces(term, sessionToken, signal),
+    enabled: member && term.length >= 2,
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useLocationSearch(input: string, sessionToken: string, member: boolean) {
   const term = input.trim();
   return useQuery({
