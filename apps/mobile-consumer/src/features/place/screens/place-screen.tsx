@@ -24,6 +24,7 @@ type Nav = {
   onContact: () => void;
   onReport: () => void;
   onReserve: () => void;
+  onOffers: () => void;
   onBack: () => void;
   saved: boolean;
   onSave: () => void;
@@ -47,7 +48,7 @@ export function PlaceScreen({ id, center = null, ...nav }: Nav & { id: string; c
   return <PlaceView place={query.data} center={center} {...nav} />;
 }
 
-export function PlaceView({ place, center = null, onMenu, onContact, onReport, onReserve, onBack, saved, onSave }: Nav & { place: PlaceDetail; center?: { lat: number; lng: number } | null }) {
+export function PlaceView({ place, center = null, onMenu, onContact, onReport, onReserve, onOffers, onBack, saved, onSave }: Nav & { place: PlaceDetail; center?: { lat: number; lng: number } | null }) {
   const width = useWindowDimensions().width;
   const [tab, setTab] = useState<Tab>("Overview");
   const [photo, setPhoto] = useState(0);
@@ -105,7 +106,7 @@ export function PlaceView({ place, center = null, onMenu, onContact, onReport, o
           <Text role="label" tone="onInk">Reserve</Text>
           <Text role="caption" tone="onInk" style={styles.off}>{reserveOn ? "" : "Off"}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={offersOn ? onMenu : undefined} style={styles.half}>
+        <Pressable accessibilityRole="button" onPress={offersOn ? onOffers : undefined} style={styles.half}>
           <Text role="label" tone="onInk">Offers</Text>
           <Text role="caption" tone="onInk" style={styles.off}>{offersOn ? "" : "Off"}</Text>
         </Pressable>
