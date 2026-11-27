@@ -78,7 +78,7 @@ export function KindRow({ facts }: { facts: CardFacts }) {
   return (
     <p className={ROW}>
       {facts.price ? (
-        <span className="shrink-0 font-semibold">
+        <span className="shrink-0">
           {facts.price}
         </span>
       ) : null}
@@ -108,7 +108,7 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
         <span className="inline-flex shrink-0 items-center gap-1">
           <Clock
             className={MARK}
-            strokeWidth={2.5}
+            strokeWidth={2}
             aria-hidden
           />
           {facts.open ? "Open" : "Closed"}
@@ -134,7 +134,7 @@ export function PriceKindRow({ facts }: { facts: CardFacts }) {
   return (
     <p className={ROW}>
       {facts.price ? (
-        <span className="shrink-0 font-semibold">
+        <span className="shrink-0">
           {facts.price}
         </span>
       ) : null}
@@ -173,7 +173,7 @@ export function StarsOpenRow({
         <span className="inline-flex shrink-0 items-center gap-1">
           <Clock
             className={MARK}
-            strokeWidth={2.5}
+            strokeWidth={2}
             aria-hidden
           />
           {facts.open ? "Open" : "Closed"}
@@ -211,7 +211,7 @@ export const CARD_BUTTON_BOX = "h-8 rounded-lg";
  *  its row lets them through to the tile's link. Home's tile only. */
 export const EXACT_HIT = "pointer-events-auto after:hidden";
 
-const CARD_BUTTON = `${CARD_BUTTON_BOX} bg-border/60 text-foreground hover:bg-border/80 relative flex after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 px-2 font-sans text-xs font-semibold transition active:scale-[0.99]`;
+const CARD_BUTTON = `${CARD_BUTTON_BOX} bg-border/60 text-foreground hover:bg-border/80 relative flex after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 px-2 font-sans text-sm font-normal transition active:scale-[0.99]`;
 
 /**
  * SAVE AND SHARE, side by side (MESITA-2650). The word is Save, the mark the
@@ -256,8 +256,8 @@ export function CardActions({
           data-tile-generate
         >
           <Sparkles
-            className="h-4 w-4 shrink-0"
-            strokeWidth={2.25}
+            className="h-3.5 w-3.5 shrink-0"
+            strokeWidth={2}
             aria-hidden
           />
           Generate Profile
@@ -278,10 +278,10 @@ export function CardActions({
       >
         <Heart
           className={cn(
-            "h-4 w-4 shrink-0",
+            "h-3.5 w-3.5 shrink-0",
             saved && "fill-foreground",
           )}
-          strokeWidth={2.25}
+          strokeWidth={2}
           aria-hidden
         />
         {saved ? "Saved" : "Save"}
@@ -293,7 +293,7 @@ export function CardActions({
         className={cn(CARD_BUTTON, buttonClassName)}
         data-tile-share
       >
-        <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+        <Share2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
         Share
       </button>
     </div>

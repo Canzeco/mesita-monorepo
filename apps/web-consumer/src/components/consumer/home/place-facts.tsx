@@ -45,7 +45,7 @@ export function PlaceFactsRun({
   const candidates: (Cell | false | null | undefined | "")[] = [
     price && {
       key: "price",
-      node: <span className="font-semibold">{price}</span>,
+      node: <span>{price}</span>,
     },
     facts.rating && {
       key: "stars",
@@ -66,7 +66,7 @@ export function PlaceFactsRun({
         <span className="whitespace-nowrap">
           <Clock
             className={cn(icon, "mr-0.5")}
-            strokeWidth={2.5}
+            strokeWidth={2}
             aria-hidden
           />
           {facts.open ? "Open" : "Closed"}
@@ -110,8 +110,9 @@ export function PlaceFactsRun({
  *   ★ 4.4 (3.9K) · 0.3 km
  *   Open · until 05:00
  *
- * The neighborhood is gone. Every word and icon is ink. Reserve and
- * Discounts, outside this block, are the card's only color.
+ * The neighborhood is gone. Every word and icon is ink, and every black
+ * word but the name is this one 14px regular face (MESITA-5042), Save and
+ * Share included. Reserve and Discounts stay their own buttons.
  */
 export function PlaceFactsLines({ place }: { place: Place }) {
   const facts = cardFacts(place);
@@ -125,7 +126,7 @@ export function PlaceFactsLines({ place }: { place: Place }) {
     <div className="text-foreground flex min-w-0 flex-col gap-0.5 text-sm leading-5" data-row-facts>
       {price || facts.kind ? (
         <p className={line} data-row-kind>
-          {price ? <span className="shrink-0 font-semibold">{price}</span> : null}
+          {price ? <span className="shrink-0">{price}</span> : null}
           {price && facts.kind ? <span>·</span> : null}
           {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
         </p>
@@ -145,8 +146,8 @@ export function PlaceFactsLines({ place }: { place: Place }) {
       ) : null}
       {facts.open !== null ? (
         <p className={line} data-row-open>
-          <Clock className={icon} strokeWidth={2.5} aria-hidden />
-          <span className="shrink-0 font-semibold">{facts.open ? "Open" : "Closed"}</span>
+          <Clock className={icon} strokeWidth={2} aria-hidden />
+          <span className="shrink-0">{facts.open ? "Open" : "Closed"}</span>
           {until || opens ? (
             <span className="truncate">· {until ? `until ${until}` : `opens ${opens}`}</span>
           ) : null}

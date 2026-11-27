@@ -46,7 +46,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
           {facts.price || facts.kind ? (
             <View style={styles.line}>
               {facts.price ? (
-                <Text role="label" testID="place-price">
+                <Text role="small" testID="place-price">
                   {facts.price}
                 </Text>
               ) : null}
@@ -78,7 +78,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
           {facts.open ? (
             <View style={styles.line}>
               <Icon name="clock" size={14} color={colors.ink} />
-              <Text role="label">{facts.open.now ? "Open" : "Closed"}</Text>
+              <Text role="small">{facts.open.now ? "Open" : "Closed"}</Text>
               {facts.open.when ? (
                 <Text role="small" numberOfLines={1} style={styles.name} testID="place-hours">{`· ${facts.open.when}`}</Text>
               ) : null}
@@ -111,8 +111,8 @@ function CardButton({ icon, color, label, spoken, onPress }: ButtonProps) {
       onPress={onPress}
       style={({ pressed }) => [styles.button, pressed && { opacity: pressedOpacity }]}
     >
-      <Icon name={icon} size={16} color={color} />
-      <Text role="button">{label}</Text>
+      <Icon name={icon} size={14} color={color} />
+      <Text role="small">{label}</Text>
     </Pressable>
   );
 }

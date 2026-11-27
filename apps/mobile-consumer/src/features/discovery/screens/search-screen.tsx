@@ -450,27 +450,27 @@ function RailCard({
             {place.isPremier ? <PremierSeal size={16} /> : null}
           </View>
           {facts.kind ? (
-            <Text role="small" tone="muted" numberOfLines={1}>{facts.kind}</Text>
+            <Text role="small" numberOfLines={1}>{facts.kind}</Text>
           ) : null}
           <View style={styles.cardLine}>
             {facts.rating ? (
               <>
-                <Icon name="star-filled" size={12} color={colors.ink} />
-                <Text role="caption">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text>
+                <Icon name="star-filled" size={14} color={colors.ink} />
+                <Text role="small">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text>
               </>
             ) : null}
             {facts.open ? (
-              <Text role="caption">{facts.open.now ? "Open" : "Closed"}</Text>
+              <Text role="small">{facts.open.now ? "Open" : "Closed"}</Text>
             ) : null}
           </View>
           <View style={styles.cardActions}>
             <Pressable accessibilityRole="button" accessibilityLabel={saved ? "Saved" : "Save"} onPress={onSave} style={styles.action}>
-              <Icon name={saved ? "heart-filled" : "heart"} size={16} />
-              <Text role="label">{saved ? "Saved" : "Save"}</Text>
+              <Icon name={saved ? "heart-filled" : "heart"} size={14} />
+              <Text role="small">{saved ? "Saved" : "Save"}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={onShare} style={styles.action}>
-              <Icon name="share-2" size={16} />
-              <Text role="label">Share</Text>
+              <Icon name="share-2" size={14} />
+              <Text role="small">Share</Text>
             </Pressable>
           </View>
         </View>
