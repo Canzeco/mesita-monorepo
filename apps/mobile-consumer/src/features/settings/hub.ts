@@ -50,7 +50,7 @@ export function listRefunds(signal?: AbortSignal): Promise<Refund[]> {
   });
 }
 
-export type Ticket = { id: string; place: string; status: string; amount: string | null };
+export type Ticket = { id: string; place: string; photo: string | null; status: string; mark: string; headline: string; amount: string | null };
 
 export function listTickets(signal?: AbortSignal): Promise<Ticket[]> {
   return callEdge(
@@ -64,19 +64,34 @@ export function listTickets(signal?: AbortSignal): Promise<Ticket[]> {
             status: z.string().catch(""),
             currency: z.string().catch("mxn"),
             bill_cents: z.number().nullish().catch(null),
-            place: z.object({ name: z.string().nullish().catch(null) }).nullish().catch(null),
+            discount_cents: z.number().nullish().catch(null),
+            tip_cents: z.number().nullish().catch(null),
+            place: z.object({
+              name: z.string().nullish().catch(null),
+              photo_url: z.string().nullish().catch(null),
+            }).nullish().catch(null),
           }),
         )
         .catch([]),
     }),
     { signal },
   ).then((answer) =>
-    answer.visits.map((row) => ({
-      id: row.tab_id,
-      place: row.place?.name ?? "A Mesita place",
-      status: row.status,
-      amount: money(row.bill_cents ?? null, row.currency),
-    })),
+    answer.visits.map((row) => {
+      const off = row.discount_cents ?? 0;
+      const tip = row.tip_cents ?? 0;
+      const total = row.bill_cents == null ? null : (row.bill_cents - off + tip);
+      const open = row.status === "waiting_bill" || row.status === "billed" || row.status === "paying";
+      const mark = row.status === "waiting_bill" ? "Open" : row.status === "billed" ? "Billed" : row.status === "paying" ? "Paying" : row.status === "paid" && off > 0 ? `Saved ${money(off, row.currency)}` : "";
+      return {
+        id: row.tab_id,
+        place: row.place?.name ?? "A Mesita place",
+        photo: row.place?.photo_url ?? null,
+        status: row.status,
+        mark,
+        headline: total == null ? (open ? "Waiting for the bill" : "") : (money(total, row.currency) ?? ""),
+        amount: money(row.bill_cents ?? null, row.currency),
+      };
+    }),
   );
 }
 
