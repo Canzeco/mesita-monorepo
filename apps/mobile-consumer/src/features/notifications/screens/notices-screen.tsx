@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
@@ -62,9 +63,9 @@ export function NoticesScreen() {
       <Button kind="secondary" label="Allow notifications" onPress={() => void allowNotices().catch((err) => report(err))} />
       {query.data.map((row) => (
         <View key={row.id} style={styles.row}>
+          {row.photo ? <Image source={row.photo} style={styles.photo} contentFit="cover" /> : <View style={styles.photo} />}
           <View style={styles.words}>
-            <Text role="body">{`${row.place} ${row.sentence}`}</Text>
-            <Text role="caption" tone="muted">{shortAgo(row.when, now)}</Text>
+            <Text role="body">{`${row.place} ${row.sentence} ${shortAgo(row.when, now)}`}</Text>
           </View>
           {row.view ? (
             <Pressable accessibilityRole="button" onPress={() => openNotice(router, row)} style={styles.view}>
@@ -82,6 +83,7 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: space.lg, gap: space.md },
   row: { gap: space.sm, flexDirection: "row", alignItems: "center" },
+  photo: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.fill },
   words: { flex: 1, gap: 2 },
   view: { minHeight: 32, paddingHorizontal: space.md, borderRadius: 8, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
   older: { textAlign: "center", paddingVertical: space.lg },
