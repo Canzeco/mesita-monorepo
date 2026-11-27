@@ -17,7 +17,8 @@ function PlaceRowSkeleton() {
   return (
     <li className={ROW_PAIR}>
       <div className={ROW_PHOTO}>
-        <Skeleton className="h-full w-full rounded-none" />
+        <div aria-hidden className="aspect-square w-full" />
+        <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
       </div>
       <div className={ROW_INFO}>
         <Skeleton className="h-4 w-4/5" />

@@ -218,6 +218,10 @@ export function PlaceRowCard({
       <PremierAdBeacon placeId={place.id} ad={ad} />
       {open(
         <>
+          {/* The square lives here, in the flow, so the row is at least
+              this tall. The info side can be taller (MESITA-5024); this
+              cell stretches with it and the picture still covers it. */}
+          <span aria-hidden className="block aspect-square w-full" />
           {photo ? (
             <SizedImage
               src={photo}
@@ -285,7 +289,7 @@ export function PlaceRowCard({
         {/* NO DEAD GAPS (autoplan design review, MESITA-4207): the block lets
             taps between chips through to the name's stretched link (the dead
             spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
-        <div className="pointer-events-none relative z-10 mt-auto flex flex-col gap-2">
+        <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col gap-2">
           {/* ONE OR TWO (Pato, 2026-11-26, MESITA-5010): both share the row;
               a place with only one of them gets that one, full width. */}
           <PlaceBannerRow

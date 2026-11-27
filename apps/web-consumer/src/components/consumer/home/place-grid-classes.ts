@@ -22,12 +22,14 @@ export const ROW_PHOTO =
 
 /** the info box: a soft fill, 8px inside, 16px corners on the outer side
  *  only, the buttons pinned to its bottom so every row's buttons line up.
- *  At least square; it grows with its facts (an aspect-ratio box's minimum
- *  height is its content), and the photo grows with it. */
+ *  The photo's square is the minimum (ROW_PHOTO); this side grows with its
+ *  facts and its buttons (MESITA-5024). An aspect-ratio on this box held
+ *  the height and laid Save · Share on the bottom border. The extra bottom
+ *  step keeps that border off the buttons. */
 // bg-muted/80 (Pato, MESITA-3810: "a bit lighter again"): between
 // MESITA-3805's bg-muted ("its too light") and the bg-muted/60 before it.
 // WHITE WITH A BORDER (Pato, 2026-11-18, MESITA-4432: "remove gray boxes.
 // only white. white background for items with borders"): no grey fill; a
 // hairline on the three outer sides, none where it meets the photo.
 export const ROW_INFO =
-  "bg-card border-border relative flex aspect-square min-w-0 flex-col gap-2 rounded-r-2xl border border-l-0 p-2";
+  "bg-card border-border relative flex min-w-0 flex-col gap-2 rounded-r-2xl border border-l-0 p-2 pb-3";
