@@ -24,9 +24,11 @@ export function RefundsScreen() {
   }
   return (
     <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
-      {query.data.map((row) => (
-        <Text key={row.id} role="body">{`${row.place} · ${row.amount}`}</Text>
-      ))}
+      {query.data.map((row) => {
+        const date = new Date(row.when);
+        const when = Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+        return <Text key={row.id} role="body">{[row.place, row.amount, when].filter(Boolean).join(" · ")}</Text>;
+      })}
     </ScrollView>
   );
 }
