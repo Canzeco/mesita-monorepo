@@ -1,13 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Linking, ScrollView, StyleSheet } from "react-native";
+import { Alert, Linking, ScrollView, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useErrorCopy } from "@/lib/error-copy";
-import { space } from "@/theme";
+import { colors, space } from "@/theme";
 
 import { cancelReservation, listReservations } from "../api";
 
@@ -49,6 +49,8 @@ export function ReservationScreen({
   return (
     <ScrollView contentContainerStyle={styles.page} testID="reservation">
       <Text role="title">{row.placeName || "Reservation"}</Text>
+      <Progress state={row.state} />
+      {banner(row.state) ? <Text role="body" tone="muted">{banner(row.state)}</Text> : null}
       <Text role="body">{stateLabel(row.state, row.when, now)}</Text>
       {when ? <Text role="body">{when.toLocaleString()}</Text> : null}
       {row.party ? <Text role="body">{`Table for ${row.party}`}</Text> : null}
@@ -60,7 +62,7 @@ export function ReservationScreen({
         <Button
           label="Cancel reservation"
           kind="danger"
-          onPress={() => Alert.alert("Cancel this reservation", undefined, [
+          onPress={() => Alert.alert("Cancel this reservation?", undefined, [
             { text: "Keep it", style: "cancel" },
             { text: "Yes, cancel it", style: "destructive", onPress: () => void cancel() },
           ])}
@@ -83,11 +85,39 @@ function stateLabel(state: string, when: string, now: number): string {
   if (state === "passed" || (live && Number.isFinite(at) && at < now)) return "Passed";
   if (state === "confirmed") return "Confirmed";
   if (state === "cancelled") return "Cancelled";
-  if (state === "declined" || state === "failed") return "Couldn't take the table";
+  if (state === "declined" || state === "failed") return "Not booked";
   return state ? state[0].toUpperCase() + state.slice(1) : "Reservation";
+}
+
+const FLOW = ["created", "booking", "confirmed", "passed"] as const;
+
+function banner(state: string): string | null {
+  if (state === "created") return "Mesita is about to call the place to book your table.";
+  if (state === "booking") return "We're booking this for you — you'll get the answer here as soon as the place replies.";
+  return null;
+}
+
+function Progress({ state }: { state: string }) {
+  const index = FLOW.indexOf(state as (typeof FLOW)[number]);
+  if (index < 0) return null;
+  const labels = ["Created", "Booking", "Confirmed", "Passed"];
+  return (
+    <View accessibilityLabel="Reservation progress" style={styles.flow}>
+      {FLOW.map((step, i) => (
+        <View key={step} style={styles.step}>
+          <View style={[styles.bar, i <= index ? styles.barOn : null]} />
+          <Text role="caption" tone={i === index ? "ink" : "muted"}>{labels[i]}</Text>
+        </View>
+      ))}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: space.lg, gap: space.sm },
+  flow: { flexDirection: "row", gap: 6 },
+  step: { flex: 1, gap: 6 },
+  bar: { height: 4, borderRadius: 2, backgroundColor: colors.border },
+  barOn: { backgroundColor: colors.ink },
 });
