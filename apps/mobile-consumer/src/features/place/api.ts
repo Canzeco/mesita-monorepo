@@ -106,13 +106,13 @@ export async function getPlaceDetail(id: string, signal?: AbortSignal): Promise<
 
 /** The reasons the web sheet offers, in its order. The keys are the server's. */
 export const REPORT_REASONS = [
-  { key: "closed", label: "Permanently closed" },
-  { key: "wrong_info", label: "Wrong information" },
-  { key: "wrong_links", label: "Wrong or broken link" },
-  { key: "wrong_location", label: "Wrong location" },
-  { key: "inappropriate_photos", label: "Inappropriate photos" },
-  { key: "duplicate", label: "Duplicate place" },
-  { key: "other", label: "Something else" },
+  { key: "closed", label: "Permanently closed", prompt: "Anything to add? (optional)" },
+  { key: "wrong_info", label: "Wrong information", prompt: "What's wrong? (optional)" },
+  { key: "wrong_links", label: "Wrong or broken link", prompt: "Which link? Instagram, Facebook, website, menu…" },
+  { key: "wrong_location", label: "Wrong location", prompt: "Anything to add? (optional)" },
+  { key: "inappropriate_photos", label: "Inappropriate photos", prompt: "Anything to add? (optional)" },
+  { key: "duplicate", label: "Duplicate place", prompt: "Anything to add? (optional)" },
+  { key: "other", label: "Something else", prompt: "Tell us what's wrong" },
 ] as const;
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["key"];

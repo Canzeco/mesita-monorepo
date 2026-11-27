@@ -23,7 +23,7 @@ export function ReportScreen({ id, onSent }: { id: string; onSent: () => void })
       await reportPlace(id, reason, note);
       onSent();
     } catch {
-      setError("Could not send that. Try again.");
+      setError("Couldn't send that. Try again.");
       setBusy(false);
     }
   };
@@ -40,7 +40,7 @@ export function ReportScreen({ id, onSent }: { id: string; onSent: () => void })
       <TextInput
         value={note}
         onChangeText={setNote}
-        placeholder={reason === "other" ? "Tell us what's wrong" : "Anything to add? (optional)"}
+        placeholder={REPORT_REASONS.find((row) => row.key === reason)?.prompt ?? "Anything to add? (optional)"}
         placeholderTextColor={colors.muted}
         maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={styles.field}
