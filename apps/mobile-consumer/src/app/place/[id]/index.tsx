@@ -16,7 +16,7 @@ export default function Route() {
   const saved = useSaved();
   const toggle = useToggleSaved();
   const on = saved.data?.ids.includes(placeId) ?? false;
-  const go = (page: "menu" | "contact" | "report") =>
+  const go = (page: "menu" | "contact" | "report" | "offers") =>
     router.push({ pathname: `/place/[id]/${page}`, params: { id: placeId } });
   return (
     <PlaceScreen
@@ -25,6 +25,7 @@ export default function Route() {
       saved={on}
       onSave={() => toggle.mutate({ place: saved.data?.places.find((row) => row.id === placeId) ?? stub(placeId), on: !on })}
       onReserve={() => router.push({ pathname: "/reserve/[placeId]", params: { placeId } })}
+      onOffers={() => go("offers")}
       onMenu={() => go("menu")}
       onContact={() => go("contact")}
       onReport={() => go("report")}
