@@ -77,7 +77,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
           <TextInput
             value={term}
             onChangeText={setTerm}
-            placeholder="Search"
+            placeholder="Search places…"
             placeholderTextColor={colors.muted}
             maxFontSizeMultiplier={maxFontSizeMultiplier}
             style={styles.field}

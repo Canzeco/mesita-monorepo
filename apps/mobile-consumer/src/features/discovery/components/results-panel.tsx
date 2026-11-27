@@ -36,7 +36,12 @@ export function ResultsPanel({
             <Text role="small">{"Couldn't search. Try again."}</Text>
           </Pressable>
         ) : null}
-        {!searching && !failed && rows.length === 0 ? <Text role="small" tone="muted" style={styles.note}>No match</Text> : null}
+        {!searching && !failed && rows.length === 0 ? (
+          <View style={styles.note}>
+            <Text role="label">No matches found</Text>
+            <Text role="caption" tone="muted">Try the full name, or clear the search to browse the map.</Text>
+          </View>
+        ) : null}
         {rows.map((row) => {
           const place = row.kind !== "location" && UUID.test(row.placeId);
           return (
