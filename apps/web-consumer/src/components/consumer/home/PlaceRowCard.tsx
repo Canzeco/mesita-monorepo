@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { PlaceMarks, SizedImage } from "@mesita/place-profile";
+import { isPremierPlace, PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import {
@@ -117,7 +117,8 @@ function ScoreLabel({
  * information at the right, two squares, information with buttons"):
  *
  *   ┌─────────┐ ┌────────────────┐
- *   │  photo  │ │ Name ✪          │   16px, up to two lines, Premier seal
+ *   │  photo  │ │ Name          ✪ │   16px, up to two lines; the seal
+ *   │         │ │                 │   is 32px, pinned top right (MESITA-5045)
  *   │         │ │ $ · Tacos       │   ink only (MESITA-5041)
  *   │         │ │ ★ 4.7 · 0.4 km  │
  *   │         │ │ ◷ Open · until 3│
@@ -259,14 +260,20 @@ export function PlaceRowCard({
           <>
             {/* BIGGER (Pato, MESITA-4418: "make the fucking text bigger"):
                 the name at 16px over one fact per line at 14px. */}
-            <p className="flex min-w-0 items-start gap-1 text-base leading-snug font-semibold tracking-tight">
-              <span className="line-clamp-2">{place.name}</span>
-              {/* "Ad" ONLY IN AN AD SLOT (MESITA-4454, H4): the seal for
-                  every Premier place, "· Ad" only when the rank put it in
-                  an ad slot; it was every Premier row before. */}
-              <PlaceMarks tier={place.boost_tier} ad={ad} />
-            </p>
-            <PlaceFactsLines place={place} />
+            <div className={cn("min-w-0", isPremierPlace(place) && "pr-10")}>
+              <p className="line-clamp-2 text-base leading-snug font-semibold tracking-tight">
+                {place.name}
+              </p>
+              <PlaceFactsLines place={place} />
+            </div>
+            {/* The seal stays in the corner. A short name used to leave it
+                sitting right after the words (MESITA-5045). */}
+            <PlaceMarks
+              tier={place.boost_tier}
+              ad={ad}
+              className="pointer-events-none absolute top-2 right-2 z-10"
+              sealClassName="h-8 w-8"
+            />
           </>,
           cn(
             "flex min-w-0 flex-col gap-0.5 rounded-lg text-left after:absolute after:inset-0 after:rounded-r-2xl after:content-['']",
