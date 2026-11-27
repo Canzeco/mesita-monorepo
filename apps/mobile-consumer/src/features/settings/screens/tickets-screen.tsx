@@ -64,23 +64,31 @@ export function TicketsScreen({
           ) : null}
         </ScrollView>
       ) : null}
-      {query.isSuccess && query.data.length > 0 ? (
+      {tab === "visits" && visits.isSuccess && visits.data.length > 0 ? (
         <ScrollView contentContainerStyle={styles.page}>
-          {query.data.map((row) =>
-            tab === "visits" ? (
-              <Pressable key={row.id} accessibilityRole="button" onPress={() => onVisit(row.id)}>
-                <Text role="body">{ticketLine(row)}</Text>
-              </Pressable>
-            ) : tab === "gifts" ? (
-              <Pressable key={row.id} accessibilityRole="button" onPress={() => onGift(row.id)}>
-                <Text role="body">{ticketLine(row)}</Text>
-              </Pressable>
-            ) : (
-              <Pressable key={row.id} accessibilityRole="button" onPress={() => onVoucher(row.placeId, row.entryKey)}>
-                <Text role="body">{ticketLine(row)}</Text>
-              </Pressable>
-            ),
-          )}
+          {visits.data.map((row) => (
+            <Pressable key={row.id} accessibilityRole="button" onPress={() => onVisit(row.id)}>
+              <Text role="body">{ticketLine(row)}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
+      {tab === "gifts" && gifts.isSuccess && gifts.data.length > 0 ? (
+        <ScrollView contentContainerStyle={styles.page}>
+          {gifts.data.map((row) => (
+            <Pressable key={row.id} accessibilityRole="button" onPress={() => onGift(row.id)}>
+              <Text role="body">{ticketLine(row)}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
+      {tab === "vouchers" && vouchers.isSuccess && vouchers.data.length > 0 ? (
+        <ScrollView contentContainerStyle={styles.page}>
+          {vouchers.data.map((row) => (
+            <Pressable key={row.id} accessibilityRole="button" onPress={() => onVoucher(row.placeId, row.entryKey)}>
+              <Text role="body">{ticketLine(row)}</Text>
+            </Pressable>
+          ))}
         </ScrollView>
       ) : null}
     </View>
