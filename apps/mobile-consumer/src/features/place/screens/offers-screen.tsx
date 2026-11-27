@@ -103,7 +103,7 @@ export function OffersScreen({ id, offerKey = "" }: { id: string; offerKey?: str
     <ScrollView style={styles.fill} contentContainerStyle={styles.page}>
       {moneyBox?.test_mode ? <Text role="small">Test mode. No real money is moving, and the offers are fake.</Text> : null}
       {moneyBox && balanceLine(moneyBox) ? <Text role="strong">{balanceLine(moneyBox)}</Text> : null}
-      {sell.length === 0 ? <Text role="body">No offers right now</Text> : (
+      {sell.length === 0 ? <Text role="body">This place has no offers right now.</Text> : (
         <SettingsGroup>
           {sell.map((key) => {
             const line = moneyBox?.catalog[key];
