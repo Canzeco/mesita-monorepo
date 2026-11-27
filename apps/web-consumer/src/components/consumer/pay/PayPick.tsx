@@ -361,11 +361,6 @@ export function PlaceList({
                   <br />
                   Credits
                 </span>
-                <span className="text-center leading-tight">
-                  Extra
-                  <br />
-                  discount
-                </span>
               </span>
             </div>
           )}
@@ -457,12 +452,13 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
  *  (MESITA-4848). */
 const PREPAY_HEADS = ["$200", "$1,000", "$5,000"];
 const PREPAY_GRID = "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center";
-/** Pay is the name, then Accepts Credits and Extra discount (Pato, 2026-11-25,
- *  MESITA-4976; Cashback hidden 2026-11-26). The gaps between those boxes
- *  match the 16px from the last box to the sheet edge, the same inset as
- *  the title and the search row (MESITA-4979). */
+/** Pay is the name, then Accepts Credits (Pato, 2026-11-25, MESITA-4976).
+ *  Cashback is hidden (2026-11-26). Extra discount is hidden too (Pato,
+ *  2026-11-26, MESITA-5031): the percent still ranks Best offers, still
+ *  filters, and still comes off the bill. The gap from the box to the sheet
+ *  edge is the same 16px as the title and the search row (MESITA-4979). */
 const PAY_GRID = "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center";
-const PAY_OFFERS = "grid grid-cols-[repeat(2,4rem)] gap-4 pr-4";
+const PAY_OFFERS = "grid grid-cols-[4rem] pr-4";
 /** The bar that names Place and the three offers. Dark, on both lists. */
 const HEAD_BAR = "bg-foreground text-background sticky top-0 z-10 text-xs font-semibold";
 
@@ -474,13 +470,6 @@ function bonusShade(pct: number): string {
   if (pct >= 40) return "bg-[#635BFF] text-white";
   if (pct >= 20) return "bg-[#BDB9FF] text-indigo-950";
   return "bg-[#E6E4FF] text-indigo-950";
-}
-
-/** Pay's green the same way (Pato, 2026-11-24, MESITA-4862). */
-function offerShade(pct: number): string {
-  if (pct >= 20) return "bg-[#00D66F] text-neutral-950";
-  if (pct >= 10) return "bg-[#85EDB6] text-neutral-950";
-  return "bg-[#D3F8E2] text-neutral-950";
 }
 
 /** A place, one row, the one button. */
@@ -529,22 +518,19 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
   );
 }
 
-/** PAY IS TWO COLUMNS (Pato, 2026-11-25, MESITA-4976, then 2026-11-26:
- *  cashback is hidden): the name, then Accepts Credits and Extra discount. The
- *  gap between those boxes is the same 16px as the space from the last box
- *  to the right edge (MESITA-4979). The header stays dark. The boxes are
- *  colored so a glance separates them (MESITA-4977): blue Yes, green for the
- *  percent that is on, gray for No and 0%. Cashback still accepts credits;
- *  the column is just not shown. The row selects the place. */
+/** PAY IS ONE COLUMN (Pato, 2026-11-26, MESITA-5031): the name, then Accepts
+ *  Credits. Extra discount and Cashback stay off this list. The gap from the
+ *  box to the right edge is 16px (MESITA-4979). The header stays dark. Yes is
+ *  blue, No is gray (MESITA-4977). Cashback still counts as accepting
+ *  credits. The row selects the place. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
-  const discount = payPlaceDiscountBps(p) / 100;
   const accepts = payPlaceCashbackBps(p) > 0 || p.credits_ok === true;
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Extra discount ${discount}%`}
+      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}`}
       className={cn(PAY_GRID, "hover:bg-muted/60 min-h-[72px] py-2 text-left transition-colors")}
       data-pay-pick-place
     >
@@ -554,7 +540,6 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       </span>
       <span className={PAY_OFFERS}>
         <PayCell className={accepts ? "bg-[#BFDBFE] text-blue-950" : EMPTY_BOX}>{accepts ? "Yes" : "No"}</PayCell>
-        <PayCell className={discount > 0 ? offerShade(discount) : EMPTY_BOX}>{`${discount}%`}</PayCell>
       </span>
     </button>
   );
