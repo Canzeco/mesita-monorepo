@@ -20,10 +20,10 @@ import { useActiveLocation } from "../location-context";
 import { factsOf, type CatalogPlace } from "../model";
 import { useMapPlaces, usePlaceSearch, useResolveLocation } from "../queries";
 
-type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void };
+type Nav = { onChooseLocation: () => void; onMenu: () => void; onOpen: (placeId: string) => void; onAdd?: () => void; onSignIn: () => void };
 
 /** The web's Search: a map, the families, and a rail that is only as tall as its cards. */
-export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
+export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn }: Nav) {
   const { location, choose, chip, selectChip } = useActiveLocation();
   const member = useSession().guestId !== null;
   const shown: ChipKey = chip === "saved" ? "near" : chip;
@@ -72,31 +72,38 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd }: Nav) {
           {location.name}
         </Text>
       </Pressable>
-      {member ? (
-        <View>
-          <TextInput
-            value={term}
-            onChangeText={setTerm}
-            placeholder="Search places…"
-            placeholderTextColor={colors.muted}
-            maxFontSizeMultiplier={maxFontSizeMultiplier}
-            style={styles.field}
-            testID="search-field"
+      <View>
+        <TextInput
+          value={term}
+          onChangeText={setTerm}
+          placeholder="Search places…"
+          placeholderTextColor={colors.muted}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
+          style={styles.field}
+          testID="search-field"
+        />
+        {querying && member ? (
+          <ResultsPanel
+            rows={suggestions.data ?? []}
+            searching={suggestions.isFetching && (suggestions.data?.length ?? 0) === 0}
+            failed={suggestions.isError}
+            maxHeight={Math.round(height * 0.55)}
+            onOpen={onOpen}
+            onLocate={pickSuggestion}
+            onGenerate={(row) => setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText })}
+            onRetry={() => void suggestions.refetch()}
           />
-          {querying ? (
-            <ResultsPanel
-              rows={suggestions.data ?? []}
-              searching={suggestions.isFetching && (suggestions.data?.length ?? 0) === 0}
-              failed={suggestions.isError}
-              maxHeight={Math.round(height * 0.55)}
-              onOpen={onOpen}
-              onLocate={pickSuggestion}
-              onGenerate={(row) => setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText })}
-              onRetry={() => void suggestions.refetch()}
-            />
-          ) : null}
-        </View>
-      ) : null}
+        ) : null}
+        {querying && !member ? (
+          <View style={styles.signBox}>
+            <Text role="label">Sign in to search by name</Text>
+            <Text role="caption" tone="muted">Or clear the search to browse the map.</Text>
+            <Pressable accessibilityRole="button" onPress={onSignIn} style={styles.signIn}>
+              <Text role="label">Sign in</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </View>
       {member && onAdd ? (
         <Pressable onPress={onAdd} style={styles.where}>
           <Text role="label">Add a place</Text>
@@ -224,6 +231,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   whereName: { flexShrink: 1 },
+  signBox: {
+    marginHorizontal: space.md,
+    marginBottom: space.sm,
+    padding: space.md,
+    gap: space.xs,
+    borderRadius: radius.card,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+  },
+  signIn: {
+    marginTop: space.xs,
+    paddingHorizontal: space.md,
+    height: 36,
+    borderRadius: radius.panel,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   field: {
     marginHorizontal: space.md,
     marginBottom: space.sm,
