@@ -31,21 +31,30 @@ export function Overview({ place, width, photo, onPhoto }: { place: PlaceDetail;
           {place.hours_table.map((row) => <Text key={row.day} role="small">{`${row.day} · ${row.range}`}</Text>)}
         </View>
       ) : null}
-      {place.families.length ? (
-        <View style={styles.block}>
-          <Text role="strong">Families</Text>
-          <Text role="small">{place.families.map((row) => `${row.emoji} ${row.label}`.trim()).join("  ")}</Text>
-        </View>
-      ) : null}
-      {place.tags.length ? (
-        <View style={styles.tags}>
-          {place.tags.map((tag) => (
-            <View key={tag.slug} style={styles.tag}>
-              <Text role="caption">{tag.label}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <Tags place={place} />
+    </View>
+  );
+}
+
+function Tags({ place }: { place: PlaceDetail }) {
+  const familyLabels = new Set(place.families.map((row) => row.label.trim().toLowerCase()));
+  const tags = place.tags.filter((tag) => !familyLabels.has(tag.label.trim().toLowerCase()));
+  if (place.families.length === 0 && tags.length === 0) return null;
+  return (
+    <View style={styles.block}>
+      <Text role="strong">Tags</Text>
+      <View style={styles.tags}>
+        {place.families.map((row) => (
+          <View key={row.key} style={styles.tag}>
+            <Text role="caption">{`${row.emoji} ${row.label}`.trim()}</Text>
+          </View>
+        ))}
+        {tags.map((tag) => (
+          <View key={tag.slug} style={styles.tag}>
+            <Text role="caption">{tag.label}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
