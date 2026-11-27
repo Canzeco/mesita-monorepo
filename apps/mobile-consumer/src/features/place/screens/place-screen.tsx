@@ -5,6 +5,7 @@ import { Alert, Linking, Pressable, ScrollView, Share, StyleSheet, useWindowDime
 
 import { ErrorState } from "@/components/error-state";
 import { Icon } from "@/components/icon";
+import { RemoveSaved } from "@/components/remove-saved";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useErrorCopy } from "@/lib/error-copy";
@@ -53,6 +54,7 @@ export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact,
   const width = useWindowDimensions().width;
   const [tab, setTab] = useState<Tab>("Overview");
   const [photo, setPhoto] = useState(0);
+  const [drop, setDrop] = useState(false);
   const open = place.open_now;
   const when = open ? place.closes_at : place.opens_at;
   const price = priceChip(place);
@@ -95,7 +97,7 @@ export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact,
         {distance != null ? <Fact label={formatDistanceKm(distance)} /> : null}
       </View>
       <View style={styles.actions}>
-        <Black label={saved ? "Saved" : "Save"} icon={saved ? "heart-filled" : "heart"} onPress={onSave} />
+        <Black label={saved ? "Saved" : "Save"} icon={saved ? "heart-filled" : "heart"} onPress={() => (saved ? setDrop(true) : onSave())} />
         <Black label="Maps" icon="map-pin" onPress={maps} />
         <Black label="Contact" icon="phone" onPress={onContact} />
         <Black label="Share" icon="share-2" onPress={share} />
@@ -112,6 +114,14 @@ export function PlaceView({ place, center = null, onMenu, onOpenMenu, onContact,
           <Text role="caption" tone="onInk" style={styles.off}>{offersOn ? "" : "Off"}</Text>
         </Pressable>
       </View>
+      <RemoveSaved
+        name={drop ? place.name : null}
+        onCancel={() => setDrop(false)}
+        onConfirm={() => {
+          setDrop(false);
+          onSave();
+        }}
+      />
       <View style={styles.tabs}>
         {TABS.map((name) => (
           <Pressable key={name} accessibilityRole="tab" accessibilityState={{ selected: tab === name }} onPress={() => setTab(name)} style={styles.tab}>
