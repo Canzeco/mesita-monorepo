@@ -37,7 +37,7 @@ const SLOW_MS = 800;
  *
  * A switch at the top right picks how much shows (MESITA-3575): Phone,
  * Functions (+ the log) or Terminal (+ the request/response panel).
- * Hidden for now (MESITA-4993, CONSOLE_VISIBLE): Phone only.
+ * Shown again (MESITA-5048). Phone remains the default.
  *
  * Server-side calls (the shell layout's profile read, a place page's read)
  * do not appear as lines: they are inside the `nav` line's time.
