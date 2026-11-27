@@ -135,10 +135,17 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onAdd, onSignIn
         {map.isPending ? <Skeleton style={styles.mapWait} /> : null}
         {map.isError ? (
           <View style={styles.mapError}>
-            <ErrorState message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void map.refetch()} />
+            <ErrorState title="Couldn't load places in this area." message={copy.message} offline={copy.offline} requestId={copy.requestId} onRetry={() => void map.refetch()} />
           </View>
         ) : (
-          <Rail places={places} picked={picked?.id ?? null} onPick={setChosen} onOpen={onOpen} />
+          <Rail
+            places={places}
+            picked={picked?.id ?? null}
+            filterLabel={shown === "near" || shown === "all" ? null : chipsFor(false).find((row) => row.key === shown)?.label ?? null}
+            onAdd={member ? onAdd : undefined}
+            onPick={setChosen}
+            onOpen={onOpen}
+          />
         )}
       </View>
     </View>
@@ -156,20 +163,30 @@ function pinsOf(places: readonly CatalogPlace[], dots: readonly { id: string; la
 function Rail({
   places,
   picked,
+  filterLabel,
+  onAdd,
   onPick,
   onOpen,
 }: {
   places: readonly CatalogPlace[];
   picked: string | null;
+  filterLabel: string | null;
+  onAdd?: () => void;
   onPick: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
   if (places.length === 0) {
     return (
       <View style={styles.emptyRail} testID="search-rail">
-        <Text role="small" tone="muted">
-          Nothing nearby
+        <Text role="label" tone="onInk">Add a new place to Mesita</Text>
+        <Text role="small" tone="onInk">
+          {filterLabel ? `Nothing here for ${filterLabel} yet. Takes under 10 seconds.` : "Nothing here yet. Takes under 10 seconds."}
         </Text>
+        {onAdd ? (
+          <Pressable accessibilityRole="button" onPress={onAdd} style={styles.addPill}>
+            <Text role="label" tone="onInk">Add a place</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -181,6 +198,13 @@ function Rail({
       contentContainerStyle={styles.railContent}
       testID="search-rail"
     >
+      {onAdd ? (
+        <Pressable accessibilityRole="button" onPress={onAdd} style={styles.addCard}>
+          <Text role="label" tone="onInk">Add a new place to Mesita</Text>
+          <Text role="small" tone="onInk">Not on Mesita yet? Takes under 10 seconds.</Text>
+          <Text role="label" style={styles.addPillText}>Add a place</Text>
+        </Pressable>
+      ) : null}
       {places.map((place) => (
         <RailCard key={place.id} place={place} on={place.id === picked} onPress={() => { onPick(place.id); onOpen(place.id); }} />
       ))}
@@ -280,8 +304,35 @@ const styles = StyleSheet.create({
     right: space.md,
     bottom: space.md,
     padding: space.md,
+    gap: space.xs,
     borderRadius: radius.card,
+    backgroundColor: colors.ink,
+  },
+  addCard: {
+    width: 220,
+    height: 112,
+    padding: space.md,
+    justifyContent: "space-between",
+    borderRadius: radius.card,
+    backgroundColor: colors.ink,
+  },
+  addPillText: {
+    alignSelf: "flex-start",
     backgroundColor: colors.paper,
+    borderRadius: radius.panel,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    overflow: "hidden",
+  },
+  addPill: {
+    alignSelf: "flex-start",
+    marginTop: space.xs,
+    height: 36,
+    paddingHorizontal: space.md,
+    borderRadius: radius.panel,
+    backgroundColor: colors.paper,
+    alignItems: "center",
+    justifyContent: "center",
   },
   card: {
     width: 220,
