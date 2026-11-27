@@ -183,3 +183,44 @@ export async function resolveLocation(placeId: string): Promise<Point> {
   );
   return answer.anchor;
 }
+
+export type PlacePreview = {
+  name: string;
+  address: string | null;
+  category: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  photoUrl: string | null;
+  canAdd: boolean;
+  message: string;
+};
+
+/** Google's facts for one place, before it is created. */
+export async function previewGooglePlace(placeId: string, signal?: AbortSignal): Promise<PlacePreview> {
+  const answer = await callEdge(
+    "consumer-web-suggest-places",
+    { previewPlaceId: placeId },
+    z.object({
+      preview: z.object({
+        name: z.string().catch(""),
+        address: text,
+        category: text,
+        rating: number,
+        reviewCount: number,
+        photoUrl: text,
+      }),
+      addable: z.object({ canAdd: z.boolean().catch(true), message: z.string().catch("") }).nullish().catch(null),
+    }),
+    { signal },
+  );
+  return {
+    name: answer.preview.name,
+    address: answer.preview.address ?? null,
+    category: answer.preview.category ?? null,
+    rating: answer.preview.rating ?? null,
+    reviewCount: answer.preview.reviewCount ?? null,
+    photoUrl: answer.preview.photoUrl ?? null,
+    canAdd: answer.addable?.canAdd ?? true,
+    message: answer.addable?.message ?? "",
+  };
+}
