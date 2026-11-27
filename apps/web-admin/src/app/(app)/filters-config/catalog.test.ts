@@ -255,8 +255,12 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
       temperature: { nearby: 5, family: 0, popular: 0.33 },
       adFloor: 1,
       adEvery: 4,
+      proFactor: 2,
+      maxFactor: 5,
       growthWeightCap: 0.5,
     });
+    // MESITA-5028: Pro and Max are 1–10, defaults 2 and 5.
+    expect(coerceMix({ proFactor: 0, maxFactor: 20 })).toMatchObject({ proFactor: 1, maxFactor: 10 });
     expect(coerceMix({ growthWeightCap: 0.8 }).growthWeightCap).toBe(0.8);
     expect(coerceMix({ growthWeightCap: 2 }).growthWeightCap).toBe(0.8);
     expect(coerceMix({ adEvery: 0 }).adEvery).toBe(0);
