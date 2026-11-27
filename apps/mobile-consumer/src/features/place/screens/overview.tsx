@@ -1,9 +1,10 @@
 import { Image } from "expo-image";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/text";
 import type { PlaceDetail } from "@/generated/shared/place-detail";
+import { formatDistanceKm } from "@/generated/shared/lib/format";
 import { toAmPm } from "@/generated/shared/lib/place-time";
 import { colors, radius, space } from "@/theme";
 
@@ -26,7 +27,7 @@ export function Overview({ place, width, photo, onPhoto }: { place: PlaceDetail;
         </View>
       ) : <Text role="body" tone="muted">No photos yet</Text>}
       <Presentation text={place.long_description} />
-      {place.address ? <Text role="small" tone="muted">{place.address}</Text> : null}
+      <Location place={place} />
       {place.hours_table.length ? <Hours place={place} /> : null}
       <Tags place={place} />
     </View>
@@ -58,6 +59,45 @@ function Presentation({ text }: { text: string }) {
             <Text role="label">Show more</Text>
           </Pressable>
         ) : null}
+      </View>
+    </View>
+  );
+}
+
+function uberUrl(place: PlaceDetail): string {
+  const drop: Record<string, string | number> = {
+    addressLine1: place.name.trim() || "Destination",
+    addressLine2: place.address.trim(),
+  };
+  if (typeof place.lat === "number" && Number.isFinite(place.lat) && typeof place.lng === "number" && Number.isFinite(place.lng)) {
+    drop.latitude = place.lat;
+    drop.longitude = place.lng;
+  }
+  const params = new URLSearchParams();
+  params.set("drop[0]", JSON.stringify(drop));
+  return `https://m.uber.com/looking?${params.toString()}`;
+}
+
+function Location({ place }: { place: PlaceDetail }) {
+  if (!place.address && place.lat == null) return null;
+  const maps = place.reviews_maps.google_maps_url ?? (place.address ? `https://maps.google.com/?q=${encodeURIComponent(place.address)}` : "");
+  const distance = place.distance_km > 0 ? formatDistanceKm(place.distance_km) : null;
+  return (
+    <View style={styles.block}>
+      <View style={styles.hour}>
+        <Text role="strong">Location</Text>
+        {distance ? <Text role="caption" tone="muted">{distance}</Text> : null}
+      </View>
+      {place.address ? <Text role="body">{place.address}</Text> : null}
+      <View style={styles.hour}>
+        {maps ? (
+          <Pressable accessibilityRole="link" accessibilityLabel={`Open ${place.name} in Google Maps`} onPress={() => void Linking.openURL(maps)} style={styles.mapBtn}>
+            <Text role="label">Google Maps</Text>
+          </Pressable>
+        ) : null}
+        <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(uberUrl(place))} style={styles.mapBtn}>
+          <Text role="label">Ask Uber</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -130,6 +170,7 @@ const styles = StyleSheet.create({
   block: { gap: space.xs },
   hours: { gap: space.xs, padding: space.md, borderRadius: radius.field, backgroundColor: colors.fill },
   hour: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
+  mapBtn: { flex: 1, minHeight: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.field, backgroundColor: colors.fill },
   tags: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   tag: { backgroundColor: colors.fill, borderRadius: radius.control, paddingHorizontal: space.sm, paddingVertical: space.xs },
 });
