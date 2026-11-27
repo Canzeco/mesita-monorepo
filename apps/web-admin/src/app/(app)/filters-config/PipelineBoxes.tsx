@@ -311,8 +311,8 @@ export function HowRankedCard() {
           </p>
           <p>
             Foursquare = 1 + raw ^ Foursquare exponent. The factor is always 1, so the boost is at most 2×.
-            A higher exponent concentrates it near the top of Foursquare&apos;s 0–1 scale. A missing score,
-            or a measured 0, is 1×.
+            A higher exponent concentrates it near the top of Foursquare&apos;s 0–1 scale. Exponent 0 makes
+            any present score a 2× boost. A missing score, or a measured 0, is 1×.
           </p>
           <p>
             Offers = offer points ^ Offers exponent. The points are the percents that place has on, added

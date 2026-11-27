@@ -474,6 +474,7 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
   const kept = normalizeRecipes({ catalogNearbyOrganic: { foursquareFactor: 0.5, foursquareExponent: 20 } });
   assertEquals(kept.catalogNearbyOrganic.foursquareFactor, 1);
   assertEquals(kept.catalogNearbyOrganic.foursquareExponent, 20);
+  assertEquals(normalizeRecipes({ catalogNearbyOrganic: { foursquareExponent: 0 } }).catalogNearbyOrganic.foursquareExponent, 0);
   // Pay edits Premier and Offers. 9 clamps to 2. 0.24 rounds to 0.2.
   assertEquals([r.pay.offersExp, r.pay.premierExp], [2, 0.2]);
   assertEquals(clamps.map(([k]) => k).sort(), [
