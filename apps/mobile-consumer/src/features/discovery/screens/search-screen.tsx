@@ -10,7 +10,7 @@ import Svg, { Path } from "react-native-svg";
 import { Button } from "@/components/button";
 import { RemoveSaved } from "@/components/remove-saved";
 import { ErrorState } from "@/components/error-state";
-import { Icon, PremierSeal } from "@/components/icon";
+import { Icon } from "@/components/icon";
 import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/features/auth";
@@ -432,6 +432,11 @@ function RailCard({
   const facts = factsOf(place);
   return (
     <View style={[styles.card, { width }, on && styles.cardOn]}>
+      {place.isPremier ? (
+        <View style={styles.premier}>
+          <Text role="label" tone="onInk">Premier</Text>
+        </View>
+      ) : null}
       {place.reservable ? (
         <Pressable accessibilityRole="button" accessibilityLabel={`Reserve ${place.name}`} onPress={onReserve ?? onPress} style={styles.reserve}>
           <Icon name="calendar" size={14} color={colors.onInk} />
@@ -445,12 +450,7 @@ function RailCard({
           <View style={styles.thumb} />
         )}
         <View style={styles.facts}>
-          {place.isPremier ? (
-            <View pointerEvents="none" style={styles.seal}>
-              <PremierSeal size={32} color={place.isAd ? colors.ad : colors.premier} />
-            </View>
-          ) : null}
-          <View style={place.isPremier ? styles.besideSeal : undefined}>
+          <View>
             <Text role="strong" numberOfLines={1}>{place.name}</Text>
             {facts.kind ? (
               <Text role="small" numberOfLines={1}>{facts.kind}</Text>
@@ -634,8 +634,12 @@ const styles = StyleSheet.create({
   cardBody: { flexDirection: "row", height: 132 },
   thumb: { width: 132, height: 132, backgroundColor: colors.fill },
   facts: { flex: 1, paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.sm },
-  besideSeal: { paddingRight: 40 },
-  seal: { position: "absolute", top: space.md, right: space.md, zIndex: 2 },
+  premier: {
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.ad,
+  },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
   name: { flexShrink: 1 },
   cardLine: { flexDirection: "row", alignItems: "center", gap: space.xs, marginTop: 2 },

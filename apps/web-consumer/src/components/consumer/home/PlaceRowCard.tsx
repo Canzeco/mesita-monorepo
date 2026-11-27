@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { isPremierPlace, PlaceMarks, SizedImage } from "@mesita/place-profile";
+import { isPremierPlace, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import {
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { placeReservePath } from "@/lib/consumer-route-contract";
 import type { LiveTable } from "@/lib/use-live-reservations";
 import { CardActions } from "@/components/consumer/place-card";
-import { PlaceBannerRow, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, PremierBar, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
@@ -117,8 +117,8 @@ function ScoreLabel({
  * information at the right, two squares, information with buttons"):
  *
  *   ┌─────────┐ ┌────────────────┐
- *   │  photo  │ │ Name          ✪ │   16px, up to two lines; the seal
- *   │         │ │                 │   is 32px, pinned top right (MESITA-5045)
+ *   │  photo  │ │ Name            │   16px, up to two lines
+ *   │         │ │ [ Premier     ] │   blue, the width of Reserve (MESITA-5046)
  *   │         │ │ $ · Tacos       │   ink only (MESITA-5041)
  *   │         │ │ ★ 4.7 · 0.4 km  │
  *   │         │ │ ◷ Open · until 3│
@@ -260,20 +260,10 @@ export function PlaceRowCard({
           <>
             {/* BIGGER (Pato, MESITA-4418: "make the fucking text bigger"):
                 the name at 16px over one fact per line at 14px. */}
-            <div className={cn("min-w-0", isPremierPlace(place) && "pr-10")}>
-              <p className="line-clamp-2 text-base leading-snug font-semibold tracking-tight">
-                {place.name}
-              </p>
-              <PlaceFactsLines place={place} />
-            </div>
-            {/* The seal stays in the corner. A short name used to leave it
-                sitting right after the words (MESITA-5045). */}
-            <PlaceMarks
-              tier={place.boost_tier}
-              ad={ad}
-              className="pointer-events-none absolute top-2 right-2 z-10"
-              sealClassName="h-8 w-8"
-            />
+            <p className="line-clamp-2 text-base leading-snug font-semibold tracking-tight">
+              {place.name}
+            </p>
+            <PlaceFactsLines place={place} />
           </>,
           cn(
             "flex min-w-0 flex-col gap-0.5 rounded-lg text-left after:absolute after:inset-0 after:rounded-r-2xl after:content-['']",
@@ -290,6 +280,7 @@ export function PlaceRowCard({
         <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col gap-2">
           {/* ONE OR TWO (Pato, 2026-11-26, MESITA-5010): both share the row;
               a place with only one of them gets that one, full width. */}
+          {isPremierPlace(place) ? <PremierBar /> : null}
           <PlaceBannerRow
             name={place.name}
             placeId={place.id}

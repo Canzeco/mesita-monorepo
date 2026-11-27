@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { isPremierPlace, PlaceMarks, SizedImage } from "@mesita/place-profile";
+import { isPremierPlace, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import { placeReservePath } from "@/lib/consumer-route-contract";
@@ -23,7 +23,7 @@ import {
   StarsOpenRow,
   cardFacts,
 } from "@/components/consumer/place-card";
-import { PlaceBannerRow, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, PremierBar, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
@@ -53,6 +53,8 @@ export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
  *  just as one of the prev version"; MESITA-3246's coupon stood there). The
  *  rail aligns to its foot, so only the strips stand up. */
 const RAIL_CARD_WITH_STRIP_HEIGHT_CLASS = "h-[10.375rem]";
+/** Premier above Reserve: two 32px strips. */
+const RAIL_CARD_WITH_TWO_STRIPS_HEIGHT_CLASS = "h-[12.375rem]";
 /** The strip as the card's top edge: square corners, a hairline under it. */
 const RAIL_CARD_STRIP = "border-fact-price/30 shrink-0 rounded-none border-b";
 
@@ -167,29 +169,40 @@ export function RailCard({
   const slides = google ? [] : offerSlides(place);
   const reservable = !google && listCardReservable(place);
   const banner = reservable || slides.length > 0;
+  const premier = isPremierPlace(place);
+  const strips = (premier ? 1 : 0) + (banner ? 1 : 0);
 
   return (
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        banner ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
+        strips === 2
+          ? RAIL_CARD_WITH_TWO_STRIPS_HEIGHT_CLASS
+          : strips === 1
+            ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS
+            : RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
       <PremierAdBeacon placeId={place.id} ad={ad} />
-      {banner ? (
-        <PlaceBannerRow
-          name={place.name}
-          placeId={place.id}
-          slides={slides}
-          hours={place.hours}
-          timezone={place.timezone}
-          reservable={reservable}
-          reserveHref={placeReservePath(place.slug || place.id)}
-          offerHref={placeHref(place.slug || place.id)}
-          className="absolute inset-x-0 top-0 z-20 gap-0"
-          cellClassName={RAIL_CARD_STRIP}
-        />
+      {strips > 0 ? (
+        <div className="absolute inset-x-0 top-0 z-20 flex flex-col">
+          {premier ? <PremierBar className="rounded-none" /> : null}
+          {banner ? (
+            <PlaceBannerRow
+              name={place.name}
+              placeId={place.id}
+              slides={slides}
+              hours={place.hours}
+              timezone={place.timezone}
+              reservable={reservable}
+              reserveHref={placeReservePath(place.slug || place.id)}
+              offerHref={placeHref(place.slug || place.id)}
+              className="gap-0"
+              cellClassName={RAIL_CARD_STRIP}
+            />
+          ) : null}
+        </div>
       ) : null}
       <button
         type="button"
@@ -203,7 +216,7 @@ export function RailCard({
         onClick={onOpen}
         className={cn(
           "focus-visible:ring-primary absolute inset-x-0 bottom-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset",
-          banner ? "top-8" : "top-0",
+          strips === 2 ? "top-16" : strips === 1 ? "top-8" : "top-0",
         )}
       >
         <div className={RAIL_CARD_ROW}>
@@ -241,21 +254,12 @@ export function RailCard({
             )}
             {photoOverlay}
           </div>
-          <div className={cn("text-foreground relative", RAIL_CARD_TEXT)}>
-            <div className={cn("min-w-0", isPremierPlace(place) && "pr-10")}>
-              <p className="truncate font-sans text-base leading-5 font-semibold tracking-tight">
-                {place.name}
-              </p>
-              <PriceKindRow facts={facts} />
-              <StarsOpenRow facts={facts} withDistance={withDistance} />
-            </div>
-            <PlaceMarks
-              tier={place.boost_tier}
-              compact
-              ad={ad}
-              className="pointer-events-none absolute top-3 right-3 z-10"
-              sealClassName="h-8 w-8"
-            />
+          <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
+            <p className="truncate font-sans text-base leading-5 font-semibold tracking-tight">
+              {place.name}
+            </p>
+            <PriceKindRow facts={facts} />
+            <StarsOpenRow facts={facts} withDistance={withDistance} />
           </div>
         </div>
       </button>
