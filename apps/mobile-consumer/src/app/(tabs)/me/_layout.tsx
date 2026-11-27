@@ -11,6 +11,7 @@ const TITLE: Record<string, string> = {
   tickets: "Tickets",
   visit: "Visit",
   gift: "Gift",
+  credit: "Credit",
   card: "Card",
   "saved-card": "Card",
   plan: "Plan",
