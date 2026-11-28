@@ -191,7 +191,7 @@ function OfferRow({ offers }: { offers: CardOffer[] }) {
   const sizeOf = (i: number) => {
     if (offers.length < 2 || row === 0 || mins.some((m) => m === 0)) return null;
     if (Math.max(...mins) <= half) return null;
-    if (mins[0] + mins[1] + 4 <= row) return mins[i] >= mins[1 - i] ? { flexGrow: 0, width: mins[i] } : null;
+    if (mins[0] + mins[1] + 4 <= row) return mins[i] >= mins[1 - i] ? { flexGrow: 0, flexShrink: 0, flexBasis: mins[i] } : null;
     return { minWidth: mins[i] };
   };
   return (
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
   offer: { flexGrow: 1, flexShrink: 1, flexBasis: 0, height: BUTTON, alignItems: "center", justifyContent: "center", paddingHorizontal: 3, borderRadius: radius.lg },
   // gap-0.5 from word to percent; the content row is measured, never squeezed.
   offerInner: { flexDirection: "row", alignItems: "center", gap: 2, flexShrink: 0 },
-  // Hidden, across the whole row (left and right 0), content-sized.
+  // Hidden, content-sized: an absolute child of a row is not bounded by it.
   measure: { position: "absolute", top: 0, left: 0, opacity: 0, alignSelf: "flex-start", flexDirection: "row" },
   // rounded, bg-neutral-950, px-[3px] py-0.5, leading-none, white.
   pct: { paddingHorizontal: 3, paddingVertical: 2, borderRadius: radius.base, backgroundColor: colors.percentBox },
