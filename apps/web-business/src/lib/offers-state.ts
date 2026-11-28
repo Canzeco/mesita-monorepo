@@ -4,8 +4,8 @@
 
 import type { PaymentSettings, PlacePayments } from "@/lib/business-api";
 
-/** The vouchers Offers lists: Small, Medium, Big. Welcome and VIP are not on Offers. */
-export const OFFERED_VOUCHER_KEYS = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
+/** The vouchers Offers lists: Welcome (MESITA-5124), Small, Medium, Big. VIP is not on Offers. */
+export const OFFERED_VOUCHER_KEYS = ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"] as const;
 
 /** The Stripe Account takes cards in the server's mode (MESITA-3599). */
 export function stripeTakesCards(p: Pick<PlacePayments, "account" | "test_mode">): boolean {

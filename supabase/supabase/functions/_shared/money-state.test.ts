@@ -24,17 +24,19 @@ const allOn: MoneySettings = {
 const can = { charges_enabled: true };
 const cannot = { charges_enabled: false };
 
-Deno.test("a switch on with charges_enabled sells; vouchers are Small, Medium, Big only (MESITA-4698: Welcome and VIP are cashback lines)", () => {
+Deno.test("a switch on with charges_enabled sells: Welcome, Small, Medium, Big (MESITA-5124: Welcome is a voucher again; VIP stays off)", () => {
   const s = moneyState(allOn, can, null);
-  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
-  assertEquals(s.unavailable, { voucher_welcome: "off", voucher_vip: "off" });
+  assertEquals(s.sell, ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(s.unavailable, { voucher_vip: "off" });
+  // Welcome is the owner's own switch, like every size.
+  assertEquals(moneyState({ ...allOn, voucher_welcome: false }, can, null).unavailable.voucher_welcome, "off");
 });
 
 Deno.test("App Prepayments Off (MESITA-3597) sells no voucher, whatever the voucher switches read; absent reads on", () => {
   const s = moneyState({ ...allOn, prepayments: false }, can, null);
   assertEquals(s.sell, []);
   assertEquals(s.unavailable.voucher_200, "off");
-  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 3);
+  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 4);
 });
 
 Deno.test("a switch on without charges_enabled sells nothing and says the account is missing", () => {
@@ -54,7 +56,7 @@ Deno.test("Pay by phone off (MESITA-3396) drops card pay, never the vouchers", (
   const noCards = { ...allOn, pay_cards: false };
   assertEquals(moneyState(noCards, can, { spendable_cents: 100 }).pay, "credit");
   assertEquals(moneyState(noCards, can, null).pay, "none");
-  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(moneyState(noCards, can, null).sell, ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"]);
   // Absent reads on: a reader from before the column is unchanged.
   assertEquals(moneyState(allOn, can, { spendable_cents: 100 }).pay, "both");
 });

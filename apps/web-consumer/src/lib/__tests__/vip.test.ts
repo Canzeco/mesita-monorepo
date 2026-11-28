@@ -49,6 +49,8 @@ describe("credit labels (MESITA-4766)", () => {
   it("names a Returning VIP Cashback and keeps an old story credit", () => {
     expect(entryLabel({ kind: "cashback", reason: "returning_vip" })).toBe("Cashback · VIP Returning Visit");
     expect(entryLabel({ kind: "cashback", reason: "welcome" })).toBe("Cashback · Welcome Visit");
+    // One Cashback line (MESITA-5124): a new entry never says which visit.
+    expect(entryLabel({ kind: "cashback", reason: "returning" })).toBe("Cashback");
     expect(entryLabel({ kind: "cashback", reason: "welcome_vip" })).toBe("Cashback · VIP Welcome Visit");
     expect(ENTRY_LABEL.story).toBe("Instagram Story credit");
     expect(creditEntryTitle("story.123")).toBe("Instagram Story credit");

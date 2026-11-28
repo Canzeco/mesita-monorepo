@@ -17,8 +17,8 @@ insert into public.places (id, slug, state, content_state, currency) values
 -- The second place has rates but no Credits Agreement yet: it earns nothing
 -- (Discount is gone, MESITA-5076).
 insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps, small_bonus_bps) values
-  ('00000000-0000-4000-8000-000000014823', 1000, 1000, 2000),
-  ('00000000-0000-4000-8000-000000024823', 2000, 1000, 2000);
+  ('00000000-0000-4000-8000-000000014823', 0, 1000, 2000),
+  ('00000000-0000-4000-8000-000000024823', 0, 1000, 2000);
 insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
 values ('00000000-0000-4000-8000-000000014823', '00000000-0000-4000-8000-0000000f4823', 'owner', 'draft-2026-11', repeat('0', 64));
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000014823', true);
@@ -63,7 +63,7 @@ select is((public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='op
 select is((public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('f', 64))->>'outcome'), 'accepted', 'a rescan finds the accepted bill');
 select is((public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000014823', 'mxn', false, repeat('f', 64))->>'bill_id'), (select v->>'bill_id' from t where k='open'), 'the same bill');
 -- The owner changes the rate and turns Loyalty Cards off meanwhile.
-update public.place_cashback_settings set welcome_bps = 0, returning_bps = 0 where place_id = '00000000-0000-4000-8000-000000014823';
+update public.place_cashback_settings set returning_bps = 0 where place_id = '00000000-0000-4000-8000-000000014823';
 update public.place_payment_settings set loyalty_cards = false where place_id = '00000000-0000-4000-8000-000000014823';
 select is((public.pay_guest_claim_confirm((select (v->>'attempt_id')::uuid from t where k='acc'), '00000000-0000-4000-8000-000000014823', repeat('c', 64))->>'outcome'), 'claimed', 'the waiter taps Received');
 insert into t select 'close', public.pay_guest_close((select (v->>'attempt_id')::uuid from t where k='acc'));

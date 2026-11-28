@@ -15,8 +15,12 @@
 // small_bonus_bps 1000 · 2000, medium_bonus_bps 2000 · 4000, big_bonus_bps
 // 3000 · 6000 (MESITA-4980; optional; absent keeps the saved one).
 //
-// Body: { place_id, welcome_bps, returning_bps, returning_vip_bps? (0 only), welcome_vip_bps? (0 only), small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; no ceiling since MESITA-4728)
-// Response: { ok: true, cashback: { welcome_bps, welcome_vip_bps, returning_bps, returning_vip_bps, small_bonus_bps, medium_bonus_bps, big_bonus_bps } }
+// MESITA-5124: ONE Cashback line, returning_bps, on every bill; a
+// welcome_bps an older console sends is ignored and Welcome is written 0.
+// The Welcome voucher's bonus is welcome_bonus_bps 3000 · 6000 (optional).
+//
+// Body: { place_id, returning_bps, welcome_bps? (ignored), returning_vip_bps? (0 only), welcome_vip_bps? (0 only), welcome_bonus_bps?, small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; no ceiling since MESITA-4728)
+// Response: { ok: true, cashback: { welcome_bps (0), welcome_vip_bps, returning_bps, returning_vip_bps, small_bonus_bps, medium_bonus_bps, big_bonus_bps, welcome_bonus_bps } }
 //   400 (bad input) · 403 owner_only
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -52,6 +56,7 @@ serveJson("business-web-set-cashback", async (req) => {
   const input = readCashbackInput(bodyRes.body, saved);
   if (!input.ok) return json({ ok: false, code: "invalid", error: input.error }, 400);
   input.rates.small_bonus_bps ??= saved.small_bonus_bps;
+  input.rates.welcome_bonus_bps ??= saved.welcome_bonus_bps;
 
   const { data, error } = await admin
     .from("place_cashback_settings")

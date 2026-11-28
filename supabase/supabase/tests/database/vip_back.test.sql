@@ -1,6 +1,7 @@
 -- MESITA-4766 — VIP is back (an invitation code only since MESITA-4849) and
 -- Instagram Stories are gone. Since MESITA-5072 VIP earns no cashback line of
--- its own: a VIP's bills are Welcome and Returning like everyone's.
+-- its own, and since MESITA-5124 there is one Cashback line: a VIP's bills
+-- earn it like everyone's, the first bill included.
 
 begin;
 
@@ -106,7 +107,7 @@ insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, te
 values ('00000000-0000-4000-8000-000000014766', '00000000-0000-4000-8000-000000114766', 'owner', 'draft-2026-11', repeat('0', 64));
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000014766', true);
 insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps)
-values ('00000000-0000-4000-8000-000000014766', 1000, 500);
+values ('00000000-0000-4000-8000-000000014766', 0, 500);
 
 create temp table bills (n int, consumer uuid, live boolean) on commit drop;
 insert into bills values
@@ -133,14 +134,14 @@ create function pg_temp.line(n int) returns text language sql as $$
   select reason || ':' || amount_cents from public.wallet_entries
    where tab_id = ('00000000-0000-4000-8000-000000' || lpad(n::text, 2, '0') || '4766')::uuid and kind = 'cashback' $$;
 
-select is(pg_temp.line(1), 'welcome:1000', 'a VIP''s first bill is Welcome, like everyone''s (MESITA-5072)');
+select is(pg_temp.line(1), 'returning:500', 'a VIP''s first bill earns the one Cashback line, like everyone''s (MESITA-5124)');
 select is(pg_temp.line(2), 'returning:500', 'an invited VIP''s later bill is Returning, like everyone''s');
 select is(pg_temp.line(4), 'returning:500', 'a Regular''s later bill is Returning Regular');
 select is(pg_temp.line(6), 'returning:500', 'a 6,000-follower guest''s later bill is Returning Regular (MESITA-4849)');
 select is(pg_temp.line(8), 'returning:500', 'live money pays an emulator-only guest Returning Regular');
 
 -- Test mode: the same emulator-only guest is paid as Regular; earlier live bills
--- do not spend Welcome in test mode.
+-- change nothing in test mode.
 insert into public.pay_tabs (id, place_id, consumer_id, token_hash, currency, expires_at, status, bill_cents, tip_cents,
                              origin, paid_at, card_bill_cents, cash_bill_cents, livemode)
 values
@@ -148,7 +149,7 @@ values
    repeat('9', 64), 'mxn', now() + interval '1 day', 'paid', 10000, 0, 'waiter', now() + interval '20 minutes', 10000, 0, false),
   ('00000000-0000-4000-8000-000000104766', '00000000-0000-4000-8000-000000014766', '00000000-0000-4000-8000-0000000f4766',
    repeat('a', 64), 'mxn', now() + interval '1 day', 'paid', 10000, 0, 'waiter', now() + interval '21 minutes', 10000, 0, false);
-select is(pg_temp.line(9), 'welcome:1000', 'test mode counts its own first bill: Welcome Regular');
+select is(pg_temp.line(9), 'returning:500', 'test mode: its first bill earns the one Cashback line');
 select is(pg_temp.line(10), 'returning:500', 'test mode: the emulator makes no VIP (MESITA-4849)');
 
 -- Off pays nothing.

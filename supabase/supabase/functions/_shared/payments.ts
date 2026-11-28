@@ -178,9 +178,10 @@ export async function chargesEnabledByPlace(
 /** MESITA-4702: cashback_pct is the place's highest cashback line where
  *  Loyalty Cards is On (null = none earned); cashback_flat says every line
  *  is that rate. The carousel's green "Pay · Up to N% Cashback" slide. */
-/** MESITA-4748: welcome_pct and returning_pct are the two lines apart (null
- *  = that line earns nothing); cashback_pct is the higher. The VIP two are
- *  always null since MESITA-5072 (kept for older guest apps). */
+/** ONE LINE SINCE MESITA-5124: cashback_pct and returning_pct are the place's
+ *  one Cashback rate (null = none), cashback_flat is true wherever there is
+ *  one, and welcome_pct is always null like the VIP two (MESITA-5072); the
+ *  three are kept for older guest apps. */
 export type ListRowOffers = {
   sell: MoneyVoucherKey[];
   cashback_pct: number | null;
@@ -206,8 +207,9 @@ export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRow
   const top = r ? maxCashbackBps(r) : 0;
   return {
     cashback_pct: top > 0 ? top / 100 : null,
-    cashback_flat: !!r && r.welcome_bps === r.returning_bps,
-    welcome_pct: pct(r?.welcome_bps),
+    cashback_flat: !!r,
+    // Retired (MESITA-5124): Welcome is a voucher, never a cashback line.
+    welcome_pct: null,
     returning_pct: pct(r?.returning_bps),
     // Retired (MESITA-5072): no VIP line earns; null keeps older guest apps reading.
     returning_vip_pct: null,

@@ -7,7 +7,11 @@
 // MESITA-5072: the VIP lines are gone (0 only, written 0); Returning 10% only
 // where the defaults' Small bonus is +20%.
 //
-// Body: { welcome_bps, returning_bps, returning_vip_bps?, welcome_vip_bps? } (a cap_cents is ignored; MESITA-4728)
+// MESITA-5124: one Cashback line, returning_bps; Welcome is written 0 and a
+// welcome_bps sent is ignored. The Welcome voucher's default bonus is
+// welcome_bonus_bps 3000 · 6000 (optional).
+//
+// Body: { returning_bps, welcome_bps? (ignored), returning_vip_bps?, welcome_vip_bps?, welcome_bonus_bps?, small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; MESITA-4728)
 // Response: { ok: true, cashback_defaults } · 400 bad input
 // Super-admins only. A change applies to the next confirmed bill; cashback
 // already earned stays as it was.

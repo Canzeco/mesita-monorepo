@@ -25,7 +25,8 @@
 //   credit).
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
 //   and vouchers where sold): Pay's Get Offers lists these.
-//   visit_line = welcome (no paid bill here yet) | returning; VIP or not (MESITA-5072).
+//   visit_line = returning, always: Cashback is one line (MESITA-5124);
+//   welcome_pct is always null. Older guest apps still read both.
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
@@ -120,7 +121,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   if (ids.length === 0) return json({ ok: true, places: [] });
 
   const since = new Date(Date.now() - PAID_RECENT_HOURS * 3600_000).toISOString();
-  const [settingsRes, paidRes, billedRes] = await Promise.all([
+  const [settingsRes, paidRes] = await Promise.all([
     readIn<unknown>(ids, (some) => admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", some)),
     admin.from("wallet_payments")
       .select("id, place_id, amount_cents, tip_cents, paid_at")
@@ -130,17 +131,9 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       .gte("paid_at", since)
       .order("paid_at", { ascending: false })
       .limit(50),
-    // MESITA-4770: the places where this guest has a paid bill, so the phone
-    // previews the right visit line (Welcome before the first, Returning
-    // after); pay_guest_begin decides the same and has the last word.
-    readIn<{ place_id: string }>(ids, (some) =>
-      admin.from("pay_tabs").select("place_id").eq("consumer_id", userId).eq("livemode", livemode)
-        .eq("status", "paid").in("place_id", some).limit(5000)),
   ]);
   if (settingsRes.error) return fail("settings", settingsRes.error);
   if (paidRes.error) return fail("payments", paidRes.error.message);
-  if (billedRes.error) return fail("bills", billedRes.error);
-  const billed = new Set(billedRes.rows.map((r) => r.place_id));
 
   const settings = new Map<string, PaymentSettings>();
   for (const row of settingsRes.rows as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[]) {
@@ -203,7 +196,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
         // Accepts Credits is Loyalty Cards on.
         credits_ok: p.offers_ok,
         offers_ok: p.offers_ok,
-        visit_line: billed.has(p.place_id) ? "returning" : "welcome",
+        // One Cashback line (MESITA-5124): a first bill earns like any other.
+        visit_line: "returning",
         offers: o,
       };
     }),

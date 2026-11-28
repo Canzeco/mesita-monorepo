@@ -19,10 +19,10 @@ export type VoucherPriceRow = {
 export type CurrencyRow = { code: string; country: string; small: number; big: number; selling: boolean };
 
 /** MESITA-4700: the cashback defaults (basis points; at most MX$1,000 a bill, MESITA-4831).
- *  Two lines since MESITA-5072 (VIP cashback is gone). small_bonus_bps is
- *  read only: Returning 10% is allowed only where it is 2000 (+20%). */
+ *  One line since MESITA-5124: Cashback, stored as returning_bps (Welcome is
+ *  a voucher again). small_bonus_bps is read only: 10% is allowed only where
+ *  it is 2000 (+20%). */
 export type CashbackDefaults = {
-  welcome_bps: number;
   returning_bps: number;
   small_bonus_bps: number;
 };
@@ -31,7 +31,6 @@ export type CashbackDefaults = {
 function readDefaults(d: Partial<CashbackDefaults> | null | undefined): CashbackDefaults | null {
   if (!d) return null;
   return {
-    welcome_bps: Number(d.welcome_bps ?? 0),
     returning_bps: Number(d.returning_bps ?? 0),
     small_bonus_bps: Number(d.small_bonus_bps ?? 1000),
   };
@@ -55,9 +54,9 @@ export async function getVoucherPrices(): Promise<ActionResult<VoucherPrices>> {
 
 /** MESITA-4700: save the cashback defaults every place without its own lines reads. */
 export async function saveCashbackDefaults(d: CashbackDefaults): Promise<ActionResult<{ cashback_defaults: CashbackDefaults }>> {
-  // The two lines only; the server writes both VIP rates 0 (MESITA-5072).
+  // The one rate only; the server writes Welcome and both VIP rates 0
+  // (MESITA-5072, MESITA-5124).
   const r = await efInvoke<{ cashback_defaults: CashbackDefaults }>("admin-web-save-cashback-defaults", {
-    welcome_bps: d.welcome_bps,
     returning_bps: d.returning_bps,
   });
   if (!r.ok) return { ok: false, error: r.error };

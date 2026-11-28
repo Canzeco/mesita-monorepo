@@ -68,11 +68,12 @@ Deno.test("Stripe gets yen and Chilean pesos in whole units; the ledger keeps hu
   // MESITA-4764: the place's pick wins over the default.
   assertEquals(voucherBonusCents("voucher_5000", "mxn", { voucher_5000: 6000 }), 3_000_00);
   assertEquals(voucherBonusCents("voucher_200", "mxn", { voucher_5000: 6000 }), 20_00);
-  // VIP is back (MESITA-4640): MX$100 → +100%. Welcome is back
-  // (MESITA-4645): MX$100 → +100%, its bonus in 3 hours.
+  // VIP is back (MESITA-4640): MX$100 → +100%. Welcome (MESITA-5124):
+  // MX$100 → +30%, or +60% where the place picks it; its bonus in 3 hours.
   assertEquals(voucherBonusCents("voucher_vip"), 100_00);
   assertEquals(VOUCHER_CATALOG.voucher_vip.available_after_sec, 10800);
-  assertEquals(voucherBonusCents("voucher_welcome"), 100_00);
+  assertEquals(voucherBonusCents("voucher_welcome"), 30_00);
+  assertEquals(voucherBonusCents("voucher_welcome", "mxn", { voucher_welcome: 6000 }), 60_00);
   assertEquals(voucherPriceCents("voucher_welcome"), 100_00);
   assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 10800);
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
@@ -88,5 +89,6 @@ Deno.test("the Home tile's line is the best bonus among what the place sells (ME
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_5000"]), 30);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_5000"], { voucher_5000: 6000 }), 60);
   assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_vip"]), 100);
-  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 100);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 30);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_welcome"], { voucher_welcome: 6000 }), 60);
 });

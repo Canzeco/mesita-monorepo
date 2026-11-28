@@ -631,10 +631,11 @@ export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "paymen
 }
 
 /** The lines by a cashback entry's `reason` (MESITA-4766), in Pato's four
- *  tier names since MESITA-4789. */
+ *  tier names since MESITA-4789. ONE LINE SINCE MESITA-5124: every new
+ *  entry's reason is "returning" and reads plain "Cashback", a first bill
+ *  included; the three below name entries from before. */
 export const BACK_LINE_LABEL: Record<string, string> = {
   welcome: "Welcome Visit",
-  returning: "Returning Visit",
   welcome_vip: "VIP Welcome Visit",
   returning_vip: "VIP Returning Visit",
 };
