@@ -1,5 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { useSession } from "@/features/auth";
 
@@ -135,17 +135,20 @@ export function useShareCode(): string | null {
 export function usePlaceSearch(input: string, sessionToken: string, member: boolean, origin: Point | null) {
   const term = input.trim();
   const [idleMs, setIdleMs] = useState(1000);
-  // The rested term belongs to one search session: a new session starts empty.
+  // A rested term carries the session it was typed in. A renewed token (a
+  // pick, an open, a clear) applies from the next keystroke: the open term
+  // is never searched again, as on the web.
   const [rested, setRested] = useState({ term, token: sessionToken });
+  const rest = useEffectEvent(() => setRested({ term, token: sessionToken }));
   useEffect(() => {
-    const id = setTimeout(() => setRested({ term, token: sessionToken }), idleMs);
+    const id = setTimeout(rest, idleMs);
     return () => clearTimeout(id);
-  }, [term, sessionToken, idleMs]);
-  const settled = rested.token === sessionToken ? rested.term : "";
+  }, [term, idleMs]);
+  const settled = rested.term;
   const query = useQuery({
-    queryKey: ["place-search", settled, sessionToken],
+    queryKey: ["place-search", settled, rested.token],
     queryFn: async ({ signal }) => {
-      const answer = await suggestPlaces(settled, sessionToken, origin, signal);
+      const answer = await suggestPlaces(settled, rested.token, origin, signal);
       if (answer.idleSec !== null) setIdleMs(Math.round(answer.idleSec * 1000));
       return answer.rows;
     },
@@ -153,7 +156,7 @@ export function usePlaceSearch(input: string, sessionToken: string, member: bool
     // The last rows stay while the next search runs, but never across a
     // search that ended (a pick or a clear empties the list, as on the web).
     placeholderData: (previous, previousQuery) =>
-      previousQuery?.queryKey[2] === sessionToken && term.length >= 2 ? previous : undefined,
+      previousQuery?.queryKey[2] === rested.token && term.length >= 2 ? previous : undefined,
   });
   // Waiting out the idle counts as searching (the web's spinner shows at once).
   return { ...query, waiting: term.length >= 2 && term !== settled };

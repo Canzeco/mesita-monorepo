@@ -722,8 +722,9 @@ function PinName({ pin, selected }: { pin: Pin; selected: boolean }) {
       anchor={{ x: 0, y: 0.5 }}
       tracksViewChanges={false}
       tappable={false}
-      // Under every pin, so a tap on Android reaches the pin, never the name.
-      zIndex={9}
+      // Android names take taps, so they sit under every pin there; on iPhone
+      // they take none and float above, as the web's do.
+      zIndex={Platform.OS === "ios" ? (selected ? 201 : 12) : 9}
     >
       <View style={[styles.nameBox, { width, height: 16 }]} pointerEvents="none">
         {HALO.map(([x, y]) => (
