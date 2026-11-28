@@ -136,8 +136,20 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
     >
       {/* The Pay tab's QR (MESITA-5116): cashback is earned paying by QR. */}
       <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      Cashback {back}%
+      <CashbackWords pct={back} />
     </p>
+  );
+}
+
+/** "Cashback" then the percent in a small black box, white type (Pato,
+ *  2026-11-28, MESITA-5119: "put the 5% or x% in a black box white
+ *  letters"). Home's photo box and Search's green cell. */
+function CashbackWords({ pct }: { pct: number }) {
+  return (
+    <>
+      Cashback
+      <span className="rounded bg-neutral-950 px-1.5 py-0.5 leading-none text-white tabular-nums">{pct}%</span>
+    </>
   );
 }
 
@@ -306,7 +318,11 @@ export function PlaceBannerRow({
             ) : (
               <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
             )}
-            {offerBannerWord(slides, cashbackPct)}
+            {cashbackPct && cashbackPct > 0 ? (
+              <CashbackWords pct={cashbackPct} />
+            ) : (
+              offerBannerWord(slides, cashbackPct)
+            )}
           </PushLink>
         ),
       )}
