@@ -748,7 +748,10 @@ export function CatalogRails() {
       open={menuOpen}
       onClose={() => setMenuOpen(false)}
       lead={chips.filter((c) => c.key === SOCIAL_CHIP).map((c) => pill(c, true))}
-      specials={chips.filter((c) => isSpecial(c.key) && c.key !== SOCIAL_CHIP).map((c) => pill(c, true))}
+      // Saved alone, between two lines (MESITA-5131); an anonymous visitor
+      // has no Saved, so no group and no line.
+      saved={chips.some((c) => c.key === SAVED_CHIP) ? chips.filter((c) => c.key === SAVED_CHIP).map((c) => pill(c, true)) : undefined}
+      specials={chips.filter((c) => isSpecial(c.key) && c.key !== SOCIAL_CHIP && c.key !== SAVED_CHIP).map((c) => pill(c, true))}
     >
       {chips.filter((c) => !isSpecial(c.key)).map((c) => pill(c, true))}
     </CategoriesModal>

@@ -17,10 +17,14 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 // not 4"). CIRCLES, NOT WIDE TILES (Pato, MESITA-4469: "those three top
 // special buttons must be circles not squares"): the same circle and the
 // name under it as every family. The wide tiles (MESITA-4419) are gone.
+/** The upright line between two groups of special circles. */
+const GROUP_LINE = "bg-border mx-1.5 my-1 w-px shrink-0";
+
 export function CategoriesModal({
   open,
   onClose,
   lead,
+  saved,
   specials,
   children,
 }: {
@@ -28,8 +32,10 @@ export function CategoriesModal({
   onClose: () => void;
   /** Social, its own group at the left (Home only). */
   lead?: ReactNode;
-  /** Saved, Nearby and Popular as circles, the same as the families
-   *  (no Saved for an anonymous visitor). */
+  /** Saved, its own group after Social (Home only; none for an anonymous
+   *  visitor). */
+  saved?: ReactNode;
+  /** Nearby and Popular as circles, the same as the families. */
   specials: ReactNode;
   /** The family tiles, drawn by Home's row so both look the same. */
   children: ReactNode;
@@ -66,12 +72,18 @@ export function CategoriesModal({
             last columns. Search has no lead: its specials stay centred. */}
         {/* TOGETHER (Pato, 2026-11-23, MESITA-4820: "more together these 4"):
             Social, its line and the specials sit side by side, centred. */}
+        {/* THREE GROUPS (Pato, 2026-11-28, MESITA-5131: "divide this with
+            other line. Social | Saved | Nearby Popular. Fams below"): Saved
+            is its own group, the same upright line after it as after Social.
+            A group that is absent brings no line. */}
         <div
           className="flex shrink-0 justify-center px-1.5 pt-3 [&>button]:w-16 [&>button]:shrink-0"
           data-places-menu-specials
         >
           {lead}
-          {lead ? <span aria-hidden className="bg-border mx-1.5 my-1 w-px shrink-0" /> : null}
+          {lead ? <span aria-hidden className={GROUP_LINE} /> : null}
+          {saved}
+          {saved ? <span aria-hidden className={GROUP_LINE} /> : null}
           {specials}
         </div>
         <hr className="border-border mx-5 mt-3 shrink-0" data-places-menu-divider />
