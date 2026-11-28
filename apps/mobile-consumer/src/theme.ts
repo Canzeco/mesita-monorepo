@@ -169,7 +169,8 @@ export const type = {
   code: { ...text.lg, fontWeight: weight.normal, letterSpacing: 9 },
   /** The word Mesita. */
   wordmark: { fontFamily: "Outfit", fontSize: 30, lineHeight: 34, fontWeight: "700", letterSpacing: -0.9 },
-  coverWordmark: { fontFamily: "Outfit", fontSize: 24, lineHeight: 28, fontWeight: "700", letterSpacing: -0.7 },
+  /** The cover's wordmark: text-2xl leading-none tracking-[-0.03em]. */
+  coverWordmark: { fontFamily: "Outfit", fontSize: 24, lineHeight: 24, fontWeight: "700", letterSpacing: -0.72 },
 } as const;
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
