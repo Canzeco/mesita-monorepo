@@ -3,7 +3,7 @@
 // middleware's sign-in wall and route handlers read these, never a typed
 // path, so they cannot drift into stringly-typed mismatches (MESITA-3642).
 //
-// The live app is the bar (Home · Search · Pay · Me), the place
+// The live app is the bar (Home · Search · Pay · Bookings · Me), the place
 // screen, reservations, and the money objects under Pay and Wallet. ROUTE_MAP below says, once, how each screen opens, which tab
 // it lights, where the bar shows and where Back lands (MESITA-3646).
 // Every address that shipped and no longer renders a page lives only in
@@ -11,7 +11,7 @@
 //
 // THE WORDS (MESITA-4013). An address is written in these and no others:
 //
-//   tab     one of the bar's four: Home · Search · Pay · Me. Never
+//   tab     one of the bar's five: Home · Search · Pay · Bookings · Me. Never
 //           the bill: `tab` is that thing's wire name only (pay_tabs, the
 //           EF bodies, `tabId` in props).
 //   page    a screen pushed over the one it was opened from; it has Back.
@@ -494,8 +494,8 @@ export function placeGooglePath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-/** The bar's tabs: Home · Search · Pay · Me (MESITA-4199). */
-export type ConsumerTab = "home" | "search" | "pay" | "me";
+/** The bar's tabs: Home · Search · Pay · Bookings · Me (MESITA-5055). */
+export type ConsumerTab = "home" | "search" | "pay" | "bookings" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -559,13 +559,13 @@ export const ROUTE_MAP = {
   placeReport: row("/place/:id/report", "home", "page", "place", false),
   placeUpgrade: row("/place/:id/upgrade", "home", "page", "place", false),
   placeMenu: row("/place/:id/menu/:menuId", "home", "page", "place", false),
-  // A reservation is reached from a place and from Me › Reservations; it
-  // lights Me, whose list is where it lands back (MESITA-3855).
-  reservation: row("/reservation/:id", "me", "panel", "meReservations"),
+  // A reservation is reached from a place and from Bookings; it lights
+  // Bookings, whose list is where it lands back (MESITA-5055; Me before).
+  reservation: row("/reservation/:id", "bookings", "panel", "meReservations"),
   // Move your table (MESITA-4113). Cancel stays a confirm on the reservation.
   reservationReschedule: row(
     "/reservation/:id/reschedule",
-    "me",
+    "bookings",
     "page",
     "reservation",
     false,
@@ -627,9 +627,13 @@ export const ROUTE_MAP = {
   meGift: row("/me/gift", "me", "page", "me"),
   // Activity's chips as Me's pages (MESITA-3855).
   meNotifications: row("/me/notifications", "me", "page", "me"),
-  meReservations: row("/me/reservations", "me", "page", "me"),
+  // BOOKINGS IS A BAR TAB (MESITA-5055, Pato 2026-11-27: "add reservations
+  // to the bottom menu, since its one of the main value propositions ...
+  // you can call it booking"): the reservations list keeps its address and
+  // becomes a tab root, between Pay and Me. A page under Me before.
+  meReservations: row("/me/reservations", "bookings", "tab", null),
   // Reservations' Past half (MESITA-3888): the same page, its chip picked.
-  meReservationsPast: row("/me/reservations/past", "me", "page", "me"),
+  meReservationsPast: row("/me/reservations/past", "bookings", "tab", null),
   meTickets: row("/me/tickets", "me", "page", "me"),
   // One kind of ticket, /me/tickets/<kind>: the same page, chip picked.
   meTicketsKind: row("/me/tickets/:kind", "me", "page", "me"),
@@ -691,6 +695,15 @@ export function barShowsOn(pathname: string): boolean {
   return id ? ROUTE_MAP[id].bar : true;
 }
 
+/** Each tab's own screen, the one its bar item opens. */
+const TAB_ROOT: Record<ConsumerTab, RouteId> = {
+  home: "home",
+  search: "search",
+  pay: "pay",
+  bookings: "meReservations",
+  me: "me",
+};
+
 /** Where Back lands when nothing of ours is under this screen: its parent
  *  row, the tab it lights, or Home. A param in the parent's pattern takes
  *  the same-named param of this pathname (Reserve → its place). */
@@ -698,7 +711,7 @@ export function parentHref(pathname: string): string {
   const id = routeFor(pathname);
   if (!id) {
     const tab = tabFor(pathname);
-    return tab ? routeHref(tab === "home" ? "home" : tab) : routeHref("home");
+    return tab ? routeHref(TAB_ROOT[tab]) : routeHref("home");
   }
   const parent = ROUTE_MAP[id].parent as RouteId | null;
   if (!parent) return routeHref("home");

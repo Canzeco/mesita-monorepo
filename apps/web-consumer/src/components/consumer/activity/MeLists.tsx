@@ -341,9 +341,12 @@ export function ReservationsPage() {
     // FLUSH (Pato, 2026-11-21, MESITA-4608: "i don't want a reservations
     // tickets inside a box. just a line dividing"): no page margin, no box.
     <MeScreen
-      title="Reservations"
+      // Named as its bar tab (MESITA-5055).
+      title="Bookings"
       flush
       bare
+      // A BAR TAB'S ROOT (MESITA-5055): no Back, as Pay and Me have none.
+      noBack
       // A CALENDAR SHORTCUT, TOP RIGHT (MESITA-4330, Pato: "top right, add
       // shortcut to go to calendar"): Back's white square with one plain
       // ink calendar icon, opening Me › Integrations › Calendar. Never the
