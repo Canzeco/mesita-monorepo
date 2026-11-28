@@ -434,8 +434,8 @@ function RailCard({
     <View style={[styles.card, { width }, on && styles.cardOn]}>
       {place.isPremier ? (
         <View style={styles.premier}>
-          <PremierSeal size={16} color={colors.onInk} check={colors.vip} />
-          <Text role="label" tone="onVip">Premier</Text>
+          <PremierSeal size={16} color={colors.onInk} check={colors.ink} />
+          <Text role="label" tone="onInk">Premier</Text>
         </View>
       ) : null}
       {place.reservable ? (
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: colors.vip,
+    backgroundColor: colors.ink,
   },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
   name: { flexShrink: 1 },
