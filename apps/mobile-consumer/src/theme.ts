@@ -17,19 +17,19 @@ export const colors = {
   vip: "#e9c46a",
   onVip: "#141414",
 
-  prepay: "#00d66f",
-  onPrepay: "#0a0a0a",
+  prepay: "#635bff",
+  onPrepay: "#ffffff",
   /** Prepay bonus circles, darker as the percent rises. */
-  bonus60: "#00a854",
-  bonus20: "#85edb6",
-  bonusLow: "#d3f8e2",
+  bonus60: "#352cb8",
+  bonus20: "#bdb9ff",
+  bonusLow: "#e6e4ff",
   /** Pay percent boxes, darker as the percent rises. */
-  pay10: "#bdb9ff",
-  payLow: "#e6e4ff",
+  pay10: "#85edb6",
+  payLow: "#d3f8e2",
   /** Pay's Accepts Credits Yes, the web's blue box. */
   creditsYes: "#bfdbfe",
-  pay: "#635bff",
-  onPay: "#ffffff",
+  pay: "#00d66f",
+  onPay: "#0a0a0a",
 
   /** A place card's facts. Open wears the price's green. */
   price: "#008236",

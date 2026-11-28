@@ -308,7 +308,7 @@ export function TicketActions({
         href={primary.href}
         className={cn(
           "flex h-11 flex-1 items-center justify-center rounded-full text-sm font-semibold transition",
-          primary.pay ? "bg-[#635BFF] text-white hover:bg-[#5249e6]" : "bg-foreground text-background hover:opacity-90",
+          primary.pay ? "bg-[#00D66F] text-neutral-950 hover:bg-[#00c265]" : "bg-foreground text-background hover:opacity-90",
         )}
       >
         {primary.label}
