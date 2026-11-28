@@ -889,14 +889,14 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
  *  the cashback it earns. What a guest earned stays on the Loyalty Card and
  *  Tickets. */
 // PREPAID · PAY · POST (Pato, 2026-11-27, MESITA-5083): the tab says
-// Prepaid (the Pay page's tile says Prepay Credits), and Post says Soon
+// Prepay (MESITA-5087; the Pay page's tile says Prepay Credits), and Post says Soon
 // until the Story Reward ships (MESITA-5073).
 export type OffersTab = "prepay" | "pay" | "post";
 
 // THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay the discount badge (MESITA-4844; the wallet, credit
 // loaded ahead, before), Pay a receipt (the bill).
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { id: "prepay", word: "Prepaid", Icon: Percent },
+  { id: "prepay", word: "Prepay", Icon: Percent },
   { id: "pay", word: "Pay", Icon: ReceiptIcon },
   { id: "post", word: "Post", Icon: Camera },
 ];
