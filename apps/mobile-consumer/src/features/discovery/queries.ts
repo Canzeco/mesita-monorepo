@@ -135,13 +135,15 @@ export function useShareCode(): string | null {
 export function usePlaceSearch(input: string, sessionToken: string, member: boolean, origin: Point | null) {
   const term = input.trim();
   const [idleMs, setIdleMs] = useState(1000);
-  const [settled, setSettled] = useState(term);
+  // The rested term belongs to one search session: a new session starts empty.
+  const [rested, setRested] = useState({ term, token: sessionToken });
   useEffect(() => {
-    const id = setTimeout(() => setSettled(term), idleMs);
+    const id = setTimeout(() => setRested({ term, token: sessionToken }), idleMs);
     return () => clearTimeout(id);
-  }, [term, idleMs]);
+  }, [term, sessionToken, idleMs]);
+  const settled = rested.token === sessionToken ? rested.term : "";
   const query = useQuery({
-    queryKey: ["place-search", settled],
+    queryKey: ["place-search", settled, sessionToken],
     queryFn: async ({ signal }) => {
       const answer = await suggestPlaces(settled, sessionToken, origin, signal);
       if (answer.idleSec !== null) setIdleMs(Math.round(answer.idleSec * 1000));
@@ -150,7 +152,8 @@ export function usePlaceSearch(input: string, sessionToken: string, member: bool
     enabled: member && settled.length >= 2,
     // The last rows stay while the next search runs, but never across a
     // search that ended (a pick or a clear empties the list, as on the web).
-    placeholderData: (previous) => (term.length >= 2 && settled.length >= 2 ? previous : undefined),
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[2] === sessionToken && term.length >= 2 ? previous : undefined,
   });
   // Waiting out the idle counts as searching (the web's spinner shows at once).
   return { ...query, waiting: term.length >= 2 && term !== settled };

@@ -400,7 +400,8 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     renew();
     field.current?.blur();
     if (row.mesitaId) {
-      setAnchor({ id: row.mesitaId, point, card: own ?? row.card ?? stubOf(row, point) });
+      const ownCard = own && own.lat !== null && own.lng !== null ? own : null;
+      setAnchor({ id: row.mesitaId, point, card: ownCard ?? row.card ?? stubOf(row, point) });
       setChosen(row.mesitaId);
     }
     moveTo(point, region);
@@ -455,7 +456,13 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
           named.has(pin.id) && pin.name ? <PinName key={`name-${pin.id}`} pin={pin} selected={pin.id === picked.id} /> : null,
         )}
         {you ? (
-          <Marker coordinate={{ latitude: you.lat, longitude: you.lng }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false} zIndex={100}>
+          <Marker
+            coordinate={{ latitude: you.lat, longitude: you.lng }}
+            anchor={{ x: 0.5, y: 0.5 }}
+            tracksViewChanges={false}
+            tappable={false}
+            zIndex={100}
+          >
             <View style={[styles.disc, styles.you]} />
           </Marker>
         ) : null}
@@ -570,7 +577,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
               contentOffset={{ x: page, y: 0 }}
               contentContainerStyle={styles.railContent}
               onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.x)}
-              onScrollEndDrag={(e) => settle(e.nativeEvent.contentOffset.x)}
+              onScrollEndDrag={(e) => settle(e.nativeEvent.targetContentOffset?.x ?? e.nativeEvent.contentOffset.x)}
             >
               {/* Page 0: the Add card, off-screen left while the rail rests on place one. */}
               <View style={[styles.pageBox, { width: page }]}>
@@ -715,7 +722,8 @@ function PinName({ pin, selected }: { pin: Pin; selected: boolean }) {
       anchor={{ x: 0, y: 0.5 }}
       tracksViewChanges={false}
       tappable={false}
-      zIndex={selected ? 201 : 12}
+      // Under every pin, so a tap on Android reaches the pin, never the name.
+      zIndex={9}
     >
       <View style={[styles.nameBox, { width, height: 16 }]} pointerEvents="none">
         {HALO.map(([x, y]) => (
