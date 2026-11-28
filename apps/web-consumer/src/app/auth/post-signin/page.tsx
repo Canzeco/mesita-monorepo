@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { decodeShareClaim, SHARE_COOKIE } from "@/lib/share-code";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiConsumerSigninPhone } from "@/lib/api/auth";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -43,7 +45,9 @@ export default async function PostSigninPage({
     ReturnType<typeof apiConsumerSigninPhone>
   > | null = null;
   try {
-    consumerResult = await apiConsumerSigninPhone(supabase);
+    // MESITA-5060: the share link this browser opened, if any.
+    const share = decodeShareClaim((await cookies()).get(SHARE_COOKIE)?.value);
+    consumerResult = await apiConsumerSigninPhone(supabase, share);
   } catch (err) {
     console.error(
       "[post-signin] consumer-signin-phone:",

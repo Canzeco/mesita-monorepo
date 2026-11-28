@@ -26,6 +26,7 @@ import {
   type ConsumerProfile,
 } from "@/lib/api/profile";
 import { ConsumerIdentityProvider } from "@/lib/identity-context";
+import { ShareLinkTracker } from "@/components/consumer/share/ShareLinkTracker";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import {
   CONSUMER_ROUTES,
@@ -205,6 +206,7 @@ export default async function ConsumerShellLayout({
         profile={profile}
         viewer={viewer}
       >
+        <ShareLinkTracker />
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {/* A ticket left open, on every screen with the bar (MESITA-3906),
               at the very top of the app above every header (MESITA-4069,

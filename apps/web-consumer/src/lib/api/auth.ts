@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import type { ShareClaim } from "@/lib/share-code";
 
 type AppRole = "consumer" | "staff" | "business" | "admin";
 
@@ -22,13 +23,16 @@ type ConsumerSigninResult = {
   onboarded: boolean;
 };
 
+/** `share`: the share link this browser opened (MESITA-5060); a new account
+ *  is credited to it once. */
 export async function apiConsumerSigninPhone(
   client: SupabaseClient,
+  share: ShareClaim | null = null,
 ): Promise<ConsumerSigninResult> {
   return invokeEF<ConsumerSigninResult>(
     client,
     "consumer-web-signin-phone",
-    {},
+    share ? { share } : {},
   );
 }
 

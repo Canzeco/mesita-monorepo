@@ -1,5 +1,6 @@
 import { apiTrackPlaceShare } from "@/lib/api/place-share";
 import { placeHref } from "@/lib/place-route";
+import { withShareCode } from "@/lib/share-code";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 
@@ -22,10 +23,12 @@ import { toast } from "@/lib/toast";
 // to a sheet that opened (MESITA-2561 showed "Link copied" and "Couldn't
 // share" at once).
 //
-// THE URL CARRIES THE PLACE AND NOTHING ELSE. No coordinates, no session
-// token, no referrer id — `/place/[id]` is already the canonical public
-// address and already renders for a signed-out visitor via its hard route.
-// Appending the guest's location to a link they are about to hand someone
+// THE URL CARRIES THE PLACE AND THE GUEST'S SHARE CODE, NOTHING ELSE.
+// `/place/[id]` is the canonical public address and renders for a signed-out
+// visitor via its hard route. `?s=<code>` (MESITA-5060, share-code.ts) is an
+// opaque code that counts the opens and new guests a share brings; it is not
+// the member number and names nobody. No coordinates, no session token:
+// appending the guest's location to a link they are about to hand someone
 // else is the one way this helper could leak something.
 
 /** True when the platform can open a native share sheet (for this data). */
@@ -46,7 +49,7 @@ export function canShareNatively(data?: ShareData): boolean {
 function placeShareUrl(idOrSlug: string): string {
   const path = placeHref(idOrSlug);
   if (typeof window === "undefined") return path;
-  return new URL(path, window.location.origin).toString();
+  return withShareCode(new URL(path, window.location.origin).toString());
 }
 
 /** The pre-Clipboard-API copy: a hidden textarea and `execCommand`.
