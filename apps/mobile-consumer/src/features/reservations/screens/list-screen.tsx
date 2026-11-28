@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack } from "expo-router";
-import { Pressable, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { ErrorState } from "@/components/error-state";
-import { Icon } from "@/components/icon";
+import { HeaderButton } from "@/components/header";
 import { Skeleton } from "@/components/skeleton";
 import { useErrorCopy } from "@/lib/error-copy";
 import { colors } from "@/theme";
@@ -23,11 +23,7 @@ export function ReservationsScreen({ onOpen, onFind, onCalendar, half, onHalf }:
       {onCalendar ? (
         <Stack.Screen
           options={{
-            headerRight: () => (
-              <Pressable accessibilityRole="button" accessibilityLabel="Calendar" onPress={onCalendar} hitSlop={8}>
-                <Icon strokeWidth={2.25} name="calendar" size={22} />
-              </Pressable>
-            ),
+            headerRight: () => <HeaderButton icon="calendar" label="Calendar" onPress={onCalendar} />,
           }}
         />
       ) : null}

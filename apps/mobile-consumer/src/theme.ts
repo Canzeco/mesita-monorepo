@@ -5,6 +5,8 @@ import { BRAND } from "@/generated/brand";
 export const colors = {
   page: "#f2f2f2",
   paper: "#ffffff",
+  /** The bottom bar's ground: the web's bg-card/95. */
+  bar: "rgba(255, 255, 255, 0.95)",
   fill: "#efefef",
 
   ink: "#171717",
