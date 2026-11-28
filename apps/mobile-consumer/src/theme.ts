@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 import { BRAND } from "@/generated/brand";
 
 // Tokens, light only, named by meaning. Values are the web guest app's
@@ -16,6 +18,8 @@ export const colors = {
 
   reserve: "#da3743",
   danger: "#e6000c",
+  /** The web's bg-destructive/10: the red no-location box. */
+  dangerSoft: "rgba(230, 0, 12, 0.1)",
   vip: "#e9c46a",
   onVip: "#141414",
 
@@ -32,6 +36,15 @@ export const colors = {
   creditsYes: "#bfdbfe",
   pay: "#00d66f",
   onPay: "#0a0a0a",
+  /** Home's photo: the black box Prepay and Pay sit in (MESITA-5125), and
+   *  the Premier pill's edge and seal. */
+  offerBox: "#141414",
+  /** The percent's small black box on an offer (MESITA-5128). */
+  percentBox: "#0a0a0a",
+  /** Ink on the Premier gold (the web's text-neutral-950). */
+  onPremier: "#0a0a0a",
+  /** The temporary score label's ground (black at 70%). */
+  scoreScrim: "rgba(0, 0, 0, 0.7)",
 
   /** A place card's facts. Open wears the price's green. */
   price: "#008236",
@@ -120,8 +133,14 @@ export const searchMapStyle = [
 
 const fontFamily = "Inter";
 
+/** The web's font-mono: the system's monospace face. */
+export const fontMono = Platform.select({ ios: "Menlo", default: "monospace" });
+
 /** The web's weights: font-normal, font-semibold, font-bold. No medium. */
 export const weight = { normal: "400", semibold: "600", bold: "700" } as const;
+
+/** The web's leading classes, as a ratio: multiply by the font size. */
+export const leading = { tight: 1.25, snug: 1.375, relaxed: 1.625 } as const;
 
 /** The web's tracking classes, in em: multiply by the font size. */
 export const tracking = { tight: -0.025, eyebrow: 0.14 } as const;
@@ -170,7 +189,7 @@ export const type = {
   numeric: { ...text.base, fontWeight: weight.semibold, fontVariant: ["tabular-nums"] },
   code: { ...text.lg, fontWeight: weight.normal, letterSpacing: 9 },
   /** The word Mesita. */
-  wordmark: { fontFamily: "Outfit", fontSize: 30, lineHeight: 34, fontWeight: "700", letterSpacing: -0.9 },
+  wordmark: { fontFamily: "Outfit", fontSize: 30, lineHeight: 30, fontWeight: "700", letterSpacing: -0.9 },
   /** The cover's wordmark: text-2xl leading-none tracking-[-0.03em]. */
   coverWordmark: { fontFamily: "Outfit", fontSize: 24, lineHeight: 24, fontWeight: "700", letterSpacing: -0.72 },
 } as const;

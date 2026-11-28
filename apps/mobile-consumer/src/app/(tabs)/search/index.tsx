@@ -9,7 +9,7 @@ export default function Route() {
   return (
     <SearchScreen
       onChooseLocation={() => router.push("/location")}
-      onMenu={() => router.push("/categories")}
+      onMenu={() => router.push({ pathname: "/categories", params: { from: "search" } })}
       onOpen={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
       onReserve={(id) => router.push({ pathname: "/reserve/[placeId]", params: { placeId: id } })}
       onAdd={() => router.push("/place/add")}

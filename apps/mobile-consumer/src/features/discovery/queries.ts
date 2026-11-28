@@ -38,7 +38,7 @@ export function useCatalog(location: ActiveLocation | null, chip: ChipKey) {
   const question = questionOf(chip);
   const query = useInfiniteQuery({
     queryKey: discoveryKeys.catalog(location, chip),
-    enabled: location !== null && chip !== "saved",
+    enabled: location !== null && chip !== "saved" && chip !== "social",
     initialPageParam: { page: 0, rank: null } as PageParam,
     queryFn: async ({ pageParam, signal }): Promise<Page> => {
       const point = location as Point;
@@ -55,7 +55,18 @@ export function useCatalog(location: ActiveLocation | null, chip: ChipKey) {
         ? { page: page + 1, rank: last.rank }
         : undefined,
   });
-  return { ...query, places: uniquePlaces(query.data?.pages.map((p) => p.places) ?? []) };
+  return {
+    ...query,
+    places: uniquePlaces(query.data?.pages.map((p) => p.places) ?? []),
+    /** The first page's rank: ad slots, lanes, the pre-shuffle order, the score switch. */
+    rank: query.data?.pages[0]?.rank ?? null,
+  };
+}
+
+/** The last rank a chip got, read from the cache only: never a fetch. */
+export function useCachedRank(location: ActiveLocation | null, chip: ChipKey): CatalogRank | null {
+  const client = useQueryClient();
+  return client.getQueryData<{ pages: Page[] }>(discoveryKeys.catalog(location, chip))?.pages[0]?.rank ?? null;
 }
 
 /** The map's places and its extra pins, for the families that are on. */

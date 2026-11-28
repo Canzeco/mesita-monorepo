@@ -3,13 +3,61 @@ import { z } from "zod";
 import { callEdge } from "@/lib/edge";
 
 import type { Question } from "./families";
-import type { CatalogPlace, Point } from "./model";
+import type { OfferInput } from "@/generated/shared/lib/offers";
+
+import type { Area, CatalogPlace, Point } from "./model";
 
 // Every answer here is a tolerant reader: the id is needed, the rest may go.
 
 const text = z.string().nullish().catch(null);
 const number = z.coerce.number().nullish().catch(null);
 const orNull = <T,>(v: T | null | undefined): T | null => v ?? null;
+
+/** The web's isGoogleOnlyPlace. */
+const googleOnly = (p: { googleOnly?: boolean; from_google?: boolean }) => p.googleOnly === true || p.from_google === true;
+
+const percent = z.coerce.number().nullish().catch(null);
+
+/** A list row's offers (_shared/payments.ts ListRowOffers). */
+const offersSchema = z
+  .object({
+    sell: z.array(z.string()).catch([]),
+    cashback_pct: percent,
+    cashback_flat: z.boolean().optional().catch(undefined),
+    welcome_pct: percent,
+    returning_pct: percent,
+    voucher_pct: z.record(z.string(), z.number()).nullish().catch(null),
+  })
+  .nullish()
+  .catch(null)
+  .transform((o): OfferInput | null => o ?? null);
+
+/** The server's score parts, for the temporary score label (MESITA-4449). */
+const areaSchema = z
+  .object({
+    final: percent,
+    google: percent,
+    foursquare: z.object({ boost: percent }).nullish().catch(null),
+    signals: z.object({ popularity: percent, proximity: percent }).catch({ popularity: null, proximity: null }),
+    premierBoost: percent,
+    selectedFactor: percent,
+  })
+  .nullish()
+  .catch(null)
+  .transform(
+    (a): Area | null =>
+      a
+        ? {
+            final: orNull(a.final),
+            // Absent stays absent: the web prints no Google row then, and "n/a" for a null.
+            google: a.google,
+            foursquare: a.foursquare ? { boost: orNull(a.foursquare.boost) } : null,
+            signals: { popularity: orNull(a.signals.popularity), proximity: orNull(a.signals.proximity) },
+            premierBoost: orNull(a.premierBoost),
+            selectedFactor: orNull(a.selectedFactor),
+          }
+        : null,
+  );
 
 export const placeSchema = z
   .object({
@@ -21,9 +69,15 @@ export const placeSchema = z
     profile_photo: text,
     photos: z.array(z.string()).catch([]),
     price_level: number,
+    price_range: text,
     google_stars_overall: number,
     google_review_count: number,
+    google_rating: number,
+    google_count: number,
     hours: z.unknown().optional(),
+    open_now: z.boolean().nullish().catch(null),
+    opens_at: text,
+    closes_at: text,
     timezone: text,
     zone: text,
     distance_km: number,
@@ -33,6 +87,12 @@ export const placeSchema = z
     phone: text,
     lat: number,
     lng: number,
+    google_place_id: text,
+    googleOnly: z.boolean().optional().catch(false),
+    from_google: z.boolean().optional().catch(false),
+    offers: offersSchema,
+    area: areaSchema,
+    lane: text,
   })
   .transform(
     (p): CatalogPlace => ({
@@ -40,11 +100,17 @@ export const placeSchema = z
       slug: orNull(p.slug),
       name: p.name ?? "",
       category: p.category_label ?? p.category ?? null,
-      photo: p.profile_photo ?? p.photos[0] ?? null,
+      googleType: orNull(p.category),
+      // The web's cardPhoto: the first photo, never one for a Google-only row.
+      photo: googleOnly(p) ? null : (p.photos[0] ?? null),
       priceLevel: orNull(p.price_level),
-      rating: orNull(p.google_stars_overall),
-      reviews: orNull(p.google_review_count),
+      priceRange: orNull(p.price_range),
+      rating: p.google_rating ?? orNull(p.google_stars_overall),
+      reviews: p.google_count ?? orNull(p.google_review_count),
       hours: p.hours,
+      openNow: orNull(p.open_now),
+      opensAt: orNull(p.opens_at),
+      closesAt: orNull(p.closes_at),
       timezone: orNull(p.timezone),
       zone: orNull(p.zone),
       distanceKm: orNull(p.distance_km),
@@ -53,6 +119,12 @@ export const placeSchema = z
       reservable: p.reservations_enabled === true && (p.phone ?? "").trim() !== "",
       lat: orNull(p.lat),
       lng: orNull(p.lng),
+      googleOnly: googleOnly(p),
+      // The web's googlePlaceIdOf: the Google id, else the slug.
+      googleId: (p.google_place_id ?? p.slug)?.trim() || null,
+      offers: p.offers,
+      area: p.area,
+      lane: orNull(p.lane),
     }),
   );
 
@@ -63,6 +135,10 @@ export const rankSchema = z.object({
   adIds: ids,
   laneOf: z.record(z.string(), z.string()).catch({}),
   places: z.array(placeSchema),
+  /** The rank before the first page's shuffle, for the score label. */
+  preShuffle: z.record(z.string(), z.number()).catch({}),
+  /** Discovery's Score overlay switch (MESITA-4757); absent is on, as on the web. */
+  showScores: z.boolean().optional().catch(undefined),
 });
 export type CatalogRank = z.infer<typeof rankSchema>;
 

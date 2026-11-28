@@ -103,7 +103,8 @@ export function FeedScreen({
   onOpenPlace,
   onFix,
 }: {
-  onPlaces: () => void;
+  /** The old Places | Social row; Home's Social chip passes none (MESITA-4758). */
+  onPlaces?: () => void;
   onOpen: (item: FeedItem) => void;
   onOpenPlace: (placeId: string) => void;
   onFix: () => void;
@@ -123,7 +124,7 @@ export function FeedScreen({
   const notice = blocked ? (BLOCKED[blocked] ?? { title: "Social is not available.", body: "", fix: null }) : null;
   return (
     <View style={styles.page}>
-      <Switch onPlaces={onPlaces} social />
+      {onPlaces ? <Switch onPlaces={onPlaces} social /> : null}
       {location === undefined || query.isPending ? <Skeleton style={styles.fill} /> : null}
       {query.isError ? <ErrorState message={copy.message} offline={copy.offline} onRetry={() => void query.refetch()} /> : null}
       {notice ? (
