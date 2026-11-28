@@ -93,7 +93,7 @@ function tile(over: Partial<Place>): string {
 }
 
 describe("no passive creation: a Mesita Place is minted only on an explicit open", () => {
-  it("only the opener and the Chat tab import apiCreateProject; one file names the EF", () => {
+  it("only the opener imports apiCreateProject; one file names the EF", () => {
     const importers = appCode
       .filter((f) => f.path !== "lib/api/place-search.ts")
       .filter((f) => /\bapiCreateProject\b/.test(f.src))
@@ -101,10 +101,7 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       .sort();
     // Search no longer imports it (MESITA-2311): its second tap navigates
     // through the hook, and the opening screen creates.
-    expect(importers).toEqual([
-      "components/consumer/home/AskAiTab.tsx",
-      "lib/use-open-google-place.ts",
-    ]);
+    expect(importers).toEqual(["lib/use-open-google-place.ts"]);
     const namers = appCode
       .filter((f) => f.src.includes("consumer-web-create-place"))
       .map((f) => f.path);
