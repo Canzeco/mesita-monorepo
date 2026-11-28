@@ -424,7 +424,7 @@ function judgePrompt(pair) {
     throw new PairError("ROUTE NOT FOUND", `${base}.json is not there: ${pair} is not a pair.`, "pnpm pair /");
   }
   const sidecar = JSON.parse(readFileSync(`${base}.json`, "utf8"));
-  return readFileSync(new URL("./pair-judge.md", import.meta.url), "utf8")
+  return readFileSync(new URL("./pair-judge.txt", import.meta.url), "utf8")
     .replaceAll("{phone}", `${base}.phone.png`)
     .replaceAll("{web}", `${base}.web.png`)
     .replaceAll("{sidecar}", `${base}.json`)
