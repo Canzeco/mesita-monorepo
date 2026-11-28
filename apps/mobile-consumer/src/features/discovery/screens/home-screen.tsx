@@ -8,7 +8,6 @@ import { RemoveSaved } from "@/components/remove-saved";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
 import { useRequireAccount, useSession } from "@/features/auth";
-import { useErrorCopy } from "@/lib/error-copy";
 import { colors, radius } from "@/theme";
 
 import { FamilyStrip } from "../components/family-strip";
@@ -60,7 +59,6 @@ export function HomeScreen(nav: Nav) {
   const requireAccount = useRequireAccount();
   const onSaved = shown === "saved";
   const read = onSaved ? saved : catalog;
-  useErrorCopy(read.error);
   const { onWelcome } = nav;
 
   useEffect(() => {
@@ -108,8 +106,11 @@ export function HomeScreen(nav: Nav) {
         chip={shown}
         onChip={selectChip}
         isSaved={isSaved}
-        // Saved rows have no rank (the web's: never an ad, no score position).
+        // Saved rows have no rank (never an ad, no score position) but follow
+        // the last rank's score switch, as on the web.
         rank={onSaved ? null : catalog.rank}
+        showScores={catalog.rank?.showScores !== false}
+        more={!onSaved && catalog.hasNextPage === true}
         onSave={(place) => {
           if (!requireAccount("/")) return;
           if (isSaved(place.id)) setDrop(place);
@@ -136,6 +137,9 @@ type ViewProps = Nav & {
   onChip: (key: ChipKey) => void;
   isSaved: (id: string) => boolean;
   rank: CatalogRank | null;
+  showScores: boolean;
+  /** Another page is coming: the web's 1 pt sentinel under the last row. */
+  more: boolean;
   onSave: (place: CatalogPlace) => void;
   onShare: (place: CatalogPlace) => void;
   onGenerate: (place: CatalogPlace) => void;
@@ -196,10 +200,7 @@ function Body(props: ViewProps) {
       <EmptyState title={`Nothing in ${label} here yet`} message="Try another family, or another location." />
     );
   }
-  const { rank } = props;
-  // The score overlay follows Discovery's switch, read off the last rank;
-  // no answer yet, or an older EF: shown (the web's showScores).
-  const showScores = rank?.showScores !== false;
+  const { rank, showScores } = props;
   return (
     <FlashList
       key={props.chip}
@@ -210,7 +211,9 @@ function Body(props: ViewProps) {
       refreshControl={<RefreshControl refreshing={props.refreshing} onRefresh={props.onRefresh} />}
       onEndReached={props.onEnd}
       contentContainerStyle={styles.list}
+      contentInsetAdjustmentBehavior="automatic"
       ItemSeparatorComponent={Gap}
+      ListFooterComponent={props.more ? Sentinel : null}
       renderItem={({ item, index }) => (
         <PlaceCard
           place={item}
@@ -232,6 +235,11 @@ function Body(props: ViewProps) {
 /** One 8 pt step between rows (the web's ROW_LIST gap-2). */
 function Gap() {
   return <View style={styles.gap} />;
+}
+
+/** The web's paging sentinel: an 8 gap and a 1 pt row under the last card. */
+function Sentinel() {
+  return <View style={styles.sentinel} />;
 }
 
 /** The web's strip silhouette: seven 56-wide columns, a 44 circle over a 10 × 32 bar. */
@@ -285,6 +293,7 @@ const styles = StyleSheet.create({
   gate: { width: "100%", maxWidth: 320 },
   list: { padding: 8 },
   gap: { height: 8 },
+  sentinel: { height: 9 },
   strip: {
     flexDirection: "row",
     gap: 2,
@@ -301,7 +310,7 @@ const styles = StyleSheet.create({
   stripName: { width: 32, height: 10 },
   row: { flexDirection: "row" },
   rowGap: { marginTop: 8 },
-  photo: { flex: 1, overflow: "hidden", borderTopLeftRadius: radius["2xl"], borderBottomLeftRadius: radius["2xl"] },
+  photo: { flex: 1, overflow: "hidden", backgroundColor: colors.fill, borderTopLeftRadius: radius["2xl"], borderBottomLeftRadius: radius["2xl"] },
   square: { width: "100%", aspectRatio: 1 },
   photoFill: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: 0 },
   info: {

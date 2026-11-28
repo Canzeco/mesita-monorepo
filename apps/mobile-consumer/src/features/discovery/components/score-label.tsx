@@ -43,7 +43,7 @@ export function ScoreLabel({ area, ad, lane, rank }: { area: Area | null; ad: bo
   const head = rank ? (rank.pre !== null ? `#${rank.pre} → ${ordinal(rank.shown)}` : ordinal(rank.shown)) : null;
   const rows: [string, string][] = [
     ["Lane", (lane && LANE_NAMES[lane]) || (ad ? "Inorganic" : "Organic")],
-    ...(area.google !== null ? [["Google", scoreNumber(area.google)] as [string, string]] : []),
+    ...(area.google !== undefined ? [["Google", scoreNumber(area.google)] as [string, string]] : []),
     ...(area.foursquare ? [["Foursquare", `×${scoreNumber(area.foursquare.boost)}`] as [string, string]] : []),
     ["Popularity", scoreNumber(area.signals.popularity)],
     ["Proximity", scoreNumber(area.signals.proximity)],

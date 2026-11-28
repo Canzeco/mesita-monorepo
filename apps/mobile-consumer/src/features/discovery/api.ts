@@ -49,7 +49,8 @@ const areaSchema = z
       a
         ? {
             final: orNull(a.final),
-            google: orNull(a.google),
+            // Absent stays absent: the web prints no Google row then, and "n/a" for a null.
+            google: a.google,
             foursquare: a.foursquare ? { boost: orNull(a.foursquare.boost) } : null,
             signals: { popularity: orNull(a.signals.popularity), proximity: orNull(a.signals.proximity) },
             premierBoost: orNull(a.premierBoost),

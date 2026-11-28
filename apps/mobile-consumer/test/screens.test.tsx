@@ -49,7 +49,7 @@ const home: HomeState[] = [
 test.each(home)("Home: $kind", async (state) => {
   const view = await render(
     <HomeView state={state} location="Roma" chips={chipsFor(true, true)} chip="near" onChip={nothing}
-      isSaved={() => true} onSave={nothing} onShare={nothing} onGenerate={nothing} rank={null} refreshing={false} onRefresh={nothing} onEnd={nothing}
+      isSaved={() => true} onSave={nothing} onShare={nothing} onGenerate={nothing} rank={null} showScores more={false} refreshing={false} onRefresh={nothing} onEnd={nothing}
       onOpenPlace={nothing} onReserve={nothing} onChooseLocation={nothing} onMenu={nothing} onWelcome={nothing} />,
   );
   expect(view.toJSON()).not.toBeNull();

@@ -47,8 +47,8 @@ const styles = StyleSheet.create({
     borderRadius: radius["2xl"],
     backgroundColor: colors.inkSoft,
   },
-  // text-lg font-semibold tracking-tight; text-sm leading-relaxed (1.625), max 30ch.
+  // text-lg font-semibold tracking-tight; text-sm leading-relaxed (1.625), max 30ch (30 × Inter's 0 at 14).
   title: { marginTop: space.lg, textAlign: "center", letterSpacing: text.lg.fontSize * tracking.tight },
-  message: { marginTop: 6, maxWidth: 260, textAlign: "center", lineHeight: text.sm.fontSize * leading.relaxed },
+  message: { marginTop: 6, maxWidth: 265, textAlign: "center", lineHeight: text.sm.fontSize * leading.relaxed },
   action: { marginTop: 20 },
 });

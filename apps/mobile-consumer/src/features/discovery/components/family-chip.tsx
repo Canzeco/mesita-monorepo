@@ -36,7 +36,7 @@ export function FamilyChip({ chip, on, onPress, wide }: Props) {
 const styles = StyleSheet.create({
   chip: { minWidth: 56, alignItems: "center", gap: 2, paddingBottom: 4 },
   special: { width: 64, alignItems: "center", gap: 2, paddingBottom: 4 },
-  grid: { width: "19.4%", alignItems: "center", gap: 2, paddingBottom: 4 },
+  grid: { flex: 1, alignItems: "center", gap: 2, paddingBottom: 4 },
   /** The web's active:scale-[0.96] on every chip. */
   pressed: { transform: [{ scale: 0.96 }] },
   circle: {

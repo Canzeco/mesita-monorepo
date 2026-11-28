@@ -1,11 +1,12 @@
 import { Image } from "expo-image";
+import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Icon, PremierSeal, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
 import { colors, leading, motion, radius, text, tracking, weight } from "@/theme";
 
-import { cardOffers, factsOf, placeholderOf, type CatalogPlace } from "../model";
+import { cardOffers, factsOf, placeholderOf, type CardOffer, type CatalogPlace } from "../model";
 import { ScoreLabel, type Rank } from "./score-label";
 
 type Props = {
@@ -50,6 +51,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
         style={styles.photoBox}
       >
         <View style={styles.square} />
+        {/* Drawn first: the web's Premier pill and offer box are z-10 above it. */}
         {place.photo ? (
           <Image
             source={place.photo}
@@ -69,6 +71,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
             )}
           </View>
         )}
+        {showScores ? <ScoreLabel area={place.area ?? null} ad={ad} lane={place.lane ?? undefined} rank={rank} /> : null}
         {/* Premier at the photo's top-left, Save's width: (100% − 25) / 2
             (MESITA-5090, MESITA-5117). */}
         {place.isPremier ? (
@@ -85,15 +88,10 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
         {offers.length > 0 ? (
           <View style={styles.offerBox} pointerEvents="none" accessibilityLabel={offers.map((o) => o.words).join(", ")}>
             {offers.map((o) => (
-              <View key={o.key} style={[styles.offer, o.key === "prepay" ? styles.prepay : styles.pay]}>
-                <Text numberOfLines={1} style={[styles.offerWords, o.key === "prepay" ? styles.onPrepay : styles.onPay]}>
-                  {o.words}
-                </Text>
-              </View>
+              <OfferCell key={o.key} offer={o} />
             ))}
           </View>
         ) : null}
-        {showScores ? <ScoreLabel area={place.area ?? null} ad={ad} lane={place.lane ?? undefined} rank={rank} /> : null}
       </Pressable>
 
       <Pressable accessible={false} onPress={google ? onGenerate : onOpen} style={styles.info}>
@@ -155,7 +153,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
               accessibilityRole="button"
               accessibilityLabel={`Reserve at ${place.name}`}
               onPress={onReserve ?? onOpen}
-              style={({ pressed }) => [styles.reserve, pressed && styles.pressed]}
+              style={styles.reserve}
             >
               <Icon strokeWidth={2} name="calendar-check" size={16} color={colors.onInk} />
               <Text style={styles.reserveWord}>Reserve</Text>
@@ -178,6 +176,24 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
           )}
         </View>
       </Pressable>
+    </View>
+  );
+}
+
+/** One offer on the photo. The web's minmax(max-content, 1fr): never narrower
+ *  than its words; equal halves where both fit, else Prepay keeps its words
+ *  and Pay takes the rest. */
+function OfferCell({ offer }: { offer: CardOffer }) {
+  const [words, setWords] = useState(0);
+  const prepay = offer.key === "prepay";
+  return (
+    <View style={[styles.offer, prepay ? styles.prepay : styles.pay, words > 0 && { minWidth: Math.ceil(words) + 8 }]}>
+      <Text
+        style={[styles.offerWords, prepay ? styles.onPrepay : styles.onPay]}
+        onTextLayout={(e) => setWords(Math.max(0, ...e.nativeEvent.lines.map((l) => l.width)))}
+      >
+        {offer.words}
+      </Text>
     </View>
   );
 }

@@ -10,9 +10,12 @@ import { useActiveLocation } from "../location-context";
 
 /** Every family, five across, under the special lists: Social on its own,
  *  an upright line, then the specials (the web's CategoriesModal). */
-export function CategoriesScreen({ onClose }: { onClose: () => void }) {
+export function CategoriesScreen({ onClose, home = true }: { onClose: () => void; home?: boolean }) {
   const { chip, selectChip } = useActiveLocation();
-  const chips = chipsFor(useSession().guestId !== null, true);
+  const chips = chipsFor(useSession().guestId !== null, home);
+  const families = chips.filter((c) => !isSpecial(c.key));
+  // Rows of five equal columns, 2 apart: the web's grid-cols-5 gap-x-0.5.
+  const rows = Array.from({ length: Math.ceil(families.length / 5) }, (_, i) => families.slice(i * 5, i * 5 + 5));
   const pick = (key: ChipKey) => {
     selectChip(key);
     onClose();
@@ -25,11 +28,20 @@ export function CategoriesScreen({ onClose }: { onClose: () => void }) {
       <ScrollView>
         <View style={styles.specials}>
           {chips.filter((c) => c.key === "social").map(draw)}
-          <View style={styles.upright} />
+          {home ? <View style={styles.upright} /> : null}
           {chips.filter((c) => isSpecial(c.key) && c.key !== "social").map(draw)}
         </View>
         <View style={styles.rule} />
-        <View style={styles.grid}>{chips.filter((c) => !isSpecial(c.key)).map(draw)}</View>
+        <View style={styles.grid}>
+          {rows.map((row, i) => (
+            <View key={i} style={styles.gridRow}>
+              {row.map(draw)}
+              {Array.from({ length: 5 - row.length }, (_, j) => (
+                <View key={`pad${j}`} style={styles.cell} />
+              ))}
+            </View>
+          ))}
+        </View>
       </ScrollView>
     </Window>
   );
@@ -39,5 +51,7 @@ const styles = StyleSheet.create({
   specials: { flexDirection: "row", justifyContent: "center", paddingHorizontal: 6, paddingTop: 12 },
   upright: { width: 1, marginHorizontal: 6, marginVertical: 4, backgroundColor: colors.border },
   rule: { height: 1, marginTop: 12, marginHorizontal: 20, backgroundColor: colors.border },
-  grid: { flexDirection: "row", flexWrap: "wrap", columnGap: 2, rowGap: 12, paddingHorizontal: 6, paddingTop: 12, paddingBottom: 16 },
+  grid: { rowGap: 12, paddingHorizontal: 6, paddingTop: 12, paddingBottom: 16 },
+  gridRow: { flexDirection: "row", columnGap: 2 },
+  cell: { flex: 1 },
 });

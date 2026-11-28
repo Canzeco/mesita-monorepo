@@ -23,7 +23,7 @@ export function withDefaultLocation(stored: ActiveLocation | null): ActiveLocati
 /** The server's score parts (the temporary score label, MESITA-4449). */
 export type Area = {
   final: number | null;
-  google: number | null;
+  google?: number | null;
   foursquare: { boost: number | null } | null;
   signals: { popularity: number | null; proximity: number | null };
   premierBoost: number | null;
