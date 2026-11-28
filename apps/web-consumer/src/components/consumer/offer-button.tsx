@@ -111,11 +111,12 @@ export function listCardReservable(place: {
   return place.reservations_enabled === true && (place.phone ?? "").trim() !== "";
 }
 
-/** The green button's word (Pato, 2026-11-27, MESITA-5054: "better use Bonus
- *  instead of Off"). Every offer says Bonus. A visit discount used to say
- *  Off (MESITA-5050). */
-export function offerBannerWord(_slides: OfferSlide[]): "Bonus" {
-  return "Bonus";
+/** The green button's word (Pato, 2026-11-27, MESITA-5056: "Don't call it
+ *  Bonus, call it Prepay"). Every offer says Prepay. It said Bonus under
+ *  MESITA-5054, and Off for a visit discount under MESITA-5050. Tickets and
+ *  receipts still name the bonus amount Bonus. */
+export function offerBannerWord(_slides: OfferSlide[]): "Prepay" {
+  return "Prepay";
 }
 
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
@@ -123,10 +124,10 @@ export function offerBannerWord(_slides: OfferSlide[]): "Bonus" {
  *  / and green say icon discounts / use icons"; then "discounts in green").
  *  Nothing moves. Reservations only: one red Reserve, the full width
  *  (MESITA-5021: the left half grows from 50% to 100%). Offers only: one
- *  green Bonus, the full width (the right half grows from 50% to 100%).
- *  Both: Reserve left, Bonus right, each half. Neither: nothing, and
+ *  green Prepay, the full width (the right half grows from 50% to 100%).
+ *  Both: Reserve left, Prepay right, each half. Neither: nothing, and
  *  Save · Share stay.
- *  Reserve opens Reserve; Bonus opens the place (MESITA-4455). A live
+ *  Reserve opens Reserve; Prepay opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
  *  (MESITA-5014). The open times that rotated in Reserve (MESITA-5011) are
  *  gone from the card; the place screen keeps them. */
