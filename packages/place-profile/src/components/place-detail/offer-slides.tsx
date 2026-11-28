@@ -142,14 +142,27 @@ function OfferWords({
   short = false,
   plain = false,
   full = false,
+  bare = false,
   className,
 }: {
   slide: OfferSlide;
   short?: boolean;
   plain?: boolean;
   full?: boolean;
+  bare?: boolean;
   className?: string;
 }) {
+  // THE WORDS ALONE (Pato, 2026-11-28, MESITA-5096: "only focus on the
+  // carousel … like the offers button"; "don't mention pay nor prepay"):
+  // "5% to 10% Back", "10% to 30% Bonus" on the slide's own colour, no lead,
+  // no ink pill, no "+".
+  if (bare) {
+    return (
+      <span className={cn("absolute inset-0 flex items-center justify-center px-2", className)}>
+        <span className="truncate text-sm font-semibold tabular-nums">{slide.pillShort.replace(/\+/g, "")}</span>
+      </span>
+    );
+  }
   // THE WHOLE OFFER IN ONE LINE where there is room (Pato, 2026-11-21,
   // MESITA-4615: "if enough space, do mention the full offer: Prepay Up to
   // 30% Bonus. only in the card view"): the Loyalty Card's full-width tile
@@ -214,6 +227,7 @@ export function OfferTrack({
   short,
   plain,
   full,
+  bare,
 }: {
   slides: OfferSlide[];
   index: number;
@@ -223,6 +237,8 @@ export function OfferTrack({
   plain?: boolean;
   /** The whole offer in one line, where the tile is wide (MESITA-4615). */
   full?: boolean;
+  /** The words alone, no lead or pill: Home's photo (MESITA-5096). */
+  bare?: boolean;
 }) {
   const inCls = plain ? "offer-in-slow" : "offer-in";
   const outCls = plain ? "offer-out-slow" : "offer-out";
@@ -232,9 +248,9 @@ export function OfferTrack({
         {OFFER_SLIDE_CSS}
       </style>
       {previous !== null ? (
-        <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} plain={plain} full={full} className={outCls} />
+        <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} plain={plain} full={full} bare={bare} className={outCls} />
       ) : null}
-      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} plain={plain} full={full} className={previous !== null ? inCls : undefined} />
+      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} plain={plain} full={full} bare={bare} className={previous !== null ? inCls : undefined} />
     </span>
   );
 }

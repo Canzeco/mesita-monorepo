@@ -123,7 +123,7 @@ export function OfferDisplay({ slides }: { slides: OfferSlide[] }) {
       aria-hidden
       data-card-offer-display
     >
-      <OfferTrack slides={slides} index={live.index} previous={live.previous} short />
+      <OfferTrack slides={slides} index={live.index} previous={live.previous} bare />
     </p>
   );
 }
