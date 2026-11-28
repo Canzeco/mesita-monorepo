@@ -35,7 +35,7 @@ export type MeNav = {
 const TILES: { key: keyof MeNav; label: string; icon: IconName }[] = [
   { key: "onProfile", label: "Profile", icon: "user" },
   { key: "onClass", label: "Class", icon: "crown" },
-  { key: "onReservations", label: "Reservations", icon: "calendar" },
+  { key: "onReservations", label: "Bookings", icon: "calendar" },
   { key: "onNotifications", label: "Notifications", icon: "bell" },
   { key: "onTickets", label: "Tickets", icon: "ticket" },
   { key: "onCard", label: "Card", icon: "card" },
