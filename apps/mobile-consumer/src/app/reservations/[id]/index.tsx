@@ -10,7 +10,7 @@ export default function Route() {
     <ReservationScreen
       id={reservationId}
       onReschedule={() => router.push({ pathname: "/reservations/[id]/reschedule", params: { id: reservationId } })}
-      onList={() => router.push("/reservations")}
+      onList={() => router.navigate("/bookings")}
     />
   );
 }

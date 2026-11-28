@@ -40,7 +40,7 @@ export const ME_PAGES: readonly string[] = [
 ];
 
 /** The addresses a link may open, as patterns. */
-const PATHS = [/^\/$/, /^\/search$/, /^\/me$/, /^\/me\/(profile|class|reservations|notifications|tickets|visit|gift|credit|card|saved-card|plan|share|settings|contact|feedback|refunds|integrations|calendar|vip-code|vip-instagram|vip-agency|delete)$/, /^\/pay$/, /^\/pay\/code$/, /^\/pay\/receipt$/, /^\/location$/, /^\/open$/, /^\/sign-in$/, /^\/place\/add$/, /^\/place\/[^/]+$/, /^\/place\/[^/]+\/(menu|contact|report|offers)$/, /^\/reserve\/[^/]+$/, /^\/reservations$/, /^\/reservations\/[^/]+$/, /^\/reservations\/[^/]+\/reschedule$/, /^\/social\/person$/, /^\/social\/report$/];
+const PATHS = [/^\/$/, /^\/search$/, /^\/bookings$/, /^\/me$/, /^\/me\/(profile|class|reservations|notifications|tickets|visit|gift|credit|card|saved-card|plan|share|settings|contact|feedback|refunds|integrations|calendar|vip-code|vip-instagram|vip-agency|delete)$/, /^\/pay$/, /^\/pay\/code$/, /^\/pay\/receipt$/, /^\/location$/, /^\/open$/, /^\/sign-in$/, /^\/place\/add$/, /^\/place\/[^/]+$/, /^\/place\/[^/]+\/(menu|contact|report|offers)$/, /^\/reserve\/[^/]+$/, /^\/reservations$/, /^\/reservations\/[^/]+$/, /^\/reservations\/[^/]+\/reschedule$/, /^\/social\/person$/, /^\/social\/report$/];
 
 export function isAppPath(path: string): boolean {
   const bare = path.split(/[?#]/)[0].replace(/(.)\/$/, "$1");

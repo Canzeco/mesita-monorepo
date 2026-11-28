@@ -10,7 +10,7 @@ export default function Route() {
   const router = useRouter();
   const { selectChip } = useActiveLocation();
   const sent = (phone: string) => router.push({ pathname: "/sign-in/code", params: { phone } });
-  const go = (path: "/me/profile" | "/me/class" | "/me/reservations" | "/me/notifications" | "/me/tickets" | "/me/card" | "/me/plan" | "/me/share" | "/me/settings") =>
+  const go = (path: "/me/profile" | "/me/class" | "/me/notifications" | "/me/tickets" | "/me/card" | "/me/plan" | "/me/share" | "/me/settings") =>
     router.push(path);
   return (
     <MeScreen
@@ -18,7 +18,7 @@ export default function Route() {
       nav={{
         onProfile: () => go("/me/profile"),
         onClass: () => go("/me/class"),
-        onReservations: () => go("/me/reservations"),
+        onReservations: () => router.navigate("/bookings"),
         onNotifications: () => go("/me/notifications"),
         onTickets: () => go("/me/tickets"),
         onCard: () => go("/me/card"),

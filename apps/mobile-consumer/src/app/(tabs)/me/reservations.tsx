@@ -1,19 +1,6 @@
-import { useState } from "react";
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
 
-import { ReservationsScreen } from "@/features/reservations/screens/list-screen";
-import type { ReservationHalf } from "@/features/reservations/screens/halves";
-
+/** The list moved to the Bookings tab (MESITA-5057); old links land there. */
 export default function Route() {
-  const router = useRouter();
-  const [half, setHalf] = useState<ReservationHalf>("upcoming");
-  return (
-    <ReservationsScreen
-      half={half}
-      onHalf={setHalf}
-      onFind={() => router.push("/")}
-      onCalendar={() => router.push("/me/calendar")}
-      onOpen={(id) => router.push({ pathname: "/reservations/[id]", params: { id } })}
-    />
-  );
+  return <Redirect href="/bookings" />;
 }
