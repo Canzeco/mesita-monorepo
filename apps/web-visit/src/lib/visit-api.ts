@@ -250,9 +250,6 @@ export type TabRead = {
   cash_received_cents: number | null;
   card_bill_cents: number;
   card_tip_cents: number;
-  /** MESITA-4770: the visit discount taken off bill_cents (the printed bill);
-   *  0 or absent = none. The parts add up to bill_cents - discount_cents. */
-  discount_cents?: number;
   paid_at: string | null;
   expires_at: string;
   updated_at: string;

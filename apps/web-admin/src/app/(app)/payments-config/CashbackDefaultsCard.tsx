@@ -5,8 +5,7 @@
 // (Welcome, Returning, and Returning VIP since MESITA-4766), two picks each
 // (at most MX$1,000 a bill, MESITA-4831), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
-// win; this never touches them. MESITA-4775: and the default Visit Offer,
-// Cashback (credit back) for all four lines; Discount is gone (MESITA-5067).
+// win; this never touches them. Every line pays out as Cashback (credit back).
 
 import { useState, useTransition } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";

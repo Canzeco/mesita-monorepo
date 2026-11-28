@@ -17,7 +17,7 @@ export type OfferSlide = {
    *  and the narrow cards read it; wide pills keep `pill`. */
   pillShort: string;
   /** The place screen's chip: the word with its percent, the kind under it
-   *  (Pato, 2026-11-24, MESITA-4853): PAY 5% over DISCOUNT. */
+   *  (Pato, 2026-11-24, MESITA-4853): PAY 5% over CASHBACK. */
   stacked?: { top: string; under: string };
   /** The short word before the pill on Places 3.0's narrow card (MESITA-3671). */
   short: string;
@@ -49,34 +49,13 @@ export type OfferInput = {
     returning_vip_bps?: number;
     /** MESITA-4789: a VIP guest's first bill here. */
     welcome_vip_bps?: number;
-    visit_mechanism?: VisitMechanism;
     /** The line this guest's next bill falls in (null signed out). */
     line?: "welcome" | "welcome_vip" | "returning" | "returning_vip" | null;
   } | null;
-  /** MESITA-4770: how the visit lines pay out (a list row's field); absent
-   *  reads `cashback.visit_mechanism`, else cashback. */
-  visit_mechanism?: VisitMechanism | null;
   /** MESITA-4764: each voucher's bonus at this place in whole percent (a
    *  list row's field, the owner's pick); absent reads STANDARD_BONUS. */
   voucher_pct?: Partial<Record<string, number>> | null;
 };
-
-/** MESITA-4770: Discount (off this bill) or Cashback (credit back). */
-export type VisitMechanism = "discount" | "cashback";
-
-/** The place's visit mechanism: a list row's field, else the place
- *  screen's lines, else cashback. */
-export function visitMechanismOf(o: Pick<OfferInput, "visit_mechanism" | "cashback"> | null | undefined): VisitMechanism {
-  const m = o?.visit_mechanism ?? o?.cashback?.visit_mechanism;
-  return m === "discount" ? "discount" : "cashback";
-}
-
-/** The word after the rate: "Discount" or "Cashback" (Pato, 2026-11-23,
- *  MESITA-4777: "mention cashback or discount. back is too complex to
- *  understand"; "Back" since MESITA-4725, "Off" under MESITA-4770). */
-export function visitWord(m: VisitMechanism): "Discount" | "Cashback" {
-  return m === "discount" ? "Discount" : "Cashback";
-}
 
 /** The cashback slide's number: a list row's cashback_pct, else the place
  *  screen's lines. */
@@ -147,12 +126,6 @@ export const VOUCHER_TONE: Record<MoneyVoucherKey, string> = {
 };
 /** Every cashback line, Pay's green (MESITA-4840; blue under MESITA-4777). */
 export const CASHBACK_TONE = GREEN;
-/** Every visit discount, the same green (MESITA-4840; red under MESITA-4777). */
-export const DISCOUNT_TONE = GREEN;
-/** The visit lines' colour by mechanism. */
-export function visitTone(m: VisitMechanism): string {
-  return m === "discount" ? DISCOUNT_TONE : CASHBACK_TONE;
-}
 // THE WORDS (Pato, 2026-11-17, MESITA-4219): Classic, the best standard
 // voucher, leads; every pill reads "+N% Bonus" on every screen (the "+"
 // back, MESITA-4221). Prepay led with "+N%" before.
@@ -195,17 +168,13 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
     if (s.key === "cashback") {
       const { pct, flat } = cashbackOf(offers);
       if (pct <= 0) return [];
-      // "Cashback" or "Discount" (MESITA-4777; "Back" / "Off" before).
-      const mech = visitMechanismOf(offers);
-      const word = visitWord(mech);
+      // "Cashback" (MESITA-4777; "Back" before; Discount gone, MESITA-5076).
+      const word = "Cashback";
       // NO "UP TO" (Pato, 2026-11-23, MESITA-4781: "in pay it only applies
       // one offer"): the guest's own line, else the highest one.
       void flat;
       const words = `${pct}% ${word}`;
-      // THE NARROW PILL (Pato, 2026-11-26, MESITA-5012: "discount word is too
-      // long"): the card says "10% Off". The place screen keeps "Discount".
-      const shortWord = mech === "discount" ? "Off" : word;
-      return [{ ...s, tone: visitTone(mech), pill: words, pillShort: `${pct}% ${shortWord}`, stacked: { top: `Pay ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
+      return [{ ...s, tone: CASHBACK_TONE, pill: words, pillShort: words, stacked: { top: `Pay ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
     }
     if (s.key === "prepay")
       // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The

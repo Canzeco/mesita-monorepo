@@ -232,19 +232,13 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // MESITA-4702: the Loyalty Card carousel's green "Pay · N% Cashback"
   // slide: each place's highest cashback line where Loyalty Cards is On. A
   // failed read shows no cashback slide rather than a wrong rate.
-  // MESITA-4770: a Discount shows without Loyalty Cards; cashback and the
-  // story only where credit can be born.
   const credits = (id: string) => settingsFromRow(settingsById.get(id) ?? null).loyalty_cards === true;
   const cashbackRates = await readCashbackRatesMany(admin, balances.map((b) => b.place_id)).catch((err) => {
     console.error("[consumer-web-get-wallet] cashback", errorMessage(err));
     return new Map<string, CashbackRates>();
   });
-  // MESITA-4766: the three lines, as list rows read them; MESITA-4770: a
-  // Discount shows without Loyalty Cards, cashback only where credit is born.
-  const cashbackOf = (id: string) => {
-    const all = cashbackRates.get(id);
-    return cashbackOffer(all && (credits(id) || all.visit_mechanism === "discount") ? all : undefined);
-  };
+  // MESITA-4766: the lines, as list rows read them, only where credit is born.
+  const cashbackOf = (id: string) => cashbackOffer(credits(id) ? cashbackRates.get(id) : undefined);
   const offerRows = await withGuestOffers(
     admin,
     userId,

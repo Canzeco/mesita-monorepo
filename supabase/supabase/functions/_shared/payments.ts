@@ -17,7 +17,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { type CashbackRates, maxCashbackBps, readCashbackRatesMany, type VisitMechanism, voucherBonusFrom } from "./cashback.ts";
+import { type CashbackRates, maxCashbackBps, readCashbackRatesMany, voucherBonusFrom } from "./cashback.ts";
 import { errorMessage } from "./errors.ts";
 import { voucherBonusBps, vouchersUpToPct } from "./money.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
@@ -191,22 +191,18 @@ export type ListRowOffers = {
   returning_vip_pct: number | null;
   /** MESITA-4789: Welcome VIP, a VIP's first paid bill here. */
   welcome_vip_pct: number | null;
-  /** MESITA-4770: how the three visit lines pay out here: "discount" (off
-   *  this bill, "N% Off") or "cashback" (credit for the next visit, "N%
-   *  Back"). A discount needs no Credits Agreement. */
-  visit_mechanism: VisitMechanism;
   /** MESITA-4764: each voucher sold here and its bonus in whole percent (the
    *  owner's pick: Small 10 · 20, Medium 20 · 40, Big 40 · 60). */
   voucher_pct: Partial<Record<MoneyVoucherKey, number>>;
 };
 /** A row with nothing on offer. */
-export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, returning_vip_pct: null, welcome_vip_pct: null, visit_mechanism: "cashback", voucher_pct: {} };
+export const NO_LIST_ROW_OFFERS: ListRowOffers = { sell: [], cashback_pct: null, cashback_flat: false, welcome_pct: null, returning_pct: null, returning_vip_pct: null, welcome_vip_pct: null, voucher_pct: {} };
 
-/** A place's visit lines as list rows read them (MESITA-4702, MESITA-4766,
- *  MESITA-4770): each line in whole percent (null = gives nothing), the
- *  highest, whether all three are the same rate, and the mechanism. No rates
- *  (Loyalty Cards Off on a cashback place, or a failed read) = none. */
-export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRowOffers, "cashback_pct" | "cashback_flat" | "welcome_pct" | "returning_pct" | "returning_vip_pct" | "welcome_vip_pct" | "visit_mechanism"> {
+/** A place's visit lines as list rows read them (MESITA-4702, MESITA-4766):
+ *  each line in whole percent (null = gives nothing), the highest, and
+ *  whether all of them are the same rate. No rates (Loyalty Cards Off, or a
+ *  failed read) = none. */
+export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRowOffers, "cashback_pct" | "cashback_flat" | "welcome_pct" | "returning_pct" | "returning_vip_pct" | "welcome_vip_pct"> {
   const pct = (bps: number | undefined) => (bps && bps > 0 ? bps / 100 : null);
   const top = r ? maxCashbackBps(r) : 0;
   return {
@@ -216,7 +212,6 @@ export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRow
     returning_pct: pct(r?.returning_bps),
     returning_vip_pct: pct(r?.returning_vip_bps),
     welcome_vip_pct: pct(r?.welcome_vip_bps),
-    visit_mechanism: r?.visit_mechanism === "discount" ? "discount" : "cashback",
   };
 }
 
@@ -263,10 +258,8 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const settings = new Map<string, PaymentSettings>();
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
-  // MESITA-4702: the visit lines of every place; MESITA-4770: a discount
-  // shows without the Credits Agreement, cashback and stories only where
-  // credit can be born. A failed read shows no visit slide rather than a
-  // wrong rate.
+  // MESITA-4702: the visit lines of every place, shown only where credit
+  // can be born. A failed read shows no visit slide rather than a wrong rate.
   const rates = await readCashbackRatesMany(admin, ids).catch((err) => {
     console.error("[payments] cashback_read_failed", errorMessage(err));
     return new Map<string, CashbackRates>();
@@ -276,10 +269,8 @@ export async function withVouchersUpTo<T extends { id: string }>(
     const sell = config.buying_paused ? [] : money.sell;
     const all = rates.get(p.id);
     const credits = settings.get(p.id)?.loyalty_cards === true;
-    // MESITA-4770: a Discount shows without the Credits Agreement; cashback
-    // and the voucher bonuses only where credit can be born.
-    const r = all && (credits || all.visit_mechanism === "discount") ? all : undefined;
-    const cashback = cashbackOffer(r);
+    // Cashback and the voucher bonuses only where credit can be born.
+    const cashback = cashbackOffer(credits ? all : undefined);
     const bonus = voucherBonusFrom(credits ? all : undefined);
     const voucher_pct = Object.fromEntries(sell.map((k) => [k, Math.floor(voucherBonusBps(k, bonus) / 100)]));
     return {

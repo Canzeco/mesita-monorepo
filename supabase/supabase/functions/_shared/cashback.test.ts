@@ -2,7 +2,7 @@
 // trigger mirrors (pay_tab_grant_cashback) and the owner's allowed inputs.
 // Four lines since MESITA-4789: Welcome Regular, Returning Regular, Welcome VIP, Returning VIP.
 import { assertEquals } from "jsr:@std/assert@1";
-import { CASHBACK_CAP_CENTS, CASHBACK_DEFAULTS, cashbackCents, cashbackLine, discountCents, maxCashbackBps, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
+import { CASHBACK_CAP_CENTS, CASHBACK_DEFAULTS, cashbackCents, cashbackLine, maxCashbackBps, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
 
 Deno.test("cashback: four lines — the first bill is Welcome VIP or Regular, then Returning VIP or Regular (MESITA-4789)", () => {
   assertEquals(cashbackLine(true), "welcome");
@@ -83,26 +83,11 @@ Deno.test("voucher bonus: two picks per size; absent keeps the saved one (MESITA
   assertEquals(voucherBonusFrom({ small_bonus_bps: 2000, medium_bonus_bps: 2000, big_bonus_bps: 6000 }), { voucher_200: 2000, voucher_1000: 2000, voucher_5000: 6000 });
 });
 
-// MESITA-5067: Discount is gone; a save may only say Cashback.
-Deno.test("visit mechanism: the owner's save accepts Cashback only, refuses Discount and anything else", () => {
-  const base = { welcome_bps: 1000, returning_bps: 500 };
-  assertEquals(readCashbackInput({ ...base, visit_mechanism: "discount" }).ok, false);
-  const c = readCashbackInput({ ...base, visit_mechanism: "cashback" });
-  assertEquals(c.ok && c.rates.visit_mechanism, "cashback");
-  // Absent keeps the saved one.
-  const none = readCashbackInput(base);
-  assertEquals(none.ok && "visit_mechanism" in none.rates, false);
-  assertEquals(readCashbackInput({ ...base, visit_mechanism: "both" }).ok, false);
-  assertEquals(CASHBACK_DEFAULTS.visit_mechanism, "cashback");
-});
-
-Deno.test("visit discount: the rate on the printed bill, rounded down (pay_guest_begin's sum)", () => {
-  // MX$500 at Welcome 10% = MX$50 off.
-  assertEquals(discountCents(50000, 1000), 5000);
-  // MX$333.33 at 5% rounds down.
-  assertEquals(discountCents(33333, 500), 1666);
-  assertEquals(discountCents(50000, 0), 0);
-  assertEquals(discountCents(0, 1000), 0);
+// MESITA-5076: the column is gone; an older console's visit_mechanism is
+// ignored so the save still lands (a write naming it would fail).
+Deno.test("cashback save: a visit_mechanism an older console sends never reaches the write", () => {
+  const r = readCashbackInput({ welcome_bps: 1000, returning_bps: 500, visit_mechanism: "cashback" });
+  assertEquals(r.ok && "visit_mechanism" in r.rates, false);
 });
 
 Deno.test("cashback: one bill earns MX$1,000 at most (MESITA-4831)", () => {

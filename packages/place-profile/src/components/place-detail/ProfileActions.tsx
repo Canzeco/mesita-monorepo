@@ -278,7 +278,7 @@ export function MesitaActions({
   // Pay.
   const openSlide = (slide: OfferSlide) =>
     onOpenRewards ? () => onOpenRewards(slide.section ?? "prepayment") : undefined;
-  // A discounts-only place draws the green tile alone, full width
+  // An offers-only place draws the green tile alone, full width
   // (MESITA-5021). The Off Reserve twin, and the times that used to tick
   // beside it, stay off the page. Offers still draws when it is Off, so a
   // reservations-only place can say it has none.

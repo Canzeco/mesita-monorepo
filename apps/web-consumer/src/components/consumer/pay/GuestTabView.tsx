@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CONSUMER_ROUTES, placeOffersPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
-import { BadgePercent, Banknote, ChevronRight, CircleCheck, HandCoins, Loader2, PenLine, ReceiptText, Wallet, XCircle } from "lucide-react";
+import { BadgePercent, Banknote, ChevronRight, CircleCheck, HandCoins, Loader2, PenLine, Wallet, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, TAB_REFUSAL, type TabRead } from "@/lib/api/tab";
-import { discountOf, money, type PayPlace, payPlaceCashbackBps } from "@/lib/api/wallet";
+import { bpsOf, money, type PayPlace, payPlaceCashbackBps } from "@/lib/api/wallet";
 import { untilLabel } from "@/components/consumer/wallet/WalletLists";
 import { cn } from "@/lib/utils";
 import { useWakeLock } from "@/lib/use-wake-lock";
@@ -30,7 +30,7 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 //   Confirming    a Loader and "Confirming…" while the waiter's Confirm
 //                 runs.
 //   3 Receipt     a green Paid with the total, the lines with their icons,
-//                 the Discount taken or the Cashback earned and when it is
+//                 the Cashback earned and when it is
 //                 ready, "Confirmed by staff" ✓; Done.
 //   Not paid      a red XCircle, one line why, "Nothing was paid" (never on
 //                 cash), New ticket (MESITA-4524: the old ticket is done). Was Start
@@ -88,9 +88,8 @@ export function GuestTabView({
   const cash = tab.cash_bill_cents + tab.cash_tip_cents;
   const tip = tab.cash_tip_cents;
   const total = tab.credit_cents + cash;
-  const discount = tab.discount_cents ?? 0;
   // What this bill will earn, while it waits (MESITA-4813).
-  const willEarn = tab.visit_mechanism === "discount" || discount > 0 ? 0 : discountOf(tab.cash_bill_cents, payPlaceCashbackBps(place));
+  const willEarn = bpsOf(tab.cash_bill_cents, payPlaceCashbackBps(place));
   const signed = tab.status === "paid" && !!tab.verified_at;
   const ended = tab.status === "cancelled" || tab.status === "expired";
   useEffect(() => {
@@ -276,12 +275,6 @@ export function GuestTabView({
               </span>
               <span className="min-w-0 flex-1 truncate text-base font-semibold">{placeName}</span>
             </div>
-            {discount > 0 ? (
-              <>
-                <MoneyRow icon={<ReceiptText />} label="Bill" value={m(tab.bill_cents ?? 0)} />
-                <MoneyRow className={BOX_TINT.discount} icon={<BadgePercent />} label="Discount" value={`−${m(discount)}`} />
-              </>
-            ) : null}
             {tab.credit_cents > 0 ? <MoneyRow icon={<Wallet />} label="Credits" value={m(tab.credit_cents)} /> : null}
             {tab.cash_bill_cents > 0 ? <MoneyRow icon={<Banknote />} label="Paid to the waiter" value={m(tab.cash_bill_cents)} /> : null}
             {tip > 0 ? <MoneyRow icon={<HandCoins />} label="Tip" value={m(tip)} /> : null}
@@ -293,7 +286,7 @@ export function GuestTabView({
                 label={`Cashback · ${readyWords(back, now)}`}
                 value={`+${money(back.amount_cents, back.currency)}`}
               />
-            ) : back !== undefined && tab.visit_mechanism !== "discount" && discount === 0 ? (
+            ) : back !== undefined ? (
               // MESITA-4892: a bill that earned none says so, and why.
               <MoneyRow
                 icon={<BadgePercent />}
@@ -307,14 +300,8 @@ export function GuestTabView({
               value={<CircleCheck className={cn("h-5 w-5", GOOD)} aria-label="Confirmed" />}
             />
           </PaySection>
-          {/* WHAT IT SAVED, WHAT PREPAY WOULD HAVE (Pato, 2026-11-24,
-              MESITA-4878). Every number is the server's. */}
-          {discount > 0 ? (
-            <p className={cn("flex shrink-0 items-center justify-between gap-3 rounded-2xl px-4 py-3 text-base font-semibold tabular-nums", BOX_TINT.discount)} data-guest-saved>
-              <span>You saved</span>
-              <span>{m(discount)}</span>
-            </p>
-          ) : null}
+          {/* WHAT PREPAY WOULD HAVE SAVED (Pato, 2026-11-24, MESITA-4878).
+              Every number is the server's. */}
           {prepay && PREPAY_NAME[prepay.voucher] ? (
             <button
               type="button"
@@ -323,7 +310,7 @@ export function GuestTabView({
               data-guest-prepay-tip
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-base font-semibold tabular-nums">Prepay would have saved you {m(prepay.saving_cents)}{discount > 0 ? " more" : ""}</span>
+                <span className="block text-base font-semibold tabular-nums">Prepay would have saved you {m(prepay.saving_cents)}</span>
                 <span className="block text-sm tabular-nums">
                   {PREPAY_NAME[prepay.voucher]}: pay {m(prepay.price_cents)}, get {m(prepay.credit_cents)} for your next visits.
                 </span>
@@ -443,11 +430,9 @@ export function GuestTabView({
               {m(total)}
             </p>
             {/* The part not in cash, under the total: the cash has its own step. */}
-            {tab.credit_cents > 0 || discount > 0 ? (
+            {tab.credit_cents > 0 ? (
               <p className="text-muted-foreground shrink-0 text-sm tabular-nums" data-guest-sign-parts>
-                {[discount > 0 ? `${m(discount)} discount taken` : null, tab.credit_cents > 0 ? `${m(tab.credit_cents)} from your credits` : null]
-                  .filter(Boolean)
-                  .join(" · ")}
+                {m(tab.credit_cents)} from your credits
               </p>
             ) : null}
             {willEarn > 0 ? (

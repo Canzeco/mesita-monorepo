@@ -8,8 +8,8 @@
 // A try needs the guest's live QR, or a bill (MESITA-4833): the code alone can't
 // be guessed from outside a table. waiter_code_try counts the wrong ones.
 //
-// Without `code` (MESITA-4890): a Discount place that turned codes off, named by
-// the page the guest opened their QR on, answers the same token.
+// Without `code`: 403 code_needed (+name_required), so the page can ask for
+// the name with the code. Every bill needs the code (MESITA-5076).
 //
 // Body: { code?: 6 digits, name?, token | bill_id }
 // Response: { ok: true, place: { id, name }, waiter: { name }, staff_token }
@@ -53,14 +53,7 @@ serveJson("visit-web-sign-in", async (req) => {
       return data === true;
     };
     if (!code) {
-      const { data, error } = await admin.rpc("waiter_no_code", { p_token_hash: tokenHash, p_bill_id: billId });
-      if (error) throw new Error(`waiter_no_code: ${error.message}`);
-      const row = typeof data === "string" ? await readWaiter(admin, data) : null;
-      if (!row) return json({ ok: false, code: "code_needed", name_required: await asks(), error: "Type the 6-digit code" }, 403);
-      const at = await readVoucherPlace(admin, row.placeId);
-      if (!at.ok) throw new Error(at.error);
-      console.log("[visit-web-sign-in]", JSON.stringify({ outcome: "no_code", place_id: row.placeId }));
-      return json({ ok: true, place: { id: row.placeId, name: at.place?.name ?? null }, waiter: null, staff_token: await mintWaiterToken(env.serviceKey, row, null, nowMs) });
+      return json({ ok: false, code: "code_needed", name_required: await asks(), error: "Type the 6-digit code" }, 403);
     }
     const r = await callTabRpc(admin, "waiter_code_try", {
       p_token_hash: tokenHash,

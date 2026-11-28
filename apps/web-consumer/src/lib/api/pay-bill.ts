@@ -25,9 +25,6 @@ export type GuestBill = {
   took_cents?: number | null;
   place: { id: string; name: string | null; photo_url: string | null };
   quote: {
-    mechanism: "cashback" | "discount";
-    discount_bps: number;
-    discount_cents: number;
     credit_cents: number;
     outside_bill_cents: number;
     tip_cents: number;

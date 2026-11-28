@@ -547,7 +547,6 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         </div>
         <dl className="divide-border divide-y px-5 pt-2 pb-5 text-base tabular-nums" data-pay-bill-rows>
           {line("Bill", m(bill.bill_cents ?? 0))}
-          {q.discount_cents > 0 ? line(`${q.discount_bps / 100}% Discount`, `−${m(q.discount_cents)}`, true) : null}
           {q.credit_cents > 0 ? line("Your credits", `−${m(q.credit_cents)}`, true) : null}
           {bill.tip_cents > 0
             ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))

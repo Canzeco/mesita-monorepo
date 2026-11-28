@@ -35,10 +35,7 @@ export type BillStatus = "open" | "sent" | "accepted" | "declined" | "cancelled"
 export type BillState = "open" | "sent" | "accepted" | "confirming" | "paid" | "declined" | "cancelled" | "expired";
 
 export type BillQuote = {
-  mechanism: "cashback" | "discount";
   line: string;
-  discount_bps: number;
-  discount_cents: number;
   credit_cents: number;
   outside_bill_cents: number;
   tip_cents: number;
@@ -113,7 +110,6 @@ export function staffBillView(b: BillRow, a: AttemptFacts | null, nowMs: number)
   const q = b.status === "accepted" || b.status === "sent" ? b.quote : null;
   return {
     ...view(b, a, nowMs),
-    discount_cents: q?.discount_cents ?? 0,
     credit_cents: q?.credit_cents ?? 0,
     outside_bill_cents: q?.outside_bill_cents ?? null,
     outside_cents: q?.outside_cents ?? null,

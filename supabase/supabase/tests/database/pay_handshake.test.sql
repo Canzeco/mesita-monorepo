@@ -1,21 +1,23 @@
 -- MESITA-4889 — the pay handshake: the guest's Pay and the waiter's Receive, in
--- any order, close the same bill the same way, for every mechanism, credit and
--- tip; alone neither does; a changed bill clears the waiter's tap.
+-- any order, close the same bill the same way, with or without cashback, credit
+-- and tip; alone neither does; a changed bill clears the waiter's tap.
 begin;
 create extension if not exists pgtap with schema public;
-select plan(78);
+select plan(71);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000f4889');
 insert into public.place_profiles (id, google_name) values
-  ('00000000-0000-4000-8000-000000014889', 'Hand Discount'), ('00000000-0000-4000-8000-000000024889', 'Hand Cashback'),
+  ('00000000-0000-4000-8000-000000014889', 'Hand Plain'), ('00000000-0000-4000-8000-000000024889', 'Hand Cashback'),
   ('00000000-0000-4000-8000-000000034889', 'Hand Nothing');
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000014889', 'mesita-4889-d', 'active', 'generating', 'MXN'),
   ('00000000-0000-4000-8000-000000024889', 'mesita-4889-c', 'active', 'generating', 'MXN'),
   ('00000000-0000-4000-8000-000000034889', 'mesita-4889-n', 'active', 'generating', 'MXN');
-insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps, visit_mechanism) values
-  ('00000000-0000-4000-8000-000000014889', 1000, 1000, 'discount'),
-  ('00000000-0000-4000-8000-000000024889', 1000, 1000, 'cashback');
+-- The first place has rates but no Credits Agreement, so it earns nothing; the
+-- second earns cashback (Discount is gone, MESITA-5076).
+insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps) values
+  ('00000000-0000-4000-8000-000000014889', 1000, 1000),
+  ('00000000-0000-4000-8000-000000024889', 1000, 1000);
 insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
 values ('00000000-0000-4000-8000-000000024889', '00000000-0000-4000-8000-0000000f4889', 'owner', 'draft-2026-11', repeat('0', 64));
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000024889', true);
@@ -56,28 +58,27 @@ create function pg_temp.take(b public.pay_bills, p_version integer default 1) re
     (select id from public.place_waiters where place_id = b.place_id)); $$;
 -- What a bill came to.
 create function pg_temp.came(p_bill uuid) returns text language sql as $$
-  select concat_ws('|', a.status, t.discount_cents, t.credit_cents, t.cash_bill_cents, t.cash_tip_cents,
+  select concat_ws('|', a.status, t.credit_cents, t.cash_bill_cents, t.cash_tip_cents,
     (select coalesce(sum(amount_cents), 0) from public.wallet_entries e where e.consumer_id = a.consumer_id and e.kind = 'spend'),
     (select coalesce(sum(amount_cents), 0) from public.wallet_entries e where e.tab_id = t.id and e.kind = 'cashback'),
     t.waiter_name)
   from public.pay_bills b join public.guest_pay_attempts a on a.id = b.attempt_id
   left join public.pay_tabs t on t.id = a.tab_id where b.id = p_bill; $$;
 
--- ── Every mechanism × credit × tip, both orders: 18 × 2 ──
+-- ── Every place × credit × tip, both orders: 18 × 2 ──
 create temp table m (n integer, place uuid, credit boolean, bill integer, tip integer, first text, got text, alone text, want text);
 insert into m (n, place, credit, bill, tip, first, want)
 select (row_number() over ())::integer, p.id, c.credit, c.bill, t.tip, f.first,
-       concat_ws('|', 'closed', d.disc, d.cred, c.bill - d.disc - d.cred, t.tip, -d.cred,
+       concat_ws('|', 'closed', d.cred, c.bill - d.cred, t.tip, -d.cred,
          case when p.k = 2 then (c.bill - d.cred) / 10 else 0 end, 'W' || p.k)
   from (values (1, '00000000-0000-4000-8000-000000014889'::uuid), (2, '00000000-0000-4000-8000-000000024889'::uuid), (3, '00000000-0000-4000-8000-000000034889'::uuid)) p(k, id)
   cross join (values (false, 50000), (true, 50000), (true, 10000)) c(credit, bill)
   cross join (values (0), (1000)) t(tip)
   cross join (values ('guest'), ('waiter')) f(first)
-  cross join lateral (select case when p.k = 1 then c.bill / 10 else 0 end as disc) d0
-  cross join lateral (select d0.disc, case when c.credit then least(22000, c.bill - d0.disc) else 0 end as cred) d;
+  cross join lateral (select case when c.credit then least(22000, c.bill) else 0 end as cred) d;
 -- The third place gives nothing: its rates are zero whatever the defaults are.
-insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps, visit_mechanism)
-values ('00000000-0000-4000-8000-000000034889', 0, 0, 'cashback');
+insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps)
+values ('00000000-0000-4000-8000-000000034889', 0, 0);
 do $$
 declare r record; b public.pay_bills;
 begin
@@ -98,7 +99,7 @@ insert into s select 'edit', pg_temp.sent(101, '00000000-0000-4000-8000-00000001
 select is((select pg_temp.take(b)->>'outcome' from s where k = 'edit'), 'ready', 'the waiter taps first');
 select is((select pg_temp.take(b)->>'outcome' from s where k = 'edit'), 'ready', 'twice is once');
 select is((select public.pay_bill_receive((b).id, '00000000-0000-4000-8000-000000024889', 1, repeat('e', 64), null)->>'code' from s where k = 'edit'), 'forbidden', 'never another place');
-select is((select took_cents from public.pay_bills where id = (select (b).id from s where k = 'edit')), 24000, 'what they took is kept');
+select is((select took_cents from public.pay_bills where id = (select (b).id from s where k = 'edit')), 29000, 'what they took is kept');
 select is((select public.pay_bill_send((b).id, (b).place_id, 1, 60000, 1000, repeat('d', 64))->>'version' from s where k = 'edit'), '2', 'the bill is edited');
 select is((select received_version from public.pay_bills where id = (select (b).id from s where k = 'edit')), null, 'an edit clears the tap');
 select is((select pg_temp.take(b)->>'code' from s where k = 'edit'), 'stale', 'the old numbers are not received');
@@ -117,11 +118,11 @@ select is((select pg_temp.pay(b)->>'status' from s where k = 'undo'), 'due', 'Pa
 select is((select public.pay_guest_claim_end(attempt_id, 'cancelled')->>'outcome' from public.pay_bills where id = (select (b).id from s where k = 'undo')), 'claimed', 'the guest cancels');
 select is((select pg_temp.take(b)->>'code' from s where k = 'undo'), 'already_final', 'a bill being cancelled is not received');
 
-insert into s select 'drift', pg_temp.sent(103, '00000000-0000-4000-8000-000000014889', false, 50000, 0);
-select is((select pg_temp.take(b)->>'outcome' from s where k = 'drift'), 'ready', 'tapped at 10%');
-update public.place_cashback_settings set welcome_bps = 2000 where place_id = '00000000-0000-4000-8000-000000014889';
+insert into s select 'drift', pg_temp.sent(103, '00000000-0000-4000-8000-000000024889', false, 50000, 0);
+select is((select pg_temp.take(b)->>'outcome' from s where k = 'drift'), 'ready', 'tapped at 10% cashback');
+update public.place_cashback_settings set welcome_bps = 2000 where place_id = '00000000-0000-4000-8000-000000024889';
 select is((select pg_temp.pay(b)->>'code' from s where k = 'drift'), 'quote_changed', 'the offer changed');
-select is((select concat_ws('|', version, coalesce(received_version::text, 'none'), took_cents) from public.pay_bills where id = (select (b).id from s where k = 'drift')), '2|none|45000', 'both tap again; what was taken is remembered');
+select is((select concat_ws('|', version, coalesce(received_version::text, 'none'), took_cents) from public.pay_bills where id = (select (b).id from s where k = 'drift')), '2|none|50000', 'both tap again; what was taken is remembered');
 
 insert into s select 'gone', pg_temp.sent(104, '00000000-0000-4000-8000-000000024889', false, 50000, 0);
 select is((select pg_temp.take(b)->>'outcome' from s where k = 'gone'), 'ready', 'tapped');
@@ -138,22 +139,9 @@ select ok(not has_function_privilege('authenticated', 'public.pay_bill_receive(u
 insert into s select 'late', pg_temp.sent(106, '00000000-0000-4000-8000-000000024889', false, 50000, 0);
 select is((select public.pay_bill_receive((b).id, (b).place_id, 1, repeat('e', 64), null, now() + interval '16 minutes')->>'code' from s where k = 'late'), 'expired', 'an expired bill is not received');
 
--- ── Without a code (MESITA-4890): Discount only ──
+-- A guest for the suspension checks below.
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000900d4889');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000900d4889') on conflict do nothing;
-insert into public.place_waiters (place_id, name, no_code, lookup_hash) values ('00000000-0000-4000-8000-000000014889', '(no code)', true, repeat('7a', 32));
-do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5a', 32)); end $$;
-select is(public.waiter_no_code(repeat('5a', 32), null), null, 'a QR opened nowhere needs a code');
-do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5b', 32), p_place_id => '00000000-0000-4000-8000-000000024889'); end $$;
-select is(public.waiter_no_code(repeat('5b', 32), null), null, 'nor does a place that asks for one');
-do $$ begin perform public.pay_guest_code_set('00000000-0000-4000-8000-0000900d4889', repeat('5c', 32), p_place_id => '00000000-0000-4000-8000-000000014889'); end $$;
-select isnt(public.waiter_no_code(repeat('5c', 32), null), null, 'a Discount place with codes off does not');
-select is(public.waiter_no_code(repeat('5c', 32), null, now() + interval '16 minutes'), null, 'only while the QR lives');
-update public.place_cashback_settings set visit_mechanism = 'cashback' where place_id = '00000000-0000-4000-8000-000000014889';
-select is(public.waiter_no_code(repeat('5c', 32), null), null, 'Cashback needs a code');
-update public.place_cashback_settings set visit_mechanism = 'discount' where place_id = '00000000-0000-4000-8000-000000014889';
-select is(public.waiter_no_code(repeat('5c', 32), null), null, 'and going back to Discount does not turn codes off again');
-select ok(not has_function_privilege('anon', 'public.waiter_no_code(text, uuid, timestamptz)', 'execute'), 'clients never call it');
 
 -- ── Five closed tickets at one restaurant suspend the guest (MESITA-4899) ──
 select is((select count(*)::int from generate_series(1, 4) g where public.guest_ticket_closed('00000000-0000-4000-8000-0000900d4889', '00000000-0000-4000-8000-000000014889')), 0, 'four do not');

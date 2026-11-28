@@ -21,10 +21,9 @@ import {
 export type TableKind = "visits" | "vouchers" | "gifts" | "payments";
 export const TABLE_KINDS: readonly MonitorKind[] = ["visits", "vouchers", "gifts", "payments"];
 
-/** What a bill collected: the printed bill less its visit discount, plus the
- *  tip (MESITA-4770: cash + credit add up to bill - discount). */
+/** What a bill collected: the printed bill plus the tip. */
 export function collectedCents(row: MonitorRow): number {
-  return n(row, "bill_cents") - n(row, "discount_cents") + n(row, "tip_cents");
+  return n(row, "bill_cents") + n(row, "tip_cents");
 }
 
 export type Column<R> = {

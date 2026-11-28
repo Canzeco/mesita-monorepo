@@ -110,11 +110,8 @@ serveJson("business-web-get-payments", async (req) => {
   const placeRow = placeRes.place;
   // MESITA-4904: the place's one code; itself only for who manages the place (MESITA-4886).
   const { data: codeRow, error: codeErr } = await admin.from("place_waiters").select("code, name_required")
-    .eq("place_id", placeId).eq("no_code", false).is("removed_at", null).maybeSingle();
+    .eq("place_id", placeId).is("removed_at", null).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_waiters: ${codeErr.message}` }, 500);
-  const { data: noCodeRow, error: noCodeErr } = await admin.from("place_waiters").select("id").eq("place_id", placeId).eq("no_code", true).is("removed_at", null).maybeSingle();
-  if (noCodeErr) return json({ ok: false, error: `place_waiters: ${noCodeErr.message}` }, 500);
-  const noCode = noCodeRow !== null;
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")
     .select(FEE_INVOICE_COLUMNS)
@@ -188,7 +185,6 @@ serveJson("business-web-get-payments", async (req) => {
     code_set: codeRow !== null,
     staff_code: canManage(access.role) ? codeRow?.code ?? null : null,
     name_required: codeRow?.name_required === true,
-    no_code: noCode,
     credits_balance,
     came_back,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
