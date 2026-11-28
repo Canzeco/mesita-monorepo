@@ -228,7 +228,7 @@ export const RECIPE_BOUNDS = {
   distanceExp: { min: EXPONENT_MIN, max: EXPONENT_MAX, decimals: 1 },
   googleExp: { min: GOOGLE_EXP_MIN, max: GOOGLE_EXP_MAX, decimals: 2 },
   foursquareFactor: { min: FOURSQUARE_FACTOR_MIN, max: FOURSQUARE_FACTOR_MAX, decimals: 2 },
-  foursquareExponent: { min: FOURSQUARE_EXPONENT_MIN, max: FOURSQUARE_EXPONENT_MAX, decimals: 0 },
+  foursquareExponent: { min: FOURSQUARE_EXPONENT_MIN, max: FOURSQUARE_EXPONENT_MAX, decimals: 2 },
   premierExp: { min: PREMIER_EXP_MIN, max: PREMIER_EXP_MAX, decimals: 1 },
   offersExp: { min: OFFERS_EXP_MIN, max: OFFERS_EXP_MAX, decimals: 1 },
   batch: { min: LANE_BATCH_MIN, max: LANE_BATCH_MAX, decimals: 0 },
