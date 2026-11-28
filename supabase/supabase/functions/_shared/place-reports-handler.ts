@@ -1,5 +1,5 @@
-// Guest reports from the place screen's three dots — the body behind admin-web-list-place-reports (web-admin lists) and business-web-list-place-reports
-// (web-business, the place page), MESITA-3104. Both doors open with
+// Guest reports from the place screen's three dots — the body behind
+// admin-web-list-place-reports (web-admin lists, MESITA-3104). It opens with
 // requireAdminRequest (super_admins); the EF name is the caller.
 
 import { json, readJson } from "./http.ts";
