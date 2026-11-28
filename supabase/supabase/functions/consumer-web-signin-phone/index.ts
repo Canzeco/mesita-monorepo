@@ -13,6 +13,7 @@ import { json, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import { ensureConsumer } from "../_shared/business-request.ts";
+import { creditShareSignup, readShareClaim } from "../_shared/share-codes.ts";
 import { handleSignin, type SigninRow } from "./signin.ts";
 
 const SIGNIN_SELECT =
@@ -53,5 +54,15 @@ serveJson("consumer-web-signin-phone", async (req) => {
       log: (line) => console.log(line),
     },
   );
+  // MESITA-5060: a new account that came through a share link is credited to
+  // that link's code. Optional body { share: { code, place, opened_at } };
+  // the sign-in never fails over it.
+  if (reply.status === 200) {
+    const claim = readShareClaim((await req.json().catch(() => null))?.share);
+    if (claim) {
+      const createdAt = typeof user.raw.created_at === "string" ? user.raw.created_at : null;
+      console.log(`[consumer-web-signin-phone] share=${await creditShareSignup(admin, user.id, createdAt, claim)}`);
+    }
+  }
   return json(reply.body, reply.status);
 });
