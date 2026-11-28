@@ -2,7 +2,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
-import { BadgePercent, CalendarCheck, QrCode } from "lucide-react";
+import { CalendarCheck } from "lucide-react";
 
 import {
   OfferTrack,
@@ -125,17 +125,12 @@ export function OfferButton({
  *  percent box, 2px from word to percent. Loosen any of them and it stops
  *  fitting. Under 360px the two stack, each the full width, never clipped. */
 export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
-  const prepay = cardPrepayPct(offers);
-  const pay = offers?.cashback_pct ?? 0;
-  const boxes = [
-    ...(prepay > 0 ? [{ key: "prepay", word: "Prepay", pct: prepay, tone: VOUCHER_TONE.voucher_1000 }] : []),
-    ...(pay > 0 ? [{ key: "pay", word: "Pay", pct: pay, tone: CASHBACK_TONE }] : []),
-  ];
+  const boxes = cardOfferBoxes(offers);
   if (boxes.length === 0) return null;
   return (
     <p
       className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 flex flex-wrap gap-1"
-      aria-label={boxes.map((b) => `${b.word} ${b.pct}%`).join(", ")}
+      aria-label={boxes.map((b) => b.words).join(", ")}
       data-card-offer-display
     >
       {boxes.map((b) => (
@@ -156,24 +151,26 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
   );
 }
 
-/** The card's Prepay percent: Medium's bonus where the place sells it, else
- *  the best standard voucher on sale; 0 = the place sells none. */
-function cardPrepayPct(offers: OfferInput | null | undefined): number {
-  if (!offers) return 0;
-  if (offers.sell.includes("voucher_1000")) return voucherPct(offers, "voucher_1000");
-  return Math.max(0, ...Object.keys(STANDARD_BONUS).filter((k) => offers.sell.includes(k)).map((k) => voucherPct(offers, k)));
-}
-
-/** "Cashback" then the percent in a small black box, white type (Pato,
- *  2026-11-28, MESITA-5119: "put the 5% or x% in a black box white
- *  letters"). Search's green cell; Home's photo says "Pay Y%" (MESITA-5123). */
-function CashbackWords({ pct }: { pct: number }) {
-  return (
-    <>
-      Cashback
-      <span className="rounded bg-neutral-950 px-1.5 py-0.5 leading-none text-white tabular-nums">{pct}%</span>
-    </>
-  );
+/** ONE SOURCE FOR A CARD'S TWO OFFERS (MESITA-5129): Home's photo boxes and
+ *  Search's band read the same words, numbers and colours. Prepay: Medium's
+ *  bonus where the place sells it, else the best standard voucher on sale.
+ *  Pay: the place's cashback rate. A side that is 0 is left out; `voucher`
+ *  is what a tap reports (offer_chip_tap). */
+/** `words` is the whole label (Search's band, the spoken label); `word` and
+ *  `pct` are its two halves, for Home's percent box (MESITA-5128). */
+type CardOfferBox = { key: "prepay" | "pay"; words: string; word: string; pct: number; tone: string; voucher: string };
+export function cardOfferBoxes(offers: OfferInput | null | undefined): CardOfferBox[] {
+  if (!offers) return [];
+  const sold = Object.keys(STANDARD_BONUS).filter((k) => offers.sell.includes(k));
+  const lead = offers.sell.includes("voucher_1000")
+    ? "voucher_1000"
+    : sold.reduce<string | null>((a, b) => (a && voucherPct(offers, a) >= voucherPct(offers, b) ? a : b), null);
+  const prepay = lead ? voucherPct(offers, lead) : 0;
+  const pay = offers.cashback_pct ?? 0;
+  return [
+    ...(lead && prepay > 0 ? [{ key: "prepay" as const, words: `Prepay ${prepay}%`, word: "Prepay", pct: prepay, tone: VOUCHER_TONE.voucher_1000, voucher: lead }] : []),
+    ...(pay > 0 ? [{ key: "pay" as const, words: `Pay ${pay}%`, word: "Pay", pct: pay, tone: CASHBACK_TONE, voucher: "cashback" }] : []),
+  ];
 }
 
 /** A list card may show Reserve (MESITA-5021). The switch has to be on and
@@ -187,54 +184,44 @@ export function listCardReservable(place: {
   return place.reservations_enabled === true && (place.phone ?? "").trim() !== "";
 }
 
-/** The green button's word (Pato, 2026-11-27, MESITA-5078: "change from
- *  prepay in green to offers, is cleaner"). Every offer says Offers. It said
- *  Prepay under MESITA-5056, Bonus under MESITA-5054, and Off for a visit
- *  discount under MESITA-5050. Tickets and receipts still name the bonus
- *  amount Bonus. */
-// THE CASHBACK ITSELF (Pato, 2026-11-28, MESITA-5103: "instead of saying
-// offers, mention the actual cashback. 5% Cashback or 10% Cashback"): the
-// place's cashback where it gives one; Offers only where it gives none.
-export function offerBannerWord(_slides: OfferSlide[], cashbackPct?: number | null): string {
-  return cashbackPct && cashbackPct > 0 ? `Cashback ${cashbackPct}%` : "Offers"; // "Cashback 5%" (MESITA-5118)
-}
-
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
  *  "when seeing shit in home, don't move banenrs / just red say icon reserve
  *  / and green say icon discounts / use icons"; then "discounts in green").
- *  Nothing moves. Reservations only: one red Reserve, the full width
- *  (MESITA-5021: the left half grows from 50% to 100%). Offers only: one
- *  green Offers, the full width (the right half grows from 50% to 100%).
- *  Both: Reserve left, Offers right, each half. Neither: nothing, and
- *  Save · Share stay.
- *  Reserve opens Reserve; Offers opens the place (MESITA-4455). A live
+ *  Nothing moves. Home passes no offers: one red Reserve, the full width
+ *  (MESITA-5091), or nothing. Search's map card: Premier · Reserve, then
+ *  THE OFFERS IN HOME'S WORDS (Pato, 2026-11-28, MESITA-5129, asked if
+ *  Search should say Prepay X% / Pay Y% like Home: "Yes, match Home"):
+ *  purple "Prepay X%" and green "Pay Y%" (cardOfferBoxes), each its own
+ *  cell, no icon. One green "Cashback X%" cell before (MESITA-5103, 5119),
+ *  "Offers" before that (MESITA-5078). The cells share the row in equal
+ *  parts where their words fit, and never clip them: measured at 360px with
+ *  all four, 6px inside each cell. No black box here (MESITA-5125 is the
+ *  photo's): the band has no photo under it.
+ *  Reserve opens Reserve; an offer cell opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
- *  (MESITA-5014). The open times that rotated in Reserve (MESITA-5011) are
- *  gone from the card; the place screen keeps them. */
+ *  (MESITA-5014). */
 export function PlaceBannerRow({
   name,
   placeId,
-  slides,
+  offers,
   reserveHref,
   offerHref,
   reservable,
   reserveLabel,
   reserveDetail,
   premier = false,
-  cashbackPct,
   className,
   cellClassName,
 }: {
   name: string;
   placeId?: string;
-  slides: OfferSlide[];
-  /** THREE COLOURS ON TOP (Pato, 2026-11-27, MESITA-5094, design 1 of 5:
-   *  "Premier, Reserve, Offers … three things on the top, three colours is
-   *  okay, and that's it"): a gold Premier segment first. Search's map card
-   *  only; Home keeps Premier on its photo. A label: a tap opens nothing. */
+  /** The place's offers, for Search's Prepay and Pay cells; absent = none
+   *  (Home shows them on its photo, OfferDisplay). */
+  offers?: OfferInput | null;
+  /** A gold Premier segment first (Pato, 2026-11-27, MESITA-5094). Search's
+   *  map card only; Home keeps Premier on its photo. A label: a tap opens
+   *  nothing. */
   premier?: boolean;
-  /** The place's highest cashback line (MESITA-5103): the green cell says it. */
-  cashbackPct?: number | null;
   /** Read by the place screen's times; the still card does not need them. */
   hours?: unknown;
   timezone?: string | null;
@@ -250,105 +237,52 @@ export function PlaceBannerRow({
 }) {
   const holding = Boolean(reserveLabel);
   const getSupabase = useLazyBrowserSupabase();
-  const canOffer = slides.length > 0;
+  const boxes = cardOfferBoxes(offers);
   const showReserve = reservable || holding;
-  if (!showReserve && !canOffer && !premier) return null;
-  const cells: Array<"premier" | "reserve" | "offer"> = [
-    ...(premier ? (["premier"] as const) : []),
-    ...(showReserve ? (["reserve"] as const) : []),
-    ...(canOffer ? (["offer"] as const) : []),
-  ];
-  const offer = slides[0];
+  if (!showReserve && boxes.length === 0 && !premier) return null;
+  const kinds = [...(premier ? ["premier"] : []), ...(showReserve ? ["reserve"] : []), ...boxes.map((b) => b.key)];
   return (
     <div
-      className={cn("flex w-full", className)}
-      data-place-banner={cells.length === 1 ? cells[0] : cells.includes("premier") ? cells.join("-") : "both"}
+      className={cn("grid w-full auto-cols-[minmax(max-content,1fr)] grid-flow-col", className)}
+      data-place-banner={kinds.join("-")}
     >
-      {cells.map((kind, i) =>
-        kind === "premier" ? (
-          <span
-            key={`${kind}-${i}`}
-            className={cn(
-              CARD_BUTTON_BOX,
-              BANNER_CELL,
-              "min-w-0 flex-1",
-              "bg-[#E9C46A] text-neutral-950",
-              cellClassName,
-              "shrink",
-            )}
-            data-card-premier
-          >
-            <PremierRosette className="h-4 w-4 shrink-0" fill="#141414" check="#fff" decorative />
-            Premier
-          </span>
-        ) : kind === "reserve" ? (
-          <PushLink
-            key={`${kind}-${i}`}
-            href={reserveHref}
-            aria-label={
-              holding
-                ? `${reserveLabel} at ${name}${reserveDetail ? `, ${reserveDetail}` : ""}. Change or cancel it.`
-                : `Reserve at ${name}`
-            }
-            data-card-table={
-              holding
-                ? reserveLabel === "Booked"
-                  ? "booked"
-                  : "booking"
-                : undefined
-            }
-            className={cn(
-              CARD_BUTTON_BOX,
-              BANNER_CELL,
-              "min-w-0 flex-1",
-              "bg-reserve text-reserve-foreground",
-              cellClassName,
-              "shrink",
-            )}
-            data-tile-reserve
-          >
-            <CalendarCheck className="h-4 w-4 shrink-0" aria-hidden />
-            {holding ? reserveLabel : "Reserve"}
-          </PushLink>
-        ) : (
-          <PushLink
-            key={`${kind}-${i}`}
-            href={offerHref}
-            aria-label={offersLabel(name, slides)}
-            onClick={() => {
-              const voucher = offer?.voucher ?? offer?.key;
-              if (placeId && voucher) {
-                trackEvent(getSupabase(), "offer_chip_tap", {
-                  place_id: placeId,
-                  voucher,
-                });
-              }
-            }}
-            className={cn(
-              CARD_BUTTON_BOX,
-              BANNER_CELL,
-              "min-w-0 flex-1",
-              // Stripe Link's green, every offer's colour (MESITA-4210).
-              "bg-[#00D66F] text-neutral-950",
-              cellClassName,
-              "shrink",
-            )}
-            data-tile-bonus
-          >
-            {/* Cashback shows the Pay tab's QR, Offers the percent badge (MESITA-5116). */}
-            {cashbackPct && cashbackPct > 0 ? (
-              <QrCode className="h-4 w-4 shrink-0" aria-hidden />
-            ) : (
-              <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
-            )}
-            {cashbackPct && cashbackPct > 0 ? (
-              <CashbackWords pct={cashbackPct} />
-            ) : (
-              offerBannerWord(slides, cashbackPct)
-            )}
-          </PushLink>
-        ),
-      )}
+      {premier ? (
+        <span className={cn(CARD_BUTTON_BOX, BANNER_CELL, "bg-[#E9C46A] text-neutral-950", cellClassName)} data-card-premier>
+          <PremierRosette className="h-4 w-4 shrink-0" fill="#141414" check="#fff" decorative />
+          Premier
+        </span>
+      ) : null}
+      {showReserve ? (
+        <PushLink
+          href={reserveHref}
+          aria-label={
+            holding
+              ? `${reserveLabel} at ${name}${reserveDetail ? `, ${reserveDetail}` : ""}. Change or cancel it.`
+              : `Reserve at ${name}`
+          }
+          data-card-table={holding ? (reserveLabel === "Booked" ? "booked" : "booking") : undefined}
+          className={cn(CARD_BUTTON_BOX, BANNER_CELL, "bg-reserve text-reserve-foreground", cellClassName)}
+          data-tile-reserve
+        >
+          <CalendarCheck className="h-4 w-4 shrink-0" aria-hidden />
+          {holding ? reserveLabel : "Reserve"}
+        </PushLink>
+      ) : null}
+      {boxes.map((b) => (
+        <PushLink
+          key={b.key}
+          href={offerHref}
+          aria-label={`${b.words} at ${name}`}
+          onClick={() => {
+            if (placeId) trackEvent(getSupabase(), "offer_chip_tap", { place_id: placeId, voucher: b.voucher });
+          }}
+          className={cn(CARD_BUTTON_BOX, BANNER_CELL, "tabular-nums", b.tone, cellClassName)}
+          data-tile-bonus
+          data-card-offer={b.key}
+        >
+          {b.words}
+        </PushLink>
+      ))}
     </div>
   );
 }
@@ -395,9 +329,11 @@ export function PremierPill({
   );
 }
 
-/** One still banner cell: a mark and a word, centred. */
+/** One still banner cell: a mark and a word, centred, never wrapped. 6px
+ *  inside and 4px between mark and word (8 and 6 before): Search's four
+ *  cells fit a 360px phone (MESITA-5129). */
 const BANNER_CELL =
-  "pointer-events-auto relative flex items-center justify-center gap-1.5 px-2 font-sans text-xs font-semibold focus-visible:ring-primary outline-none focus-visible:ring-2";
+  "pointer-events-auto relative flex min-w-0 items-center justify-center gap-1 px-1.5 font-sans text-xs font-semibold whitespace-nowrap focus-visible:ring-primary outline-none focus-visible:ring-2";
 
 /** The Search map card's top strip (MESITA-3444): the same slides on the
  *  same beat (MESITA-3467), part of the card (its tap opens the place). */
