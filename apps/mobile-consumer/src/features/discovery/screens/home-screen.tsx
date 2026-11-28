@@ -18,7 +18,7 @@ import { PlaceCard } from "../components/place-card";
 import { chipsFor, CHIPS, type Chip, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
 import { shareUrl, type CatalogPlace } from "../model";
-import { useCatalog, useRecordShare, useSaved, useToggleSaved } from "../queries";
+import { useCatalog, useRecordShare, useSaved, useShareCode, useToggleSaved } from "../queries";
 
 type Nav = {
   onOpenPlace: (placeId: string) => void;
@@ -49,6 +49,7 @@ export function HomeScreen(nav: Nav) {
   const toggle = useToggleSaved();
   const [drop, setDrop] = useState<CatalogPlace | null>(null);
   const recordShare = useRecordShare();
+  const shareCode = useShareCode();
   const requireAccount = useRequireAccount();
   const onSaved = shown === "saved";
   const read = onSaved ? saved : catalog;
@@ -75,7 +76,7 @@ export function HomeScreen(nav: Nav) {
   const isSaved = (id: string) => saved.data?.ids.includes(id) ?? false;
 
   const share = async (place: CatalogPlace) => {
-    const url = shareUrl(place);
+    const url = shareUrl(place, shareCode);
     const done = await Share.share({ message: `${place.name}\n${url}` }).catch(() => null);
     if (member && done?.action === Share.sharedAction) recordShare.mutate(place.id);
   };

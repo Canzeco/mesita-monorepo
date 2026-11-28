@@ -949,3 +949,11 @@ verify_jwt = true
 
 [functions.consumer-web-track-place-share]
 verify_jwt = true
+
+# MESITA-5060: the guest's share code, ?s=<code> on every link they share.
+[functions.consumer-web-get-share-code]
+verify_jwt = true
+
+# MESITA-5060: a share link was opened. Public: the friend has no account yet.
+[functions.consumer-web-track-share-open]
+verify_jwt = false

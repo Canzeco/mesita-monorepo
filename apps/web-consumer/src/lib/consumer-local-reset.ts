@@ -24,6 +24,7 @@ import { clearNotificationsSeenLocal } from "./notifications-seen";
 import { clearSavedLocationsLocal } from "./saved-locations";
 import { clearSavedPlacesLocal } from "./saved-places";
 import { clearScreenCache } from "./screen-cache";
+import { forgetShareCode } from "./share-code";
 
 const OWNER_KEY = "mesita:consumer-owner";
 
@@ -60,6 +61,8 @@ export function reconcileConsumerLocalOwner(consumerId: string | null): void {
   clearSavedPlacesLocal();
   clearSavedLocationsLocal();
   clearNotificationsSeenLocal();
+  // MESITA-5060: the share code names its guest; the next one gets their own.
+  forgetShareCode();
 
   try {
     if (consumerId) window.localStorage.setItem(OWNER_KEY, consumerId);

@@ -89,6 +89,9 @@ export const TEST_GUEST_RULES: Record<string, TestGuestRule> = {
   "consumer-web-track-activity": "uncounted",
   "consumer-web-track-event": "open",
   "consumer-web-track-place-share": "uncounted",
+  // MESITA-5060: a code and an open of a link name no place's numbers.
+  "consumer-web-get-share-code": "open",
+  "consumer-web-track-share-open": "open",
   "consumer-web-update-profile": "open",
   "consumer-web-unregister-push": "uncounted",
   "consumer-web-update-reservation": "reserve",

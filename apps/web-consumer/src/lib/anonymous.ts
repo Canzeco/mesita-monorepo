@@ -61,6 +61,8 @@ const OPEN = new Set([
   "consumer-web-get-gift-preview",
   "consumer-web-get-pay-place-name",
   "consumer-web-list-activity",
+  // MESITA-5060: a friend opening a share link usually has no account.
+  "consumer-web-track-share-open",
   // Sign and onboarding run while the visitor is still anonymous.
   "consumer-web-signin-phone",
   "consumer-web-get-profile",

@@ -283,6 +283,7 @@ const PLACES_READ_ALLOWLIST = [
   "consumer-web-create-reservation/index.ts",
   "_shared/place-scores.ts", // boost_tier for the Premier row of the Profile Scores box (MESITA-4515)
   "_shared/test-guest.ts", // is_test_place only, error logged and refused (MESITA-4931)
+  "_shared/share-place-ref.ts", // id only, by id or slug, for a share link's counts (MESITA-5060)
 ];
 
 Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", async () => {
