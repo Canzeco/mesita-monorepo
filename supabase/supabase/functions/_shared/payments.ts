@@ -178,10 +178,9 @@ export async function chargesEnabledByPlace(
 /** MESITA-4702: cashback_pct is the place's highest cashback line where
  *  Loyalty Cards is On (null = none earned); cashback_flat says every line
  *  is that rate. The carousel's green "Pay · Up to N% Cashback" slide. */
-/** MESITA-4748, MESITA-4766: welcome_pct, returning_pct and
- *  returning_vip_pct are the three lines apart (null = that line earns
- *  nothing), for the Pay Bill sheet's Welcome | Returning | Returning VIP
- *  boxes; cashback_pct stays the highest of the three. */
+/** MESITA-4748: welcome_pct and returning_pct are the two lines apart (null
+ *  = that line earns nothing); cashback_pct is the higher. The VIP two are
+ *  always null since MESITA-5072 (kept for older guest apps). */
 export type ListRowOffers = {
   sell: MoneyVoucherKey[];
   cashback_pct: number | null;
@@ -189,7 +188,7 @@ export type ListRowOffers = {
   welcome_pct: number | null;
   returning_pct: number | null;
   returning_vip_pct: number | null;
-  /** MESITA-4789: Welcome VIP, a VIP's first paid bill here. */
+  /** Retired (MESITA-5072): always null. */
   welcome_vip_pct: number | null;
   /** MESITA-4764: each voucher sold here and its bonus in whole percent (the
    *  owner's pick: Small 10 · 20, Medium 20 · 40, Big 40 · 60). */
@@ -207,11 +206,12 @@ export function cashbackOffer(r: CashbackRates | undefined | null): Pick<ListRow
   const top = r ? maxCashbackBps(r) : 0;
   return {
     cashback_pct: top > 0 ? top / 100 : null,
-    cashback_flat: !!r && r.welcome_bps === r.returning_bps && r.returning_bps === r.returning_vip_bps && r.returning_vip_bps === r.welcome_vip_bps,
+    cashback_flat: !!r && r.welcome_bps === r.returning_bps,
     welcome_pct: pct(r?.welcome_bps),
     returning_pct: pct(r?.returning_bps),
-    returning_vip_pct: pct(r?.returning_vip_bps),
-    welcome_vip_pct: pct(r?.welcome_vip_bps),
+    // Retired (MESITA-5072): no VIP line earns; null keeps older guest apps reading.
+    returning_vip_pct: null,
+    welcome_vip_pct: null,
   };
 }
 

@@ -1,5 +1,6 @@
--- MESITA-4766 — VIP is back (an invitation code only since MESITA-4849), Back has three lines (Welcome Everyone, Returning Regular,
--- Returning VIP), and Instagram Stories are gone.
+-- MESITA-4766 — VIP is back (an invitation code only since MESITA-4849) and
+-- Instagram Stories are gone. Since MESITA-5072 VIP earns no cashback line of
+-- its own: a VIP's bills are Welcome and Returning like everyone's.
 
 begin;
 
@@ -24,11 +25,11 @@ insert into public.consumers (id, instagram_handle, instagram_verified_at, insta
 
 -- ━━━ Columns and defaults ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-select col_default_is('public', 'cashback_defaults', 'returning_vip_bps', '1000',
-  'Returning VIP defaults to 10% for new places');
+select col_default_is('public', 'cashback_defaults', 'returning_vip_bps', '0',
+  'Returning VIP is retired: 0 (MESITA-5072)');
 select throws_ok(
-  $$update public.cashback_defaults set returning_vip_bps = 500 where id$$,
-  '23514', null, 'Returning VIP picks are Off, 10% or 20%');
+  $$update public.cashback_defaults set returning_vip_bps = 1000 where id$$,
+  '23514', null, 'a VIP rate other than 0 is refused (MESITA-5072)');
 
 -- ━━━ Who is VIP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -104,8 +105,8 @@ values ('00000000-0000-4000-8000-000000014766', 'mesita-4766-probe', 'active', '
 insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
 values ('00000000-0000-4000-8000-000000014766', '00000000-0000-4000-8000-000000114766', 'owner', 'draft-2026-11', repeat('0', 64));
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000014766', true);
-insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps, returning_vip_bps)
-values ('00000000-0000-4000-8000-000000014766', 1000, 500, 2000);
+insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps)
+values ('00000000-0000-4000-8000-000000014766', 1000, 500);
 
 create temp table bills (n int, consumer uuid, live boolean) on commit drop;
 insert into bills values
@@ -132,8 +133,8 @@ create function pg_temp.line(n int) returns text language sql as $$
   select reason || ':' || amount_cents from public.wallet_entries
    where tab_id = ('00000000-0000-4000-8000-000000' || lpad(n::text, 2, '0') || '4766')::uuid and kind = 'cashback' $$;
 
-select is(pg_temp.line(1), 'welcome_vip:1000', 'a VIP''s first bill is Welcome VIP (MESITA-4789)');
-select is(pg_temp.line(2), 'returning_vip:2000', 'an invited VIP''s later bill is Returning VIP');
+select is(pg_temp.line(1), 'welcome:1000', 'a VIP''s first bill is Welcome, like everyone''s (MESITA-5072)');
+select is(pg_temp.line(2), 'returning:500', 'an invited VIP''s later bill is Returning, like everyone''s');
 select is(pg_temp.line(4), 'returning:500', 'a Regular''s later bill is Returning Regular');
 select is(pg_temp.line(6), 'returning:500', 'a 6,000-follower guest''s later bill is Returning Regular (MESITA-4849)');
 select is(pg_temp.line(8), 'returning:500', 'live money pays an emulator-only guest Returning Regular');
@@ -151,12 +152,12 @@ select is(pg_temp.line(9), 'welcome:1000', 'test mode counts its own first bill:
 select is(pg_temp.line(10), 'returning:500', 'test mode: the emulator makes no VIP (MESITA-4849)');
 
 -- Off pays nothing.
-update public.place_cashback_settings set returning_vip_bps = 0 where place_id = '00000000-0000-4000-8000-000000014766';
+update public.place_cashback_settings set returning_bps = 0 where place_id = '00000000-0000-4000-8000-000000014766';
 insert into public.pay_tabs (id, place_id, consumer_id, token_hash, currency, expires_at, status, bill_cents, tip_cents,
                              origin, paid_at, card_bill_cents, cash_bill_cents, livemode)
 values ('00000000-0000-4000-8000-000000114766', '00000000-0000-4000-8000-000000014766', '00000000-0000-4000-8000-0000000a4766',
         repeat('b', 64), 'mxn', now() + interval '1 day', 'paid', 10000, 0, 'waiter', now() + interval '30 minutes', 10000, 0, true);
-select is(pg_temp.line(11), null, 'Returning VIP Off: a VIP''s later bill earns nothing');
+select is(pg_temp.line(11), null, 'Returning Off: a VIP''s later bill earns nothing');
 
 -- ━━━ Stories are gone ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

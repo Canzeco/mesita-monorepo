@@ -12,9 +12,9 @@
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
 //   Visit Checkout     #visit-checkout     · Enabled (Cashback) ·
-//                                            Welcome Regular · Returning Regular ·
-//                                            Welcome VIP · Returning VIP (three
-//                                            picks each, Off included)
+//                                            Welcome Cashback · Returning Cashback
+//                                            (MESITA-5072; Returning 10% only
+//                                            where Small is +20%)
 //   Waiter Codes       #waiter-codes       · one 6-digit code, always asked
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
@@ -44,7 +44,6 @@ import {
   ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
   ConfettiIcon,
-  CrownSimpleIcon,
   HashIcon,
   ReceiptIcon,
   StripeLogoIcon,
@@ -66,6 +65,8 @@ import {
   CASHBACK_DEFAULTS,
   type CashbackRates,
   VISIT_PICKS_BPS,
+  returningPicks,
+  saveableCashback,
   type VisitRateField,
   VOUCHER_BONUS_PICKS_BPS,
   type VoucherBonusField,
@@ -147,27 +148,17 @@ function wholeMoney(cents: number, currency: string): string {
   }
 }
 
-/** Visit Checkout's four lines (MESITA-4698; VIP back since MESITA-4766; four since MESITA-4789),
- *  each Off or one of two rates, all always shown, paid out as Cashback for
- *  the next visit. */
+/** Visit Checkout's two lines (MESITA-4698; two since MESITA-5072: VIP
+ *  cashback is gone), each Off or a rate, paid out as Cashback for the next
+ *  visit. Returning's 10% shows only where Small's bonus is +20%. */
 const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; icon: Icon }> = [
-  // FOUR TIERS (Pato, 2026-11-23, MESITA-4789: "Welcome Regular, Returning
-  // Regular, Welcome VIP, Returning VIP"), in his order.
-  { key: "welcome_bps", id: "welcome-regular", name: "Welcome Regular", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
-  { key: "returning_bps", id: "returning-regular", name: "Returning Regular", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
-  { key: "welcome_vip_bps", id: "welcome-vip", name: "Welcome VIP", line: "Cashback on a VIP guest's first bill here.", icon: CrownSimpleIcon },
-  {
-    key: "returning_vip_bps",
-    id: "returning-vip",
-    name: "Returning VIP",
-    line: "Cashback on every later bill of a VIP guest.",
-    icon: CrownSimpleIcon,
-  },
+  { key: "welcome_bps", id: "welcome-regular", name: "Welcome Cashback", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
+  { key: "returning_bps", id: "returning-regular", name: "Returning Cashback", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
 ];
 const pct = (bps: number) => `${bps / 100}%`;
 /** Every visit rate at 0: what Enabled Off stores. */
-const NO_RATES = { welcome_bps: 0, returning_bps: 0, returning_vip_bps: 0, welcome_vip_bps: 0 } as const;
-const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0 || r.returning_vip_bps > 0 || r.welcome_vip_bps > 0;
+const NO_RATES = { welcome_bps: 0, returning_bps: 0 } as const;
+const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0;
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
 function voucherProducts(currency: string, rates: CashbackRates): Product[] {
@@ -201,8 +192,6 @@ type DraftKey = "prepayments" | VoucherKey;
 const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
   "welcome_bps",
   "returning_bps",
-  "returning_vip_bps",
-  "welcome_vip_bps",
   "small_bonus_bps",
   "medium_bonus_bps",
   "big_bonus_bps",
@@ -213,13 +202,8 @@ const sameRates = (a: CashbackRates, b: CashbackRates) => CASHBACK_FIELDS.every(
  *  the set with any rate on, else the defaults. */
 const restoreRates = (c: CashbackRates): Pick<CashbackRates, VisitRateField> =>
   anyRate(c)
-    ? { welcome_bps: c.welcome_bps, returning_bps: c.returning_bps, returning_vip_bps: c.returning_vip_bps, welcome_vip_bps: c.welcome_vip_bps }
-    : {
-        welcome_bps: CASHBACK_DEFAULTS.welcome_bps,
-        returning_bps: CASHBACK_DEFAULTS.returning_bps,
-        returning_vip_bps: CASHBACK_DEFAULTS.returning_vip_bps,
-        welcome_vip_bps: CASHBACK_DEFAULTS.welcome_vip_bps,
-      };
+    ? { welcome_bps: c.welcome_bps, returning_bps: c.returning_bps }
+    : { welcome_bps: CASHBACK_DEFAULTS.welcome_bps, returning_bps: CASHBACK_DEFAULTS.returning_bps };
 
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
@@ -356,7 +340,9 @@ export function PaymentsPanel({
   }
 
   /** The cashback record into the draft; equal to the saved one drops it. */
-  function editRates(next: CashbackRates) {
+  function editRates(picked: CashbackRates) {
+    // Small below +20% takes Returning 10% down to 5% (MESITA-5072).
+    const next = saveableCashback(picked);
     const same = sameRates(next, cashback);
     setCashbackDraft(same ? null : next);
     // Back to a saved Off drops the rates picked on the way there.
@@ -716,8 +702,10 @@ export function PaymentsPanel({
             {RATE_ROWS.map((row) => {
               const live = settings.loyalty_cards ? rates[row.key] : 0;
               const on = live > 0;
-              const steps = VISIT_PICKS_BPS[row.key].filter((b) => b > 0);
-              const remembered = lastRates[row.key] > 0 ? lastRates[row.key] : CASHBACK_DEFAULTS[row.key] > 0 ? CASHBACK_DEFAULTS[row.key] : steps[0];
+              const picks = row.key === "returning_bps" ? returningPicks(rates.small_bonus_bps) : VISIT_PICKS_BPS[row.key];
+              const steps = picks.filter((b) => b > 0);
+              const fallback = CASHBACK_DEFAULTS[row.key] > 0 ? CASHBACK_DEFAULTS[row.key] : steps[0];
+              const remembered = steps.includes(lastRates[row.key]) ? lastRates[row.key] : steps.includes(fallback) ? fallback : steps[0];
               const locked = pending || !!visitBlock;
               return (
                 <li key={row.key} id={row.id} className={cn(ROW, STACK)} data-place-state={row.key}>

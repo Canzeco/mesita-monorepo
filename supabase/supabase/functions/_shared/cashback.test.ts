@@ -1,45 +1,44 @@
 // MESITA-4698: what a bill earns is guest money; pin the arithmetic the SQL
 // trigger mirrors (pay_tab_grant_cashback) and the owner's allowed inputs.
-// Four lines since MESITA-4789: Welcome Regular, Returning Regular, Welcome VIP, Returning VIP.
+// Two lines since MESITA-5072: Welcome and Returning; a VIP earns the same.
 import { assertEquals } from "jsr:@std/assert@1";
 import { CASHBACK_CAP_CENTS, CASHBACK_DEFAULTS, cashbackCents, cashbackLine, maxCashbackBps, readCashbackInput, voucherBonusFrom } from "./cashback.ts";
 
-Deno.test("cashback: four lines — the first bill is Welcome VIP or Regular, then Returning VIP or Regular (MESITA-4789)", () => {
+Deno.test("cashback: two lines — the first bill is Welcome, then Returning; VIP lines earn nothing new (MESITA-5072)", () => {
   assertEquals(cashbackLine(true), "welcome");
-  assertEquals(cashbackLine(true, true), "welcome_vip");
   assertEquals(cashbackLine(false), "returning");
-  assertEquals(cashbackLine(false, true), "returning_vip");
-  const rates = { ...CASHBACK_DEFAULTS, welcome_bps: 1000, returning_bps: 500, returning_vip_bps: 2000 };
-  assertEquals(cashbackCents(rates, "returning_vip", 10000), 2000);
+  // A row still holding an old VIP rate pays nothing on the retired lines.
+  const rates = { ...CASHBACK_DEFAULTS, welcome_bps: 1000, returning_bps: 500, returning_vip_bps: 2000, welcome_vip_bps: 2000 };
   assertEquals(cashbackCents(rates, "returning", 10000), 500);
-  assertEquals(cashbackCents({ ...rates, returning_vip_bps: 0 }, "returning_vip", 10000), 0);
-  assertEquals(maxCashbackBps(rates), 2000);
-  const welcomeVip = { ...rates, welcome_vip_bps: 2000, returning_vip_bps: 1000 };
-  assertEquals(cashbackCents(welcomeVip, "welcome_vip", 10000), 2000);
-  assertEquals(cashbackCents(welcomeVip, "welcome", 10000), 1000);
-  assertEquals(maxCashbackBps(welcomeVip), 2000);
+  assertEquals(cashbackCents(rates, "welcome", 10000), 1000);
+  assertEquals(cashbackCents(rates, "returning_vip", 10000), 0);
+  assertEquals(cashbackCents(rates, "welcome_vip", 10000), 0);
+  assertEquals(maxCashbackBps(rates), 1000);
+  assertEquals([CASHBACK_DEFAULTS.welcome_vip_bps, CASHBACK_DEFAULTS.returning_vip_bps], [0, 0]);
 });
 
-Deno.test("cashback: Welcome VIP is Off, 10 or 20%, optional (MESITA-4789)", () => {
+Deno.test("cashback save: a non-zero VIP rate is refused; every save writes both VIP rates 0 (MESITA-5072)", () => {
   const base = { welcome_bps: 1000, returning_bps: 500 };
-  const vip = readCashbackInput({ ...base, welcome_vip_bps: 2000 });
-  assertEquals(vip.ok && vip.rates.welcome_vip_bps, 2000);
-  assertEquals(readCashbackInput({ ...base, welcome_vip_bps: 500 }).ok, false);
+  assertEquals(readCashbackInput({ ...base, welcome_vip_bps: 2000 }).ok, false);
+  assertEquals(readCashbackInput({ ...base, returning_vip_bps: 1000 }).ok, false);
+  assertEquals(readCashbackInput({ ...base, returning_vip_bps: "0" }).ok, false);
+  const zero = readCashbackInput({ ...base, welcome_vip_bps: 0, returning_vip_bps: 0 });
+  assertEquals(zero.ok && [zero.rates.welcome_vip_bps, zero.rates.returning_vip_bps], [0, 0]);
   const absent = readCashbackInput(base);
-  assertEquals(absent.ok && "welcome_vip_bps" in absent.rates, false);
-});
-
-Deno.test("cashback: Returning VIP is Off, 10 or 20%, optional; a story reward is ignored (MESITA-4766)", () => {
-  const base = { welcome_bps: 1000, returning_bps: 500 };
-  const vip = readCashbackInput({ ...base, returning_vip_bps: 2000 });
-  assertEquals(vip.ok && vip.rates.returning_vip_bps, 2000);
-  assertEquals(readCashbackInput({ ...base, returning_vip_bps: 0 }).ok, true);
-  assertEquals(readCashbackInput({ ...base, returning_vip_bps: 500 }).ok, false);
-  assertEquals(readCashbackInput({ ...base, returning_vip_bps: "1000" }).ok, false);
-  const absent = readCashbackInput(base);
-  assertEquals(absent.ok && "returning_vip_bps" in absent.rates, false);
+  assertEquals(absent.ok && [absent.rates.welcome_vip_bps, absent.rates.returning_vip_bps], [0, 0]);
   const story = readCashbackInput({ ...base, story_reward_cents: 2000 });
   assertEquals(story.ok && "story_reward_cents" in story.rates, false);
+});
+
+Deno.test("cashback save: Returning 10% only where Small's bonus is +20% (MESITA-5072)", () => {
+  const top = { welcome_bps: 1000, returning_bps: 1000 };
+  assertEquals(readCashbackInput({ ...top, small_bonus_bps: 2000 }).ok, true);
+  assertEquals(readCashbackInput({ ...top, small_bonus_bps: 1000 }).ok, false);
+  assertEquals(readCashbackInput(top, { small_bonus_bps: 2000 }).ok, true, "the saved Small");
+  assertEquals(readCashbackInput(top, { small_bonus_bps: 1000 }).ok, false);
+  assertEquals(readCashbackInput({ ...top, small_bonus_bps: 1000 }, { small_bonus_bps: 2000 }).ok, false, "this save's Small wins");
+  assertEquals(readCashbackInput(top).ok, false, "an unknown Small never allows 10%");
+  assertEquals(readCashbackInput({ welcome_bps: 1000, returning_bps: 500 }, { small_bonus_bps: 1000 }).ok, true);
 });
 
 Deno.test("cashback: rate on the part, rounded down, capped", () => {
@@ -56,7 +55,7 @@ Deno.test("cashback: rate on the part, rounded down, capped", () => {
 });
 
 Deno.test("cashback: Welcome is Off, 10 or 20%; Returning Off, 5 or 10% (MESITA-4764)", () => {
-  assertEquals(readCashbackInput({ welcome_bps: 2000, returning_bps: 1000, cap_cents: 20000 }).ok, true);
+  assertEquals(readCashbackInput({ welcome_bps: 2000, returning_bps: 1000, small_bonus_bps: 2000, cap_cents: 20000 }).ok, true);
   assertEquals(readCashbackInput({ welcome_bps: 0, returning_bps: 0, cap_cents: 0 }).ok, true);
   assertEquals(readCashbackInput({ welcome_bps: 500, returning_bps: 500 }).ok, false);
   assertEquals(readCashbackInput({ welcome_bps: 1500, returning_bps: 500 }).ok, false);

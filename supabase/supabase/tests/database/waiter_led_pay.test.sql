@@ -16,9 +16,9 @@ insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000024823', 'mesita-4823-other', 'active', 'generating', 'MXN');
 -- The second place has rates but no Credits Agreement yet: it earns nothing
 -- (Discount is gone, MESITA-5076).
-insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps) values
-  ('00000000-0000-4000-8000-000000014823', 1000, 1000),
-  ('00000000-0000-4000-8000-000000024823', 2000, 1000);
+insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps, small_bonus_bps) values
+  ('00000000-0000-4000-8000-000000014823', 1000, 1000, 2000),
+  ('00000000-0000-4000-8000-000000024823', 2000, 1000, 2000);
 insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
 values ('00000000-0000-4000-8000-000000014823', '00000000-0000-4000-8000-0000000f4823', 'owner', 'draft-2026-11', repeat('0', 64));
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000014823', true);
