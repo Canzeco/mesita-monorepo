@@ -473,7 +473,7 @@ export function GuestTabView({
             667px phone (MESITA-4658); the QR is step 1 and takes the room. */}
         {cash > 0 ? (
           <section
-            className="flex shrink-0 items-center gap-3 rounded-2xl bg-[#00D66F] px-4 py-3 text-neutral-950"
+            className="flex shrink-0 items-center gap-3 rounded-2xl bg-[#635BFF] px-4 py-3 text-white"
             aria-label={`Pay the waiter ${m(cash)}, cash or card`}
             data-guest-sign-cash
           >
