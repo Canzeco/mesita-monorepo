@@ -37,7 +37,7 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   },
   {
     tab: "payments",
-    line: "Discounts or credit back on the bill, prepaid vouchers, waiter codes, and the Credits and Stripe accounts behind them.",
+    line: "Cashback on the bill, prepaid vouchers, waiter codes, and the Credits and Stripe accounts behind them.",
   },
   {
     tab: "reservations",

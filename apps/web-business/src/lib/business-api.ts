@@ -470,8 +470,6 @@ export type PlacePayments = {
   staff_code: string | null;
   /** The waiter types their name after the code. */
   name_required: boolean;
-  /** MESITA-4890: bills need no waiter code (Discount only). */
-  no_code?: boolean;
   /** MESITA-3946: credit guests hold here now; null when the read failed. */
   credits_balance: { available_cents: number; pending_cents: number } | null;
   /** MESITA-5069: guests who paid with credit here after earning cashback
@@ -538,7 +536,6 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
       contract: r.data.contract,
       code_set: r.data.code_set === true,
-      no_code: r.data.no_code === true,
       staff_code: typeof r.data.staff_code === "string" ? r.data.staff_code : null,
       name_required: r.data.name_required === true,
       credits_balance: r.data.credits_balance
@@ -675,10 +672,10 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** The place's code: a new one, the name asked with it, or codes on and off. */
+/** The place's code: a new one, or the name asked with it. */
 export async function setWaiter(
   placeId: string,
-  action: "new_code" | "name_on" | "name_off" | "codes_on" | "codes_off",
+  action: "new_code" | "name_on" | "name_off",
 ): Promise<Result<{ code?: string }>> {
   const r = await efInvoke<{ code?: string }>("business-web-set-waiter", { place_id: placeId, action });
   if (!r.ok) return fail(r);

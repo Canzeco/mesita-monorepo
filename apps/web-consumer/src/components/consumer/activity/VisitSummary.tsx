@@ -16,7 +16,7 @@
 //   Taquería Orinoco ›                    the place, a link to it
 //   Wed, Nov 11 · 22:34                   when; the Test chip
 //
-//   Receipt           Bill · Discount · Tip · Total
+//   Receipt           Bill · Tip · Total
 //   Paid with         one line per method: its bill + tip and its amount; a
 //                     state only when it is not simply Paid ("Didn't go
 //                     through" is ink, never red); a paid part opens its receipt
@@ -184,8 +184,7 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
   const card = tab.card_bill_cents + tab.card_tip_cents;
   const tip = tab.cash_tip_cents + tab.card_tip_cents;
   const chosen = tab.credit_cents + cash + card;
-  const off = tab.discount_cents ?? 0;
-  const total = chosen > 0 ? chosen : (tab.bill_cents ?? 0) - off;
+  const total = chosen > 0 ? chosen : (tab.bill_cents ?? 0);
 
   // The newest part of each kind decides its method's state.
   const latest = (kind: string) => tab.parts.filter((p) => p.part === kind).at(-1);
@@ -323,13 +322,12 @@ function Statement({ tab, back }: { tab: GuestTab; back: NonNullable<TabRead["ba
           {tab.bill_cents != null ? (
             <TicketPanel title={unpaid ? "The bill" : "Receipt"}>
               <TicketLine label="Bill" value={m(tab.bill_cents)} />
-              {off > 0 ? <TicketLine label="Discount" value={`−${m(off)}`} /> : null}
               <TicketLine
                 label="Tip"
                 sub={suggested > 0 && suggested !== tip ? `The waiter suggested ${m(suggested)}` : null}
                 value={tip > 0 ? m(tip) : chosen > 0 ? "No tip" : suggested > 0 ? `${m(suggested)} suggested` : "—"}
               />
-              <TicketLine label="Total" value={m(tab.bill_cents - off + tip)} strong />
+              <TicketLine label="Total" value={m(tab.bill_cents + tip)} strong />
             </TicketPanel>
           ) : null}
           {!unpaid ? (

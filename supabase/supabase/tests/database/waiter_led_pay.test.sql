@@ -14,17 +14,19 @@ insert into public.place_profiles (id, google_name) values
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000014823', 'mesita-4823-probe', 'active', 'generating', 'MXN'),
   ('00000000-0000-4000-8000-000000024823', 'mesita-4823-other', 'active', 'generating', 'MXN');
-insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps, visit_mechanism) values
-  ('00000000-0000-4000-8000-000000014823', 1000, 1000, 'cashback'),
-  ('00000000-0000-4000-8000-000000024823', 2000, 1000, 'discount');
+-- The second place has rates but no Credits Agreement yet: it earns nothing
+-- (Discount is gone, MESITA-5076).
+insert into public.place_cashback_settings (place_id, welcome_bps, returning_bps) values
+  ('00000000-0000-4000-8000-000000014823', 1000, 1000),
+  ('00000000-0000-4000-8000-000000024823', 2000, 1000);
 insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
 values ('00000000-0000-4000-8000-000000014823', '00000000-0000-4000-8000-0000000f4823', 'owner', 'draft-2026-11', repeat('0', 64));
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000014823', true);
 -- MX$300 of credit at the first place (an earlier paid bill's cashback).
 insert into public.pay_tabs (id, place_id, consumer_id, token_hash, currency, livemode, expires_at, status, bill_cents, tip_cents,
-                             origin, paid_at, cash_bill_cents, visit_mechanism)
+                             origin, paid_at, cash_bill_cents)
 values ('00000000-0000-4000-8000-0000000d4823', '00000000-0000-4000-8000-000000014823', '00000000-0000-4000-8000-0000000a4823',
-        repeat('9', 64), 'mxn', false, now(), 'paid', 300000, 0, 'guest', now() - interval '2 days', 300000, 'cashback');
+        repeat('9', 64), 'mxn', false, now(), 'paid', 300000, 0, 'guest', now() - interval '2 days', 300000);
 
 select is((select sum(amount_cents)::int from public.wallet_entries where tab_id = '00000000-0000-4000-8000-0000000d4823'), 30000,
   'a bill with no frozen rate still earns by the place''s rate');
@@ -78,10 +80,10 @@ select is((select v->>'cashback_reversed_cents' from t where k='ref'), '3000', '
 select is((select b.pending_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', 'mxn', false) b), 0, 'the reversal lands with the Pending cashback');
 select is((select b.spendable_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000014823', 'mxn', false) b), 30000, 'and never eats other credit');
 
--- ── A discount, declined, then a second place ──
+-- ── A second place, declined ──
 insert into t select 'o2', public.pay_bill_open(repeat('2', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
 select is((public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o2'), '00000000-0000-4000-8000-000000024823', 0, 50000, 0, repeat('d', 64))->>'version'), '1', 'a second place bills');
-select is((select (quote->>'outside_cents')::int from public.pay_bills where id = (select (v->>'bill_id')::uuid from t where k='o2')), 40000, 'the discount comes off the bill');
+select is((select (quote->>'outside_cents')::int from public.pay_bills where id = (select (v->>'bill_id')::uuid from t where k='o2')), 50000, 'the whole bill is paid outside: no discount');
 select is((public.pay_bill_decline((select (v->>'bill_id')::uuid from t where k='o2'), '00000000-0000-4000-8000-0000000a4823', 1)->>'outcome'), 'declined', 'the guest declines');
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o2'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('6', 64))->>'code'), 'declined', 'a declined bill is not accepted');
 select is((public.pay_bill_decline((select (v->>'bill_id')::uuid from t where k='o2'), '00000000-0000-4000-8000-0000000a4823', 1, true)->>'ok'), 'true', 'Not my bill answers');
@@ -106,16 +108,20 @@ select is((select b.spendable_cents from public.wallet_balance('00000000-0000-40
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o3'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('a', 63) || '2')->>'code'), 'already_final', 'a released bill is over');
 -- Nothing owed outside: both taps close it.
 insert into t select 'o4', public.pay_bill_open(null, (select (v->>'bill_id')::uuid from t where k='o3'), '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
-insert into t select 's4', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-000000024823', 0, 25000, 0, repeat('d', 64));
+insert into t select 's4', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-000000024823', 0, 20000, 0, repeat('d', 64));
 insert into t select 'a4', public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('a', 63) || '3');
 select is((select v->>'status' from t where k='a4'), 'opening', 'credits cover everything and no tip: it still waits for the waiter (MESITA-4889)');
 select is((public.pay_bill_receive((select (v->>'bill_id')::uuid from t where k='o4'), '00000000-0000-4000-8000-000000024823', 1, repeat('d', 64), null)->>'outcome'), 'paid', 'whose Receive closes it');
 select is((select b.spendable_cents from public.wallet_balance('00000000-0000-4000-8000-0000000a4823', '00000000-0000-4000-8000-000000024823', 'mxn', false) b), 2000, 'the credit is spent');
 select is((select verified_key_hash from public.pay_tabs where id = (select tab_id from public.guest_pay_attempts where id = (select (v->>'attempt_id')::uuid from t where k='a4'))), repeat('d', 64), 'the waiter who received it is the one on record');
--- Credit changed between Send and Accept.
+-- The offer changed between Send and Accept.
 insert into t select 'o5', public.pay_bill_open(repeat('7', 64), null, '00000000-0000-4000-8000-000000024823', 'mxn', false, repeat('d', 64));
 insert into t select 's5', public.pay_bill_send((select (v->>'bill_id')::uuid from t where k='o5'), '00000000-0000-4000-8000-000000024823', 0, 10000, 0, repeat('d', 64));
-update public.place_cashback_settings set visit_mechanism = 'cashback' where place_id = '00000000-0000-4000-8000-000000024823';
+-- The place signs the Credits Agreement: the bill now earns cashback.
+insert into public.loyalty_cards_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
+values ('00000000-0000-4000-8000-000000024823', '00000000-0000-4000-8000-0000000f4823', 'owner', 'draft-2026-11', repeat('0', 64));
+insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000024823', true)
+  on conflict (place_id) do update set loyalty_cards = true;
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o5'), '00000000-0000-4000-8000-0000000a4823', 1, repeat('a', 63) || '4')->>'code'), 'quote_changed', 'numbers that changed are shown again');
 select is((public.pay_bill_accept((select (v->>'bill_id')::uuid from t where k='o5'), '00000000-0000-4000-8000-0000000a4823', 2, repeat('a', 63) || '4')->>'outcome'), 'accepted', 'and then accepted');
 select ok(not has_table_privilege('authenticated', 'public.pay_bills', 'select'), 'guests never read pay_bills');

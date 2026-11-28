@@ -32,23 +32,6 @@ export const CASHBACK_CAP_CENTS = 100_000;
 /** MESITA-4789: four lines. "welcome" is the stored key for Welcome Regular. */
 export type CashbackLine = "welcome" | "welcome_vip" | "returning" | "returning_vip";
 
-/** MESITA-4770 (Pato, 2026-11-23: "SAME TIERS ... YOU JUST SET THE TIER. AND
- *  THEN THE MECHANISM FOR ALL YOUR VISIT TIERS"): how the Welcome / Returning
- *  lines pay out. "cashback" = credit for the next visit (needs Loyalty Cards
- *  On); "discount" = off this bill, worked out by pay_guest_begin. */
-export const VISIT_MECHANISMS = ["cashback", "discount"] as const;
-export type VisitMechanism = (typeof VISIT_MECHANISMS)[number];
-export function isVisitMechanism(v: unknown): v is VisitMechanism {
-  return typeof v === "string" && (VISIT_MECHANISMS as readonly string[]).includes(v);
-}
-
-/** What a printed bill's discount is, rounded down (mirrors pay_guest_begin;
- *  the tip is never part of the bill). Pure. */
-export function discountCents(billCents: number, bps: number): number {
-  if (bps <= 0 || billCents <= 0) return 0;
-  return Math.floor((billCents * bps) / 10000);
-}
-
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
@@ -56,8 +39,6 @@ export type CashbackRates = {
   returning_vip_bps: number;
   /** MESITA-4789: a VIP guest's first paid bill here. */
   welcome_vip_bps: number;
-  /** MESITA-4770: Discount or Cashback, for all three lines. */
-  visit_mechanism: VisitMechanism;
   /** MESITA-4762: the bonus each prepaid voucher gives here, in basis points:
    *  Small 10 · 20 %, Medium 20 · 40 %, Big 30 · 60 % (VOUCHER_BONUS_STEPS_BPS,
    *  Big's default 30% since MESITA-4980). */
@@ -85,7 +66,7 @@ export function voucherBonusFrom(r: Partial<Pick<CashbackRates, VoucherBonusFiel
 }
 
 /** The columns every rates read selects. */
-export const CASHBACK_RATE_COLUMNS = "welcome_bps, welcome_vip_bps, returning_bps, returning_vip_bps, visit_mechanism, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
+export const CASHBACK_RATE_COLUMNS = "welcome_bps, welcome_vip_bps, returning_bps, returning_vip_bps, small_bonus_bps, medium_bonus_bps, big_bonus_bps";
 
 /** The last fallback, 10 / 5 / 10 %: cashback_defaults' seed and
  *  place_cashback_rates' literals. The live defaults are that row (MESITA-4700). */
@@ -94,7 +75,6 @@ export const CASHBACK_DEFAULTS: CashbackRates = {
   returning_bps: 500,
   returning_vip_bps: 1000,
   welcome_vip_bps: 1000,
-  visit_mechanism: "cashback",
   small_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_200[0],
   medium_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_1000[0],
   big_bonus_bps: VOUCHER_BONUS_STEPS_BPS.voucher_5000[0],
@@ -106,11 +86,12 @@ const isIn = (steps: readonly number[], v: unknown): v is number => typeof v ===
  *  why not. Pure. Returning VIP (MESITA-4766) and the voucher bonuses
  *  (MESITA-4762) are optional; absent, the saved value stays as it is. A
  *  `cap_cents` or `story_reward_cents` an older console still sends is
- *  ignored (MESITA-4728, MESITA-4766). */
+ *  ignored (MESITA-4728, MESITA-4766), and so is a `visit_mechanism`: the
+ *  visit lines pay out as Cashback only (MESITA-5076). */
 export function readCashbackInput(
   body: Record<string, unknown>,
 ): { ok: true; rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> } | { ok: false; error: string } {
-  const { welcome_bps, returning_bps, returning_vip_bps, welcome_vip_bps, visit_mechanism } = body;
+  const { welcome_bps, returning_bps, returning_vip_bps, welcome_vip_bps } = body;
   if (!isIn(WELCOME_STEPS_BPS, welcome_bps)) return { ok: false, error: "Welcome Regular must be Off, 10% or 20%" };
   if (!isIn(RETURNING_STEPS_BPS, returning_bps)) return { ok: false, error: "Returning Regular must be Off, 5% or 10%" };
   if (returning_vip_bps !== undefined && !isIn(RETURNING_VIP_STEPS_BPS, returning_vip_bps)) {
@@ -119,18 +100,11 @@ export function readCashbackInput(
   if (welcome_vip_bps !== undefined && !isIn(WELCOME_VIP_STEPS_BPS, welcome_vip_bps)) {
     return { ok: false, error: "Welcome VIP must be Off, 10% or 20%" };
   }
-  // DISCOUNT IS GONE (Pato, 2026-11-27, MESITA-5067: Prepay is the business,
-  // Cashback is the first step). A save may only say cashback; the SQL keeps
-  // reading 'discount' on bills already recorded with it.
-  if (visit_mechanism !== undefined && (!isVisitMechanism(visit_mechanism) || visit_mechanism !== "cashback")) {
-    return { ok: false, error: "The Visit Mechanic is Cashback" };
-  }
   const rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> = {
     welcome_bps,
     returning_bps,
     ...(returning_vip_bps !== undefined ? { returning_vip_bps } : {}),
     ...(welcome_vip_bps !== undefined ? { welcome_vip_bps } : {}),
-    ...(visit_mechanism !== undefined ? { visit_mechanism } : {}),
   };
   for (const [field, key] of Object.entries(VOUCHER_BONUS_FIELDS) as Array<[VoucherBonusField, keyof typeof VOUCHER_BONUS_STEPS_BPS]>) {
     const v = body[field];
@@ -222,11 +196,9 @@ export async function readCashbackRatesMany(admin: SupabaseClient, placeIds: str
 }
 
 /** A place's visit offer as the guest screens read it (MESITA-4698,
- *  MESITA-4702, MESITA-4766, MESITA-4770): the three lines, the mechanism
- *  (Discount or Cashback), and the line this caller's next bill falls in (null
- *  signed out). Null where the read fails (logged; no rate beats a wrong one)
- *  or where Loyalty Cards is Off and the mechanism is cashback (no credit is
- *  born there); a discount needs no Credits Agreement. */
+ *  MESITA-4702, MESITA-4766): the lines and the line this caller's next bill
+ *  falls in (null signed out). Null where the read fails (logged; no rate
+ *  beats a wrong one) or where Loyalty Cards is Off (no credit is born there). */
 export async function placeCashbackFor(
   admin: SupabaseClient,
   args: { placeId: string; consumerId: string | null; livemode: boolean; loyaltyCards: boolean; who: string },
@@ -237,7 +209,7 @@ export async function placeCashbackFor(
       args.consumerId ? readHasPaidBill(admin, args.consumerId, args.placeId, args.livemode).then((paid) => !paid) : Promise.resolve(null),
       args.consumerId ? readIsVipForMoney(admin, args.consumerId, args.livemode) : Promise.resolve(false),
     ]);
-    if (!args.loyaltyCards && rates.visit_mechanism !== "discount") return null;
+    if (!args.loyaltyCards) return null;
     return { ...rates, line: firstBill === null ? null : cashbackLine(firstBill, vip) };
   } catch (err) {
     console.error(`[${args.who}] cashback`, err instanceof Error ? err.message : String(err));

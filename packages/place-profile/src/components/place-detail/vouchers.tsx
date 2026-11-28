@@ -8,7 +8,7 @@ import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
 import { cn } from "../../lib/cn";
-import { VOUCHER_TONE, visitMechanismOf, visitTone, visitWord, type VisitMechanism } from "../../lib/offers";
+import { CASHBACK_TONE, VOUCHER_TONE } from "../../lib/offers";
 import { MONEY_VOUCHER_KEYS, moneyState, type MoneyVoucherKey, NOT_YET_SELLABLE, type VoucherReason } from "../../money-state";
 import type { PlaceCashback, PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 
@@ -583,24 +583,22 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
 // SQUARE (Pato, 2026-11-24, MESITA-4875: "must be squares").
 const BADGE = "flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl tabular-nums";
 
-export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; klass: "Regular Class" | "VIP Class"; who: string; bps: number; mech: VisitMechanism };
+export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; klass: "Regular Class" | "VIP Class"; who: string; bps: number };
 
 /** The place's lines that earn (rate above Off): Welcome, Returning, then
  *  Returning VIP (MESITA-4766, Pato: "NOW THE PAY OFFERS ARE Welcome
  *  Everyone, Returning Regular, Returning VIP"). A guest never reads the
  *  word Regular: the middle line is plain Returning. Two lines under
- *  MESITA-4709 ("no more VIP"). MESITA-4770: each carries the place's
- *  mechanism (Discount or Cashback). */
+ *  MESITA-4709 ("no more VIP"). */
 export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
-  const mech = visitMechanismOf({ cashback });
   return (
     [
       // FOUR TIERS IN PATO'S ORDER (2026-11-23, MESITA-4789), in the guest's
       // words (MESITA-4806); Business keeps Welcome Regular … Returning VIP.
-      { line: "welcome", title: "Welcome Visit", klass: "Regular Class", who: "Your first bill here", bps: cashback.welcome_bps, mech },
-      { line: "returning", title: "Returning Visit", klass: "Regular Class", who: "Every bill after your first", bps: cashback.returning_bps, mech },
-      { line: "welcome_vip", title: "Welcome Visit", klass: "VIP Class", who: "Your first bill here", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps, mech },
-      { line: "returning_vip", title: "Returning Visit", klass: "VIP Class", who: "Every bill after your first", bps: cashback.returning_vip_bps ?? 0, mech },
+      { line: "welcome", title: "Welcome Visit", klass: "Regular Class", who: "Your first bill here", bps: cashback.welcome_bps },
+      { line: "returning", title: "Returning Visit", klass: "Regular Class", who: "Every bill after your first", bps: cashback.returning_bps },
+      { line: "welcome_vip", title: "Welcome Visit", klass: "VIP Class", who: "Your first bill here", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps },
+      { line: "returning_vip", title: "Returning Visit", klass: "VIP Class", who: "Every bill after your first", bps: cashback.returning_vip_bps ?? 0 },
     ] as CashbackLineRow[]
   ).filter((r) => r.bps > 0);
 }
@@ -735,7 +733,7 @@ function TierMatrix({
         <span
           className={cn(
             "flex min-h-20 flex-col items-center justify-center gap-0.5 rounded-xl text-2xl leading-tight font-semibold tabular-nums",
-            mine ? visitTone(row.mech) : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
+            mine ? CASHBACK_TONE : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
           )}
           data-how-tier={key}
           data-cashback-mine={mine ? "" : undefined}
@@ -767,7 +765,7 @@ function TierMatrix({
         </colgroup>
         <thead>
           <tr className="text-foreground text-sm font-semibold">
-            <td className="text-muted-foreground align-bottom pb-1 text-left text-xs font-semibold">{visitWord(rows[0].mech)}</td>
+            <td className="text-muted-foreground align-bottom pb-1 text-left text-xs font-semibold">Cashback</td>
             {visits.map((v) => (
               <th key={v.title} scope="col" className="pb-1 pl-2 font-semibold">
                 {v.title}
@@ -795,7 +793,7 @@ function TierMatrix({
 
 // ── THE EXPLANATIONS (Pato, 2026-11-24, MESITA-4881: "clearer … with
 // illustrations too, beautiful clean design for all the explanations") ──
-// One design for Prepay, Discounts and Cashback: one sentence, three scenes
+// One design for Prepay and Cashback: one sentence, three scenes
 // (a drawing with real numbers, a bold line, what happens), one closing line.
 // No boxes inside boxes. The drawings are the app's own things: the QR, the
 // bill, the credit card.
@@ -803,7 +801,7 @@ function TierMatrix({
 /** The bill the worked example uses, in whole pesos. */
 const EXAMPLE_BILL = 500;
 
-const SCENE_TINT = { prepay: "bg-indigo-50", discount: "bg-green-50", cashback: "bg-green-50" } as const;
+const SCENE_TINT = { prepay: "bg-indigo-50", cashback: "bg-green-50" } as const;
 
 function Scene({ n, tint, art, title, text }: { n: number; tint: keyof typeof SCENE_TINT; art: ReactNode; title: string; text: string }) {
   return (

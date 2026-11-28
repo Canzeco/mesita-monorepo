@@ -4,7 +4,6 @@ export type VisitLine = "welcome" | "welcome_vip" | "returning" | "returning_vip
 
 export type PayOffers = {
   sell: string[];
-  visit_mechanism?: "discount" | "cashback";
   welcome_pct?: number | null;
   welcome_vip_pct?: number | null;
   returning_pct?: number | null;
@@ -42,12 +41,8 @@ function visitBps(p: PayPlace): number {
   return pct && pct > 0 ? Math.round(pct * 100) : 0;
 }
 
-export function discountBps(p: PayPlace): number {
-  return p.offers?.visit_mechanism === "discount" ? visitBps(p) : 0;
-}
-
 export function cashbackBps(p: PayPlace): number {
-  return p.offers && p.offers_ok && p.offers.visit_mechanism !== "discount" ? visitBps(p) : 0;
+  return p.offers && p.offers_ok ? visitBps(p) : 0;
 }
 
 export function acceptsCredits(p: PayPlace): boolean {

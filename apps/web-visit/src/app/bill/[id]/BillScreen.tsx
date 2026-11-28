@@ -63,9 +63,6 @@ export function BillScreen({ billId }: { billId: string }) {
 
   // Another phone, a closed tab or a new code: the code is typed again.
   const [locked, setLocked] = useState(false);
-  // The one try without a code, until the bill reads again: never a loop.
-  const tried = useRef(false);
-  const [unreached, setUnreached] = useState(false);
   const signIn = useCallback(() => {
     keepBillStaff(billId, null);
     setLocked(true);
@@ -93,8 +90,6 @@ export function BillScreen({ billId }: { billId: string }) {
       setTimeout(() => setNow(Date.now()), 1050);
     }
     setRead(r);
-    // Open for real: a later lock is tried again by itself.
-    tried.current = false;
   }, [billId, signIn, staff]);
 
   const state = read?.bill.state ?? null;
@@ -154,7 +149,7 @@ export function BillScreen({ billId }: { billId: string }) {
 
   const [named, setNamed] = useState(false);
   const [askName, setAskName] = useState(false);
-  async function unlock(code: string | null, name: string | null = null): Promise<boolean> {
+  async function unlock(code: string, name: string | null = null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
@@ -175,46 +170,15 @@ export function BillScreen({ billId }: { billId: string }) {
       return true;
     }
     if (r === "failed" || "refused" in r) {
-      // Not reached: nobody knows yet whether this place has a code.
-      if (code === null && r === "failed") {
-        setUnreached(true);
-        setError("Couldn't reach Mesita.");
-        return false;
-      }
-      setUnreached(false);
-      // No code here to try: it is typed (MESITA-4890).
-      if (code === null) return false;
       setError(r === "failed" ? "Couldn't reach Mesita. Tap again." : r.error);
       return r === "failed";
     }
     keepBillStaff(billId, { place_id: r.place.id, staff_token: r.staff_token, waiter: r.waiter?.name ?? null });
-    setUnreached(false);
     setAskName(false);
     setLocked(false);
     return true;
   }
 
-  // A place with codes off opens by itself (MESITA-4890).
-  useEffect(() => {
-    if (!locked || busy || tried.current) return;
-    tried.current = true;
-    void unlock(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locked, busy]);
-
-  if (locked && unreached) {
-    return (
-      <main className="proof pay-end" data-bill="unreached">
-        <h1>Can&apos;t open the bill</h1>
-        <p className="proof-status warn" role="alert">
-          {error ?? "Couldn't reach Mesita."}
-        </p>
-        <button type="button" style={{ marginTop: 16, alignSelf: "stretch" }} disabled={busy !== null} onClick={() => void unlock(null)}>
-          {busy === "code" ? "Trying…" : "Try again"}
-        </button>
-      </main>
-    );
-  }
   if (locked) return (
     <CodeEntry
       label="Open bill"
@@ -303,7 +267,6 @@ export function BillScreen({ billId }: { billId: string }) {
   const billLine = { label: "Bill", value: m(bill.bill_cents ?? 0) };
   const tipLine = bill.tip_cents > 0 ? [{ label: "Tip", value: m(bill.tip_cents) }] : [];
   const offLines = [
-    ...(bill.discount_cents > 0 ? [{ label: "Discount", value: `−${m(bill.discount_cents)}`, good: true }] : []),
     ...(bill.credit_cents > 0 ? [{ label: "Paid with credits", value: `−${m(bill.credit_cents)}`, good: true }] : []),
   ];
   const detailLines: { label: string; value: string; good?: boolean }[] = [billLine, ...offLines, ...tipLine];
@@ -367,7 +330,7 @@ export function BillScreen({ billId }: { billId: string }) {
         {/* Cash may already have changed hands: never "nothing was paid". */}
         <p className="proof-line">
           {took !== null && took > 0
-            ? `You took ${m(took)} and no credits or discount were used. Give it back${took < total ? `, or collect ${m(total - took)} more` : ""}.`
+            ? `You took ${m(took)} and no credits were used. Give it back${took < total ? `, or collect ${m(total - took)} more` : ""}.`
             : bill.bill_cents ? `${m(total)}. No credits were used. Send it again if the guest still wants Mesita.` : "Nothing was sent."}
         </p>
         {alert}

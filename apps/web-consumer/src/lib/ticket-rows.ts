@@ -140,12 +140,11 @@ export function visitRows(
     ];
     const open = isOpenVisit(v);
     const at = v.paid_at ?? v.created_at;
-    const off = v.discount_cents ?? 0;
     const back = v.cashback_cents ?? 0;
-    // What the visit came to, as its receipt says it: the discount is off.
+    // What the visit came to, as its receipt says it.
     const total =
       v.bill_cents != null
-        ? money(v.bill_cents - off + v.tip_cents, v.currency)
+        ? money(v.bill_cents + v.tip_cents, v.currency)
         : null;
     // An open bill is the live pay screen; a finished one is its one-page
     // summary (MESITA-3770: "the live workflow and the output must be
@@ -164,17 +163,15 @@ export function visitRows(
       place: v.place.name ?? "A Mesita place",
       photo: v.place.photo_url,
       // WHAT IT GAVE, NOT "PAID" (Pato, MESITA-4893): a paid row says what the
-      // guest saved or earned, or nothing; any other state says itself.
+      // guest earned, or nothing; any other state says itself.
       status:
         v.status !== "paid"
           ? { label, tone }
           : f && f.takenBack > 0
             ? { label: "Refunded", tone: "grey" }
-            : off > 0
-              ? { label: `Saved ${money(off, v.currency)}`, tone: "green" }
-              : back > 0
-                ? { label: `+${money(back, v.currency)} cashback`, tone: "green" }
-                : { label: "", tone: "grey" },
+            : back > 0
+              ? { label: `+${money(back, v.currency)} cashback`, tone: "green" }
+              : { label: "", tone: "grey" },
       plain: true,
       big: total ?? "Waiting for the bill",
       money: total != null,

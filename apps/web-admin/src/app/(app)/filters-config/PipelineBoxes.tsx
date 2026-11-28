@@ -317,7 +317,7 @@ export function HowRankedCard() {
           <p>
             Offers = offer points ^ Offers exponent. The points are the percents that place has on, added
             once: small, medium and big bonus, plus welcome, returning, welcome VIP and returning VIP.
-            Discount and cashback are the same percent. Exponent 0 means the multiplier is 1. Exponent above
+            Exponent 0 means the multiplier is 1. Exponent above
             0 and no points means the score is 0. Home and Map stay at 0 for now. Pay and Prepay edit it.
           </p>
           <p>A place with no reviews or no stars scores 0 and ranks last; it is never hidden.</p>

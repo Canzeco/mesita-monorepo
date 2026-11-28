@@ -496,8 +496,8 @@ export type PayPlace = {
   outside_ok?: boolean;
   /** MESITA-4698: Loyalty Cards is On, so the place has offers (Get Discounts). */
   offers_ok?: boolean;
-  /** Loyalty Cards is on at an active place: it takes Mesita credit. A visit
-   *  discount alone does not. Absent from an older server reads as no. */
+  /** Loyalty Cards is on at an active place: it takes Mesita credit. Absent
+   *  from an older server reads as no. */
   credits_ok?: boolean;
   /** What the guest can buy here now (MESITA-4519), the card's offer
    *  slides, plus the Pay (cashback) offer the server already sends
@@ -515,9 +515,6 @@ export type PayPlace = {
     /** MESITA-4789: a VIP's first bill here; absent from an older server
      *  reads welcome_pct (what a VIP got then). */
     welcome_vip_pct?: number | null;
-    /** MESITA-4770: Discount (off this bill) or Cashback (credit back) for
-     *  the three lines. Absent from an older server reads as cashback. */
-    visit_mechanism?: "discount" | "cashback";
     /** MESITA-4764: each voucher's bonus here in whole percent. */
     voucher_pct?: Record<string, number>;
   };
@@ -525,17 +522,10 @@ export type PayPlace = {
   visit_line?: "welcome" | "welcome_vip" | "returning" | "returning_vip";
 };
 
-/** MESITA-4770: the visit discount this guest's next bill here gets, in
- *  basis points (0 = none: cashback, Off, or an older server). The server
- *  (pay_guest_begin) decides the same and has the last word. */
-export function payPlaceDiscountBps(p: PayPlace | null): number {
-  return p?.offers?.visit_mechanism === "discount" ? visitBps(p) : 0;
-}
-
 /** MESITA-4813: the Cashback this guest's next bill here earns, in basis
  *  points (0 = none). pay_tab_grant_cashback decides the same. */
 export function payPlaceCashbackBps(p: PayPlace | null): number {
-  return p?.offers && p.offers_ok && p.offers.visit_mechanism !== "discount" ? visitBps(p) : 0;
+  return p?.offers && p.offers_ok ? visitBps(p) : 0;
 }
 
 function visitBps(p: PayPlace): number {
@@ -550,8 +540,8 @@ function visitBps(p: PayPlace): number {
   return pct && pct > 0 ? Math.round(pct * 100) : 0;
 }
 
-/** A printed bill's discount, rounded down (pay_guest_begin's sum). */
-export function discountOf(billCents: number, bps: number): number {
+/** A rate in basis points of a bill, rounded down. */
+export function bpsOf(billCents: number, bps: number): number {
   return bps > 0 && billCents > 0 ? Math.floor((billCents * bps) / 10000) : 0;
 }
 

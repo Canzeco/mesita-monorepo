@@ -10,7 +10,6 @@ export type Visit = {
   currency: string;
   bill: string | null;
   billCents: number | null;
-  discount: string | null;
   credit: string;
   creditCents: number;
   card: string;
@@ -47,7 +46,6 @@ export function getVisit(id: string, signal?: AbortSignal): Promise<Visit | null
           status: z.string().catch(""),
           currency: z.string().catch("mxn"),
           bill_cents: z.number().nullish().catch(null),
-          discount_cents: z.number().nullish().catch(null),
           credit_cents: z.number().catch(0),
           cash_bill_cents: z.number().catch(0),
           cash_tip_cents: z.number().catch(0),
@@ -75,9 +73,8 @@ export function getVisit(id: string, signal?: AbortSignal): Promise<Visit | null
     const tip = tab.cash_tip_cents + tab.card_tip_cents;
     const card = tab.card_bill_cents + tab.card_tip_cents;
     const cash = tab.cash_bill_cents + tab.cash_tip_cents;
-    const off = tab.discount_cents ?? 0;
     const chosen = tab.credit_cents + cash + card;
-    const total = chosen > 0 ? chosen : (tab.bill_cents ?? 0) - off;
+    const total = chosen > 0 ? chosen : (tab.bill_cents ?? 0);
     return {
       id: tab.tab_id,
       placeId: tab.place?.id ?? null,
@@ -86,7 +83,6 @@ export function getVisit(id: string, signal?: AbortSignal): Promise<Visit | null
       currency: tab.currency,
       bill: tab.bill_cents == null ? null : money(tab.bill_cents, tab.currency),
       billCents: tab.bill_cents ?? null,
-      discount: off > 0 ? money(off, tab.currency) : null,
       credit: money(tab.credit_cents, tab.currency),
       creditCents: tab.credit_cents,
       card: money(card, tab.currency),

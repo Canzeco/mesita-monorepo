@@ -239,9 +239,6 @@ const REFUSALS: Record<string, [number, string]> = {
   paid: [409, "This tab is paid"],
   stale: [409, "The bill changed. Check it and try again."],
   parts: [409, "The parts must add up to the bill"],
-  // MESITA-4770: the place's visit discount differs from what the phone used;
-  // the detail carries discount_cents and to_pay_cents.
-  discount_changed: [409, "The discount here changed. Check the amount and try again."],
   card_pending: [409, "The guest's card is still going through"],
   insufficient: [409, "Your credit changed. Try again."],
   outside_limit: [409, "You have paid the waiter here enough times today. Pay with credits instead."],
@@ -317,10 +314,6 @@ export type TabRow = {
    *  expired, capture_failed), and a capture in progress at the signature. */
   end_reason?: string | null;
   signing_at?: string | null;
-  /** MESITA-4770: what applied to this bill (null on waiter-started bills). */
-  visit_mechanism?: "cashback" | "discount" | null;
-  discount_bps?: number;
-  discount_cents?: number;
 };
 
 export type TabPartRow = {
@@ -341,7 +334,7 @@ export type TabPartRow = {
 };
 
 export const TAB_COLUMNS =
-  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash, end_reason, signing_at, visit_mechanism, discount_bps, discount_cents";
+  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash, end_reason, signing_at";
 const PART_COLUMNS =
   "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, paid_at, proof_token, created_at, held_at, pay_with";
 /** The guest's list reads only what a status needs (MESITA-3688): never
@@ -493,10 +486,6 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     bill_version: t.bill_version,
     ticket: t.ticket,
     waiter_name: t.waiter_name,
-    // MESITA-4770: the visit discount taken off bill_cents (0 when none).
-    visit_mechanism: t.visit_mechanism ?? null,
-    discount_bps: t.discount_bps ?? 0,
-    discount_cents: t.discount_cents ?? 0,
     spendable_cents: extra.spendableCents,
     // MESITA-4708: cash only; no card part for a bill.
     rates: { cash_available: extra.cashOk },
@@ -556,10 +545,6 @@ export function staffTabView(
     ticket: t.ticket,
     waiter_name: t.waiter_name,
     billed: t.staff_key_hash !== null && t.bill_cents !== null,
-    // MESITA-4770: the visit discount taken off bill_cents (0 when none).
-    visit_mechanism: t.visit_mechanism ?? null,
-    discount_bps: t.discount_bps ?? 0,
-    discount_cents: t.discount_cents ?? 0,
     ...tabMoney(t),
     paid_at: t.paid_at,
     expires_at: t.expires_at,

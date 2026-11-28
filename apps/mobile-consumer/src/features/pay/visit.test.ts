@@ -15,8 +15,6 @@ function bill(patch: Partial<GuestBill>): GuestBill {
     place: { id: "p", name: "Place", photo: null },
     quote: {
       outsideCents: 1000,
-      discountBps: 0,
-      discountCents: 0,
       creditCents: 0,
       cashbackBps: 0,
       cashbackCents: 0,

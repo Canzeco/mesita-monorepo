@@ -77,7 +77,6 @@ export function VisitScreen({ id }: { id: string }) {
       {showReceipt && visit.bill ? (
         <Panel title={unpaid ? "The bill" : "Receipt"}>
           <Line label="Bill" value={visit.bill} />
-          {visit.discount ? <Line label="Discount" value={`−${visit.discount}`} /> : null}
           <Line label="Tip" value={tipValue} sub={visit.suggestedTip ? `The waiter suggested ${visit.suggestedTip}` : null} />
           <Line label="Total" value={visit.total} />
         </Panel>

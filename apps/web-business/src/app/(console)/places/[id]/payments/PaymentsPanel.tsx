@@ -11,12 +11,11 @@
 //                                            Credits Payments (Loyalty Cards: on
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
-//   Visit Checkout     #visit-checkout     · Enabled (Cashback only since
-//                                            MESITA-5067; no Discount) ·
+//   Visit Checkout     #visit-checkout     · Enabled (Cashback) ·
 //                                            Welcome Regular · Returning Regular ·
 //                                            Welcome VIP · Returning VIP (three
 //                                            picks each, Off included)
-//   Waiter Codes       #waiter-codes       · one 6-digit code; optional at Discount (MESITA-4890)
+//   Waiter Codes       #waiter-codes       · one 6-digit code, always asked
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
@@ -149,9 +148,8 @@ function wholeMoney(cents: number, currency: string): string {
 }
 
 /** Visit Checkout's four lines (MESITA-4698; VIP back since MESITA-4766; four since MESITA-4789),
- *  each Off or one of two rates, all always shown, paid out by the place's
- *  one mechanism (MESITA-4770: Discount off this bill, or Cashback for the
- *  next visit). `line` names Cashback; a Discount place reads Discount. */
+ *  each Off or one of two rates, all always shown, paid out as Cashback for
+ *  the next visit. */
 const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; icon: Icon }> = [
   // FOUR TIERS (Pato, 2026-11-23, MESITA-4789: "Welcome Regular, Returning
   // Regular, Welcome VIP, Returning VIP"), in his order.
@@ -205,7 +203,6 @@ const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
   "returning_bps",
   "returning_vip_bps",
   "welcome_vip_bps",
-  "visit_mechanism",
   "small_bonus_bps",
   "medium_bonus_bps",
   "big_bonus_bps",
@@ -568,7 +565,7 @@ export function PaymentsPanel({
   };
 
   // Cashback needs the Credits Agreement (new credit is born only while the
-  // Credits Account is on). Discount is gone (Pato, 2026-11-27, MESITA-5067).
+  // Credits Account is on).
   const visitBlock = creditsBlock;
   const visitOn = settings.loyalty_cards && anyRate(rates);
 
@@ -805,7 +802,7 @@ export function PaymentsPanel({
           {head(HashIcon, "Visit Checkout - Waiter Code", {
             line: line("Staff scan the guest's QR and type this code to send the bill."),
           })}
-          <WaiterCodes placeId={placeId} initialCode={initial.staff_code} initialAskName={initial.name_required} initialNoCode={initial.no_code === true} mechanism={rates.visit_mechanism} savedMechanism={cashback.visit_mechanism} canEdit={canEdit} onError={setError} />
+          <WaiterCodes placeId={placeId} initialCode={initial.staff_code} initialAskName={initial.name_required} canEdit={canEdit} onError={setError} />
         </Card>
       </div>
 

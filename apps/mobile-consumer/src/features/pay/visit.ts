@@ -4,8 +4,6 @@ export type BillTyping = { billCents: number; tipCents: number; step: "bill" | "
 
 export type BillQuote = {
   outsideCents: number;
-  discountBps: number;
-  discountCents: number;
   creditCents: number;
   cashbackBps: number;
   cashbackCents: number;

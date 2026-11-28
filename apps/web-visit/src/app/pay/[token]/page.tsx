@@ -3,7 +3,6 @@
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BillEntry, CodeEntry, GuestCheck } from "@/components/BillEntry";
-import { Bones } from "@/components/Bones";
 import { closeBill, getBill, keepBillDraft, keepBillStaff, openBill, readBillDraft, sendBill, signIn, type Staff, typeBill, type Typing } from "@/lib/bill-api";
 
 // /pay/<token> — the waiter scanned a guest's Mesita QR: the Code first
@@ -16,7 +15,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
   const { token } = use(params);
   const router = useRouter();
   const [start, setStart] = useState<{ bill: number; tip: number } | undefined>();
-  const [view, setView] = useState<"start" | "code" | "guest" | "type" | "ended" | "closed">("start");
+  const [view, setView] = useState<"code" | "guest" | "type" | "ended" | "closed">("code");
   const [found, setFound] = useState<Found | null>(null);
   const [busy, setBusy] = useState<"code" | "send" | "no" | null>(null);
   // This place asks for a name; the code was right, so it is asked now.
@@ -70,7 +69,7 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setBusy(null);
   };
 
-  async function enter(code: string | null, name: string | null = null): Promise<boolean> {
+  async function enter(code: string, name: string | null = null): Promise<boolean> {
     if (busy) return false;
     setBusy("code");
     setError(null);
@@ -95,11 +94,6 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       // The code changed meanwhile: it is typed again.
       if (key.code === "staff_only") setAskName(false);
     }
-    if (code === null && key !== "failed" && "refused" in key && key.code === "code_needed") {
-      setBusy(null);
-      setView("code");
-      return false;
-    }
     if (key === "failed" || "refused" in key) return fail(key);
     const staff: Staff = { place_id: key.place.id, staff_token: key.staff_token, waiter: key.waiter?.name ?? null };
     const opened = await openBill(staff, { token });
@@ -116,20 +110,6 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
     setView("guest");
     return true;
   }
-
-  // A place with codes off opens by itself (MESITA-4890); the keypad shows only
-  // where a code is needed, never because a call was lost.
-  const began = useRef(false);
-  useEffect(() => {
-    if (began.current) return;
-    began.current = true;
-    const id = setTimeout(() => void enter(null), 0);
-    return () => {
-      began.current = false;
-      clearTimeout(id);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function send(bill: number, tip: number) {
     if (!found || busy) return;
@@ -188,24 +168,6 @@ export default function ScanPage({ params }: { params: Promise<{ token: string }
       <main className="proof pay-end" data-scan="ended">
         <h1>Nothing was sent</h1>
         <p className="proof-line">Scan your guest&apos;s QR.</p>
-      </main>
-    );
-  }
-  if (view === "start") {
-    return (
-      <main className="proof" data-scan="start">
-        {error ? (
-          <>
-            <p className="proof-status warn" role="alert">
-              {error}
-            </p>
-            <button type="button" style={{ marginTop: 16, alignSelf: "stretch" }} disabled={busy !== null} onClick={() => void enter(null)}>
-              Try again
-            </button>
-          </>
-        ) : (
-          <Bones label="Opening the bill" />
-        )}
       </main>
     );
   }

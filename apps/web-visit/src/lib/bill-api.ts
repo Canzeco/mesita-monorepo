@@ -14,7 +14,6 @@ export type Bill = {
   bill_cents: number | null;
   tip_cents: number;
   /** From the moment the bill is sent (MESITA-4889). */
-  discount_cents: number;
   credit_cents: number;
   outside_bill_cents: number | null;
   outside_cents: number | null;
@@ -49,10 +48,9 @@ const keyed = (s: Staff) => ({ place_id: s.place_id, staff_token: s.staff_token 
 
 /** The place's 6-digit code, with the waiter's name where the owner asks for
  *  one (MESITA-4904: refused `name_needed`, or `name_required` on code_needed). Tried
- *  only with the guest's QR or a bill (MESITA-4833). Null: a Discount place that
- *  turned codes off (MESITA-4890); refused `code_needed` anywhere else. */
-export const signIn = (code: string | null, by: { token: string } | { bill_id: string }, name: string | null = null) =>
-  call<{ place: { id: string; name: string | null }; waiter?: { name: string } | null; staff_token: string }>("visit-web-sign-in", { ...(code === null ? {} : { code }), ...(name ? { name } : {}), ...by }, "Couldn't check the code. Try again.");
+ *  only with the guest's QR or a bill (MESITA-4833). Every bill needs it. */
+export const signIn = (code: string, by: { token: string } | { bill_id: string }, name: string | null = null) =>
+  call<{ place: { id: string; name: string | null }; waiter?: { name: string } | null; staff_token: string }>("visit-web-sign-in", { code, ...(name ? { name } : {}), ...by }, "Couldn't check the code. Try again.");
 
 // The staff key of one bill, in this tab only: the code is typed once per
 // bill, and nothing about the phone is remembered (MESITA-4827).

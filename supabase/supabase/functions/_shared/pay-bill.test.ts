@@ -10,7 +10,7 @@ const bill: BillRow = {
   bill_cents: 50000, tip_cents: 5000, attempt_id: null, expires_at: later, updated_at: before,
   received_version: null, took_cents: null,
   quote: {
-    mechanism: "cashback", line: "welcome", discount_bps: 0, discount_cents: 0, credit_cents: 20000, outside_bill_cents: 30000,
+    line: "welcome", credit_cents: 20000, outside_bill_cents: 30000,
     tip_cents: 5000, outside_cents: 35000, cashback_bps: 1000, cashback_cents: 3000,
   },
 };

@@ -8,7 +8,6 @@ import type { BillTyping, GuestBill } from "./visit";
 const offers = z
   .object({
     sell: z.array(z.string()).catch([]),
-    visit_mechanism: z.enum(["discount", "cashback"]).optional().catch(undefined),
     welcome_pct: z.number().nullish().catch(null),
     welcome_vip_pct: z.number().nullish().catch(null),
     returning_pct: z.number().nullish().catch(null),
@@ -78,8 +77,6 @@ export function listCredits(signal?: AbortSignal): Promise<Credit[]> {
 const quoteSchema = z
   .object({
     outside_cents: z.number(),
-    discount_bps: z.number().catch(0),
-    discount_cents: z.number().catch(0),
     credit_cents: z.number().catch(0),
     cashback_bps: z.number().catch(0),
     cashback_cents: z.number().catch(0),
@@ -125,8 +122,6 @@ const billSchema = z
       quote: bill.quote
         ? {
             outsideCents: bill.quote.outside_cents,
-            discountBps: bill.quote.discount_bps,
-            discountCents: bill.quote.discount_cents,
             creditCents: bill.quote.credit_cents,
             cashbackBps: bill.quote.cashback_bps,
             cashbackCents: bill.quote.cashback_cents,

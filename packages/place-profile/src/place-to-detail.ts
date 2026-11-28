@@ -107,8 +107,6 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
             cb.line === "welcome" || cb.line === "welcome_vip" || cb.line === "returning" || cb.line === "returning_vip"
               ? cb.line
               : null,
-          // MESITA-4770: Discount or Cashback.
-          visit_mechanism: cb.visit_mechanism === "discount" ? "discount" : "cashback",
         }
       : m.cashback === null
         ? null

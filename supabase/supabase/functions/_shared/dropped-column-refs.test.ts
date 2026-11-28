@@ -219,6 +219,16 @@ const DEAD_GUEST_DROPPED_COLUMNS = {
   consumers: ["appear_anonymous", "instagram_is_private", "vip_until"],
 } as const satisfies Record<string, readonly string[]>;
 
+/** MESITA-5076 — the visit Discount is gone (Pato, 2026-11-27): its columns
+ *  and the no-code waiter row (MESITA-4890) come off. */
+const DISCOUNT_DROPPED_COLUMNS = {
+  pay_tabs: ["visit_mechanism", "discount_bps", "discount_cents"],
+  guest_pay_attempts: ["visit_mechanism", "discount_bps", "discount_cents"],
+  place_cashback_settings: ["visit_mechanism"],
+  cashback_defaults: ["visit_mechanism"],
+  place_waiters: ["no_code"],
+} as const satisfies Record<string, readonly string[]>;
+
 /** Every dropping table's columns, all cuts merged. */
 const DROPPED_BY_TABLE = new Map<string, Set<string>>();
 for (
@@ -231,6 +241,7 @@ for (
     DEAD_LINKS_DROPPED_COLUMNS,
     STORIES_DROPPED_COLUMNS,
     DEAD_GUEST_DROPPED_COLUMNS,
+    DISCOUNT_DROPPED_COLUMNS,
   ]
 ) {
   for (const [table, cols] of Object.entries(list)) {

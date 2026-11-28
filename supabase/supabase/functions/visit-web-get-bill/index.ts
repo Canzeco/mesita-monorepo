@@ -6,7 +6,7 @@
 //
 // Body: { bill_id, place_id, staff_token }
 // Response: { ok: true, bill: { id, state, version, currency, bill_cents, tip_cents,
-//             discount_cents, credit_cents, outside_bill_cents, outside_cents,
+//             credit_cents, outside_bill_cents, outside_cents,
 //             expires_at, test_mode, waiter_ready, took_cents }, place: { id, name }, guest_photo, guest_name, guest_age, guest_sex }
 //   403 staff_code_needed · 404 gone
 

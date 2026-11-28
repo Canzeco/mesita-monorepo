@@ -8,7 +8,7 @@
 //   visits created before the oldest one it holds; absent, the newest)
 // Response: { ok: true, visits: [{ tab_id, place: { id, name, slug,
 //             photo_url }, status, currency, bill_cents, tip_cents, ticket,
-//             discount_cents, cashback_cents,
+//             cashback_cents,
 //             waiter_name, created_at, paid_at, expires_at,
 //             part_payment_ids }], truncated }
 //   `truncated`: more than 50 tabs exist (the app shows "50+").
