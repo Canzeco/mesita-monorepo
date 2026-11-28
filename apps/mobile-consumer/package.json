@@ -21,8 +21,9 @@
     "test": "jest && node --test scripts/release-order.test.mjs",
     "export": "node scripts/with-env.mjs production expo export --platform ios --platform android",
     "start": "node scripts/with-env.mjs development expo start --dev-client",
-    "sim": "pnpm dlx eas-cli@27.11.0 simulator:start --no-force --type agent-device --max-idle-time-minutes 15 --non-interactive",
+    "sim": "node lint/sim.mjs",
     "shot": "node lint/shot.mjs",
+    "pair": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON lint/pair.mjs",
     "step-end": "node scripts/step-end.mjs",
     "screens": "pnpm dlx eas-cli@27.11.0 workflow:run .eas/workflows/screens.yml --wait --non-interactive"
   },
@@ -79,6 +80,7 @@
     "eslint-config-expo": "~58.0.4",
     "jest": "~30.5.2",
     "jest-expo": "~58.0.16",
+    "playwright-core": "1.58.2",
     "prettier": "^3.10.1",
     "typescript": "~6.0.3"
   },

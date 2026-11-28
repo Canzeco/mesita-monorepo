@@ -1,0 +1,50 @@
+# pnpm pair's first step: the test guest signed in and left signed in. The
+# caller pins the location first (the Simulators driver has no setLocation). A phone that already holds the session only relaunches. No
+# screenshot is taken here, so a number or a code is never in an image.
+appId: com.mesita.consumer
+---
+- runFlow:
+    when: { platform: iOS }
+    commands:
+      - launchApp:
+          permissions: { location: inuse }
+- runFlow:
+    when: { platform: Android }
+    commands:
+      - launchApp:
+          permissions: { location: allow }
+# A phone that has just started can still ask, whatever launchApp was told.
+- runFlow:
+    when: { visible: "Allow While Using App" }
+    commands:
+      - tapOn: "Allow While Using App"
+- extendedWaitUntil: { visible: "Home", timeout: 60000 }
+- runFlow:
+    when: { visible: "Just browse" }
+    commands:
+      - tapOn: "Just browse"
+- runFlow:
+    when: { visible: "Sign" }
+    commands:
+      - tapOn: "Sign"
+      - tapOn: { id: "phone" }
+      - inputText: ${MAESTRO_TEST_PHONE}
+      - tapOn: "Text me the code"
+      - extendedWaitUntil: { visible: { id: "code" }, timeout: 20000 }
+      # Six digits sign in by themselves.
+      - inputText: ${MAESTRO_TEST_CODE}
+      - runFlow:
+          when: { visible: "Almost there." }
+          commands:
+            - tapOn: { id: "first-name" }
+            - inputText: "Test"
+            - tapOn: { id: "last-name" }
+            - inputText: "Guest"
+            - tapOn: "Almost there."
+            - scrollUntilVisible: { element: { id: "birth-year" }, direction: DOWN }
+            - tapOn: "Other"
+            - tapOn: { id: "birth-year" }
+            - scrollUntilVisible: { element: "1990" }
+            - tapOn: "1990"
+            - tapOn: { id: "save-details" }
+- extendedWaitUntil: { visible: "Me", timeout: 30000 }

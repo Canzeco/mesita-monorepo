@@ -19,7 +19,8 @@
         "APP_VARIANT": "development",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_PAIR_STATES": "1"
       },
       "ios": {
         "simulator": true
@@ -36,7 +37,8 @@
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_PAIR_STATES": "1"
       },
       "ios": {
         "simulator": true
@@ -54,7 +56,8 @@
         "APP_VARIANT": "preview",
         "EXPO_PUBLIC_SUPABASE_URL": "https://yjalywfzdelacdzccpgb.supabase.co",
         "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_bQPhz9pZSTnVAW1aOZ6Q6g_imiiwTJd",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "EXPO_PUBLIC_PAIR_STATES": "1"
       },
       "ios": {
         "distribution": "store"

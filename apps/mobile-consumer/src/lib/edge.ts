@@ -3,10 +3,14 @@ import { z } from "zod";
 
 import { CONTRACT } from "@/lib/build";
 import { env } from "@/lib/env";
+import { forcedFetch } from "@/lib/pair-state";
 import { report } from "@/lib/report";
 import { currentToken, refreshToken, type Token } from "@/lib/supabase";
 
 // The one way to call the backend (Docs › Apps › A2 §7).
+
+// The real fetch, except in a build that can force a state for `pnpm pair`.
+const post = forcedFetch(fetch);
 
 export type EdgeErrorKind = "refusal" | "network" | "unreadable" | "server";
 /** safe: ask again. after-fix: the guest changes something first.
@@ -92,7 +96,7 @@ async function send(name: string, body: unknown, token: Token, opts: CallOptions
   opts.signal?.addEventListener("abort", cancel);
   if (opts.signal?.aborted) abort.abort();
   try {
-    const res = await fetch(`${env.supabaseUrl}/functions/v1/${name}?forceFunctionRegion=us-west-2`, {
+    const res = await post(`${env.supabaseUrl}/functions/v1/${name}?forceFunctionRegion=us-west-2`, {
       method: "POST",
       headers: {
         apikey: env.supabaseKey,

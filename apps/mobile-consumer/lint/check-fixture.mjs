@@ -11,12 +11,7 @@ import { fileURLToPath } from "node:url";
 import { layers } from "./layers.mjs";
 
 const app = dirname(dirname(fileURLToPath(import.meta.url)));
-const LAYER_RULES = [
-  "import/no-restricted-paths",
-  "import/no-cycle",
-  "no-restricted-imports",
-  "no-restricted-syntax",
-];
+const LAYER_RULES = ["import/no-restricted-paths", "import/no-cycle", "no-restricted-imports", "no-restricted-syntax"];
 const problems = [];
 
 const eslint = new ESLint({

@@ -84,7 +84,12 @@ const SIZE_MESSAGE = "A raw font size lives only in src/theme.ts: spread a type 
 
 /** The flat-config entries that enforce the layer rule under `src`. */
 export function layers(src) {
-  const files = (glob) => [`${src}/${glob}/*.ts`, `${src}/${glob}/*.tsx`, `${src}/${glob}/**/*.ts`, `${src}/${glob}/**/*.tsx`];
+  const files = (glob) => [
+    `${src}/${glob}/*.ts`,
+    `${src}/${glob}/*.tsx`,
+    `${src}/${glob}/**/*.ts`,
+    `${src}/${glob}/**/*.tsx`,
+  ];
   return [
     {
       files: [`${src}/**/*.ts`, `${src}/**/*.tsx`],
@@ -104,8 +109,14 @@ export function layers(src) {
           "error",
           { selector: `Literal[value=${COLOR}]`, message: COLOR_MESSAGE },
           { selector: `TemplateElement[value.raw=${COLOR}]`, message: COLOR_MESSAGE },
-          { selector: "Property[key.name=/[cC]olor$/] > Literal[value=/^(?!transparent$)[a-z]+$/]", message: COLOR_MESSAGE },
-          { selector: "JSXAttribute[name.name=/[cC]olor$/] > Literal[value=/^(?!transparent$)[a-z]+$/]", message: COLOR_MESSAGE },
+          {
+            selector: "Property[key.name=/[cC]olor$/] > Literal[value=/^(?!transparent$)[a-z]+$/]",
+            message: COLOR_MESSAGE,
+          },
+          {
+            selector: "JSXAttribute[name.name=/[cC]olor$/] > Literal[value=/^(?!transparent$)[a-z]+$/]",
+            message: COLOR_MESSAGE,
+          },
           { selector: "Property[key.name=/^(fontSize|lineHeight)$/] > Literal", message: SIZE_MESSAGE },
         ],
       },
@@ -148,7 +159,8 @@ export function layers(src) {
             patterns: [
               {
                 regex: "^(@|(\\.\\./)+)/?(components|lib|generated)(/|$)",
-                message: "A route renders one screen from a feature: components and lib belong in that screen, or in a layout.",
+                message:
+                  "A route renders one screen from a feature: components and lib belong in that screen, or in a layout.",
               },
             ],
           },

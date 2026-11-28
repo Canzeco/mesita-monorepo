@@ -42,3 +42,6 @@ example
 /ios
 /android
 .env.eas-simulator
+
+# pnpm pair: screenshots of a signed-in guest
+/pairs/
