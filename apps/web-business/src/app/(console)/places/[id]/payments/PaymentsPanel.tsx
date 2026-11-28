@@ -748,6 +748,17 @@ export function PaymentsPanel({
               );
             })}
           </ul>
+          {/* GUESTS WHO CAME BACK (Pato, 2026-11-27, MESITA-5069): the owner
+              sees cashback working. Read-only; the server counts it. */}
+          {initial.came_back ? (
+            <div className="border-border flex items-center justify-between gap-3 border-t px-5 py-3 text-sm sm:px-6" data-place-state="came_back">
+              <p className="text-muted-foreground">
+                {initial.came_back.guests === 0
+                  ? `No guest came back to spend their cashback in the last ${initial.came_back.days} days yet.`
+                  : `${initial.came_back.guests} ${initial.came_back.guests === 1 ? "guest" : "guests"} came back to spend their cashback in the last ${initial.came_back.days} days, and spent ${wholeMoney(initial.came_back.spent_cents, currency)}.`}
+              </p>
+            </div>
+          ) : null}
           {cashDue.length > 0 ? (
             <ul className="divide-border border-border divide-y border-t" data-cash-due>
               {cashDue.map((row) => (

@@ -474,6 +474,9 @@ export type PlacePayments = {
   no_code?: boolean;
   /** MESITA-3946: credit guests hold here now; null when the read failed. */
   credits_balance: { available_cents: number; pending_cents: number } | null;
+  /** MESITA-5069: guests who paid with credit here after earning cashback
+   *  here, and what those bills came to; null when the read failed. */
+  came_back?: { guests: number; spent_cents: number; days: number } | null;
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
    *  it is paid; invoice = the one to pay, on Stripe's page. */
   fee: PlaceFee;
@@ -542,6 +545,13 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
         ? {
             available_cents: Number(r.data.credits_balance.available_cents) || 0,
             pending_cents: Number(r.data.credits_balance.pending_cents) || 0,
+          }
+        : null,
+      came_back: r.data.came_back
+        ? {
+            guests: Number(r.data.came_back.guests) || 0,
+            spent_cents: Number(r.data.came_back.spent_cents) || 0,
+            days: Number(r.data.came_back.days) || 30,
           }
         : null,
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
