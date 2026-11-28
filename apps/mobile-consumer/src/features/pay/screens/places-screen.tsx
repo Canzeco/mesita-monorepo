@@ -47,7 +47,7 @@ export function PlacesSheet({
     <Modal visible={kind !== null} animationType="slide" onRequestClose={onClose}>
       <View style={[styles.sheet, { paddingTop: insets.top }]}>
         <View style={styles.head}>
-          <Text role="title" style={styles.title}>{kind === "prepay" ? "Prepay" : "Pay Bill"}</Text>
+          <Text role="title" style={styles.title}>{kind === "prepay" ? "Add Credits" : "Pay Bill"}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
             <Icon name="x" size={24} />
           </Pressable>
