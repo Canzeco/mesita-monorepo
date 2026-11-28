@@ -334,8 +334,9 @@ export function PremierPill({
   className,
 }: {
   /** `top`: Home's card since MESITA-5090 (Pato's sketch: Premier at the
-   *  photo's top-left, the offer display along its bottom), 8px in, as wide
-   *  as the word. */
+   *  photo's top-left, the offer display along its bottom), 8px in. SAVE'S
+   *  SIZE (Pato, MESITA-5117: "premier must be same size than save or share
+   *  buttons"): Save's width, (100% − 25px) / 2, and its h-8. */
   placement?: "save" | "rail" | "top";
   className?: string;
 }) {
@@ -344,7 +345,7 @@ export function PremierPill({
       className={cn(
         CARD_BUTTON_BOX,
         "pointer-events-none absolute left-2 z-10 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#E9C46A] px-2.5 font-sans text-sm font-semibold text-neutral-950",
-        placement === "top" ? "top-2" : placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "bottom-3 left-3",
+        placement === "top" ? "top-2 w-[calc((100%-25px)/2)]" : placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "bottom-3 left-3",
         className,
       )}
       data-card-premier
