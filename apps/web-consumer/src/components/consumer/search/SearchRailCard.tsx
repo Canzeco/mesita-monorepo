@@ -23,7 +23,7 @@ import {
   StarsOpenRow,
   cardFacts,
 } from "@/components/consumer/place-card";
-import { PlaceBannerRow, PremierBar, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, PremierPill, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
@@ -53,8 +53,6 @@ export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
  *  just as one of the prev version"; MESITA-3246's coupon stood there). The
  *  rail aligns to its foot, so only the strips stand up. */
 const RAIL_CARD_WITH_STRIP_HEIGHT_CLASS = "h-[10.375rem]";
-/** Premier above Reserve: two 32px strips. */
-const RAIL_CARD_WITH_TWO_STRIPS_HEIGHT_CLASS = "h-[12.375rem]";
 /** The strip as the card's top edge: square corners, a hairline under it. */
 const RAIL_CARD_STRIP = "border-fact-price/30 shrink-0 rounded-none border-b";
 
@@ -170,25 +168,18 @@ export function RailCard({
   const reservable = !google && listCardReservable(place);
   const banner = reservable || slides.length > 0;
   const premier = isPremierPlace(place);
-  const strips = (premier ? 1 : 0) + (banner ? 1 : 0);
 
   return (
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        strips === 2
-          ? RAIL_CARD_WITH_TWO_STRIPS_HEIGHT_CLASS
-          : strips === 1
-            ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS
-            : RAIL_CARD_HEIGHT_CLASS,
+        banner ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
       <PremierAdBeacon placeId={place.id} ad={ad} />
-      {strips > 0 ? (
+      {banner ? (
         <div className="absolute inset-x-0 top-0 z-20 flex flex-col">
-          {premier ? <PremierBar className="rounded-none" /> : null}
-          {banner ? (
             <PlaceBannerRow
               name={place.name}
               placeId={place.id}
@@ -201,7 +192,6 @@ export function RailCard({
               className="gap-0"
               cellClassName={RAIL_CARD_STRIP}
             />
-          ) : null}
         </div>
       ) : null}
       <button
@@ -216,7 +206,7 @@ export function RailCard({
         onClick={onOpen}
         className={cn(
           "focus-visible:ring-primary absolute inset-x-0 bottom-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset",
-          strips === 2 ? "top-16" : strips === 1 ? "top-8" : "top-0",
+          banner ? "top-8" : "top-0",
         )}
       >
         <div className={RAIL_CARD_ROW}>
@@ -252,6 +242,7 @@ export function RailCard({
                 )}
               </span>
             )}
+            {premier ? <PremierPill /> : null}
             {photoOverlay}
           </div>
           <div className={cn("text-foreground", RAIL_CARD_TEXT)}>

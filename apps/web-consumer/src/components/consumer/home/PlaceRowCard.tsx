@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { placeReservePath } from "@/lib/consumer-route-contract";
 import type { LiveTable } from "@/lib/use-live-reservations";
 import { CardActions } from "@/components/consumer/place-card";
-import { PlaceBannerRow, PremierBar, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, PremierPill, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
@@ -243,6 +243,7 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
+          {isPremierPlace(place) ? <PremierPill /> : null}
           {showScores ? (
             <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
           ) : null}
@@ -278,11 +279,8 @@ export function PlaceRowCard({
             taps between chips through to the name's stretched link (the dead
             spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
         <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col gap-2">
-          {/* TWO OVER THREE (Pato, 2026-11-27, MESITA-5058: "Reserve Prepay /
-              Save Share (Premier) only if premier"). Reserve · Prepay share
-              the top row, one alone takes it whole (MESITA-5010); Premier is
-              the third cell beside Save · Share, no longer a bar above
-              Reserve (MESITA-5046). */}
+          {/* Reserve · Prepay share the top row, one alone takes it whole
+              (MESITA-5010); Premier is on the photo (MESITA-5059). */}
           <PlaceBannerRow
             name={place.name}
             placeId={place.id}
@@ -298,7 +296,6 @@ export function PlaceRowCard({
           />
           <div className="pointer-events-auto">
           <CardActions
-            third={isPremierPlace(place) ? <PremierBar /> : undefined}
             // White with a hairline, not grey (MESITA-4432).
             buttonClassName="bg-card border-border hover:bg-muted border"
             name={place.name}

@@ -432,12 +432,6 @@ function RailCard({
   const facts = factsOf(place);
   return (
     <View style={[styles.card, { width }, on && styles.cardOn]}>
-      {place.isPremier ? (
-        <View style={styles.premier}>
-          <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
-          <Text role="label" tone="onVip">Premier</Text>
-        </View>
-      ) : null}
       {place.reservable ? (
         <Pressable accessibilityRole="button" accessibilityLabel={`Reserve ${place.name}`} onPress={onReserve ?? onPress} style={styles.reserve}>
           <Icon name="calendar" size={14} color={colors.onInk} />
@@ -445,11 +439,18 @@ function RailCard({
         </Pressable>
       ) : null}
       <Pressable accessible={false} onPress={onPress} style={styles.cardBody}>
-        {place.photo ? (
-          <Image source={place.photo} style={styles.thumb} contentFit="cover" />
-        ) : (
-          <View style={styles.thumb} />
-        )}
+        <View style={styles.thumb}>
+          {place.photo ? (
+            <Image source={place.photo} style={StyleSheet.absoluteFill} contentFit="cover" />
+          ) : null}
+          {/* Premier sits on the photo, bottom left (MESITA-5059). */}
+          {place.isPremier ? (
+            <View style={styles.premier}>
+              <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
+              <Text role="label" tone="onVip">Premier</Text>
+            </View>
+          ) : null}
+        </View>
         <View style={styles.facts}>
           <View>
             <Text role="strong" numberOfLines={1}>{place.name}</Text>
@@ -633,14 +634,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.reserve,
   },
   cardBody: { flexDirection: "row", height: 132 },
-  thumb: { width: 132, height: 132, backgroundColor: colors.fill },
+  thumb: { width: 132, height: 132, overflow: "hidden", backgroundColor: colors.fill },
   facts: { flex: 1, paddingHorizontal: space.md, paddingTop: space.md, paddingBottom: space.sm },
   premier: {
-    height: 32,
+    position: "absolute",
+    left: space.sm,
+    bottom: space.sm,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
+    gap: 4,
+    paddingVertical: 4,
+    paddingLeft: 6,
+    paddingRight: 10,
+    borderRadius: 999,
     backgroundColor: colors.vip,
   },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },

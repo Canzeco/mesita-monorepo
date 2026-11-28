@@ -240,16 +240,16 @@ export function PlaceBannerRow({
   );
 }
 
-/** A Premier place on a card: the VIP gold, dark type, and a black rosette
- *  (MESITA-5052). On Home's card it is the third cell of Save · Share
- *  (MESITA-5058); on Search's rail card a strip on top (MESITA-5046). A
- *  label, so a tap falls through to the card. */
-export function PremierBar({ className }: { className?: string }) {
+/** A Premier place on a card: a small gold pill on the photo's bottom-left
+ *  corner, 8px in from both edges (Pato, MESITA-5059: "add premier on top
+ *  of the photo at the bottom left"), on Home's card and Search's rail
+ *  card. The VIP gold, dark type, a black rosette (MESITA-5052). A label,
+ *  so a tap falls through to the photo. */
+export function PremierPill({ className }: { className?: string }) {
   return (
     <p
       className={cn(
-        CARD_BUTTON_BOX,
-        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#E9C46A] font-sans text-xs font-semibold text-neutral-950",
+        "pointer-events-none absolute bottom-2 left-2 z-10 flex items-center gap-1 rounded-full bg-[#E9C46A] py-1 pr-2.5 pl-1.5 font-sans text-xs leading-none font-semibold text-neutral-950 shadow-sm",
         className,
       )}
       data-card-premier
