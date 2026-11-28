@@ -119,13 +119,16 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
   // bottom left"): one green box, Premier's mirror at the bottom, the
   // place's highest cashback line. No cashback, no box. A label: a tap
   // opens the place.
+  // THE PHOTO'S FULL WIDTH (Pato, 2026-11-28, MESITA-5105: "cashback must be
+  // either 50% or 100% wide"; decision: 100%): left-2 right-2, the same 8px
+  // inset on every side, text centred.
   const back = offers?.cashback_pct ?? 0;
   if (back <= 0) return null;
   return (
     <p
       className={cn(
         CARD_BUTTON_BOX,
-        "pointer-events-none absolute bottom-2 left-2 z-10 m-0 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#00D66F] px-2.5 font-sans text-sm font-semibold text-neutral-950 tabular-nums",
+        "pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#00D66F] px-2.5 font-sans text-sm font-semibold text-neutral-950 tabular-nums",
       )}
       aria-label={`${back}% Cashback`}
       data-card-offer-display
