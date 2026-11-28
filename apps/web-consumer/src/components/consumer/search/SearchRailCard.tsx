@@ -75,8 +75,11 @@ const RAIL_CARD_ACTIONS =
 /** A THIRD-WIDTH PHOTO (Pato, 2026-11-11, MESITA-3699, on Activity ›
  *  Favorites: "to keep nice UI, image must be 1/3"): on a full-width row
  *  the square thumb read small. The photo is a third of the card, full
- *  height, cropped to fill; Save · Share start a third in plus 12px. The
- *  Search rail keeps the square. */
+ *  height, cropped to fill; Save · Share start a third in plus 12px.
+ *  ALWAYS A THIRD (Pato, 2026-11-28, MESITA-5097: "the image in carousel
+ *  must always be 33.33% … with Premier, Reserve, Offers everything would
+ *  be aligned"): the Search rail too, so the photo sits under the band's
+ *  first third. */
 const PHOTO_SQUARE = "aspect-square h-full w-auto";
 const PHOTO_THIRD = "h-full w-1/3";
 const RAIL_CARD_ACTIONS_THIRD = "absolute right-3 bottom-3 left-[calc(100%/3+12px)]";
@@ -96,7 +99,7 @@ function RailRowSkeleton({ bar }: { bar: string }) {
  *  frame, the square thumb at the inner height, the three 20px rows (name ·
  *  $$ category · ★ rating Open) and Save · Share where CardActions
  *  sits, so nothing moves when the cards land. */
-export function RailCardSkeleton({ photoThird = false }: { photoThird?: boolean }) {
+export function RailCardSkeleton({ photoThird = true }: { photoThird?: boolean }) {
   return (
     <div
       aria-hidden
@@ -138,7 +141,7 @@ export function RailCard({
   onShare,
   withDistance = false,
   photoOverlay,
-  photoThird = false,
+  photoThird = true,
 }: {
   place: Place;
   selected: boolean;
