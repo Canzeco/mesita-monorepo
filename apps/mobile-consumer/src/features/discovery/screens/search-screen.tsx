@@ -443,7 +443,7 @@ function RailCard({
           {place.photo ? (
             <Image source={place.photo} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : null}
-          {/* Premier sits on the photo, bottom left (MESITA-5059). */}
+          {/* Premier sits on the photo, top left (MESITA-5059, MESITA-5061). */}
           {place.isPremier ? (
             <View style={styles.premier}>
               <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
   premier: {
     position: "absolute",
     left: space.sm,
-    bottom: space.sm,
+    top: space.sm,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
