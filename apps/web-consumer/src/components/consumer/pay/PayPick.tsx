@@ -360,7 +360,13 @@ export function PlaceList({
                   <br />
                   Credits
                 </span>
-                <span className="text-center whitespace-nowrap">Cashback</span>
+                {/* "Cashback on Bill" (Pato, 2026-11-27, MESITA-5089): the share of
+                    the bill that comes back, two lines like Accepts Credits. */}
+                <span className="text-center leading-tight">
+                  Cashback
+                  <br />
+                  on Bill
+                </span>
               </span>
             </div>
           )}

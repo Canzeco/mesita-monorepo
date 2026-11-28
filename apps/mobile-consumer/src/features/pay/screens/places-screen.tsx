@@ -183,7 +183,7 @@ function PayHeads() {
   return (
     <View style={styles.bar}>
       <Text role="caption" tone="onInk" style={styles.barName}>Place</Text>
-      {["Accepts Credits", "Cashback"].map((label) => (
+      {["Accepts Credits", "Cashback on Bill"].map((label) => (
         <Text key={label} role="caption" tone="onInk" style={styles.payHead}>{label}</Text>
       ))}
     </View>
