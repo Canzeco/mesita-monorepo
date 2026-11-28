@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, User } from "lucide-react";
+import { CalendarCheck, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -28,10 +28,16 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { CountBubble } from "./CountBubble";
 import { useUnseenNotificationCount } from "./use-unseen-notifications";
 
-// FOUR TABS, in this order (Pato, 2026-11-16, MESITA-4199: "merge pay and
-// wallet into one page ... call that page Pay"):
+// FIVE TABS, in this order (Pato, 2026-11-27, MESITA-5055: "add reservations
+// to the bottom menu, since its one of the main value propositions ... you
+// can call it booking"):
 //
-//   Home · Search · Pay · Me
+//   Home · Search · Pay · Bookings · Me
+//
+// BOOKINGS IS THE RESERVATIONS LIST, /me/reservations (Upcoming | Past),
+// now a tab root; a reservation's panel lights it too. It was a page under
+// Me from MESITA-3855. Four tabs before (MESITA-4199: "merge pay and wallet
+// into one page ... call that page Pay").
 //
 // WALLET IS PAY'S LOWER HALF: it held its own slot from MESITA-3722 and again
 // from MESITA-3886 (Share held it MESITA-3855/3867 between); /wallet now
@@ -70,7 +76,7 @@ type Item = {
   label: string;
   /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
    *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
-   *  Loyalty Card Pay, a reservation or a ticket Me. */
+   *  Loyalty Card Pay, a reservation Bookings, a ticket Me. */
   tab: ConsumerTab;
 };
 
@@ -100,6 +106,13 @@ const ITEMS: Item[] = [
     tab: "pay",
   },
   {
+    href: CONSUMER_ROUTES.mePages.reservations,
+    // The same glyph as Me's Reservations box and Tickets' reservation rows.
+    Icon: CalendarCheck,
+    label: "Bookings",
+    tab: "bookings",
+  },
+  {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
@@ -109,7 +122,8 @@ const ITEMS: Item[] = [
 
 // THE ANONYMOUS BAR (MESITA-4246, Pato: "cuando eres anónimo, solo se
 // enseñan tres pestañas, home, search, y sign"): Sign takes Me's slot, the
-// bar re-spaces to three, and Pay is gone until the account is onboarded.
+// bar re-spaces to three, and Pay and Bookings are gone until the account
+// is onboarded.
 // Sign and Me share the person glyph but are different pages.
 const ANONYMOUS_ITEMS: Item[] = [
   ITEMS[0]!,

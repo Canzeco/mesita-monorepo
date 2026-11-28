@@ -167,7 +167,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
   {
     Icon: CalendarCheck,
-    title: "Reservations",
+    // The bar names it Bookings (MESITA-5055); this box is a second door.
+    title: "Bookings",
     summary: "Upcoming and past",
     href: CONSUMER_ROUTES.mePages.reservations,
   },
