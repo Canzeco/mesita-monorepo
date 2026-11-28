@@ -443,7 +443,7 @@ function RailCard({
           {place.photo ? (
             <Image source={place.photo} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : null}
-          {/* Premier sits on the photo, bottom left (MESITA-5059). */}
+          {/* Premier sits on the photo, top left (MESITA-5059, MESITA-5061). */}
           {place.isPremier ? (
             <View style={styles.premier}>
               <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
@@ -493,6 +493,9 @@ const FLOAT = {
   shadowOffset: { width: 0, height: 2 },
   elevation: 4,
 } as const;
+
+/** Reserve, Save, Share and the Premier pill share one height (MESITA-5061). */
+const CARD_BUTTON_HEIGHT = 32;
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.mapWait },
@@ -626,7 +629,7 @@ const styles = StyleSheet.create({
   },
   cardOn: { borderColor: colors.ink },
   reserve: {
-    height: 32,
+    height: CARD_BUTTON_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -639,14 +642,13 @@ const styles = StyleSheet.create({
   premier: {
     position: "absolute",
     left: space.sm,
-    bottom: space.sm,
+    top: space.sm,
+    height: CARD_BUTTON_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 4,
-    paddingLeft: 6,
-    paddingRight: 10,
-    borderRadius: 999,
+    gap: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.control,
     backgroundColor: colors.vip,
   },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
@@ -655,7 +657,7 @@ const styles = StyleSheet.create({
   cardActions: { flexDirection: "row", gap: space.sm, marginTop: "auto" },
   action: {
     flex: 1,
-    height: 32,
+    height: CARD_BUTTON_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

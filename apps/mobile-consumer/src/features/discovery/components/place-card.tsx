@@ -28,7 +28,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
           transition={motion.fast}
           recyclingKey={place.id}
         />
-        {/* Premier sits on the photo, bottom left (MESITA-5059). */}
+        {/* Premier sits on the photo, top left (MESITA-5059, MESITA-5061). */}
         {place.isPremier ? (
           <View style={styles.premier}>
             <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
@@ -123,6 +123,9 @@ function CardButton({ icon, color, label, spoken, onPress }: ButtonProps) {
   );
 }
 
+/** Save, Share and the Premier pill share one height (MESITA-5061). */
+const CARD_BUTTON_HEIGHT = 32;
+
 const styles = StyleSheet.create({
   card: { flexDirection: "row", marginHorizontal: space.sm, marginTop: space.sm },
   photoBox: {
@@ -147,14 +150,13 @@ const styles = StyleSheet.create({
   premier: {
     position: "absolute",
     left: space.sm,
-    bottom: space.sm,
+    top: space.sm,
+    height: CARD_BUTTON_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 4,
-    paddingLeft: 6,
-    paddingRight: 10,
-    borderRadius: 999,
+    gap: 6,
+    paddingHorizontal: 10,
+    borderRadius: radius.control,
     backgroundColor: colors.vip,
   },
   name: { flexShrink: 1 },
@@ -162,7 +164,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: space.sm },
   button: {
     flex: 1,
-    height: 32,
+    height: CARD_BUTTON_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

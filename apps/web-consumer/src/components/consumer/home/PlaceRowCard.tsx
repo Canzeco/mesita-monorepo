@@ -64,11 +64,14 @@ function ScoreLabel({
   ad,
   lane,
   rank,
+  below = false,
 }: {
   area: Place["area"];
   ad: boolean;
   lane?: string;
   rank?: { pre: number | null; shown: number } | null;
+  /** Under the Premier pill, which holds the top-left corner (MESITA-5061). */
+  below?: boolean;
 }) {
   if (!area) return null;
   const head = rank
@@ -92,7 +95,7 @@ function ScoreLabel({
   ];
   return (
     <dl
-      className="pointer-events-none absolute top-2 left-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums"
+      className={cn("pointer-events-none absolute left-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums", below ? "top-12" : "top-2")}
       aria-label="Score breakdown (temporary)"
       data-score-label
     >
@@ -245,7 +248,7 @@ export function PlaceRowCard({
           )}
           {isPremierPlace(place) ? <PremierPill /> : null}
           {showScores ? (
-            <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
+            <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} below={isPremierPlace(place)} />
           ) : null}
         </>,
         cn(ROW_PHOTO, "block", focus),
