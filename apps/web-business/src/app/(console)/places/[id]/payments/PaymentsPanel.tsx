@@ -11,15 +11,16 @@
 //                                            Credits Payments (Loyalty Cards: on
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
-//   Visit Checkout     #visit-checkout     · Enabled (Cashback) ·
-//                                            Welcome Cashback · Returning Cashback
-//                                            (MESITA-5072; Returning 10% only
-//                                            where Small is +20%)
+//   Visit Checkout     #visit-checkout     · Enabled (Cashback) · one
+//                                            Cashback line, every bill
+//                                            (MESITA-5124; 10% only where
+//                                            Small is +20%)
 //   Waiter Codes       #waiter-codes       · one 6-digit code, always asked
 //   Prepaid Vouchers   #prepaid-vouchers   · ONE master switch, Accept Prepayments
 //                                            (the `prepayments` key, and
 //                                            `stripe_payments` under it), then
-//                                            Small · Medium · Big
+//                                            Welcome (one per guest,
+//                                            MESITA-5124) · Small · Medium · Big
 // The rates and the voucher bonuses are one saved record (business-web-set-
 // cashback).
 // SAVE CHANGES (Pato, 2026-11-23, MESITA-4769: "don't enable to directly
@@ -43,7 +44,6 @@ import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
   ArrowsClockwiseIcon,
-  ConfettiIcon,
   HashIcon,
   ReceiptIcon,
   StripeLogoIcon,
@@ -127,7 +127,11 @@ type VoucherSeed = Omit<Product, "line" | "key"> & { key: VoucherKey };
 
 // THE OWNER PICKS EACH BONUS (Pato, 2026-11-23, MESITA-4764: "small: 10% 20% ·
 // mid 20 40 · big 30 60"); the prices stay.
+// WELCOME FIRST (Pato, 2026-11-28, MESITA-5124: "the welcome thing is the
+// voucher, not the visit ... Welcome Voucher (+30% or 60%) $100MX just
+// one"): the currency's base price, one per guest per place.
 const STANDARD: VoucherSeed[] = [
+  { key: "voucher_welcome", name: "Welcome Voucher", field: "welcome_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
   { key: "voucher_200", name: "Small Voucher", field: "small_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
   { key: "voucher_1000", name: "Medium Voucher", field: "medium_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
   { key: "voucher_5000", name: "Big Voucher", field: "big_bonus_bps", tone: "bg-green-100 text-green-700", icon: TicketIcon },
@@ -148,17 +152,17 @@ function wholeMoney(cents: number, currency: string): string {
   }
 }
 
-/** Visit Checkout's two lines (MESITA-4698; two since MESITA-5072: VIP
- *  cashback is gone), each Off or a rate, paid out as Cashback for the next
- *  visit. Returning's 10% shows only where Small's bonus is +20%. */
+/** Visit Checkout's one line (Pato, 2026-11-28, MESITA-5124: "Just one
+ *  cashback"; Welcome and Returning from MESITA-5072): Off or a rate, on
+ *  every bill, paid out as Cashback for the next visit. 10% shows only where
+ *  Small's bonus is +20%. The Welcome offer is the Welcome Voucher below. */
 const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: string; icon: Icon }> = [
-  { key: "welcome_bps", id: "welcome-regular", name: "Welcome Cashback", line: "Cashback on a guest's first bill here.", icon: ConfettiIcon },
-  { key: "returning_bps", id: "returning-regular", name: "Returning Cashback", line: "Cashback on every later bill here.", icon: ArrowsClockwiseIcon },
+  { key: "returning_bps", id: "returning-regular", name: "Cashback", line: "Cashback on every bill here.", icon: ArrowsClockwiseIcon },
 ];
 const pct = (bps: number) => `${bps / 100}%`;
 /** Every visit rate at 0: what Enabled Off stores. */
-const NO_RATES = { welcome_bps: 0, returning_bps: 0 } as const;
-const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.welcome_bps > 0 || r.returning_bps > 0;
+const NO_RATES = { returning_bps: 0 } as const;
+const anyRate = (r: Pick<CashbackRates, VisitRateField>) => r.returning_bps > 0;
 
 /** The voucher rows in the place's currency; none where vouchers aren't sold. */
 function voucherProducts(currency: string, rates: CashbackRates): Product[] {
@@ -168,7 +172,8 @@ function voucherProducts(currency: string, rates: CashbackRates): Product[] {
     const bps = rates[p.field];
     const price = prices[p.key];
     const credit = price + Math.floor((price * bps) / 10000);
-    return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.` };
+    const once = p.key === "voucher_welcome" ? " One per guest." : "";
+    return { ...p, line: `Guest pays ${moneyLabel(price, currency)}, gets ${moneyLabel(credit, currency)} of credit.${once}` };
   });
 }
 
@@ -190,8 +195,8 @@ const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_"
 type DraftKey = "prepayments" | VoucherKey;
 
 const CASHBACK_FIELDS: readonly (keyof CashbackRates)[] = [
-  "welcome_bps",
   "returning_bps",
+  "welcome_bonus_bps",
   "small_bonus_bps",
   "medium_bonus_bps",
   "big_bonus_bps",
@@ -202,8 +207,8 @@ const sameRates = (a: CashbackRates, b: CashbackRates) => CASHBACK_FIELDS.every(
  *  the set with any rate on, else the defaults. */
 const restoreRates = (c: CashbackRates): Pick<CashbackRates, VisitRateField> =>
   anyRate(c)
-    ? { welcome_bps: c.welcome_bps, returning_bps: c.returning_bps }
-    : { welcome_bps: CASHBACK_DEFAULTS.welcome_bps, returning_bps: CASHBACK_DEFAULTS.returning_bps };
+    ? { returning_bps: c.returning_bps }
+    : { returning_bps: CASHBACK_DEFAULTS.returning_bps };
 
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
@@ -818,7 +823,7 @@ export function PaymentsPanel({
             ),
           })}
           <ul className={ROWS} data-place-state="vouchers">
-            {/* Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
+            {/* Welcome, Small, Medium, Big; what money-state's NOT_YET_SELLABLE lists is off sale. */}
             {vouchers.map(voucherRow)}
           </ul>
           <footer className={FOOT}>

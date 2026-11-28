@@ -55,18 +55,19 @@ const ACCOUNT: AccountRow = {
 
 const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null, welcomeUsed: false };
 
-Deno.test("every switched-on voucher sells: Small, Medium, Big only (MESITA-4698: Welcome and VIP are cashback lines)", () => {
+Deno.test("every switched-on voucher sells: Welcome, Small, Medium, Big (MESITA-5124: Welcome is a voucher again; VIP stays off)", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
-  assertEquals(o.unavailable, { voucher_welcome: "off", voucher_vip: "off" });
+  assertEquals(o.sell, ["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"]);
+  assertEquals(o.unavailable, { voucher_vip: "off" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.mesita_pay, true);
   assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 10800 });
-  // Welcome is back (MESITA-4645): MX$100 +100%, its bonus in 3 hours. No
-  // Story (MESITA-4642) in the catalog.
-  assertEquals(o.catalog.voucher_welcome, { price_cents: 10000, bonus_cents: 10000, credit_cents: 20000, available_after_sec: 10800 });
+  // Welcome (MESITA-5124): MX$100 +30%, or +60% where the place picks it;
+  // its bonus in 3 hours. No Story (MESITA-4642) in the catalog.
+  assertEquals(o.catalog.voucher_welcome, { price_cents: 10000, bonus_cents: 3000, credit_cents: 13000, available_after_sec: 10800 });
+  assertEquals(offerFrom({ ...base, voucherBonus: { voucher_welcome: 6000 } }).catalog.voucher_welcome, { price_cents: 10000, bonus_cents: 6000, credit_cents: 16000, available_after_sec: 10800 });
   assertEquals("voucher_story" in o.catalog, false);
 });
 
@@ -83,8 +84,9 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
   assertEquals(offerFrom({ ...base, paused: true }).unavailable.voucher_200, "paused");
   const used = offerFrom({ ...base, welcomeUsed: true });
   assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_5000"]);
-  // Welcome is off for everyone since MESITA-4698, used or not.
-  assertEquals(used.unavailable.voucher_welcome, "off");
+  // One Welcome per guest per place (MESITA-5124: "just one").
+  assertEquals(used.unavailable.voucher_welcome, "used");
+  assertEquals(buyRefusal(used, "voucher_welcome", ACCOUNT)?.code, "welcome_used");
   const live = offerFrom({ ...base, livemode: true });
   assertEquals(live.sell, []);
   assertEquals(live.unavailable.voucher_200, "needs_account");
@@ -102,11 +104,10 @@ Deno.test("Story is retired (MESITA-4641): a basket naming it is refused with vo
   assertEquals(parseBasket({ voucher: "voucher_200" }).ok, true);
 });
 
-Deno.test("Welcome and VIP are retired as vouchers (MESITA-4698): a basket naming either is refused", () => {
+Deno.test("VIP is retired as a voucher (MESITA-4698); Welcome sells again, one a basket (MESITA-5124)", () => {
   const vip = parseBasket({ voucher: "voucher_vip" });
   assertEquals(vip.ok ? null : vip.code, "voucher_retired");
-  const welcome = parseBasket({ voucher: "voucher_welcome" });
-  assertEquals(welcome.ok ? null : welcome.code, "voucher_retired");
+  assertEquals(parseBasket({ voucher: "voucher_welcome" }), { ok: true, items: [{ voucher: "voucher_welcome", qty: 1 }] });
   // One Welcome a basket: it is once per guest per place.
   assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 2 }] }).ok, false);
   // One VIP a basket: it is one each new visit.
@@ -330,9 +331,9 @@ Deno.test("the mark (MESITA-3408) is taken before the pause, so it matches the l
   const onlySmall: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_welcome: false, voucher_1000: false, voucher_5000: false, voucher_vip: false };
   assertEquals(offerFrom({ ...base, settings: onlySmall }).mesita_pay, true);
   assertEquals(offerFrom({ ...base, settings: onlySmall, paused: true }).mesita_pay, true);
-  // Welcome alone no longer lights it: it is a cashback line (MESITA-4698).
+  // Welcome alone lights it: it is a voucher again (MESITA-5124).
   const onlyWelcome: PaymentSettings = { ...onlySmall, voucher_200: false, voucher_welcome: true };
-  assertEquals(offerFrom({ ...base, settings: onlyWelcome }).mesita_pay, false);
+  assertEquals(offerFrom({ ...base, settings: onlyWelcome }).mesita_pay, true);
   // Nothing on: no mark.
   const nothing: PaymentSettings = { ...onlySmall, voucher_200: false };
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
@@ -349,8 +350,8 @@ Deno.test("parseBasket: the old voucher field is a basket of one; items need kno
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 0 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1.5 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 2 }] }).ok, false);
-  // Retired as a voucher (MESITA-4698).
-  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 1 }] }).ok, false);
+  // On sale again (MESITA-5124), one a basket.
+  assertEquals(parseBasket({ items: [{ voucher: "voucher_welcome", qty: 1 }, { voucher: "voucher_200", qty: 2 }] }).ok, true);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_vip", qty: 2 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "voucher_200", qty: 1 }, { voucher: "voucher_200", qty: 1 }] }).ok, false);
   assertEquals(parseBasket({ items: [{ voucher: "nope", qty: 1 }] }).ok, false);
@@ -447,8 +448,8 @@ Deno.test("list rows: guestSell drops Welcome used here and a per-visit voucher 
   for (const id of ["a", "b", "c", "d", "e"]) {
     const g = blocks.get(id);
     const o = offerFrom({ ...vipOn, welcomeUsed: g?.welcomeUsed ?? false, perVisitUsed: g?.perVisitUsed });
-    // Welcome and VIP are off sale everywhere since MESITA-4698.
-    assertEquals(guestSell(sell, g).filter((k) => k !== "voucher_welcome" && k !== "voucher_vip"), o.sell);
+    // VIP is off sale everywhere since MESITA-4698; Welcome sells (MESITA-5124).
+    assertEquals(guestSell(sell, g).filter((k) => k !== "voucher_vip"), o.sell);
   }
 });
 

@@ -487,7 +487,8 @@ export const BASKET_ONE_ONLY: ReadonlySet<MoneyVoucherKey> = new Set(["voucher_w
  *  2026-11-22, MESITA-4641). Old purchases keep their key; a buy is refused
  *  with `voucher_retired` (409), never a bare bad_body. */
 // MESITA-4698: Welcome and VIP are cashback lines now, not vouchers.
-export const RETIRED_VOUCHERS: ReadonlySet<string> = new Set(["voucher_story", "voucher_welcome", "voucher_vip"]);
+// MESITA-5124: Welcome is a voucher again; VIP and Story stay retired.
+export const RETIRED_VOUCHERS: ReadonlySet<string> = new Set(["voucher_story", "voucher_vip"]);
 
 /** The request's basket: `items: [{voucher, qty}]`, or the old one-voucher
  *  `voucher` as a basket of one. Known keys, whole qty 1..5, Welcome and

@@ -56,9 +56,11 @@ export type PlaceMoney = {
   cashback?: PlaceCashback | null;
 };
 
-/** MESITA-4698: a paid bill's cashback here. Rates in basis points (0 = Off);
- *  Welcome is the guest's first paid bill here, Returning every later one
- *  (MESITA-4709), Returning VIP every later one for a VIP guest (MESITA-4766).
+/** MESITA-4698: a paid bill's cashback here. Rates in basis points (0 = Off).
+ *  ONE RATE SINCE MESITA-5124: `returning_bps`, every bill; `welcome_bps` and
+ *  the VIP two read 0 and `line` is "returning". Before: Welcome the guest's
+ *  first paid bill here, Returning every later one (MESITA-4709), Returning
+ *  VIP every later one for a VIP guest (MESITA-4766).
  *  `line` is the one this guest's next bill falls in (null signed out); the
  *  server decides it, never the guest's Class here. */
 export type PlaceCashback = {

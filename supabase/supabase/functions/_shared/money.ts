@@ -139,7 +139,11 @@ export const VOUCHER_CATALOG: Record<MoneyVoucherKey, VoucherEntry> = {
   // WELCOME IS BACK (Pato, 2026-11-22, MESITA-4645: "RETURN THE WELCOME
   // BONUS"; gone 2026-11-21, MESITA-4636). Welcome's MX$100 lands with
   // its bonus in 3 hours (MESITA-4717); once per guest per place.
-  voucher_welcome: { price_cents: 100_00, bonus_bps: 10000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
+  // ON SALE AGAIN AT +30% OR +60% (Pato, 2026-11-28, MESITA-5124: "the
+  // welcome thing is the voucher, not the visit ... Welcome Voucher (+30% or
+  // 60%) $100MX just one"): a cashback line from MESITA-4698 until then, at
+  // +100% before that. The place picks the bonus (VOUCHER_BONUS_STEPS_BPS).
+  voucher_welcome: { price_cents: 100_00, bonus_bps: 3000, kind: "earned", available_after_sec: BONUS_WAIT_SEC },
   // THE STORY VOUCHER IS GONE (Pato, 2026-11-22, MESITA-4641/4642); its
   // purchases keep their stored amounts.
   // VIP IS BACK (Pato, 2026-11-22, MESITA-4640): MESITA-4249's line, pay
@@ -195,6 +199,8 @@ export function voucherPriceCents(key: MoneyVoucherKey, currency: string = MONEY
 /** MESITA-4762: the two bonuses an owner can pick per size, in basis points;
  *  the first is the default (VOUCHER_CATALOG's bonus_bps). */
 export const VOUCHER_BONUS_STEPS_BPS = {
+  // MESITA-5124: Welcome, +30% or +60%, once per guest per place.
+  voucher_welcome: [3000, 6000],
   voucher_200: [1000, 2000],
   voucher_1000: [2000, 4000],
   voucher_5000: [3000, 6000],

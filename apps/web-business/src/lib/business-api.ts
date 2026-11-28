@@ -480,9 +480,9 @@ export type PlacePayments = {
   fee: PlaceFee;
   /** MESITA-4502: cash amounts waiting for Received. Not tickets. */
   cash_due?: { attempt_id: string; cash_cents: number; credit_cents?: number; guest_label: string; created_at: string }[];
-  /** MESITA-4698: the two cashback lines (Welcome, Returning; MESITA-5072,
-   *  the VIP fields read 0) and the voucher bonuses, in basis points; older
-   *  servers lack it. */
+  /** MESITA-4698: the one Cashback line (returning_bps, MESITA-5124; the
+   *  Welcome and VIP fields read 0) and the voucher bonuses, Welcome's
+   *  included, in basis points; older servers lack it. */
   cashback?: CashbackRates;
   /** MESITA-4732: the place's credit limit and the step that raises it;
    *  older servers lack it (null: the Credit Limit box hides). */

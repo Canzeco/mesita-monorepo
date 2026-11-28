@@ -177,12 +177,13 @@ const PAYOUT: Record<string, string> = {
   canceled: "Canceled",
 };
 const GIFT: Record<string, string> = { open: "Open link", claimed: "Claimed", taken_back: "Taken back" };
-/** The cashback line a credit came from (wallet_entries.reason). Two lines
- *  since MESITA-5072; the VIP two name receipts from before. */
+/** The cashback line a credit came from (wallet_entries.reason). One line
+ *  since MESITA-5124, stored as "returning"; Welcome and the VIP two name
+ *  receipts from before. */
 const CASHBACK_REASON: Record<string, string> = {
   welcome: "Welcome Cashback",
   welcome_vip: "Welcome VIP",
-  returning: "Returning Cashback",
+  returning: "Cashback",
   returning_vip: "Returning VIP",
 };
 

@@ -1,21 +1,21 @@
 "use client";
 
 // Admin › Offers › Cashbacks (MESITA-4700, Pato: "Yes, editable"): the
-// defaults every place without its own saved lines reads. Two lines since
-// MESITA-5072 (VIP cashback is gone): Welcome and Returning (at most MX$1,000
-// a bill, MESITA-4831), one Save through
-// admin-web-save-cashback-defaults. A place's own lines on Business › Offers
-// win; this never touches them. Every line pays out as Cashback (credit back).
+// default every place without its own saved rate reads. One line since
+// MESITA-5124 (Pato, 2026-11-28: "Just one cashback"; Welcome is a voucher
+// again): Cashback on every bill (at most MX$1,000 a bill, MESITA-4831), one
+// Save through admin-web-save-cashback-defaults. A place's own rate on
+// Business › Offers wins; this never touches it.
 
 import { useState, useTransition } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { Button, Notice, SectionCard, SelectField, TBody, THead, Table, Td, Th, Tr } from "@/components/admin-ui";
 import { saveCashbackDefaults, type CashbackDefaults } from "./actions";
 
-// As Business › Offers: Welcome Off · 10 · 20, Returning Off · 5, and 10 only
-// where the default Small bonus is +20% (MESITA-5072; the server refuses it otherwise).
+// As Business › Offers: Off · 5, and 10 only where the default Small bonus
+// is +20% (MESITA-5072; the server refuses it otherwise). The rate's key is
+// returning_bps (a renamed key resets live config).
 const STEPS = {
-  welcome_bps: [0, 1000, 2000],
   returning_bps: [0, 500, 1000],
 } as const;
 const stepsFor = (key: keyof typeof STEPS, d: CashbackDefaults): readonly number[] =>
@@ -24,8 +24,7 @@ const pct = (bps: number) => (bps === 0 ? "Off" : `${bps / 100}%`);
 
 // In Business's words.
 const LINES: { key: keyof typeof STEPS; name: string; who: string }[] = [
-  { key: "welcome_bps", name: "Welcome Cashback", who: "A guest's first bill at the place" },
-  { key: "returning_bps", name: "Returning Cashback", who: "Every later bill at the place" },
+  { key: "returning_bps", name: "Cashback", who: "Every bill at the place" },
 ];
 
 export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | null }) {
@@ -52,7 +51,7 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
     <SectionCard
       icon={<ArrowsClockwiseIcon aria-hidden />}
       title="Visit Offers"
-      subtitle="The defaults for every place that hasn't set its own on Business › Offers: the two cashback rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, at most MX$1,000 a bill, 1 hour later. Mesita takes no fee."
+      subtitle="The defaults for every place that hasn't set its own on Business › Offers: the one Cashback rate. Cashback earns credit on the part paid by card or cash, never credit or the tip, at most MX$1,000 a bill, 1 hour later. Mesita takes no fee."
     >
       {!draft ? (
         <Notice className="mt-4">Couldn&apos;t load the cashback defaults. Reload to edit them.</Notice>

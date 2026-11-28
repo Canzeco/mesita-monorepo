@@ -121,8 +121,10 @@ export type VoucherReason =
 //  vouchers are Small · Medium · Big only, the bonus by amount alone. The two
 //  keys stay in the catalog so old purchases read; every list hides them and
 //  the buy door refuses them (vouchers.ts RETIRED_VOUCHERS).
+//  WELCOME IS A VOUCHER AGAIN (Pato, 2026-11-28, MESITA-5124: "the welcome
+//  thing is the voucher, not the visit"): on sale where the place switches
+//  it on, once per guest per place. VIP stays off.
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
-  voucher_welcome: "off",
   voucher_vip: "off",
 };
 

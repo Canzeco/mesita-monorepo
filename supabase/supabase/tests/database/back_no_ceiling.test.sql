@@ -20,7 +20,7 @@ values ('00000000-0000-4000-8000-000000014728', '00000000-0000-4000-8000-0000000
 insert into public.place_payment_settings (place_id, loyalty_cards) values ('00000000-0000-4000-8000-000000014728', true);
 
 -- A MX$50,000 bill (MX$49,000 by card, MX$1,000 cash) plus a MX$1,000 tip
--- that never earns; the first bill here, so Welcome.
+-- that never earns; the first bill here (one Cashback line, MESITA-5124).
 insert into public.pay_tabs (id, place_id, consumer_id, token_hash, currency, expires_at, status, bill_cents, tip_cents,
                              origin, paid_at, card_bill_cents, cash_bill_cents)
 values ('00000000-0000-4000-8000-0000000d4728', '00000000-0000-4000-8000-000000014728',
@@ -54,7 +54,7 @@ select is(
 
 select is(
   (select reason from public.wallet_entries where tab_id = '00000000-0000-4000-8000-0000000d4728' and kind = 'cashback'),
-  'welcome', 'the first bill is Welcome');
+  'returning', 'the first bill earns the one Cashback line, like every later one (MESITA-5124)');
 
 select * from finish();
 rollback;

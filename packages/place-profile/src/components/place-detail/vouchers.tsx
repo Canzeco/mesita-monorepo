@@ -116,8 +116,12 @@ const STANDARD: Product[] = [
 // THE WELCOME BONUS. WELCOME AND THEN THE OTHER BONUSES."). Welcome is once
 // per guest per place. VIP IS BACK (MESITA-4640): MESITA-4249's deal, the VIP
 // class only, one each new visit.
+// WELCOME IS ON SALE AGAIN AT +30% OR +60% (Pato, 2026-11-28, MESITA-5124:
+// "the welcome thing is the voucher, not the visit ... Welcome Voucher (+30%
+// or 60%) $100MX just one"): a cashback line from MESITA-4698 until then.
+// This copy is the default; the server's line carries the place's pick.
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay $100.00MX, get $200.00MX.", limit: "One per place.", bonus: "100% bonus", short: "Welcome", brief: "One per place" },
+  { key: "voucher_welcome", name: "Welcome Bonus", line: "Pay $100.00MX, get $130.00MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome Bonus", brief: "One per place" },
   { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", limit: "One per visit.", bonus: "100% bonus", short: "VIP", brief: "VIP only · One per visit" },
 ];
 
@@ -372,14 +376,17 @@ const GROUPS: { id: "special" | "prepayment"; title: string; keys: ReadonlySet<M
   {
     id: "special",
     title: "Special Offers",
-    keys: new Set(["voucher_welcome", "voucher_vip"]),
+    keys: new Set(["voucher_vip"]),
   },
   {
     id: "prepayment",
     // MESITA-4698 (Pato: "we must have Vouchers and we must have Coupons
     // as Offers"): the panels are Cashback, then Vouchers.
+    // ONE LIST OF FOUR (Pato, 2026-11-28, MESITA-5124: "Welcome Voucher ·
+    // Small Voucher · Medium Voucher · Big Voucher"): Welcome leads the
+    // sizes in one panel; it sat alone under Special Offers (MESITA-4645).
     title: "Vouchers",
-    keys: new Set(["voucher_200", "voucher_1000", "voucher_5000"]),
+    keys: new Set(["voucher_welcome", "voucher_200", "voucher_1000", "voucher_5000"]),
   },
 ];
 
@@ -583,7 +590,10 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
 const BADGE = "flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl tabular-nums";
 
 /** THE PAY CARD (Pato, 2026-11-27, MESITA-5071): one card, only the rate
- *  that applies to this guest, never the place's whole table. The server's
+ *  that applies to this guest, never the place's whole table. ONE RATE SINCE
+ *  MESITA-5124: the server sends Welcome 0 and line "returning", so the card
+ *  reads "X% back · On every bill here"; the first-bill branch stays for an
+ *  older server. The server's
  *  `line` says whether the next bill is their first here; VIP changes
  *  nothing on Pay (VIP lives on Post only). Signed out reads as a first
  *  visit. A first-visit rate of Off falls through to Returning. Null when

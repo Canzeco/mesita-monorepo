@@ -64,7 +64,10 @@ export type OfferInput = {
 /** THE RANGE (Pato, 2026-11-27, MESITA-5093: "mention the ranges because we
  *  have welcome and returning"): the lowest and highest line that is on, in
  *  whole percent. Welcome and Returning only; the VIP lines are retired
- *  (MESITA-5072). A row with only cashback_pct reads one rate. */
+ *  (MESITA-5072). A row with only cashback_pct reads one rate. ONE RATE
+ *  SINCE MESITA-5124 (Welcome is a voucher, its cashback line 0): the two
+ *  ends meet, so every slide reads "5% Back"; the range stays for an older
+ *  server. */
 function cashbackRange(o: OfferInput): [number, number] | null {
   const c = o.cashback;
   const lines = c
@@ -153,6 +156,9 @@ export const STANDARD_BONUS: Record<string, number> = {
   voucher_200: 10,
   voucher_1000: 20,
   voucher_5000: 30,
+  // MESITA-5124: Welcome sells again, +30% (or +60%, the place's pick), one
+  // per guest per place. Last, so a size wins a tie for the lead voucher.
+  voucher_welcome: 30,
 };
 
 /** A voucher's bonus at this place in whole percent: the row's pick, else
@@ -231,7 +237,8 @@ export function rowOfferSlides(
     .filter((key) => sell.has(key))
     .map((key) => {
       const line = offers.catalog?.[key];
-      const price = line?.price_cents ?? Number(key.replace("voucher_", "")) * 100;
+      // Welcome's price is the currency's base (MX$100); a size's is in its key.
+      const price = line?.price_cents ?? (key === "voucher_welcome" ? 100_00 : Number(key.replace("voucher_", "")) * 100);
       const pct = line && line.price_cents > 0 ? Math.round((line.bonus_cents / line.price_cents) * 100) : voucherPct(offers, key);
       return { key, price, pct };
     })

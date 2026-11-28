@@ -15,7 +15,7 @@ import { colors, space } from "@/theme";
 import { getPlaceDetail } from "../api";
 
 const NAME: Record<VoucherKey, string> = {
-  voucher_welcome: "Welcome",
+  voucher_welcome: "Welcome Bonus",
   voucher_vip: "VIP",
   voucher_200: "Small Bonus",
   voucher_1000: "Medium Bonus",
