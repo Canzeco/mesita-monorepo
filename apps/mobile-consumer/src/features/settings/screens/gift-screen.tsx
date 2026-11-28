@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
@@ -11,7 +12,7 @@ import { EdgeError } from "@/lib/edge";
 import { useErrorCopy } from "@/lib/error-copy";
 import { colors, space } from "@/theme";
 
-import { getGift, giftMoney, giftOutcome, giftSentence, giftState, giftStep, readyIn, takeBackGift, type Gift } from "../gift";
+import { getGift, giftOutcome, giftSentence, giftState, giftStep, readyIn, takeBackGift, type Gift } from "../gift";
 
 const STEPS = ["Send", "Receive", "Receipt"] as const;
 
@@ -33,7 +34,7 @@ function Line({ label, value }: { label: string; value: string }) {
 }
 
 function Body({ gift, step, now }: { gift: Gift; step: number; now: number }) {
-  const amount = giftMoney(gift.amountCents, gift.currency);
+  const amount = moneyLabel(gift.amountCents, gift.currency);
   const from = gift.sender.you ? "You" : gift.sender.name || "Someone";
   const to = gift.recipient ? (gift.recipient.you ? "You" : gift.recipient.name || "A friend") : "Nobody";
   return (
@@ -106,7 +107,7 @@ export function GiftScreen({ id }: { id: string }) {
   const step = picked && picked.status === gift.status ? picked.view : at;
   const go = (view: number) => setPicked({ status: gift.status, view });
   const takeBack = () => {
-    const amount = giftMoney(gift.amountCents, gift.currency);
+    const amount = moneyLabel(gift.amountCents, gift.currency);
     Alert.alert(`Take back ${amount}?`, `The link stops working and the credit is back in your balance at ${gift.place}.`, [
       { text: "Keep it open", style: "cancel" },
       {
@@ -116,7 +117,7 @@ export function GiftScreen({ id }: { id: string }) {
           setSaid(null);
           void takeBackGift(gift.id)
             .then((row) => {
-              setSaid(`${giftMoney(row.amountCents, row.currency)} is back in your balance.`);
+              setSaid(`${moneyLabel(row.amountCents, row.currency)} is back in your balance.`);
               void query.refetch();
             })
             .catch((err: unknown) => {
