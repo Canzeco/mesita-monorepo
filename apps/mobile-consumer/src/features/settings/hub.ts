@@ -152,6 +152,8 @@ export function getPlan(signal?: AbortSignal): Promise<Plan> {
     name: row.plan === "premium" ? "Pro" : "Free",
     used: row.used,
     cap: row.cap,
+    // A plan price, not an amount: the web's dollars() (me/plan-words.ts) prints
+    // whole dollars ("$3 USD a month"), never moneyLabel's cents.
     price: row.price_cents % 100 === 0 ? `$${row.price_cents / 100}` : `$${(row.price_cents / 100).toFixed(2)}`,
   }));
 }
