@@ -243,7 +243,6 @@ export function PlaceRowCard({
             </div>
           )}
           {isPremierPlace(place) ? <PremierPill placement="top" /> : null}
-          <OfferDisplay offers={google ? null : (place.offers as OfferInput | null | undefined)} />
           {showScores ? (
             <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
           ) : null}
@@ -279,8 +278,11 @@ export function PlaceRowCard({
             taps between chips through to the name's stretched link (the dead
             spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
         <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col gap-2">
-          {/* Reserve · Prepay share the top row, one alone takes it whole
-              (MESITA-5010); Premier is on the photo (MESITA-5059). */}
+          {/* WHAT YOU GET, THEN WHAT YOU CAN DO (MESITA-5100): the two offer
+              boxes over Reserve, on Save · Share's grid. */}
+          <OfferDisplay offers={google ? null : (place.offers as OfferInput | null | undefined)} />
+          {/* Reserve alone takes the row (MESITA-5091); Premier is on the
+              photo (MESITA-5059). */}
           <PlaceBannerRow
             name={place.name}
             placeId={place.id}
