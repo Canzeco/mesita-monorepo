@@ -242,7 +242,7 @@ export function RailCard({
                 )}
               </span>
             )}
-            {premier ? <PremierPill /> : null}
+            {premier ? <PremierPill placement="corner" /> : null}
             {photoOverlay}
           </div>
           <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
