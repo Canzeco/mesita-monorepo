@@ -156,9 +156,9 @@ export function usePlaceSearch(input: string, sessionToken: string, member: bool
       return answer.rows;
     },
     enabled: member && settled.length >= 2,
-    // An answer is never fetched again by focus, reconnect or remount: its
-    // session may have ended. Try again still refetches.
-    staleTime: Infinity,
+    // Never fetched again by focus, reconnect or remount, even after an
+    // error: its session may have ended. Try again still refetches.
+    staleTime: "static",
     // The last rows stay while the next search runs, but never across a
     // search that ended (a pick or a clear empties the list, as on the web).
     placeholderData: (previous, previousQuery) =>
