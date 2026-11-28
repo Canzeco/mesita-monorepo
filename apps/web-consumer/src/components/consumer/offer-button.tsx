@@ -105,25 +105,31 @@ export function OfferButton({
 /** THE OFFERS ON THE PHOTO: PREPAY LEFT, PAY RIGHT (Pato, 2026-11-28,
  *  MESITA-5123: "i want prepay and pay, two buttons. prepay bottom left is
  *  purple. pay bottom right is green. just mention Prepay (X%), Pay (Y%)").
- *  Two still boxes along the photo's bottom, in one black box 8px in on every side. Left,
+ *  Two still boxes along the photo's bottom, 8px in on every side. Left,
  *  purple "Prepay X%": the Medium voucher's bonus (MESITA-5099: "select
  *  always the medium prepay bonus"), or the best voucher on sale where the
  *  place does not sell Medium. Right, green "Pay Y%": the place's highest
  *  cashback line. One alone takes the full width (MESITA-5105). Equal
  *  halves where both fit; on a narrow phone Prepay keeps its words and Pay
- *  takes the rest (measured at 360px: 12px type, 4px inside). No icon and
- *  no black percent box: neither fits two boxes on a phone. A label: a tap
- *  opens the place. One green Cashback band before (MESITA-5103).
- *  INSIDE ONE BLACK BOX (Pato, 2026-11-28, MESITA-5125: "put prepay and pay
- *  inside black box"): the two sit in a black box, 4px in on every side and
- *  4px apart, its corners 4px rounder than theirs; it replaces each box's
- *  own black border (MESITA-5091). */
+ *  takes the rest. No icon. A label: a tap opens the place. One green
+ *  Cashback band before (MESITA-5103).
+ *  NO BLACK BOX AROUND THE TWO, THE PERCENT IN ONE (Pato, 2026-11-28,
+ *  MESITA-5128: "the purple and green is okey but don't put thsoe two
+ *  buttons inside a black box", then "the porcentages must be inside a box
+ *  black box with white text"): the two sit straight on the photo, 8px from
+ *  its sides and bottom, and each percent sits in a small black box, white
+ *  type. No black box around both (MESITA-5125) and no black border on each
+ *  (MESITA-5091).
+ *  THE FIT: worst case "Prepay 60%" + "Pay 10%" at 360px leaves about 5px
+ *  (measured), with 4px between the two, 3px inside each and inside each
+ *  percent box, 2px from word to percent. Loosen any of them and it stops
+ *  fitting. Under 360px the two stack, each the full width, never clipped. */
 export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
   const boxes = cardOfferBoxes(offers);
   if (boxes.length === 0) return null;
   return (
     <p
-      className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-1 rounded-xl bg-[#141414] p-1"
+      className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 flex flex-wrap gap-1"
       aria-label={boxes.map((b) => b.words).join(", ")}
       data-card-offer-display
     >
@@ -132,12 +138,13 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
           key={b.key}
           className={cn(
             CARD_BUTTON_BOX,
-            "flex items-center justify-center px-1 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
+            "flex min-w-max flex-[1_1_0] items-center justify-center gap-0.5 px-[3px] font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
             b.tone,
           )}
           data-card-offer={b.key}
         >
-          {b.words}
+          {b.word}
+          <span className="rounded bg-neutral-950 px-[3px] py-0.5 leading-none text-white">{b.pct}%</span>
         </span>
       ))}
     </p>
@@ -149,7 +156,9 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
  *  bonus where the place sells it, else the best standard voucher on sale.
  *  Pay: the place's cashback rate. A side that is 0 is left out; `voucher`
  *  is what a tap reports (offer_chip_tap). */
-type CardOfferBox = { key: "prepay" | "pay"; words: string; tone: string; voucher: string };
+/** `words` is the whole label (Search's band, the spoken label); `word` and
+ *  `pct` are its two halves, for Home's percent box (MESITA-5128). */
+type CardOfferBox = { key: "prepay" | "pay"; words: string; word: string; pct: number; tone: string; voucher: string };
 export function cardOfferBoxes(offers: OfferInput | null | undefined): CardOfferBox[] {
   if (!offers) return [];
   const sold = Object.keys(STANDARD_BONUS).filter((k) => offers.sell.includes(k));
@@ -159,8 +168,8 @@ export function cardOfferBoxes(offers: OfferInput | null | undefined): CardOffer
   const prepay = lead ? voucherPct(offers, lead) : 0;
   const pay = offers.cashback_pct ?? 0;
   return [
-    ...(lead && prepay > 0 ? [{ key: "prepay" as const, words: `Prepay ${prepay}%`, tone: VOUCHER_TONE.voucher_1000, voucher: lead }] : []),
-    ...(pay > 0 ? [{ key: "pay" as const, words: `Pay ${pay}%`, tone: CASHBACK_TONE, voucher: "cashback" }] : []),
+    ...(lead && prepay > 0 ? [{ key: "prepay" as const, words: `Prepay ${prepay}%`, word: "Prepay", pct: prepay, tone: VOUCHER_TONE.voucher_1000, voucher: lead }] : []),
+    ...(pay > 0 ? [{ key: "pay" as const, words: `Pay ${pay}%`, word: "Pay", pct: pay, tone: CASHBACK_TONE, voucher: "cashback" }] : []),
   ];
 }
 

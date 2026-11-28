@@ -213,8 +213,10 @@ function priceWords(cents: number, currency: string | undefined): string {
 /** THE PLACE SCREEN ROW'S OFFER WORDS: ONE OFFER A SLIDE (Pato, 2026-11-28,
  *  MESITA-5120: "Prepay $200MX / 5% cashback … or pay y / 20% bonus. top
  *  (for pay or prepay x), bottom for (amount and type)"). Laid out like the
- *  Reserve box's TODAY / 15:00: the small caption says what you do (PAY,
- *  PREPAY $200MX), the big line what you get (5% Cashback, +10% Bonus).
+ *  Reserve box's TODAY / 15:00: the small caption says what you do (PAY
+ *  BILL, PREPAY $200MX), the big line what you get (5% Cashback, +10%
+ *  Bonus). "Pay Bill", not "Pay" (Pato, 2026-11-28, MESITA-5128: "here in
+ *  offers in the long text say Pay Bill"); Home's card keeps the short Pay.
  *  Pay first, then each voucher on sale, smallest first. Cashback reads the
  *  rate of this guest's next bill when the server names its line, else the
  *  range of the lines that are on. A voucher's bonus is its catalog line's
@@ -230,7 +232,7 @@ export function rowOfferSlides(
   if (range) {
     const rate = range[0] === range[1] ? `${range[1]}%` : `${range[0]}–${range[1]}%`;
     const words = `${rate} Cashback`;
-    out.push({ key: "cashback", lead: "Pay", pill: words, pillShort: words, short: "Pay", spoken: `Pay, ${words.toLowerCase()}`, section: "cashback", tone: CASHBACK_TONE });
+    out.push({ key: "cashback", lead: "Pay Bill", pill: words, pillShort: words, short: "Pay", spoken: `Pay bill, ${words.toLowerCase()}`, section: "cashback", tone: CASHBACK_TONE });
   }
   const sell = new Set(offers.sell);
   const vouchers = Object.keys(STANDARD_BONUS)

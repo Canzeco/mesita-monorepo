@@ -67,7 +67,7 @@ describe("mesitaRowState", () => {
 // The place screen's Offers box (MESITA-5120): one offer a slide, what you
 // do over what you get, with the place's real prices and bonuses.
 describe("rowOfferSlides", () => {
-  it("reads Pay, then each voucher on sale by price", () => {
+  it("reads Pay Bill, then each voucher on sale by price", () => {
     const slides = mesitaRowState({
       money: {
         ...BASE,
@@ -80,7 +80,7 @@ describe("rowOfferSlides", () => {
       },
     }).offers.slides;
     expect(slides.map((s) => `${s.lead} / ${s.pillShort}`)).toEqual([
-      "Pay / 5% Cashback",
+      "Pay Bill / 5% Cashback",
       "Prepay $200MX / +10% Bonus",
       "Prepay $1,000MX / +40% Bonus",
     ]);
