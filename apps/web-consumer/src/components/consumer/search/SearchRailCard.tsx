@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { isPremierPlace, SizedImage } from "@mesita/place-profile";
+import { isPremierPlace, SizedImage, type OfferInput } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import { placeReservePath } from "@/lib/consumer-route-contract";
@@ -193,6 +193,7 @@ export function RailCard({
               reserveHref={placeReservePath(place.slug || place.id)}
               offerHref={placeHref(place.slug || place.id)}
               premier={premier}
+              cashbackPct={(place.offers as OfferInput | null | undefined)?.cashback_pct ?? null}
               className="gap-0"
               cellClassName={RAIL_CARD_STRIP}
             />
