@@ -161,7 +161,7 @@ export function listCardReservable(place: {
 // offers, mention the actual cashback. 5% Cashback or 10% Cashback"): the
 // place's cashback where it gives one; Offers only where it gives none.
 export function offerBannerWord(_slides: OfferSlide[], cashbackPct?: number | null): string {
-  return cashbackPct && cashbackPct > 0 ? `Cashback ${cashbackPct}%` : "Offers"; // "Cashback 5%" (MESITA-5118);
+  return cashbackPct && cashbackPct > 0 ? `Cashback ${cashbackPct}%` : "Offers"; // "Cashback 5%" (MESITA-5118)
 }
 
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
