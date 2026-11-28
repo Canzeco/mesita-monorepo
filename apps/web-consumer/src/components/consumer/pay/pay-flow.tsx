@@ -21,7 +21,7 @@ export const BAD = "text-red-700";
 
 /** An offer's tint under black ink (MESITA-4777): Prepay green, Discount
  *  red, Cashback blue; offers.ts holds the solid tones. */
-export const BOX_TINT = { prepay: "bg-[#635BFF]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#00D66F]/15" } as const;
+export const BOX_TINT = { prepay: "bg-[#00D66F]/15", discount: "bg-[#00D66F]/15", cashback: "bg-[#00D66F]/15" } as const;
 
 /** Why a bill ended unpaid, in one line (money rules, Not paid copy). */
 export const NOT_PAID_REASON: Record<string, string> = {

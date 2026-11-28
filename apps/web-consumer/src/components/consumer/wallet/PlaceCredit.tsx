@@ -336,7 +336,7 @@ export function PlaceCredit({
               className={ROUND}
               data-loyalty-card-prepay
             >
-              <span className={cn(ROUND_FACE, "bg-[#635BFF] text-white")}>
+              <span className={cn(ROUND_FACE, "bg-[#00D66F] text-neutral-950")}>
                 <Percent className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
               </span>
               Prepay
@@ -348,7 +348,7 @@ export function PlaceCredit({
             aria-label={spendable > 0 ? `Pay Bill: use ${money(spendable, card.currency)} at the table` : "Pay Bill"}
             data-loyalty-card-pay
           >
-            <span className={cn(ROUND_FACE, "bg-[#00D66F] text-neutral-950")}>
+            <span className={cn(ROUND_FACE, "bg-[#635BFF] text-white")}>
               <QrCode className={ROUND_GLYPH} strokeWidth={2.25} aria-hidden />
             </span>
             Pay Bill

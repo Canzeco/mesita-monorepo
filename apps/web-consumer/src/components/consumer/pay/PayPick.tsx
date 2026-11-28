@@ -462,14 +462,14 @@ const PAY_OFFERS = "grid grid-cols-[4rem] pr-4";
 /** The bar that names Place and the three offers. Dark, on both lists. */
 const HEAD_BAR = "bg-foreground text-background sticky top-0 z-10 text-xs font-semibold";
 
-/** THE HIGHER THE BONUS, THE DARKER ITS PURPLE (Pato, 2026-11-24, MESITA-4860:
- *  "that way we can quickly spot the high bonuses"): Prepay's purple in four
+/** THE HIGHER THE BONUS, THE DARKER ITS GREEN (Pato, 2026-11-24, MESITA-4860:
+ *  "that way we can quickly spot the high bonuses"): Prepay's green (MESITA-5064; purple before) in four
  *  steps, by the percent itself, so a shade means the same in every row. */
 function bonusShade(pct: number): string {
-  if (pct >= 60) return "bg-[#352CB8] text-white";
-  if (pct >= 40) return "bg-[#635BFF] text-white";
-  if (pct >= 20) return "bg-[#BDB9FF] text-indigo-950";
-  return "bg-[#E6E4FF] text-indigo-950";
+  if (pct >= 60) return "bg-[#00A854] text-neutral-950";
+  if (pct >= 40) return "bg-[#00D66F] text-neutral-950";
+  if (pct >= 20) return "bg-[#85EDB6] text-neutral-950";
+  return "bg-[#D3F8E2] text-neutral-950";
 }
 
 /** A place, one row, the one button. */
