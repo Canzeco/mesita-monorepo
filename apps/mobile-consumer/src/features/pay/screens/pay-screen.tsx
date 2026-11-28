@@ -86,7 +86,7 @@ export function PayScreen({
         </Pressable>
       ) : null}
       <View style={styles.tiles}>
-        <Tile label="Prepaid Credits" line="Get Bonus" mark="%" color={colors.prepay} ink={colors.onPrepay} bubble={colors.ink} bubbleInk={colors.onInk} onPress={() => setOpen("prepay")} />
+        <Tile label="Prepay Credits" line="Get Bonus" mark="%" color={colors.prepay} ink={colors.onPrepay} bubble={colors.ink} bubbleInk={colors.onInk} onPress={() => setOpen("prepay")} />
         <Tile label="Pay Bill" line={bill ? "See your bill" : "Cash, Card, or Credits"} mark="QR" color={colors.pay} ink={colors.onPay} bubble={colors.paper} bubbleInk={colors.pay} onPress={() => (bill ? onCode(bill.place.id ?? "") : setOpen("pay"))} />
       </View>
       <View style={styles.credits}>

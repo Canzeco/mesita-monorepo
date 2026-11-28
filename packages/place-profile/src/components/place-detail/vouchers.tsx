@@ -826,7 +826,7 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
   const pay = whole(priceValue(p, line, currency));
   const get = whole(creditValue(p, line, currency));
   return (
-    <HowItWorks tab="prepay" title="How Prepaid Credits work" lead="Prepay now and get a bonus to spend here on your next visits.">
+    <HowItWorks tab="prepay" title="How Prepay Credits work" lead="Prepay now and get a bonus to spend here on your next visits.">
       <Scenes note="Your credit pays any bill at this place, never the tip, and never expires. You can also send it to a friend as a gift.">
         <Scene
           n={1}
@@ -889,7 +889,7 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
  *  the cashback it earns. What a guest earned stays on the Loyalty Card and
  *  Tickets. */
 // PREPAID · PAY · POST (Pato, 2026-11-27, MESITA-5083): the tab says
-// Prepaid (the Pay page's tile says Prepaid Credits), and Post says Soon
+// Prepaid (the Pay page's tile says Prepay Credits), and Post says Soon
 // until the Story Reward ships (MESITA-5073).
 export type OffersTab = "prepay" | "pay" | "post";
 
@@ -1036,7 +1036,7 @@ function PrepaySection({
     // EVERY TAB HAS AN EMPTY STATE (MESITA-4710): no row to show, no bar.
     return (
       <p className={cn(CARD, "text-muted-foreground flex shrink-0 flex-col items-center gap-2 px-4 py-6 text-center text-sm")} data-offers-none="prepay">
-        No Prepaid Credits offers yet.
+        No Prepay Credits offers yet.
         {failed && actions?.onLoadVouchers ? (
           <button type="button" onClick={actions.onLoadVouchers} className="text-foreground min-h-9 font-semibold underline underline-offset-2">
             Retry
