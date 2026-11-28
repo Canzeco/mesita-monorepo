@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/text";
-import { pressedOpacity, space } from "@/theme";
+import { pressedStyle, space } from "@/theme";
 
 type Props = { label: string; value?: string; onPress?: () => void; testID?: string };
 
@@ -20,7 +20,7 @@ export function Row({ label, value, onPress, testID }: Props) {
       accessibilityLabel={value ? `${label}, ${value}` : label}
       testID={testID}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [styles.row, pressed && pressedStyle]}
     >
       {body}
     </Pressable>

@@ -5,7 +5,7 @@ import { Button } from "@/components/button";
 import { FieldError } from "@/components/field";
 import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
-import { colors, pressedOpacity } from "@/theme";
+import { colors, pressedStyle } from "@/theme";
 
 import { deleteAccount, signOut } from "../session";
 
@@ -32,7 +32,7 @@ export function SuspendedScreen() {
 
   return (
     <View style={styles.page}>
-      <Icon name="shield-alert" size={48} color={colors.closed} />
+      <Icon strokeWidth={2.25} name="shield-alert" size={48} color={colors.closed} />
       <Text role="heading" style={styles.center}>
         Your account is suspended
       </Text>
@@ -42,7 +42,7 @@ export function SuspendedScreen() {
       <Pressable
         accessibilityRole="link"
         onPress={() => void Linking.openURL(`mailto:${SUPPORT}`)}
-        style={({ pressed }) => [styles.write, pressed && { opacity: pressedOpacity }]}
+        style={({ pressed }) => [styles.write, pressed && pressedStyle]}
       >
         <Text role="strong" tone="onInk">
           Write to us

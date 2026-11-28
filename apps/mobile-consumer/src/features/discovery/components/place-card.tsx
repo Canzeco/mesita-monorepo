@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 
 import { Icon, PremierSeal, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
-import { colors, motion, pressedOpacity, radius, space } from "@/theme";
+import { colors, motion, pressedStyle, radius, space } from "@/theme";
 
 import { factsOf, type CatalogPlace } from "../model";
 
@@ -65,7 +65,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
             <View style={styles.line}>
               {facts.rating ? (
                 <>
-                  <Icon name="star-filled" size={14} color={colors.ink} />
+                  <Icon strokeWidth={2.25} name="star-filled" size={14} color={colors.ink} />
                   <Text role="small">{facts.rating}</Text>
                   {facts.reviews ? <Text role="small">{`(${facts.reviews})`}</Text> : null}
                 </>
@@ -73,7 +73,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
               {facts.rating && facts.distance ? <Text role="small">·</Text> : null}
               {facts.distance ? (
                 <>
-                  <Icon name="navigation-filled" size={14} color={colors.ink} />
+                  <Icon strokeWidth={2.25} name="navigation-filled" size={14} color={colors.ink} />
                   <Text role="small" numberOfLines={1} style={styles.name}>
                     {facts.distance}
                   </Text>
@@ -83,7 +83,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
           ) : null}
           {facts.open ? (
             <View style={styles.line}>
-              <Icon name="clock" size={14} color={colors.ink} />
+              <Icon strokeWidth={2.25} name="clock" size={14} color={colors.ink} />
               <Text role="small">{facts.open.now ? "Open" : "Closed"}</Text>
               {facts.open.when ? (
                 <Text role="small" numberOfLines={1} style={styles.name} testID="place-hours">{`· ${facts.open.when}`}</Text>
@@ -115,9 +115,9 @@ function CardButton({ icon, color, label, spoken, onPress }: ButtonProps) {
       accessibilityLabel={spoken}
       hitSlop={6}
       onPress={onPress}
-      style={({ pressed }) => [styles.button, pressed && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [styles.button, pressed && pressedStyle]}
     >
-      <Icon name={icon} size={14} color={color} />
+      <Icon strokeWidth={2.25} name={icon} size={14} color={color} />
       <Text role="small">{label}</Text>
     </Pressable>
   );
@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
   photoBox: {
     flex: 1,
     overflow: "hidden",
-    borderTopLeftRadius: radius.card,
-    borderBottomLeftRadius: radius.card,
+    borderTopLeftRadius: radius["2xl"],
+    borderBottomLeftRadius: radius["2xl"],
     backgroundColor: colors.fill,
   },
   info: {
@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderLeftWidth: 0,
     borderColor: colors.border,
-    borderTopRightRadius: radius.card,
-    borderBottomRightRadius: radius.card,
+    borderTopRightRadius: radius["2xl"],
+    borderBottomRightRadius: radius["2xl"],
   },
   words: { flex: 1, gap: 2 },
   premier: {
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 10,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
     backgroundColor: colors.vip,
   },
   name: { flexShrink: 1 },
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
   },
 });

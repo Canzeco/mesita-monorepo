@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.md },
   handleRow: { flexDirection: "row", alignItems: "center", gap: space.md },
   handle: { flex: 1 },
-  code: { minHeight: 48, borderRadius: radius.field, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
+  code: { minHeight: 48, borderRadius: radius.xl, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
   ask: { gap: space.sm },
   pair: { flexDirection: "row", gap: space.sm },
 });

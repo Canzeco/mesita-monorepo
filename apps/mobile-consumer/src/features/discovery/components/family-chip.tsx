@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { Pressable, StyleSheet, View } from "react-native";
 
 import { Text } from "@/components/text";
-import { colors, pressedOpacity } from "@/theme";
+import { colors, pressedStyle } from "@/theme";
 
 import type { Chip } from "../families";
 
@@ -16,7 +16,7 @@ export function FamilyChip({ chip, on, onPress, wide = false }: Props) {
       accessibilityLabel={chip.label}
       accessibilityState={{ selected: on }}
       onPress={onPress}
-      style={({ pressed }) => [wide ? styles.wide : styles.chip, pressed && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [wide ? styles.wide : styles.chip, pressed && pressedStyle]}
     >
       <View style={[styles.circle, on && styles.on]}>
         <Image source={chip.picture} style={styles.picture} contentFit="contain" accessible={false} />

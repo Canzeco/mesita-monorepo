@@ -10,7 +10,7 @@ import { Text } from "@/components/text";
 import { setMyProfile, useMyProfile } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
 import { isOutcomeUnknown } from "@/lib/reconcile";
-import { colors, pressedOpacity, radius, space } from "@/theme";
+import { colors, pressedStyle, radius, space } from "@/theme";
 
 import { saveSocialLevel } from "../api";
 import { birthYears, checkDraft, draftOf, SEXES, type Draft } from "../model";
@@ -53,7 +53,7 @@ export function ProfileScreen() {
           {SEXES.map(({ value, label }) => {
             const on = draft.sex === value;
             return (
-              <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => set("sex")(value)} style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && { opacity: pressedOpacity }]}>
+              <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => set("sex")(value)} style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && pressedStyle]}>
                 <Text role="label" tone={on ? "onInk" : "ink"}>{label}</Text>
               </Pressable>
             );
@@ -65,7 +65,7 @@ export function ProfileScreen() {
         <Text role="tag" tone="muted">Year of birth</Text>
         <View style={styles.year}>
           <Text role="small" tone={draft.birthYear ? "ink" : "muted"}>{draft.birthYear || "Year"}</Text>
-          <Icon name="chevron-down" size={16} color={colors.muted} />
+          <Icon strokeWidth={2.25} name="chevron-down" size={16} color={colors.muted} />
           <View style={styles.picker}>
             <Host style={styles.host} colorScheme="light" seedColor={colors.ink}>
               <Picker selectedValue={draft.birthYear} onValueChange={set("birthYear")} accessibilityLabel="Year of birth">
@@ -136,9 +136,9 @@ const styles = StyleSheet.create({
   content: { padding: space.lg, gap: space.lg },
   field: { gap: space.xs },
   chips: { flexDirection: "row", gap: space.sm },
-  chip: { flex: 1, height: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.field, backgroundColor: colors.paper },
+  chip: { flex: 1, height: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.xl, backgroundColor: colors.paper },
   chipOn: { backgroundColor: colors.ink },
-  year: { minHeight: 44, borderRadius: radius.field, backgroundColor: colors.paper, paddingHorizontal: space.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  year: { minHeight: 44, borderRadius: radius.xl, backgroundColor: colors.paper, paddingHorizontal: space.md, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   picker: { ...StyleSheet.absoluteFill, overflow: "hidden", opacity: 0.02 },
   host: { flex: 1 },
   privacy: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

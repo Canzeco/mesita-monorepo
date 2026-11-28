@@ -43,7 +43,7 @@ export function PhoneScreen({ onSent, onClose }: Props) {
         <View style={styles.country}>
           <Text>{country.flag}</Text>
           <Text role="strong">{`+${country.dial}`}</Text>
-          <Icon name="chevron-down" size={12} color={colors.muted} />
+          <Icon strokeWidth={2.25} name="chevron-down" size={12} color={colors.muted} />
           {/* The system's own list, opened by a tap anywhere on the chip. */}
           <View style={styles.picker}>
             <Host style={styles.host} colorScheme="light" seedColor={colors.ink}>
@@ -77,7 +77,7 @@ export function PhoneScreen({ onSent, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  field: { height: 52, flexDirection: "row", overflow: "hidden", borderRadius: radius.phone, backgroundColor: colors.paper },
+  field: { height: 52, flexDirection: "row", overflow: "hidden", borderRadius: radius["3xl"], backgroundColor: colors.paper },
   country: {
     flexDirection: "row",
     alignItems: "center",

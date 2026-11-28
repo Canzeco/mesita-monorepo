@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { CoverWordmark, PhotoCover } from "@/components/photo-cover";
 import { Text } from "@/components/text";
 import { Window } from "@/components/window";
-import { cardVeil, colors, pressedOpacity, radius } from "@/theme";
+import { cardVeil, colors, pressedStyle, radius } from "@/theme";
 
 import { HEADLINE, VALUE_LINE } from "../model";
 
@@ -37,7 +37,7 @@ function Choice({ label, filled = false, onPress }: { label: string; filled?: bo
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.choice, filled ? styles.filled : styles.plain, pressed && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [styles.choice, filled ? styles.filled : styles.plain, pressed && pressedStyle]}
     >
       <Text role="label" tone={filled ? "ink" : "onPhoto"}>
         {label}
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   card: { width: "100%", aspectRatio: 4 / 5 },
   page: { flex: 1, justifyContent: "space-between", padding: 20 },
   line: { marginTop: 8 },
-  choice: { height: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.field },
+  choice: { height: 44, alignItems: "center", justifyContent: "center", borderRadius: radius.xl },
   filled: { marginTop: 16, backgroundColor: colors.paper },
   plain: { marginTop: 4 },
 });

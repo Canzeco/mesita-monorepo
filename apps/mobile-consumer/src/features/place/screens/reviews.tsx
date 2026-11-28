@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", gap: space.sm },
   privacy: { flex: 1 },
   sorts: { flexDirection: "row", gap: space.sm },
-  card: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.card, backgroundColor: colors.paper, overflow: "hidden" },
+  card: { borderWidth: 1, borderColor: colors.border, borderRadius: radius["2xl"], backgroundColor: colors.paper, overflow: "hidden" },
   review: { gap: space.xs, padding: space.lg, borderBottomWidth: 1, borderColor: colors.border },
   more: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  leave: { minHeight: 44, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border, borderRadius: radius.card, backgroundColor: colors.paper },
+  leave: { minHeight: 44, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.border, borderRadius: radius["2xl"], backgroundColor: colors.paper },
 });

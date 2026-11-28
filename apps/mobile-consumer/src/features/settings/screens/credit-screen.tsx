@@ -168,9 +168,9 @@ export function CreditScreen({ placeId, entryKey }: { placeId: string; entryKey:
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.page },
   page: { padding: space.lg, gap: space.md },
-  panel: { backgroundColor: colors.paper, borderRadius: radius.card, padding: space.md, gap: space.sm },
+  panel: { backgroundColor: colors.paper, borderRadius: radius["2xl"], padding: space.md, gap: space.sm },
   line: { flexDirection: "row", justifyContent: "space-between", gap: space.md },
   words: { flex: 1, gap: 2 },
-  action: { minHeight: 48, borderRadius: radius.control, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  action: { minHeight: 48, borderRadius: radius.lg, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   missing: { flex: 1, backgroundColor: colors.page, padding: space.lg, gap: space.md, justifyContent: "center" },
 });

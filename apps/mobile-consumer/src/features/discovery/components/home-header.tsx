@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
-import { colors, pressedOpacity, radius } from "@/theme";
+import { colors, pressedStyle, radius } from "@/theme";
 
 /** The white band: the word Mesita, and where Home looks from. */
 export function HomeHeader({ location, onPress }: { location: string; onPress: () => void }) {
@@ -19,13 +19,13 @@ export function HomeHeader({ location, onPress }: { location: string; onPress: (
           accessibilityLabel={`Location: ${location}. Change location`}
           onPress={onPress}
           testID="location"
-          style={({ pressed }) => [styles.location, pressed && { opacity: pressedOpacity }]}
+          style={({ pressed }) => [styles.location, pressed && pressedStyle]}
         >
-          <Icon name="map-pin" size={18} />
+          <Icon strokeWidth={2.25} name="map-pin" size={18} />
           <Text role="strong" numberOfLines={1} style={styles.name}>
             {location}
           </Text>
-          <Icon name="chevron-down" size={16} color={colors.muted} />
+          <Icon strokeWidth={2.25} name="chevron-down" size={16} color={colors.muted} />
         </Pressable>
       </View>
     </View>
@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginLeft: "auto",
     paddingHorizontal: 12,
-    borderRadius: radius.field,
+    borderRadius: radius.xl,
     backgroundColor: colors.fill,
   },
   name: { flexShrink: 1 },

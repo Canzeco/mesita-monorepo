@@ -10,7 +10,7 @@ import { Text } from "@/components/text";
 import { signOut, useMyProfile } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
 import { isOutcomeUnknown } from "@/lib/reconcile";
-import { colors, pressedOpacity, radius, space } from "@/theme";
+import { colors, pressedStyle, radius, space } from "@/theme";
 
 import { birthYears, checkDraft, draftOf, SEXES, type Draft } from "../model";
 import { useSaveDetails } from "../queries";
@@ -78,7 +78,7 @@ export function OnboardingScreen() {
                   accessibilityState={{ checked: on }}
                   accessibilityLabel={label}
                   onPress={() => set("sex")(value)}
-                  style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && { opacity: pressedOpacity }]}
+                  style={({ pressed }) => [styles.chip, on && styles.chipOn, pressed && pressedStyle]}
                 >
                   <Text role="label" tone={on ? "onInk" : "ink"}>
                     {label}
@@ -96,7 +96,7 @@ export function OnboardingScreen() {
             <Text role="small" tone={draft.birthYear ? "ink" : "muted"} style={styles.yearText}>
               {draft.birthYear || "Year"}
             </Text>
-            <Icon name="chevron-down" size={16} color={colors.muted} />
+            <Icon strokeWidth={2.25} name="chevron-down" size={16} color={colors.muted} />
             {/* The system's own list, opened by a tap anywhere on the field. */}
             <View style={styles.picker} testID="birth-year">
               <Host style={styles.host} colorScheme="light" seedColor={colors.ink}>
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
-    borderRadius: radius.field,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.paper,

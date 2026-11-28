@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.field,
+    borderRadius: radius.xl,
   },
   wrong: { borderColor: colors.danger },
 });

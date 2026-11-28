@@ -89,9 +89,9 @@ function ActivitySkeleton() {
 export type { PlaceActivity };
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.card, backgroundColor: colors.paper, overflow: "hidden" },
+  card: { borderWidth: 1, borderColor: colors.border, borderRadius: radius["2xl"], backgroundColor: colors.paper, overflow: "hidden" },
   center: { textAlign: "center", padding: space.lg },
   row: { gap: 2, padding: space.lg, borderBottomWidth: 1, borderColor: colors.border },
   more: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  bone: { height: 56, margin: space.md, borderRadius: radius.control, backgroundColor: colors.fill },
+  bone: { height: 56, margin: space.md, borderRadius: radius.lg, backgroundColor: colors.fill },
 });

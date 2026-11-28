@@ -27,7 +27,7 @@ export function PhotoCover({ veil = photoVeil, children }: { veil?: Veil; childr
 export function CoverWordmark() {
   return (
     <View style={styles.wordmark}>
-      <Icon name="mark" size={28} color={colors.onPhoto} />
+      <Icon strokeWidth={2.25} name="mark" size={28} color={colors.onPhoto} />
       <Text role="coverWordmark" tone="onPhoto">
         Mesita
       </Text>
