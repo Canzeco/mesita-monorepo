@@ -105,11 +105,16 @@ const STANDARD: Product[] = [
   // Medium Voucher, Big Voucher"): `short` reads the same as `name` now.
   // SMALL · MEDIUM · BIG BONUS FOR THE GUEST (Pato, 2026-11-24, MESITA-4875:
   // "voucher is confusing"); Business keeps Voucher.
-  { key: "voucher_200", name: "Small Bonus", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium Bonus", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
+  // THE ROW SAYS THE SIZE, THE BADGE SAYS BONUS (Pato, 2026-11-28,
+  // MESITA-5133: "use (Welcome) (Small) (Medium) (Big). mention word bonus
+  // in the percentage"): `short` is the row's name, Welcome · Small · Medium ·
+  // Big; `name` keeps "Small Bonus" for a receipt line and a spoken label,
+  // where no badge stands beside it.
+  { key: "voucher_200", name: "Small Bonus", line: "Pay $200.00MX, get $220.00MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium Bonus", line: "Pay $1,000.00MX, get $1,200.00MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
   // MESITA-4980: the default Big bonus is 30% (40% from MESITA-4764). The
   // place can still pick 60%. This copy is the default.
-  { key: "voucher_5000", name: "Big Bonus", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big Bonus", line: "Pay $5,000.00MX, get $6,500.00MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
 ];
 
 // SPECIAL OFFERS: WELCOME, THEN VIP (Pato, 2026-11-22, MESITA-4645: "RETURN
@@ -121,7 +126,7 @@ const STANDARD: Product[] = [
 // or 60%) $100MX just one"): a cashback line from MESITA-4698 until then.
 // This copy is the default; the server's line carries the place's pick.
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome Bonus", line: "Pay $100.00MX, get $130.00MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome Bonus", brief: "One per place" },
+  { key: "voucher_welcome", name: "Welcome Bonus", line: "Pay $100.00MX, get $130.00MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome", brief: "One per place" },
   { key: "voucher_vip", name: "VIP", line: "Pay $100.00MX, get $200.00MX.", limit: "One per visit.", bonus: "100% bonus", short: "VIP", brief: "VIP only · One per visit" },
 ];
 
@@ -412,7 +417,7 @@ export function voucherOffers(money: PlaceDetail["money"], guest?: PlaceActions[
     const status = offerStatus(p.key, can, guestLock(p.key), unavailable[p.key]);
     return {
       key: p.key,
-      title: p.short,
+      title: p.name,
       chipClass: FACES[p.key].card,
       bonus: bonusValue(p, line),
       pay: priceValue(p, line, currency),
@@ -592,7 +597,7 @@ const BADGE = "flex h-16 w-16 shrink-0 flex-col items-center justify-center roun
 /** THE PAY CARD (Pato, 2026-11-27, MESITA-5071): one card, only the rate
  *  that applies to this guest, never the place's whole table. ONE RATE SINCE
  *  MESITA-5124: the server sends Welcome 0 and line "returning", so the card
- *  reads "X% back · On every bill here"; the first-bill branch stays for an
+ *  reads "X% Back · On every bill you pay here"; the first-bill branch stays for an
  *  older server. The server's
  *  `line` says whether the next bill is their first here; VIP changes
  *  nothing on Pay (VIP lives on Post only). Signed out reads as a first
@@ -606,18 +611,23 @@ export function payCard(cashback: PlaceCashback | null | undefined): { bps: numb
   return null;
 }
 
-/** "20% back · On your first bill here", then "Then 5% back on every bill."
- *  Guests never read the word cashback (MESITA-5071): it is "X% back". */
+/** "5% Back" over what it is for (Pato, 2026-11-28, MESITA-5133: "use camel
+ *  case. for Back. mention that is for the bill and blabalabla"): the bill,
+ *  then how it arrives and what never earns. "X% back · On every bill here,
+ *  in credits" before. Guests never read the word cashback here
+ *  (MESITA-5071). The first-bill words stay for an older server. */
 function PayCardView({ card }: { card: { bps: number; first: boolean; thenBps: number } }) {
   return (
     <section className={cn(CARD, "flex shrink-0 items-center gap-3 p-3")} aria-label="Pay offer" data-promos="cashback" data-pay-card={card.first ? "first" : "every"}>
       <span className={cn(BADGE, CASHBACK_TONE, "text-xl font-bold")}>{card.bps / 100}%</span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className={OFFERS_TITLE_CLASS}>{card.bps / 100}% back</span>
-        <span className="text-foreground text-sm">{card.first ? "On your first bill here" : "On every bill here, in credits"}</span>
-        {card.first && card.thenBps > 0 ? (
-          <span className="text-muted-foreground text-sm">Then {card.thenBps / 100}% back on every bill.</span>
-        ) : null}
+        <span className={OFFERS_TITLE_CLASS}>{card.bps / 100}% Back</span>
+        <span className="text-foreground text-sm">{card.first ? "On your first bill here" : "On every bill you pay here"}</span>
+        <span className="text-muted-foreground text-sm">
+          {card.first && card.thenBps > 0
+            ? `Then ${card.thenBps / 100}% Back on every bill.`
+            : "In credits, 1 hour after you pay. Not on the tip or on credits you spend."}
+        </span>
       </span>
     </section>
   );
@@ -843,8 +853,9 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
           tint="prepay"
           art={
             <>
-              <span className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center rounded-2xl bg-[#635BFF] text-2xl font-bold text-white tabular-nums shadow-sm">
-                {bonusValue(p, line)}
+              <span className="flex h-[5.5rem] w-[5.5rem] flex-col items-center justify-center gap-1 rounded-2xl bg-[#635BFF] text-2xl font-bold text-white tabular-nums shadow-sm">
+                <span className="leading-none">{bonusValue(p, line)}</span>
+                <span className="text-sm leading-none font-semibold">Bonus</span>
               </span>
               <span className="text-foreground flex flex-col text-left">
                 <span className="text-base font-semibold">{p.short}</span>
@@ -1088,8 +1099,11 @@ function PrepaySection({
                       aria-hidden
                       data-offer-bonus
                     >
-                      {/* Just "+10%": the name says Bonus (MESITA-4875). */}
+                      {/* "+10%" over "Bonus" (MESITA-5133): the badge says
+                          Bonus, the row's name is the size alone. Just "+10%"
+                          under MESITA-4875; "+10%" over "BONUS" in MESITA-4647. */}
                       <span className="text-lg leading-none font-bold tracking-tight">{bonus}</span>
+                      <span className="mt-1 text-xs leading-none font-semibold">Bonus</span>
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="flex min-w-0 items-center gap-1">
@@ -1106,7 +1120,7 @@ function PrepaySection({
                       ) : null}
                     </span>
                     {can && co.live ? (
-                      <Stepper name={p.short} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => onQty(p.key, v)} />
+                      <Stepper name={p.name} n={n} max={BASKET_MAX[p.key]} disabled={locked} onChange={(v) => onQty(p.key, v)} />
                     ) : null}
                   </li>
                 );
@@ -1349,7 +1363,7 @@ export function VouchersPane({
     const lines: ReceiptLine[] = sent.map((i) => {
       const p = listedProducts().find((x) => x.key === i.voucher)!;
       const line = catalog[p.key]!;
-      return { key: p.key, short: p.short, qty: i.qty, pay: pesos(line.price_cents * i.qty, currency) };
+      return { key: p.key, short: p.name, qty: i.qty, pay: pesos(line.price_cents * i.qty, currency) };
     });
     paying.current = true;
     setPayingNow(true);
