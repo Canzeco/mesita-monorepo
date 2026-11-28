@@ -241,19 +241,19 @@ export function PlaceBannerRow({
 }
 
 /** A Premier place on a card (MESITA-5046): a bar the size of Reserve,
- *  sitting above it. Black, with white type and a white rosette
- *  (MESITA-5051). A label, so a tap falls through to the card. */
+ *  sitting above it. The VIP gold, dark type, and a black rosette
+ *  (MESITA-5052). A label, so a tap falls through to the card. */
 export function PremierBar({ className }: { className?: string }) {
   return (
     <p
       className={cn(
         CARD_BUTTON_BOX,
-        "bg-foreground text-background pointer-events-none flex w-full items-center justify-center gap-1.5 font-sans text-xs font-semibold",
+        "pointer-events-none flex w-full items-center justify-center gap-1.5 bg-[#E9C46A] font-sans text-xs font-semibold text-neutral-950",
         className,
       )}
       data-card-premier
     >
-      <PremierRosette className="h-4 w-4" fill="#fff" check="var(--foreground)" decorative />
+      <PremierRosette className="h-4 w-4" fill="#141414" check="#fff" decorative />
       Premier
     </p>
   );
