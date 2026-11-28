@@ -9,4 +9,5 @@
 - **Edge Functions:** `consumer-web-*` only. Never the database. Amounts are the server's.
 - **Commands:** the `package.json` scripts; `pnpm check` is CI. Add a package with `pnpm exec expo install`. An `eas` command carries `--non-interactive --json`. An SDK upgrade is its own issue.
 - **Expo first:** read the docs of the SDK in `package.json` before using an API.
-- **Never:** a web target, Expo Go, `ios/` or `android/` in git, a file copied from `apps/web-consumer`, a secret in the bundle, a drawn control where the system has one (fallbacks to JavaScript tabs or React Native controls are named here with their reason; none yet).
+- **Never:** a web target, Expo Go, `ios/` or `android/` in git, a file copied from `apps/web-consumer`, a secret in the bundle.
+- **Looks:** every screen copies its web source; the bottom bar and headers are drawn, never the system's (MESITA-5102). Kept system pieces: Docs › Apps › A2.
