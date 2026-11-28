@@ -249,6 +249,8 @@ describe("recipes and mix (MESITA-4454), the twin of normalizeRecipes and normal
     expect(r.mapOrganic).toEqual({ halfKm: null, distanceExp: null, googleExp: 0.33, foursquareFactor: 1, foursquareExponent: 20, premierExp: 0, offersExp: 0, batch: null });
     expect(coerceRecipes({ catalogNearbyOrganic: { foursquareFactor: 0 } }).catalogNearbyOrganic.foursquareFactor).toBe(1);
     expect(coerceRecipes({}).catalogNearbyOrganic.foursquareExponent).toBe(20);
+    // A fraction is kept, never rounded to a whole number (MESITA-5132).
+    expect(coerceRecipes({ catalogNearbyOrganic: { foursquareExponent: 0.5 } }).catalogNearbyOrganic.foursquareExponent).toBe(0.5);
     expect(r.pay.offersExp).toBe(1.2);
     expect(coerceRecipes({ catalogNearbyOrganic: { offersExp: 2 } }).catalogNearbyOrganic.offersExp).toBe(0);
   });

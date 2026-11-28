@@ -475,6 +475,8 @@ Deno.test("recipes: the table by default; organic Premier exponent forced 0; map
   assertEquals(kept.catalogNearbyOrganic.foursquareFactor, 1);
   assertEquals(kept.catalogNearbyOrganic.foursquareExponent, 20);
   assertEquals(normalizeRecipes({ catalogNearbyOrganic: { foursquareExponent: 0 } }).catalogNearbyOrganic.foursquareExponent, 0);
+  // A fraction is kept to two decimals, never rounded to a whole number (MESITA-5132).
+  assertEquals(normalizeRecipes({ catalogNearbyOrganic: { foursquareExponent: 0.5 } }).catalogNearbyOrganic.foursquareExponent, 0.5);
   // Pay edits Premier and Offers. 9 clamps to 2. 0.24 rounds to 0.2.
   assertEquals([r.pay.offersExp, r.pay.premierExp], [2, 0.2]);
   assertEquals(clamps.map(([k]) => k).sort(), [
