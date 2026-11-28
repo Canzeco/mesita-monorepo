@@ -49,7 +49,7 @@ export function PlacesSheet({
         <View style={styles.head}>
           <Text role="title" style={styles.title}>{kind === "prepay" ? "Prepay Credits" : "Pay Bill"}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
-            <Icon name="x" size={24} />
+            <Icon strokeWidth={2.25} name="x" size={24} />
           </Pressable>
         </View>
         <View style={styles.tools}>
@@ -143,7 +143,7 @@ function Filters({
         <View style={styles.head}>
           <Text role="title" style={styles.title}>Filters</Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
-            <Icon name="x" size={24} />
+            <Icon strokeWidth={2.25} name="x" size={24} />
           </Pressable>
         </View>
         <Text role="strong" tone="muted" style={styles.group}>Sort</Text>
@@ -257,11 +257,11 @@ const styles = StyleSheet.create({
   title: { flex: 1 },
   close: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   tools: { flexDirection: "row", alignItems: "center", gap: space.sm, marginHorizontal: space.lg, marginBottom: space.sm },
-  search: { flex: 1, minHeight: 44, borderRadius: radius.field, backgroundColor: colors.fill, paddingHorizontal: space.md, color: colors.ink },
+  search: { flex: 1, minHeight: 44, borderRadius: radius.xl, backgroundColor: colors.fill, paddingHorizontal: space.md, color: colors.ink },
   filter: { minHeight: 44, justifyContent: "center", paddingHorizontal: space.sm },
   banner: { backgroundColor: colors.testBanner, paddingHorizontal: space.lg, paddingVertical: space.md },
   group: { paddingHorizontal: space.lg, paddingTop: space.md },
-  choice: { minHeight: 48, marginHorizontal: space.md, paddingHorizontal: space.md, borderRadius: radius.field, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  choice: { minHeight: 48, marginHorizontal: space.md, paddingHorizontal: space.md, borderRadius: radius.xl, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   choiceOn: { backgroundColor: colors.fill },
   dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 1, borderColor: colors.border },
   dotOn: { backgroundColor: colors.ink, borderColor: colors.ink },
@@ -275,6 +275,6 @@ const styles = StyleSheet.create({
   nameText: { flex: 1 },
   bonus: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   offers: { flexDirection: "row", gap: space.lg },
-  cell: { width: 64, height: 44, borderRadius: radius.field, alignItems: "center", justifyContent: "center" },
+  cell: { width: 64, height: 44, borderRadius: radius.xl, alignItems: "center", justifyContent: "center" },
   note: { padding: space.lg },
 });

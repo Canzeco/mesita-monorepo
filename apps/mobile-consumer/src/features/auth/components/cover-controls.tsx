@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
+import { Spinner } from "@/components/spinner";
 import { Text } from "@/components/text";
-import { colors, pressedOpacity, radius } from "@/theme";
+import { colors, disabledOpacity, pressedStyle, radius } from "@/theme";
 
 type ButtonProps = { label: string; busy?: boolean; disabled?: boolean; onPress: () => void; testID?: string };
 
@@ -15,10 +16,10 @@ export function GreenButton({ label, busy = false, disabled = false, onPress, te
       disabled={busy || disabled}
       onPress={onPress}
       testID={testID}
-      style={({ pressed }) => [styles.green, (pressed || disabled) && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [styles.green, pressed && pressedStyle, disabled && { opacity: disabledOpacity }]}
     >
       {busy ? (
-        <ActivityIndicator color={colors.onPhoto} />
+        <Spinner onInk />
       ) : (
         <Text role="strong" tone="onPhoto">
           {label}
@@ -39,7 +40,7 @@ export function CoverNote({ children, error = false }: { children: string; error
 }
 
 const styles = StyleSheet.create({
-  green: { height: 52, alignItems: "center", justifyContent: "center", borderRadius: radius.phone, backgroundColor: colors.phone },
-  note: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.control, backgroundColor: colors.onPhotoFill },
+  green: { height: 52, alignItems: "center", justifyContent: "center", borderRadius: radius["3xl"], backgroundColor: colors.phone },
+  note: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.lg, backgroundColor: colors.onPhotoFill },
   error: { backgroundColor: colors.paper },
 });

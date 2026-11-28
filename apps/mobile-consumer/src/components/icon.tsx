@@ -1,60 +1,46 @@
-import { Image } from "expo-image";
-import Svg, { Path } from "react-native-svg";
+import type React from "react";
+import Svg, { Circle, Ellipse, Line, Path, Polygon, Polyline, Rect } from "react-native-svg";
 
-import { colors } from "@/theme";
+import { ICONS, type IconShape } from "@/components/icon-nodes";
+import { colors, iconStroke } from "@/theme";
 
-const SOURCES = {
-  "arrow-left": require("../../assets/icons/arrow-left.svg"),
-  check: require("../../assets/icons/check.svg"),
-  "chevron-down": require("../../assets/icons/chevron-down.svg"),
-  "chevron-right": require("../../assets/icons/chevron-right.svg"),
-  coins: require("../../assets/icons/coins.svg"),
-  bell: require("../../assets/icons/bell.svg"),
-  calendar: require("../../assets/icons/calendar.svg"),
-  card: require("../../assets/icons/card.svg"),
-  clock: require("../../assets/icons/clock.svg"),
-  crown: require("../../assets/icons/crown.svg"),
-  compass: require("../../assets/icons/compass.svg"),
-  heart: require("../../assets/icons/heart.svg"),
-  "heart-filled": require("../../assets/icons/heart-filled.svg"),
-  gem: require("../../assets/icons/gem.svg"),
-  "layout-grid": require("../../assets/icons/layout-grid.svg"),
-  "log-in": require("../../assets/icons/log-in.svg"),
-  mail: require("../../assets/icons/mail.svg"),
-  message: require("../../assets/icons/message.svg"),
-  "map-pin": require("../../assets/icons/map-pin.svg"),
-  mark: require("../../assets/icons/mark.svg"),
-  navigation: require("../../assets/icons/navigation.svg"),
-  "navigation-filled": require("../../assets/icons/navigation-filled.svg"),
-  phone: require("../../assets/icons/phone.svg"),
-  plug: require("../../assets/icons/plug.svg"),
-  qr: require("../../assets/icons/qr.svg"),
-  "rotate-cw": require("../../assets/icons/rotate-cw.svg"),
-  rocket: require("../../assets/icons/rocket.svg"),
-  scroll: require("../../assets/icons/scroll.svg"),
-  sparkles: require("../../assets/icons/sparkles.svg"),
-  search: require("../../assets/icons/search.svg"),
-  settings: require("../../assets/icons/settings.svg"),
-  "share-2": require("../../assets/icons/share-2.svg"),
-  "shield-alert": require("../../assets/icons/shield-alert.svg"),
-  "star-filled": require("../../assets/icons/star-filled.svg"),
-  ticket: require("../../assets/icons/ticket.svg"),
-  user: require("../../assets/icons/user.svg"),
-  x: require("../../assets/icons/x.svg"),
-} as const;
+const TAGS = { path: Path, circle: Circle, rect: Rect, line: Line, polyline: Polyline, polygon: Polygon, ellipse: Ellipse } as const;
 
-export type IconName = keyof typeof SOURCES;
+export type IconName = keyof typeof ICONS;
 
-/** One of the web's icons. Decorative: the control around it is labelled. */
-export function Icon({ name, size = 16, color = colors.ink }: { name: IconName; size?: number; color?: string }) {
+/** One of the web's icons (lucide, or a brand mark that keeps its own
+ *  colours). Decorative: the control around it is labelled. */
+export function Icon({
+  name,
+  size = 16,
+  color = colors.ink,
+  strokeWidth = iconStroke,
+}: {
+  name: IconName;
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+}) {
+  const icon: IconShape = ICONS[name];
   return (
-    <Image
-      source={SOURCES[name]}
-      tintColor={color}
-      contentFit="contain"
+    <Svg
+      width={size}
+      height={size}
+      viewBox={icon.box}
+      fill={icon.filled ? color : "none"}
+      stroke={icon.stroked ? color : "none"}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
       accessible={false}
-      style={{ width: size, height: size }}
-    />
+      importantForAccessibility="no-hide-descendants"
+    >
+      {icon.nodes.map(([tag, { tone, ...attrs }], i) => {
+        const Shape = TAGS[tag as keyof typeof TAGS] as unknown as React.ComponentType<Record<string, string>>;
+        const fill = attrs.fill === "@" ? color : tone ? colors[tone as keyof typeof colors] : attrs.fill;
+        return <Shape key={String(i)} {...attrs} {...(fill ? { fill } : null)} />;
+      })}
+    </Svg>
   );
 }
 
