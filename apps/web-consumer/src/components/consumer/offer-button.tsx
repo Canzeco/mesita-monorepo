@@ -105,7 +105,7 @@ export function OfferButton({
 /** THE OFFERS ON THE PHOTO: PREPAY LEFT, PAY RIGHT (Pato, 2026-11-28,
  *  MESITA-5123: "i want prepay and pay, two buttons. prepay bottom left is
  *  purple. pay bottom right is green. just mention Prepay (X%), Pay (Y%)").
- *  Two still boxes along the photo's bottom, 8px in on every side. Left,
+ *  Two still boxes along the photo's bottom, in one black box 8px in on every side. Left,
  *  purple "Prepay X%": the Medium voucher's bonus (MESITA-5099: "select
  *  always the medium prepay bonus"), or the best voucher on sale where the
  *  place does not sell Medium. Right, green "Pay Y%": the place's highest
@@ -113,7 +113,11 @@ export function OfferButton({
  *  halves where both fit; on a narrow phone Prepay keeps its words and Pay
  *  takes the rest (measured at 360px: 12px type, 4px inside). No icon and
  *  no black percent box: neither fits two boxes on a phone. A label: a tap
- *  opens the place. One green Cashback band before (MESITA-5103). */
+ *  opens the place. One green Cashback band before (MESITA-5103).
+ *  INSIDE ONE BLACK BOX (Pato, 2026-11-28, MESITA-5125: "put prepay and pay
+ *  inside black box"): the two sit in a black box, 4px in on every side and
+ *  4px apart, its corners 4px rounder than theirs; it replaces each box's
+ *  own black border (MESITA-5091). */
 export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
   const prepay = cardPrepayPct(offers);
   const pay = offers?.cashback_pct ?? 0;
@@ -124,7 +128,7 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
   if (boxes.length === 0) return null;
   return (
     <p
-      className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-2"
+      className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-1 rounded-xl bg-[#141414] p-1"
       aria-label={boxes.map((b) => b.words).join(", ")}
       data-card-offer-display
     >
@@ -133,7 +137,7 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
           key={b.key}
           className={cn(
             CARD_BUTTON_BOX,
-            "flex items-center justify-center border border-[#141414] px-1 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
+            "flex items-center justify-center px-1 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
             b.tone,
           )}
           data-card-offer={b.key}
