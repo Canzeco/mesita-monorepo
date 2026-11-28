@@ -95,7 +95,7 @@ function ScoreLabel({
   ];
   return (
     <dl
-      className={cn("pointer-events-none absolute left-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums", below ? "top-10" : "top-2")}
+      className={cn("pointer-events-none absolute left-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums", below ? "top-12" : "top-2")}
       aria-label="Score breakdown (temporary)"
       data-score-label
     >

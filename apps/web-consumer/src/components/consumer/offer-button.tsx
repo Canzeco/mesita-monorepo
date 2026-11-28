@@ -243,13 +243,15 @@ export function PlaceBannerRow({
 /** A Premier place on a card: a small gold pill on the photo's top-left
  *  corner, 8px in from both edges (Pato, MESITA-5059, moved up by
  *  MESITA-5061: "premier on top, not at the bottom"), on Home's card and
- *  Search's rail card. The VIP gold, dark type, a black rosette (MESITA-5052). A label,
+ *  Search's rail card. The card buttons' box (CARD_BUTTON_BOX), so it is
+ *  as tall as Reserve, Prepay, Save and Share (MESITA-5061). The VIP gold, dark type, a black rosette (MESITA-5052). A label,
  *  so a tap falls through to the photo. */
 export function PremierPill({ className }: { className?: string }) {
   return (
     <p
       className={cn(
-        "pointer-events-none absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-[#E9C46A] py-1 pr-2.5 pl-1.5 font-sans text-xs leading-none font-semibold text-neutral-950 shadow-sm",
+        CARD_BUTTON_BOX,
+        "pointer-events-none absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-[#E9C46A] px-2.5 font-sans text-xs font-semibold text-neutral-950 shadow-sm",
         className,
       )}
       data-card-premier
