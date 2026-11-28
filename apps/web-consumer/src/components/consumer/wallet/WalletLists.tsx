@@ -4,7 +4,7 @@ import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { ChevronRight, Clock3, Plus } from "lucide-react";
-import { PlaceMarks, SizedImg } from "@mesita/place-profile";
+import { SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { CardBrandChip } from "@/components/shared/card-brand-marks";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -235,7 +235,6 @@ export function CreditsRow({
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="truncate text-base leading-tight font-semibold">{card.name}</span>
-          <PlaceMarks tier={card.tier} ad={false} />
         </span>
         {line ? <span className="text-muted-foreground mt-0.5 block truncate text-sm leading-tight">{line}</span> : null}
       </span>

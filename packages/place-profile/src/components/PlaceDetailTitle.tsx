@@ -2,7 +2,6 @@
 
 import { cn } from "../lib/cn";
 import { PLACE_BONE_CLASS } from "../lib/ui";
-import { PlaceMarks } from "./PlaceMarks";
 
 // The place-name title for the detail header (page + modal). Since
 // MESITA-2619 it sits at the LEFT beside the back chevron in bold sans, the
@@ -20,7 +19,6 @@ import { PlaceMarks } from "./PlaceMarks";
 
 export function PlaceDetailTitle({
   placeName,
-  premierTier = 0,
   className,
 }: {
   placeName: string | null;
@@ -40,10 +38,10 @@ export function PlaceDetailTitle({
         <span aria-hidden className={cn(PLACE_BONE_CLASS, "h-4 w-40 max-w-full")} />
       ) : (
         <>
-          {/* The name truncates and the mark is shrink-0, so a long name
-              ends in an ellipsis and the mark stays whole right after it. */}
+          {/* NO RED SEAL AFTER THE NAME (Pato, 2026-11-28, MESITA-5101: "the
+              premier tag is enough"): the yellow Premier tag before the
+              category says it. */}
           <span className="truncate">{placeName}</span>
-          <PlaceMarks tier={premierTier} />
         </>
       )}
     </div>

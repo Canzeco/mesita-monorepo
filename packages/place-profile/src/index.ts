@@ -3,7 +3,6 @@ export { PlaceDetailBody } from "./components/PlaceDetailBody";
 export { PlaceDetailTitle } from "./components/PlaceDetailTitle";
 export { PlaceTopBar } from "./components/PlaceTopBar";
 export { PremierBadge, PremierRosette } from "./components/PremierBadge";
-export { PlaceMarks } from "./components/PlaceMarks";
 export {
   PREMIER_LEVELS,
   PREMIER_PLANS,

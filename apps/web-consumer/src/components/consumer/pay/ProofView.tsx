@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { PlaceMarks } from "@mesita/place-profile";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -203,7 +202,6 @@ export function ProofView({
         {refundLine ? <p className="text-muted-foreground mt-1 text-sm font-semibold">{refundLine}</p> : null}
         <p className="mt-3 flex items-center justify-center gap-1.5 text-base font-semibold">
           <span className="min-w-0 truncate">{proof.place_name ?? "A Mesita place"}</span>
-          {proof.place_marks ? <PlaceMarks tier={proof.place_marks.tier} ad={false} /> : null}
         </p>
         {paid ? (
           <p

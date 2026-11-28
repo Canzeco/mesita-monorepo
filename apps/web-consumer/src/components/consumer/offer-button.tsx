@@ -2,7 +2,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
-import { BadgePercent, CalendarCheck } from "lucide-react";
+import { BadgePercent, CalendarCheck, ReceiptText, Wallet } from "lucide-react";
 
 import {
   OfferTrack,
@@ -117,8 +117,11 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
   const bonus = offers?.sell.includes("voucher_1000") ? voucherPct(offers, "voucher_1000") : 0;
   const back = offers?.cashback_pct ?? 0;
   const boxes = [
-    ...(bonus > 0 ? [{ key: "prepay", words: `${bonus}% Bonus`, tone: "bg-[#635BFF] text-white" }] : []),
-    ...(back > 0 ? [{ key: "pay", words: `${back}% Back`, tone: "bg-[#00D66F] text-neutral-950" }] : []),
+    // AN ICON EACH (Pato, 2026-11-28, MESITA-5101: "icon for pay and for
+    // prepay, maybe wallet"): a wallet for the credit you load ahead, a
+    // receipt for the bill you pay.
+    ...(bonus > 0 ? [{ key: "prepay", words: `${bonus}% Bonus`, tone: "bg-[#635BFF] text-white", Icon: Wallet }] : []),
+    ...(back > 0 ? [{ key: "pay", words: `${back}% Back`, tone: "bg-[#00D66F] text-neutral-950", Icon: ReceiptText }] : []),
   ];
   if (boxes.length === 0) return null;
   return (
@@ -137,6 +140,7 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
           )}
           data-card-offer={b.key}
         >
+          <b.Icon className="mr-1.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           <span className="truncate">{b.words}</span>
         </span>
       ))}
