@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Animated, Easing, type StyleProp, type ViewStyle } from "react-native";
 
 import { colors, radius } from "@/theme";
@@ -23,4 +23,22 @@ export function Skeleton({ style }: { style?: StyleProp<ViewStyle> }) {
       style={[{ backgroundColor: colors.fill, borderRadius: radius.lg, opacity }, style]}
     />
   );
+}
+
+/** The web's animate-pulse on any child (Search's locate icon while it looks). */
+export function Pulse({ on, style, children }: { on: boolean; style?: StyleProp<ViewStyle>; children: ReactNode }) {
+  const [opacity] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    if (!on) {
+      opacity.setValue(1);
+      return;
+    }
+    const half = { duration: PULSE_MS / 2, easing: Easing.bezier(0.4, 0, 0.6, 1), useNativeDriver: true };
+    const loop = Animated.loop(
+      Animated.sequence([Animated.timing(opacity, { ...half, toValue: 0.5 }), Animated.timing(opacity, { ...half, toValue: 1 })]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [on, opacity]);
+  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
 }

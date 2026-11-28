@@ -1,4 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 import { useSession } from "@/features/auth";
 
@@ -16,6 +17,7 @@ import {
   suggestLocations,
   suggestPlaces,
   type CatalogRank,
+  type MapBounds,
   type SavedPlaces,
 } from "./api";
 import { questionOf, type ChipKey } from "./families";
@@ -69,13 +71,16 @@ export function useCachedRank(location: ActiveLocation | null, chip: ChipKey): C
   return client.getQueryData<{ pages: Page[] }>(discoveryKeys.catalog(location, chip))?.pages[0]?.rank ?? null;
 }
 
-/** The map's places and its extra pins, for the families that are on. */
-export function useMapPlaces(location: ActiveLocation | null, chip: ChipKey) {
+/** The map's places and its extra pins, for the families that are on, read
+ *  at the sight (`at`, with the visible map). The last answer stays while a
+ *  reload is in flight: the web dims the old cards, it never blanks them. */
+export function useMapPlaces(at: { point: Point; bounds: MapBounds | null } | null, chip: ChipKey) {
   const familyKeys = questionOf(chip).familyKeys;
   return useQuery({
-    queryKey: discoveryKeys.map(location, chip),
-    queryFn: ({ signal }) => listPlaces(location as Point, familyKeys, signal),
-    enabled: location !== null,
+    queryKey: discoveryKeys.map(at?.point ?? null, chip),
+    queryFn: ({ signal }) => listPlaces(at?.point as Point, familyKeys, at?.bounds ?? null, signal),
+    enabled: at !== null,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -124,15 +129,28 @@ export function useShareCode(): string | null {
   return member ? (q.data ?? null) : null;
 }
 
-/** `sessionToken` groups one search's keystrokes for Google's billing. */
-export function usePlaceSearch(input: string, sessionToken: string, member: boolean) {
+/** `sessionToken` groups one search's keystrokes for Google's billing. The
+ *  search leaves once typing has rested the server's idle seconds (the web's
+ *  Word idle, 1 s until the first answer names it). */
+export function usePlaceSearch(input: string, sessionToken: string, member: boolean, origin: Point | null) {
   const term = input.trim();
-  return useQuery({
-    queryKey: ["place-search", term],
-    queryFn: ({ signal }) => suggestPlaces(term, sessionToken, signal),
-    enabled: member && term.length >= 2,
-    placeholderData: keepPreviousData,
+  const [idleMs, setIdleMs] = useState(1000);
+  const [settled, setSettled] = useState(term);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(term), idleMs);
+    return () => clearTimeout(id);
+  }, [term, idleMs]);
+  const query = useQuery({
+    queryKey: ["place-search", settled],
+    queryFn: async ({ signal }) => {
+      const answer = await suggestPlaces(settled, sessionToken, origin, signal);
+      if (answer.idleSec !== null) setIdleMs(Math.round(answer.idleSec * 1000));
+      return answer.rows;
+    },
+    enabled: member && settled.length >= 2,
   });
+  // Waiting out the idle counts as searching (the web's spinner shows at once).
+  return { ...query, waiting: term.length >= 2 && term !== settled };
 }
 
 export function useLocationSearch(input: string, sessionToken: string, member: boolean) {

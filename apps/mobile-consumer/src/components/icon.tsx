@@ -15,11 +15,14 @@ export function Icon({
   size = 16,
   color = colors.ink,
   strokeWidth = iconStroke,
+  fill = false,
 }: {
   name: IconName;
   size?: number;
   color?: string;
   strokeWidth?: number;
+  /** The web's fill-current on an outline icon (Add's Zap). */
+  fill?: boolean;
 }) {
   const icon: IconShape = ICONS[name];
   return (
@@ -27,7 +30,7 @@ export function Icon({
       width={size}
       height={size}
       viewBox={icon.box}
-      fill={icon.filled ? color : "none"}
+      fill={icon.filled || fill ? color : "none"}
       stroke={icon.stroked ? color : "none"}
       strokeWidth={strokeWidth}
       strokeLinecap="round"

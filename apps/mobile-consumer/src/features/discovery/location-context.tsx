@@ -17,6 +17,9 @@ type Value = {
   /** The last chip that asked for a rank (not Saved, not Social): Saved's
    *  rows follow its score switch, as the web's poolChip. */
   poolChip: ChipKey;
+  /** Search keeps its own chip (the web's map filters), Popular at first. */
+  mapChip: ChipKey;
+  selectMapChip: (chip: ChipKey) => void;
 };
 
 const Context = createContext<Value | null>(null);
@@ -27,6 +30,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<ActiveLocation | null | undefined>(undefined);
   const [chip, setChip] = useState<ChipKey>("near");
   const [poolChip, setPoolChip] = useState<ChipKey>("near");
+  const [mapChip, selectMapChip] = useState<ChipKey>("all");
   const selectChip = useCallback((next: ChipKey) => {
     setChip(next);
     if (next !== "saved" && next !== "social") setPoolChip(next);
@@ -51,7 +55,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     setLocation(next);
     plain.set(NAME, JSON.stringify(next)).catch(() => undefined);
   }, []);
-  return <Context value={{ location, choose, chip, selectChip, poolChip }}>{children}</Context>;
+  return <Context value={{ location, choose, chip, selectChip, poolChip, mapChip, selectMapChip }}>{children}</Context>;
 }
 
 export function useActiveLocation(): Value {

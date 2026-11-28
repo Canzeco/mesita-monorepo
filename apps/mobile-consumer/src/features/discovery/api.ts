@@ -4,6 +4,7 @@ import { callEdge } from "@/lib/edge";
 
 import type { Question } from "./families";
 import type { OfferInput } from "@/generated/shared/lib/offers";
+import { isPremierPlace } from "@/generated/shared/premier";
 
 import type { Area, CatalogPlace, Point } from "./model";
 
@@ -114,7 +115,8 @@ export const placeSchema = z
       timezone: orNull(p.timezone),
       zone: orNull(p.zone),
       distanceKm: orNull(p.distance_km),
-      isPremier: (p.boost_tier ?? 0) > 0,
+      // The web's isPremierPlace: tier 1 or 2 only.
+      isPremier: isPremierPlace({ boost_tier: p.boost_tier }),
       isAd: p.ad === true,
       reservable: p.reservations_enabled === true && (p.phone ?? "").trim() !== "",
       lat: orNull(p.lat),
@@ -175,20 +177,38 @@ export async function fillCatalog(
 const mapSchema = z.object({
   places: z.array(placeSchema).catch([]),
   dots: z.array(z.unknown()).catch([]),
+  reloadIdleSec: number,
+  reloadMinViewportPct: number,
 });
 
 export type MapDot = { id: string; lat: number; lng: number; premier: boolean };
-export type MapAnswer = { places: CatalogPlace[]; dots: MapDot[] };
+/** The web's MapBounds: the visible map's corners. */
+export type MapBounds = { low: Point; high: Point };
+export type MapAnswer = {
+  places: CatalogPlace[];
+  dots: MapDot[];
+  /** When a guest's pan reloads (MESITA-2451, MESITA-2732); null = the web's defaults. */
+  reloadIdleSec: number | null;
+  reloadMinViewportPct: number | null;
+};
 
-/** Search's map. The same read the web map makes: a centre, and the families that are on. */
-export async function listPlaces(point: Point, familyKeys: readonly string[], signal?: AbortSignal): Promise<MapAnswer> {
+/** Search's map. The same read the web map makes: the sight, the visible
+ *  map, and the families that are on. Google-only rows are dropped, as the
+ *  web's: the pins and the rail hold Mesita places alone. */
+export async function listPlaces(
+  point: Point,
+  familyKeys: readonly string[],
+  bounds: MapBounds | null,
+  signal?: AbortSignal,
+): Promise<MapAnswer> {
   const answer = await callEdge(
     "consumer-web-list-places",
     {
       google: true,
+      familyKeys: [...familyKeys],
       lat: point.lat,
       lng: point.lng,
-      ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
+      ...(bounds ? { bounds } : {}),
     },
     mapSchema,
     { signal },
@@ -200,7 +220,12 @@ export async function listPlaces(point: Point, familyKeys: readonly string[], si
     if (!Number.isFinite(dot.lat) || !Number.isFinite(dot.lng)) return [];
     return [{ id: dot.id, lat: dot.lat, lng: dot.lng, premier: dot.premier === true }];
   });
-  return { places: answer.places, dots };
+  return {
+    places: answer.places.filter((p) => !p.googleOnly),
+    dots,
+    reloadIdleSec: answer.reloadIdleSec ?? null,
+    reloadMinViewportPct: answer.reloadMinViewportPct ?? null,
+  };
 }
 
 export type SavedPlaces = { ids: string[]; places: CatalogPlace[] };
@@ -228,24 +253,57 @@ export async function getShareCode(): Promise<string> {
   return res.code;
 }
 
-const suggestionSchema = z.object({ placeId: z.string(), mainText: z.string(), secondaryText: text, kind: text });
+const suggestionSchema = z.object({
+  placeId: z.string(),
+  mainText: z.string(),
+  secondaryText: text,
+  kind: text,
+  state: text,
+  mesitaId: text,
+  mesitaSlug: text,
+  boost_tier: number,
+  card: z.object({ boost_tier: number }).nullish().catch(null),
+  lat: number,
+  lng: number,
+});
 
-export type Suggestion = { placeId: string; mainText: string; secondaryText: string | null; kind: string | null };
+export type Suggestion = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string | null;
+  kind: string | null;
+  /** The Mesita place it is, when it is one. */
+  mesitaId: string | null;
+  /** The web's predictionOnMesita: a Mesita id or slug, or any state but not-in-Mesita. */
+  onMesita: boolean;
+  premier: boolean;
+  point: Point | null;
+};
 
-/** Every suggestion the bar can show: a place or a location. */
-export async function suggestPlaces(input: string, sessionToken: string, signal?: AbortSignal): Promise<Suggestion[]> {
+export type SuggestAnswer = { rows: Suggestion[]; idleSec: number | null };
+
+/** Every suggestion the bar can show, a place or a location, biased to the
+ *  map's sight (the web's deep search). */
+export async function suggestPlaces(input: string, sessionToken: string, origin: Point | null, signal?: AbortSignal): Promise<SuggestAnswer> {
   const answer = await callEdge(
     "consumer-web-suggest-places",
-    { input, sessionToken, mode: "fast" },
-    z.object({ predictions: z.array(suggestionSchema) }),
+    { input, sessionToken, mode: "deep", ...(origin ? { lat: origin.lat, lng: origin.lng } : {}) },
+    z.object({ predictions: z.array(suggestionSchema), idleSec: number }),
     { signal },
   );
-  return answer.predictions.map((row) => ({
-    placeId: row.placeId,
-    mainText: row.mainText,
-    secondaryText: row.secondaryText ?? null,
-    kind: row.kind ?? null,
-  }));
+  return {
+    idleSec: answer.idleSec ?? null,
+    rows: answer.predictions.map((row) => ({
+      placeId: row.placeId,
+      mainText: row.mainText,
+      secondaryText: row.secondaryText ?? null,
+      kind: row.kind ?? null,
+      mesitaId: row.mesitaId ?? null,
+      onMesita: Boolean(row.mesitaId || row.mesitaSlug) || row.state !== "not_in_mesita",
+      premier: isPremierPlace({ boost_tier: row.boost_tier ?? row.card?.boost_tier ?? null }),
+      point: row.lat !== null && row.lat !== undefined && row.lng !== null && row.lng !== undefined ? { lat: row.lat, lng: row.lng } : null,
+    })),
+  };
 }
 
 /** A read that costs a Google lookup: members only, as on the web. */

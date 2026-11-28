@@ -14,7 +14,7 @@ test("a place keeps only what it can read", () => {
     adIds: "gone",
     newer: true,
     places: [
-      { id: "a", name: "Pinto", photos: ["p1"], ad: true, price_level: "2", boost_tier: 5, offers: {} },
+      { id: "a", name: "Pinto", photos: ["p1"], ad: true, price_level: "2", boost_tier: 2, offers: {} },
       { id: "b", photos: null, name: 5, price_level: {} },
     ],
   });
