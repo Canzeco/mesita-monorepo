@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentRef } from "react";
+import { useCallback, useEffect, useRef, type ComponentRef } from "react";
 import { Pressable, ScrollView, StyleSheet, View, type LayoutRectangle } from "react-native";
 
 import { Icon } from "@/components/icon";
@@ -24,15 +24,16 @@ export function FamilyStrip({ chips, chosen, onSelect, onMenu, menuOpen = false 
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   const boxes = useRef(new Map<ChipKey, LayoutRectangle>());
   const view = useRef({ x: 0, width: 0 });
-  const reveal = (key: ChipKey) => {
+  // Reads only refs, so one function for the strip's life.
+  const reveal = useCallback((key: ChipKey) => {
     const box = boxes.current.get(key);
     if (!box || view.current.width === 0) return;
     const { x, width } = view.current;
     if (box.x - 8 < x) scroller.current?.scrollTo({ x: Math.max(0, box.x - 8), animated: true });
     else if (box.x + box.width + 8 > x + width) scroller.current?.scrollTo({ x: box.x + box.width + 8 - width, animated: true });
-  };
+  }, []);
   // On a change, and once the chosen chip first reports where it is.
-  useEffect(() => reveal(chosen), [chosen]);
+  useEffect(() => reveal(chosen), [chosen, reveal]);
   return (
     <View style={styles.strip}>
       <Pressable

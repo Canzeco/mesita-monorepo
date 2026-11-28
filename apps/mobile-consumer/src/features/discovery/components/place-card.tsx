@@ -182,13 +182,27 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
  *  claims its width. */
 function OfferRow({ offers }: { offers: CardOffer[] }) {
   const [widths, setWidths] = useState<Record<string, number>>({});
+  const [row, setRow] = useState(0);
+  // CSS grows both from 0 (Yoga grows from the min): exact halves when each
+  // fits in half; else the wider one is held at its min and the other takes
+  // the rest; else both keep their mins and wrap to two full rows.
+  const mins = offers.map((o) => (widths[o.key] ? Math.ceil(widths[o.key]) + 6 : 0));
+  const half = (row - 4) / 2;
+  const sizeOf = (i: number) => {
+    if (offers.length < 2 || row === 0 || mins.some((m) => m === 0)) return null;
+    if (Math.max(...mins) <= half) return null;
+    if (mins[0] + mins[1] + 4 <= row) return mins[i] >= mins[1 - i] ? { flexGrow: 0, width: mins[i] } : null;
+    return { minWidth: mins[i] };
+  };
   return (
-    <View style={styles.offerBox} pointerEvents="none" accessibilityLabel={offers.map((o) => o.words).join(", ")}>
-      {offers.map((o) => (
-        <View
-          key={o.key}
-          style={[styles.offer, o.key === "prepay" ? styles.prepay : styles.pay, widths[o.key] ? { minWidth: Math.ceil(widths[o.key]) + 6 } : null]}
-        >
+    <View
+      style={styles.offerBox}
+      pointerEvents="none"
+      accessibilityLabel={offers.map((o) => o.words).join(", ")}
+      onLayout={(e) => setRow(e.nativeEvent.layout.width)}
+    >
+      {offers.map((o, i) => (
+        <View key={o.key} style={[styles.offer, o.key === "prepay" ? styles.prepay : styles.pay, sizeOf(i)]}>
           <OfferContent offer={o} />
         </View>
       ))}
