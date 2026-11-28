@@ -34,6 +34,9 @@ export function useMarkSeen(rows: readonly Notice[] | undefined): void {
   const newest = rows?.reduce<string | null>((max, row) => (max === null || row.when > max ? row.when : max), null) ?? null;
   useEffect(() => {
     if (!newest) return;
+    // Never move the mark backwards (the web's notifications-seen.ts).
+    const seen = client.getQueryData<string | null>(seenKey);
+    if (seen && !isUnseen(newest, seen)) return;
     void plain.set(KEY, newest).then(() => client.setQueryData(seenKey, newest));
   }, [client, newest]);
 }

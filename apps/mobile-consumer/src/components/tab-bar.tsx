@@ -185,7 +185,8 @@ const styles = StyleSheet.create({
   bubble: {
     height: 24,
     minWidth: 24,
-    paddingHorizontal: 8,
+    // px-1.5 inside the 20pt pill; the 2pt ring is the border here.
+    paddingHorizontal: 6,
     borderRadius: radius.full,
     backgroundColor: colors.danger,
     borderWidth: 2,
