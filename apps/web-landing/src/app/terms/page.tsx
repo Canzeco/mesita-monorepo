@@ -36,7 +36,7 @@ export default function TermsPage() {
           helps you find one, and books a table for you: Mesita&apos;s
           reservation agent phones the place on your behalf and tells you how it
           went. At places that turn it on, you can also pay ahead, pay your bill
-          with credit, and get a discount or credit back.
+          with credit, and get credit back.
         </p>
         <p>
           Mesita is in development. Some parts of the app are live, some are
@@ -85,9 +85,9 @@ export default function TermsPage() {
         <p>
           When you pay a place ahead, the charge is made on that place&apos;s
           own Stripe account, so the place is the one that sells to you. You get
-          what you paid as credit, plus the bonus shown before you pay; the
-          bonus arrives 3 hours later. Card payments are being tested while
-          Mesita is in development, and the app marks a place in test mode.
+          what you paid as credit, plus the bonus shown before you pay; both
+          arrive 3 hours later. Card payments are being tested while Mesita is
+          in development, and the app marks a place in test mode.
         </p>
         <p>
           Credit is the place&apos;s debt to you. It spends only at that place,
@@ -98,9 +98,8 @@ export default function TermsPage() {
         <p>
           At the table, you show a QR code, the waiter sends the bill, and it
           closes when both of you confirm it. Read the amount before you
-          confirm. A discount comes off that bill. Credit back arrives about an
-          hour after it closes, on the part you did not pay with credit, up to
-          the limit the app shows.
+          confirm. Credit back arrives about an hour after it closes, on the
+          part you did not pay with credit, up to the limit the app shows.
         </p>
         <p>
           You can also buy a place Premier, which makes it more visible and is

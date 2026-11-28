@@ -1,9 +1,11 @@
 // The page says what 🦚 Main says (MESITA-4994, Pato: "landing page must say
 // the shit notion says. don't mention soon for anything."). Main's own
 // sentences, trimmed of what only matters inside Mesita: § 3 Consumer
-// Solutions, § 4 Restaurant Solutions, § 5 Restaurant Modules. Two rows follow
-// Main itself since MESITA-4999 and MESITA-5002: VIP is by code, Checkout is
-// led by the waiter, and offers are what the app sells. Change Main first.
+// Solutions, § 4 Restaurant Solutions, § 5 Restaurant Modules. Checkout is
+// led by the waiter (MESITA-4999) and offers are what the app sells
+// (MESITA-5126): four vouchers and one credit-back rate, every reward credit,
+// no discounts and no VIP lines. Main's Instagram Stories is left out until
+// the app pays a Story Reward. Change Main first.
 
 export type Solution = {
   name: string;
@@ -23,7 +25,7 @@ export const GUEST_SOLUTIONS: Solution[] = [
   },
   {
     name: "Visit Discounts",
-    body: "Pay upfront and get more credit than you paid for: Small MX$200, Medium MX$1,000 and Big MX$5,000, each with a bonus the place picks, up to +60%. What you pay is ready right away, and the bonus arrives 3 hours later. The credit works only at the place that issued it and never expires. A place can also take a discount off the bill: up to 20% on your first visit and up to 10% when you return.",
+    body: "Pay upfront and get more credit than you paid for: Welcome MX$100 (one per guest per place), Small MX$200, Medium MX$1,000 and Big MX$5,000, each with a bonus the place picks, up to +60%. What you pay and the bonus land together 3 hours later. The credit works only at the place that issued it and never expires. Paying a bill also earns credit back: one rate, 5%, on every bill. Every reward is credit at that place; there are no discounts off the bill.",
   },
   {
     name: "Gift Credits",
@@ -34,7 +36,7 @@ export const GUEST_SOLUTIONS: Solution[] = [
 export const PLACE_SOLUTIONS: Solution[] = [
   {
     name: "New Customers",
-    body: "Get discovered by diners who haven’t visited yet. Global Discovery puts the restaurant in front of people browsing or searching for somewhere to go, when it matches what they’re looking for. A Welcome discount, up to 20% off the first bill, wins the first visit.",
+    body: "Get discovered by diners who haven’t visited yet. Global Discovery puts the restaurant in front of people browsing or searching for somewhere to go, when it matches what they’re looking for. The Welcome voucher (pay MX$100, get +30% or +60%, one per guest) makes the first visit a Mesita visit.",
   },
   {
     name: "Returning Customers",
@@ -43,10 +45,6 @@ export const PLACE_SOLUTIONS: Solution[] = [
   {
     name: "Wholesale Presale",
     body: "Sell several visits upfront at a better price. Regulars who eat there often get a discount when they buy enough credit for several meals in one purchase. The restaurant gets paid upfront, and the guests spend the credit over time.",
-  },
-  {
-    name: "VIP Customers",
-    body: "Attract high-value guests who can bring new diners. An invitation code makes a guest VIP, and VIP discounts, up to 20% off the first bill and every return, give them a stronger reason to visit and to come back.",
   },
 ];
 
