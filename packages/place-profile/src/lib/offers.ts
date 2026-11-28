@@ -42,6 +42,10 @@ export type OfferInput = {
   cashback_pct?: number | null;
   /** Every cashback line is the same rate: the slide drops "Up to". */
   cashback_flat?: boolean;
+  /** A list row's lines in whole percent (null = that line gives nothing),
+   *  for the range (MESITA-5093). */
+  welcome_pct?: number | null;
+  returning_pct?: number | null;
   /** The place screen's money read carries the lines themselves (PlaceMoney). */
   cashback?: {
     welcome_bps: number;
@@ -57,26 +61,25 @@ export type OfferInput = {
   voucher_pct?: Partial<Record<string, number>> | null;
 };
 
-/** The cashback slide's number: a list row's cashback_pct, else the place
- *  screen's lines. */
-function cashbackOf(o: OfferInput): { pct: number; flat: boolean } {
-  if (o.cashback_pct != null) return { pct: o.cashback_pct, flat: o.cashback_flat === true };
+/** THE RANGE (Pato, 2026-11-27, MESITA-5093: "mention the ranges because we
+ *  have welcome and returning"): the lowest and highest line that is on, in
+ *  whole percent. Welcome and Returning only; the VIP lines are retired
+ *  (MESITA-5072). A row with only cashback_pct reads one rate. */
+function cashbackRange(o: OfferInput): [number, number] | null {
   const c = o.cashback;
-  if (!c) return { pct: 0, flat: false };
-  // MESITA-4766, MESITA-4789: the highest of the four lines.
-  const vip = c.returning_vip_bps ?? 0;
-  const welcomeVip = c.welcome_vip_bps ?? c.welcome_bps;
-  // MESITA-4781: the guest's own line when the server knows it (one line
-  // applies to a bill).
-  const mine =
-    c.line === "welcome" ? c.welcome_bps
-    : c.line === "welcome_vip" ? welcomeVip
-    : c.line === "returning" ? c.returning_bps
-    : c.line === "returning_vip" ? vip
-    : 0;
-  if (mine > 0) return { pct: mine / 100, flat: true };
-  const all = [c.welcome_bps, c.returning_bps, welcomeVip, vip];
-  return { pct: Math.max(...all) / 100, flat: all.every((b) => b === all[0]) };
+  const lines = c
+    ? [c.welcome_bps / 100, c.returning_bps / 100]
+    : o.welcome_pct !== undefined || o.returning_pct !== undefined
+      ? [o.welcome_pct ?? 0, o.returning_pct ?? 0]
+      : o.cashback_pct != null ? [o.cashback_pct] : [];
+  const on = lines.filter((n) => n > 0);
+  return on.length ? [Math.min(...on), Math.max(...on)] : null;
+}
+
+/** "5% to 10%", or "10%" when the two ends meet; `plus` adds the bonus's "+". */
+function rangeWords([lo, hi]: [number, number], plus = false): string {
+  const p = plus ? "+" : "";
+  return lo === hi ? `${p}${hi}%` : `${p}${lo}% to ${p}${hi}%`;
 }
 
 // THE WORDS ARE PATO'S (MESITA-3475, MESITA-3791: "ONLY SHOW THE HIGHEST
@@ -166,22 +169,25 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
   const top = standard.reduce<[string, number] | null>((a, b) => (a && a[1] >= b[1] ? a : b), null);
   return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
     if (s.key === "cashback") {
-      const { pct, flat } = cashbackOf(offers);
-      if (pct <= 0) return [];
+      const range = cashbackRange(offers);
+      if (!range) return [];
       // "BACK", NOT "CASHBACK" (Pato, 2026-11-27, MESITA-5092: "don't
-      // mention cashback, mention back. its more honest": it comes back as
-      // credit here, not as cash). "Cashback" under MESITA-4777.
+      // mention cashback, mention back. its more honest"). The range of
+      // the lines that are on (MESITA-5093): "5% to 10% Back".
       const word = "Back";
-      // NO "UP TO" (Pato, 2026-11-23, MESITA-4781: "in pay it only applies
-      // one offer"): the guest's own line, else the highest one.
-      void flat;
-      const words = `${pct}% ${word}`;
-      return [{ ...s, tone: CASHBACK_TONE, pill: words, pillShort: words, stacked: { top: `Pay ${pct}%`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
+      const words = `${rangeWords(range)} ${word}`;
+      return [{ ...s, tone: CASHBACK_TONE, pill: words, pillShort: words, stacked: { top: `Pay ${rangeWords(range)}`, under: word }, spoken: `Pay, ${words.toLowerCase()}` }];
     }
-    if (s.key === "prepay")
-      // "Up to 30% Bonus", lower-case "to", no "+" (Pato, MESITA-4702). The
-      // renderer's own "Up To" prefix (MESITA-4676) went: the words live here.
-      return top ? [{ ...s, pill: `Up to ${top[1]}% Bonus`, pillShort: `${top[1]}% Bonus`, stacked: { top: `Prepay ${top[1]}%`, under: "Bonus" }, spoken: `Prepay, up to ${top[1]}% bonus`, bonus: top[1], voucher: top[0] }] : [];
+    if (s.key === "prepay") {
+      if (!top) return [];
+      // THE RANGE (Pato, 2026-11-27, MESITA-5093: "Prepay +10% to +30%
+      // Bonus … there are multiple offers, so mention the ranges"): the
+      // lowest to the highest bonus of the vouchers sold here. "Up to 30%
+      // Bonus" under MESITA-4702.
+      const range: [number, number] = [Math.min(...standard.map(([, n]) => n)), top[1]];
+      const words = `${rangeWords(range, true)} Bonus`;
+      return [{ ...s, pill: words, pillShort: words, stacked: { top: `Prepay ${rangeWords(range, true)}`, under: "Bonus" }, spoken: `Prepay, ${words.toLowerCase()}`, bonus: top[1], voucher: top[0] }];
+    }
     return sell.has(s.key) ? [s] : [];
   });
 }
