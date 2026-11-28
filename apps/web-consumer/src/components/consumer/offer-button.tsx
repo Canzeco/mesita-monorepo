@@ -106,7 +106,8 @@ export function OfferButton({
  *  here, one at a time, in its own colour, rising on the shared 2s beat
  *  (OfferTrack, the slide-up the switching box used). 8px from the photo's
  *  sides and 9px up, so it shares Save · Share's line and height. A label:
- *  a tap falls through to the photo and opens the place. */
+ *  a tap falls through to the photo and opens the place. A black border,
+ *  like Premier (MESITA-5091). */
 export function OfferDisplay({ slides }: { slides: OfferSlide[] }) {
   const live = useOfferSlide(slides);
   if (slides.length === 0) return null;
@@ -117,7 +118,7 @@ export function OfferDisplay({ slides }: { slides: OfferSlide[] }) {
         CARD_BUTTON_BOX,
         OFFER_BOX,
         slide.tone,
-        "pointer-events-none absolute inset-x-2 bottom-[9px] z-10 w-auto overflow-hidden shadow-sm",
+        "pointer-events-none absolute inset-x-2 bottom-[9px] z-10 w-auto overflow-hidden border border-[#141414] shadow-sm",
       )}
       aria-hidden
       data-card-offer-display

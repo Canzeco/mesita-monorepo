@@ -285,7 +285,10 @@ export function PlaceRowCard({
           <PlaceBannerRow
             name={place.name}
             placeId={place.id}
-            slides={slides}
+            // RESERVE ALONE, THE FULL WIDTH (Pato, 2026-11-27, MESITA-5091:
+            // "reservations must be 100%, never share with offers"): the
+            // offers live on the photo (OfferDisplay), so no Offers button.
+            slides={[]}
             hours={place.hours}
             timezone={place.timezone}
             reservable={reservable}
