@@ -889,45 +889,46 @@ function ArtClock({ text }: { text: string }) {
   );
 }
 
-/** Pay's How it works: discounts only (cashback is hidden, Pato 2026-11-26). */
+/** Pay's How it works: cashback only (Pato, 2026-11-27, MESITA-5067:
+ *  Discount is gone; cashback is how a guest starts coming back). */
 function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
   const shown = rows.find((o) => o.line === guest) ?? rows[0];
-  if (!shown || shown.mech !== "discount") return null;
+  if (!shown) return null;
   const rate = `${shown.bps / 100}%`;
   const gives = (EXAMPLE_BILL * shown.bps) / 10000;
   return (
-    <HowItWorks tab="pay" title="How discounts work" lead="This place gives discounts: part of your bill comes off before you pay.">
-      <Scenes
-        note="The discount is on the bill, never on the tip. If you have credits here, they are used first; credits never pay the tip."
-      >
-          <Scene n={1} tint="discount" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter." />
-          <Scene
-            n={2}
-            tint="discount"
-            art={
-              <ArtBill
-                lines={[
-                  { label: "Bill", value: `$${EXAMPLE_BILL}` },
-                  { label: `${rate} off`, value: `−$${gives}`, green: true },
-                  { label: "You pay", value: `$${EXAMPLE_BILL - gives}` },
-                ]}
-              />
-            }
-            title="Check your bill"
-            text="It arrives on your phone with the discount already taken off. Tap Accept."
-          />
-          <Scene
-            n={3}
-            tint="discount"
-            art={
-              <>
-                <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
-                <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
-              </>
-            }
-            title="Pay your waiter"
-            text="Cash or card, like always. Your waiter confirms it and you get your receipt."
-          />
+    <HowItWorks
+      tab="pay"
+      title="How cashback works"
+      lead="This place gives cashback: part of what you pay comes back as credit for your next visit."
+    >
+      <Scenes note="The tip and the part you pay with credit earn no cashback, and one bill earns $1,000 at most. Your credit never expires.">
+        <Scene n={1} tint="cashback" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter. Check the bill on your phone and tap Accept." />
+        <Scene
+          n={2}
+          tint="cashback"
+          art={
+            <>
+              <Banknote className="text-foreground h-14 w-14" strokeWidth={1.5} />
+              <CreditCard className="text-foreground h-14 w-14" strokeWidth={1.5} />
+            </>
+          }
+          title={`Pay your waiter $${EXAMPLE_BILL}`}
+          text="Cash or card, like always. Your waiter confirms it."
+        />
+        <Scene
+          n={3}
+          tint="cashback"
+          art={
+            <>
+              <ArtClock text="1 hour" />
+              <ArtArrow />
+              <ArtCredit label={`${rate} back`} amount={`+$${gives}`} />
+            </>
+          }
+          title={`Get $${gives} back`}
+          text="One hour later it is in your Wallet. Use it on any bill at this place."
+        />
       </Scenes>
     </HowItWorks>
   );
@@ -1335,25 +1336,23 @@ function CheckoutSection({
   vipNote?: string | null;
 }) {
   const rows = cashback ? cashbackRows(cashback) : [];
-  // Cashback rates stay on the server. The guest sees a discount place only.
-  const shown = rows.filter((r) => r.mech === "discount");
   return (
     <>
       {loading ? (
         <BoneRows n={2} />
-      ) : cashback && shown.length > 0 ? (
+      ) : cashback && rows.length > 0 ? (
         <CashbackPanel cashback={cashback} />
-      ) : rows.length > 0 ? null : (
-        // No visit offer here, or the read failed: Pay Bill still works.
+      ) : (
+        // No cashback here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
-          This place gives no discount yet. You can still pay your bill here.
+          This place gives no cashback yet. You can still pay your bill here.
         </p>
       )}
-      {shown.length > 0 ? <PayHowItWorks rows={shown} guest={cashback?.line ?? null} /> : null}
+      {rows.length > 0 ? <PayHowItWorks rows={rows} guest={cashback?.line ?? null} /> : null}
       {/* CONNECT INSTAGRAM, BELOW HOW IT WORKS (Pato, 2026-11-24, MESITA-4872:
           "not the fourth offer"); in the VIP row under MESITA-4863. Only where a
           VIP row shows and the host knows the guest is not VIP. */}
-      {onBecomeVip && shown.some((r) => r.klass === "VIP Class") ? (
+      {onBecomeVip && rows.some((r) => r.klass === "VIP Class") ? (
         <div className="flex shrink-0 flex-col items-center gap-1.5">
           <button
             type="button"

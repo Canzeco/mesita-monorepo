@@ -197,9 +197,6 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
       if (pct <= 0) return [];
       // "Cashback" or "Discount" (MESITA-4777; "Back" / "Off" before).
       const mech = visitMechanismOf(offers);
-      // Temporary (Pato, 2026-11-26): the consumer place screen shows a
-      // discount and hides cashback. The server still grants cashback.
-      if (mech !== "discount") return [];
       const word = visitWord(mech);
       // NO "UP TO" (Pato, 2026-11-23, MESITA-4781: "in pay it only applies
       // one offer"): the guest's own line, else the highest one.

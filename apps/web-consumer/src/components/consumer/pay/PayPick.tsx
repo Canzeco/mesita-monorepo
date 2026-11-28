@@ -14,7 +14,7 @@ import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { voucherPct } from "@mesita/place-profile/lib/offers";
 import { EFError } from "@/lib/api/_invoke";
 import { apiSuggestPlacesWithIdle, type PlacePrediction } from "@/lib/api/places";
-import { payPlaceCashbackBps, payPlaceDiscountBps, type PayPlace } from "@/lib/api/wallet";
+import { payPlaceCashbackBps, type PayPlace } from "@/lib/api/wallet";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { cn } from "@/lib/utils";
 import { PlacePhoto } from "./pay-common";
@@ -38,9 +38,8 @@ type ListKind = "prepay" | "pay";
  *  and this guest's next-bill percent on Pay (MESITA-4973). */
 type SortId = "closest" | "best";
 
-/** Prepay is binary. Pay is all places, or the ones with a discount.
- *  Cashback is hidden for now (Pato, 2026-11-26). */
-type ShowId = "all" | "one" | "discount";
+/** Prepay is binary. Pay is all places, or the ones with cashback. */
+type ShowId = "all" | "one" | "cashback";
 
 const VOUCHERS_SHOWN = ["voucher_200", "voucher_1000", "voucher_5000"] as const;
 
@@ -56,7 +55,7 @@ const PREPAY_SHOWS: { id: ShowId; label: string }[] = [
 
 const PAY_SHOWS: { id: ShowId; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "discount", label: "Extra discount" },
+  { id: "cashback", label: "Cashback" },
 ];
 
 /** At least one of the three prepayments ($200, $1,000, $5,000). */
@@ -64,8 +63,8 @@ function sellsOneVoucher(p: PayPlace): boolean {
   return VOUCHERS_SHOWN.some((k) => p.offers?.sell.includes(k) === true);
 }
 
-/** Prepay: the three bonuses added. Pay: this guest's discount percent.
- *  Cashback does not rank a row while it is hidden. */
+/** Prepay: the three bonuses added. Pay: the cashback percent this guest's
+ *  next bill gets (welcome or returning). */
 function offerScore(p: PayPlace, kind: ListKind): number {
   if (kind === "prepay") {
     return VOUCHERS_SHOWN.reduce((sum, k) => {
@@ -73,7 +72,7 @@ function offerScore(p: PayPlace, kind: ListKind): number {
       return sum + Math.max(0, voucherPct(p.offers, k) || 0);
     }, 0);
   }
-  return payPlaceDiscountBps(p);
+  return payPlaceCashbackBps(p);
 }
 
 function byDistance(a: PayPlace, b: PayPlace): number {
@@ -83,7 +82,7 @@ function byDistance(a: PayPlace, b: PayPlace): number {
 function passesShow(p: PayPlace, kind: ListKind, show: ShowId): boolean {
   if (show === "all") return true;
   if (kind === "prepay") return show === "one" && sellsOneVoucher(p);
-  if (show === "discount") return payPlaceDiscountBps(p) > 0;
+  if (show === "cashback") return payPlaceCashbackBps(p) > 0;
   return false;
 }
 
@@ -361,6 +360,7 @@ export function PlaceList({
                   <br />
                   Credits
                 </span>
+                <span className="text-center whitespace-nowrap">Cashback</span>
               </span>
             </div>
           )}
@@ -452,13 +452,12 @@ function SearchHit({ hit, onPick }: { hit: PlacePrediction; onPick: (placeId: st
  *  (MESITA-4848). */
 const PREPAY_HEADS = ["$200", "$1,000", "$5,000"];
 const PREPAY_GRID = "grid w-full grid-cols-[46%_repeat(3,minmax(0,1fr))_1.5rem] items-center";
-/** Pay is the name, then Accepts Credits (Pato, 2026-11-25, MESITA-4976).
- *  Cashback is hidden (2026-11-26). Extra discount is hidden too (Pato,
- *  2026-11-26, MESITA-5031): the percent still ranks Best offers, still
- *  filters, and still comes off the bill. The gap from the box to the sheet
- *  edge is the same 16px as the title and the search row (MESITA-4979). */
+/** Pay is the name, then Accepts Credits and Cashback (Pato, 2026-11-25,
+ *  MESITA-4976; Cashback back and Discount gone 2026-11-27, MESITA-5067).
+ *  The gaps between those boxes match the 16px from the last box to the
+ *  sheet edge, the same inset as the title and the search row (MESITA-4979). */
 const PAY_GRID = "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center";
-const PAY_OFFERS = "grid grid-cols-[4rem] pr-4";
+const PAY_OFFERS = "grid grid-cols-[repeat(2,4rem)] gap-4 pr-4";
 /** The bar that names Place and the three offers. Dark, on both lists. */
 const HEAD_BAR = "bg-foreground text-background sticky top-0 z-10 text-xs font-semibold";
 
@@ -518,19 +517,22 @@ function PrepayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => vo
   );
 }
 
-/** PAY IS ONE COLUMN (Pato, 2026-11-26, MESITA-5031): the name, then Accepts
- *  Credits. Extra discount and Cashback stay off this list. The gap from the
- *  box to the right edge is 16px (MESITA-4979). The header stays dark. Yes is
- *  blue, No is gray (MESITA-4977). Cashback still counts as accepting
- *  credits. The row selects the place. */
+/** PAY IS TWO COLUMNS (Pato, 2026-11-27, MESITA-5067: Prepay is the
+ *  business, Cashback is the first step, Discount is gone): the name, then
+ *  Accepts Credits and Cashback. The gap between those boxes is the same
+ *  16px as the space from the last box to the right edge (MESITA-4979). The
+ *  header stays dark. Yes is blue, the percent that is on is shaded, No and
+ *  0% are gray (MESITA-4977). Cashback accepts credits. The row selects the
+ *  place. */
 function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void }) {
   const name = p.name ?? "A Mesita place";
-  const accepts = payPlaceCashbackBps(p) > 0 || p.credits_ok === true;
+  const cashback = payPlaceCashbackBps(p) / 100;
+  const accepts = cashback > 0 || p.credits_ok === true;
   return (
     <button
       type="button"
       onClick={() => onPick(p.place_id)}
-      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}`}
+      aria-label={`Select ${name}, Accepts Credits ${accepts ? "Yes" : "No"}, Cashback ${cashback}%`}
       className={cn(PAY_GRID, "hover:bg-muted/60 min-h-[72px] py-2 text-left transition-colors")}
       data-pay-pick-place
     >
@@ -540,9 +542,17 @@ function PayRow({ p, onPick }: { p: PayPlace; onPick: (placeId: string) => void 
       </span>
       <span className={PAY_OFFERS}>
         <PayCell className={accepts ? "bg-[#BFDBFE] text-blue-950" : EMPTY_BOX}>{accepts ? "Yes" : "No"}</PayCell>
+        <PayCell className={cashback > 0 ? offerShade(cashback) : EMPTY_BOX}>{`${cashback}%`}</PayCell>
       </span>
     </button>
   );
+}
+
+/** A cashback percent that is on: deeper green for more. */
+function offerShade(pct: number): string {
+  if (pct >= 20) return "bg-[#00D66F] text-neutral-950";
+  if (pct >= 10) return "bg-[#85EDB6] text-neutral-950";
+  return "bg-[#D3F8E2] text-neutral-950";
 }
 
 /** No, and a percent that is off. Gray, so it stays a box on the white row. */

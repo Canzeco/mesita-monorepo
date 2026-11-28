@@ -83,11 +83,10 @@ Deno.test("voucher bonus: two picks per size; absent keeps the saved one (MESITA
   assertEquals(voucherBonusFrom({ small_bonus_bps: 2000, medium_bonus_bps: 2000, big_bonus_bps: 6000 }), { voucher_200: 2000, voucher_1000: 2000, voucher_5000: 6000 });
 });
 
-// MESITA-4770: Discount or Cashback over the same two lines.
-Deno.test("visit mechanism: the owner's save accepts Discount or Cashback, refuses anything else", () => {
+// MESITA-5067: Discount is gone; a save may only say Cashback.
+Deno.test("visit mechanism: the owner's save accepts Cashback only, refuses Discount and anything else", () => {
   const base = { welcome_bps: 1000, returning_bps: 500 };
-  const d = readCashbackInput({ ...base, visit_mechanism: "discount" });
-  assertEquals(d.ok && d.rates.visit_mechanism, "discount");
+  assertEquals(readCashbackInput({ ...base, visit_mechanism: "discount" }).ok, false);
   const c = readCashbackInput({ ...base, visit_mechanism: "cashback" });
   assertEquals(c.ok && c.rates.visit_mechanism, "cashback");
   // Absent keeps the saved one.

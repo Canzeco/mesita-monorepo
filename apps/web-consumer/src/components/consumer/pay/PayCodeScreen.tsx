@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAnswerBill, apiGetPayCode, type BillTyping, billNeedsGuest, type GuestBill, type PayCode } from "@/lib/api/pay-bill";
 import { apiListVisits } from "@/lib/api/tab";
-import { money, payPlaceDiscountBps, WALLET_CACHE_KEY } from "@/lib/api/wallet";
+import { money, payPlaceCashbackBps, WALLET_CACHE_KEY } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES, payBillPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { fetchCached, invalidateCached } from "@/lib/screen-cache";
@@ -406,11 +406,11 @@ export function PayCodeScreen({ from }: { from: string | null }) {
 
   // THE QR.
   if (!bill || bill.state === "open" || rescan) {
-    const discount = here ? payPlaceDiscountBps(here) : 0;
+    const back = here ? payPlaceCashbackBps(here) : 0;
     return frame(
       "Your QR",
       <>
-        {here && (here.available_cents > 0 || discount > 0) ? (
+        {here && (here.available_cents > 0 || back > 0) ? (
           <PaySection className="flex items-center gap-3 px-4 py-3" data-pay-code-from>
             <PlacePhoto place={here} className="h-10 w-10" />
             <span className="min-w-0 flex-1 text-left">
@@ -419,9 +419,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
                 <span className="text-muted-foreground block truncate text-sm">{money(here.available_cents, here.currency)} in credits</span>
               ) : null}
             </span>
-            {discount > 0 ? (
-              <span className={cn("shrink-0 rounded-lg px-2.5 py-1 text-sm font-semibold", BOX_TINT.discount)}>
-                {discount / 100}% Discount
+            {back > 0 ? (
+              <span className={cn("shrink-0 rounded-lg px-2.5 py-1 text-sm font-semibold", BOX_TINT.cashback)}>
+                {back / 100}% Cashback
               </span>
             ) : null}
           </PaySection>
@@ -552,6 +552,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
           {bill.tip_cents > 0
             ? line(bill.bill_cents ? `Tip · ${Math.round((bill.tip_cents * 100) / bill.bill_cents)}%` : "Tip", m(bill.tip_cents))
             : null}
+          {q.cashback_cents > 0 ? line(q.cashback_capped ? "Cashback (maximum)" : `${q.cashback_bps / 100}% Cashback`, `+${m(q.cashback_cents)}`, true) : null}
         </dl>
       </LocalDialog>
     </section>
