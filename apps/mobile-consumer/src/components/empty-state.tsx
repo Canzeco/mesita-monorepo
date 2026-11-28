@@ -18,7 +18,7 @@ export function EmptyState({ icon = "compass", title, message, action, testID = 
   return (
     <View style={styles.box} testID={testID}>
       <View style={styles.icon}>
-        <Icon name={icon} size={28} />
+        <Icon strokeWidth={2.25} name={icon} size={28} />
       </View>
       <Text role="heading" style={styles.title}>
         {title}
@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     height: 56,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.card,
+    borderRadius: radius["2xl"],
     backgroundColor: colors.inkSoft,
   },
   title: { marginTop: space.lg, textAlign: "center" },

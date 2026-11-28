@@ -8,8 +8,8 @@ export const colors = {
   fill: "#efefef",
 
   ink: "#171717",
-  muted: "#5c5c5c",
-  border: "#dedede",
+  muted: "#5d5d5d",
+  border: "#dbdbdb",
   onInk: "#ffffff",
 
   reserve: "#da3743",
@@ -39,6 +39,11 @@ export const colors = {
   /** The seal after a place name. Premier is red; an ad slot is blue. */
   premier: "#f4212e",
   ad: "#1d9bf0",
+  /** Google's four-colour G, its own colours (the web's BrandLogos). */
+  googleYellow: "#fbbc05",
+  googleRed: "#ea4335",
+  googleGreen: "#34a853",
+  googleBlue: "#4285f4",
 
   /** On the sign-in photo. */
   phone: "#00a63e",
@@ -47,6 +52,9 @@ export const colors = {
   onPhotoSoft: "rgba(255, 255, 255, 0.8)",
   onPhotoFaint: "rgba(255, 255, 255, 0.5)",
   onPhotoFill: "rgba(255, 255, 255, 0.15)",
+
+  /** The spinner's track on an ink button (the web's white at 40%). */
+  onInkTrack: "rgba(255, 255, 255, 0.4)",
 
   /** Behind a window. */
   dim: "rgba(0, 0, 0, 0.45)",
@@ -110,33 +118,84 @@ export const searchMapStyle = [
 
 const fontFamily = "Inter";
 
-/** The web's type steps. A screen picks a role, never a size. */
+/** The web's weights: font-normal, font-semibold, font-bold. No medium. */
+export const weight = { normal: "400", semibold: "600", bold: "700" } as const;
+
+/** The web's tracking classes, in em: multiply by the font size. */
+export const tracking = { tight: -0.025, eyebrow: 0.14 } as const;
+
+/** The web's text classes in use: Tailwind's text-xs to text-5xl, then the
+ *  type-* roles of globals.css. Size and line height, in points. */
+export const text = {
+  xs: { fontFamily, fontSize: 12, lineHeight: 16 },
+  sm: { fontFamily, fontSize: 14, lineHeight: 20 },
+  base: { fontFamily, fontSize: 16, lineHeight: 24 },
+  lg: { fontFamily, fontSize: 18, lineHeight: 28 },
+  xl: { fontFamily, fontSize: 20, lineHeight: 28 },
+  "2xl": { fontFamily, fontSize: 24, lineHeight: 32 },
+  "3xl": { fontFamily, fontSize: 30, lineHeight: 36 },
+  "4xl": { fontFamily, fontSize: 36, lineHeight: 40 },
+  "5xl": { fontFamily, fontSize: 48, lineHeight: 48 },
+  meta: { fontFamily, fontSize: 10, lineHeight: 14 },
+  label: { fontFamily, fontSize: 11, lineHeight: 15.4 },
+  body: { fontFamily, fontSize: 13, lineHeight: 19.5 },
+  eyebrow: {
+    fontFamily,
+    fontSize: 12,
+    lineHeight: 15.6,
+    fontWeight: weight.semibold,
+    letterSpacing: 12 * tracking.eyebrow,
+    textTransform: "uppercase",
+  },
+} as const;
+
+/** The roles today's screens wear, each one a web class and a weight. A
+ *  screen moves to `size` and `weight` in its own wave. */
 export const type = {
-  hero: { fontFamily, fontSize: 32, lineHeight: 34, fontWeight: "600", letterSpacing: -0.6 },
-  cover: { fontFamily, fontSize: 30, lineHeight: 33, fontWeight: "600", letterSpacing: -0.6 },
-  title: { fontFamily, fontSize: 24, lineHeight: 30, fontWeight: "600" },
-  heading: { fontFamily, fontSize: 18, lineHeight: 24, fontWeight: "600" },
-  strong: { fontFamily, fontSize: 16, lineHeight: 22, fontWeight: "600" },
-  body: { fontFamily, fontSize: 16, lineHeight: 22, fontWeight: "400" },
-  label: { fontFamily, fontSize: 14, lineHeight: 20, fontWeight: "600" },
-  small: { fontFamily, fontSize: 14, lineHeight: 20, fontWeight: "400" },
-  note: { fontFamily, fontSize: 13, lineHeight: 20, fontWeight: "400" },
-  button: { fontFamily, fontSize: 12, lineHeight: 16, fontWeight: "600" },
-  caption: { fontFamily, fontSize: 12, lineHeight: 16, fontWeight: "400" },
-  tag: { fontFamily, fontSize: 11, lineHeight: 15, fontWeight: "600" },
-  meta: { fontFamily, fontSize: 10, lineHeight: 14, fontWeight: "600" },
-  numeric: { fontFamily, fontSize: 16, lineHeight: 22, fontWeight: "600", fontVariant: ["tabular-nums"] },
-  code: { fontFamily, fontSize: 18, lineHeight: 24, fontWeight: "400", letterSpacing: 9 },
+  hero: { fontFamily, fontSize: 32, lineHeight: 33.28, fontWeight: weight.semibold, letterSpacing: -0.64 },
+  cover: { fontFamily, fontSize: 30, lineHeight: 33, fontWeight: weight.semibold, letterSpacing: -0.6 },
+  title: { ...text["2xl"], fontWeight: weight.semibold },
+  heading: { ...text.lg, fontWeight: weight.semibold },
+  strong: { ...text.base, fontWeight: weight.semibold },
+  body: { ...text.base, fontWeight: weight.normal },
+  label: { ...text.sm, fontWeight: weight.semibold },
+  small: { ...text.sm, fontWeight: weight.normal },
+  note: { ...text.body, fontWeight: weight.normal },
+  button: { ...text.xs, fontWeight: weight.semibold },
+  caption: { ...text.xs, fontWeight: weight.normal },
+  tag: { ...text.label, fontWeight: weight.semibold },
+  meta: { ...text.meta, fontWeight: weight.semibold },
+  numeric: { ...text.base, fontWeight: weight.semibold, fontVariant: ["tabular-nums"] },
+  code: { ...text.lg, fontWeight: weight.normal, letterSpacing: 9 },
   /** The word Mesita. */
   wordmark: { fontFamily: "Outfit", fontSize: 30, lineHeight: 34, fontWeight: "700", letterSpacing: -0.9 },
-  coverWordmark: { fontFamily: "Outfit", fontSize: 24, lineHeight: 28, fontWeight: "700", letterSpacing: -0.7 },
+  /** The cover's wordmark: text-2xl leading-none tracking-[-0.03em]. */
+  coverWordmark: { fontFamily: "Outfit", fontSize: 24, lineHeight: 24, fontWeight: "700", letterSpacing: -0.72 },
 } as const;
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
 
-export const radius = { control: 8, field: 12, phone: 14, card: 16, panel: 24 } as const;
+/** The web's corners, by the web's names: rounded, rounded-sm … rounded-3xl,
+ *  rounded-panel (a window), rounded-full. */
+export const radius = { base: 4, sm: 5, md: 6, lg: 8, xl: 10, "2xl": 12, "3xl": 14, panel: 24, full: 9999 } as const;
 
-export const pressedOpacity = 0.7;
+/** The web's shadow-float (a control on the map) and shadow-elev (a lifted
+ *  panel). */
+export const shadow = {
+  float: "0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15)",
+  elev: "0 25px 60px -15px rgba(0, 0, 0, 0.14)",
+} as const;
+
+/** A pressed control shrinks a touch, as the web's active:scale-[0.98]. */
+export const pressedStyle = { transform: [{ scale: 0.98 }] } as const;
+/** A control that is off (the web button's disabled:opacity-60). */
+export const disabledOpacity = 0.6;
+
+/** The web's ring spinner: side and ring width per size, one turn a second. */
+export const spinner = { sm: { side: 16, ring: 2 }, md: { side: 24, ring: 2 }, lg: { side: 32, ring: 3 }, turnMs: 1000 } as const;
+
+/** An icon's stroke when the caller names none. */
+export const iconStroke = 1.75;
 
 export const motion = { fast: 150, slow: 250 } as const;
 

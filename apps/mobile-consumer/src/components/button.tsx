@@ -1,9 +1,10 @@
 import * as Haptics from "expo-haptics";
-import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
 import { Icon, type IconName } from "@/components/icon";
+import { Spinner } from "@/components/spinner";
 import { Text } from "@/components/text";
-import { colors, pressedOpacity, radius } from "@/theme";
+import { colors, disabledOpacity, pressedStyle, radius } from "@/theme";
 
 type Props = {
   label: string;
@@ -29,13 +30,13 @@ export function Button({ label, icon, onPress, kind = "primary", busy = false, d
         void Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
-      style={({ pressed }) => [styles.box, styles[kind], (pressed || disabled) && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [styles.box, styles[kind], pressed && pressedStyle, disabled && { opacity: disabledOpacity }]}
     >
       {busy ? (
-        <ActivityIndicator color={colors[ink]} />
+        <Spinner onInk={ink === "onInk"} />
       ) : (
         <>
-          {icon ? <Icon name={icon} size={16} color={colors[ink]} /> : null}
+          {icon ? <Icon name={icon} size={16} strokeWidth={2.25} color={colors[ink]} /> : null}
           <Text role="label" tone={ink}>
             {label}
           </Text>
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
   },
   primary: { backgroundColor: colors.ink },
   secondary: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border },

@@ -47,7 +47,7 @@ export function CoverPage({ children, footer, onClose, aboveBar = false }: Props
             <CoverWordmark />
             {onClose ? (
               <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
-                <Icon name="x" size={24} color={colors.onPhoto} />
+                <Icon strokeWidth={2.25} name="x" size={24} color={colors.onPhoto} />
               </Pressable>
             ) : null}
           </View>

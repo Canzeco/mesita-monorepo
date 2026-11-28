@@ -2,7 +2,7 @@ import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
-import { colors, pressedOpacity, radius } from "@/theme";
+import { colors, pressedStyle, radius } from "@/theme";
 
 import { isSpecial, type Chip, type ChipKey } from "../families";
 import { FamilyChip } from "./family-chip";
@@ -19,10 +19,10 @@ export function FamilyStrip({ chips, chosen, onSelect, onMenu }: Props) {
         accessibilityLabel={filtered ? "All families, a family is chosen" : "All families"}
         onPress={onMenu}
         testID="menu"
-        style={({ pressed }) => [styles.menu, pressed && { opacity: pressedOpacity }]}
+        style={({ pressed }) => [styles.menu, pressed && pressedStyle]}
       >
         <View style={[styles.square, filtered && styles.filtered]}>
-          <Icon name="layout-grid" size={16} color={filtered ? colors.onInk : colors.ink} />
+          <Icon strokeWidth={2.25} name="layout-grid" size={16} color={filtered ? colors.onInk : colors.ink} />
         </View>
         <Text role="meta" tone="muted">
           Menu
@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: radius.field,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.paper,

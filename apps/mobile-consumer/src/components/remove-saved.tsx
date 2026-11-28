@@ -36,7 +36,7 @@ export function RemoveSaved({
 
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: colors.scrim, justifyContent: "center", padding: space.lg },
-  card: { backgroundColor: colors.paper, borderRadius: radius.card, padding: space.lg, gap: space.sm },
+  card: { backgroundColor: colors.paper, borderRadius: radius["2xl"], padding: space.lg, gap: space.sm },
   row: { flexDirection: "row", gap: space.sm, marginTop: space.md },
   cancel: { flex: 1, minHeight: 48, borderRadius: 24, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   remove: { flex: 1, minHeight: 48, borderRadius: 24, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },

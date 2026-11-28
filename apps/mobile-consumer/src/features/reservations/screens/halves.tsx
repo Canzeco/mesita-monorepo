@@ -101,6 +101,6 @@ const styles = StyleSheet.create({
   line: { height: 2, alignSelf: "stretch", backgroundColor: colors.ad },
   page: { padding: space.lg, gap: space.md },
   row: { flexDirection: "row", gap: space.md, paddingVertical: space.sm, alignItems: "center" },
-  photo: { width: 48, height: 48, borderRadius: radius.field, backgroundColor: colors.fill },
+  photo: { width: 48, height: 48, borderRadius: radius.xl, backgroundColor: colors.fill },
   words: { flex: 1, gap: 2 },
 });

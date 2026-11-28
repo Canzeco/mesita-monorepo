@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { callEdge } from "@/lib/edge";
 
 import type { PayPlace } from "./places";
@@ -217,20 +218,12 @@ export function getReceipt(id: string, signal?: AbortSignal): Promise<Receipt> {
     id: row.payment_id,
     place: row.place?.name ?? "A Mesita place",
     status: row.status,
-    amount: money(row.amount_cents, row.currency),
-    credit: money(row.credit_cents, row.currency),
-    tip: money(row.tip_cents, row.currency),
-    refunded: row.refunded_cents > 0 ? money(row.refunded_cents, row.currency) : null,
+    amount: moneyLabel(row.amount_cents, row.currency),
+    credit: moneyLabel(row.credit_cents, row.currency),
+    tip: moneyLabel(row.tip_cents, row.currency),
+    refunded: row.refunded_cents > 0 ? moneyLabel(row.refunded_cents, row.currency) : null,
     paidAt: row.paid_at ?? null,
     seenAt: row.proof_seen_at ?? null,
     testMode: row.test_mode,
   }));
-}
-
-export function money(cents: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase() }).format(cents / 100);
-  } catch {
-    return `${(cents / 100).toFixed(2)} ${currency.toUpperCase()}`;
-  }
 }

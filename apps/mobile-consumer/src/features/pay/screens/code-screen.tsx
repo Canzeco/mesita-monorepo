@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Modal, Pressable, StyleSheet, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { Button } from "@/components/button";
 import { Screen } from "@/components/screen";
 import { Text } from "@/components/text";
 import { EdgeError } from "@/lib/edge";
 import { colors, radius, space } from "@/theme";
 
-import { answerBill, money, readPayCode, type PayCode, type PayCodeRead } from "../api";
+import { answerBill, readPayCode, type PayCode, type PayCodeRead } from "../api";
 import { clock, codePhase, connectionLine, hidePayable, needsGuest, type GuestBill } from "../visit";
 
 export function CodeScreen({ placeId, onClose }: { placeId: string; onClose: () => void }) {
@@ -220,13 +221,13 @@ function Footer({
   }
   if (phase === "sent" && bill?.quote && !stale) {
     const owed = bill.quote.outsideCents;
-    const label = owed === 0 ? "Use my credits" : `I paid ${money(owed, bill.currency)}`;
+    const label = owed === 0 ? "Use my credits" : `I paid ${moneyLabel(owed, bill.currency)}`;
     return (
       <View style={styles.payRow}>
         <Button label={busy === "decline" ? "Declining" : "Decline"} kind="quiet" busy={busy === "decline"} disabled={busy !== null} onPress={() => onAnswer("decline")} />
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={owed === 0 ? `Use ${money(bill.quote.creditCents, bill.currency)} of my credits` : `I paid ${money(owed, bill.currency)} to my waiter`}
+          accessibilityLabel={owed === 0 ? `Use ${moneyLabel(bill.quote.creditCents, bill.currency)} of my credits` : `I paid ${moneyLabel(owed, bill.currency)} to my waiter`}
           disabled={busy !== null || armed}
           onPress={() => onAnswer("accept")}
           style={styles.pay}
@@ -256,7 +257,7 @@ function Writing({ typing, currency }: { typing: { billCents: number; tipCents: 
     <View style={styles.center}>
       <Text role="caption" style={styles.live}>Live</Text>
       <Text role="body" tone="muted">{words}</Text>
-      <Text role="title">{money(typing.billCents + typing.tipCents, currency)}</Text>
+      <Text role="title">{moneyLabel(typing.billCents + typing.tipCents, currency)}</Text>
       <Text role="small" tone="muted">You check it and pay next. Nothing is paid yet.</Text>
     </View>
   );
@@ -284,9 +285,9 @@ function Over({ bill }: { bill: GuestBill }) {
   const words = bill.state === "declined" ? "You declined this bill." : bill.state === "expired" ? "Time ran out on this bill." : "This bill was cancelled.";
   const took = bill.tookCents;
   const note = bill.state === "declined"
-    ? `Your waiter can fix it and send it again. It shows up here.${took !== null && took > 0 ? ` If you paid ${money(took, bill.currency)}, ask for it back.` : ""}`
+    ? `Your waiter can fix it and send it again. It shows up here.${took !== null && took > 0 ? ` If you paid ${moneyLabel(took, bill.currency)}, ask for it back.` : ""}`
     : took !== null && took > 0
-      ? `No credits were used. Your waiter said they took ${money(took, bill.currency)}. Show them this screen.`
+      ? `No credits were used. Your waiter said they took ${moneyLabel(took, bill.currency)}. Show them this screen.`
       : "No credits were used. If you already paid, show this screen to the staff.";
   return (
     <View style={styles.center}>
@@ -300,7 +301,7 @@ function Over({ bill }: { bill: GuestBill }) {
 function Ticket({ bill, openedId, onWhy }: { bill: GuestBill; openedId: string; onWhy: () => void }) {
   const quote = bill.quote;
   if (!quote) return null;
-  const big = money(quote.outsideCents, bill.currency);
+  const big = moneyLabel(quote.outsideCents, bill.currency);
   return (
     <View>
       <Text role="strong">{bill.place.name ?? "A Mesita place"}</Text>
@@ -331,10 +332,10 @@ function Why({ open, bill, onClose }: { open: boolean; bill: GuestBill | null; o
         <Text role="title">Why?</Text>
         {bill && quote ? (
           <View style={styles.lines}>
-            <Line label="Bill" value={money(bill.billCents ?? 0, bill.currency)} />
-            {quote.creditCents > 0 ? <Line label="Your credits" value={`−${money(quote.creditCents, bill.currency)}`} /> : null}
-            {bill.tipCents > 0 ? <Line label={bill.billCents ? `Tip · ${Math.round((bill.tipCents * 100) / bill.billCents)}%` : "Tip"} value={money(bill.tipCents, bill.currency)} /> : null}
-            {quote.cashbackCents > 0 ? <Line label={quote.cashbackCapped ? "Cashback (maximum)" : `${quote.cashbackBps / 100}% Cashback`} value={`+${money(quote.cashbackCents, bill.currency)}`} /> : null}
+            <Line label="Bill" value={moneyLabel(bill.billCents ?? 0, bill.currency)} />
+            {quote.creditCents > 0 ? <Line label="Your credits" value={`−${moneyLabel(quote.creditCents, bill.currency)}`} /> : null}
+            {bill.tipCents > 0 ? <Line label={bill.billCents ? `Tip · ${Math.round((bill.tipCents * 100) / bill.billCents)}%` : "Tip"} value={moneyLabel(bill.tipCents, bill.currency)} /> : null}
+            {quote.cashbackCents > 0 ? <Line label={quote.cashbackCapped ? "Cashback (maximum)" : `${quote.cashbackBps / 100}% Cashback`} value={`+${moneyLabel(quote.cashbackCents, bill.currency)}`} /> : null}
           </View>
         ) : null}
         <Button label="Close" kind="secondary" onPress={onClose} />
@@ -358,7 +359,7 @@ function Cancel({ open, bill, busy, onKeep, onCancel }: { open: boolean; bill: G
     <Modal visible={open} animationType="slide" onRequestClose={onKeep}>
       <View style={styles.sheet}>
         <Text role="title">Cancel this bill?</Text>
-        {credits > 0 && bill ? <Text role="body" tone="muted">Your {money(credits, bill.currency)} of credits stay in your Wallet.</Text> : null}
+        {credits > 0 && bill ? <Text role="body" tone="muted">Your {moneyLabel(credits, bill.currency)} of credits stay in your Wallet.</Text> : null}
         <Text role="body" tone="danger">Money you already gave the place is not returned by Mesita. Ask the place for it.</Text>
         <Button label={busy ? "Cancelling…" : "Cancel bill"} kind="danger" busy={busy} onPress={onCancel} />
         <Button label="Keep it" kind="secondary" onPress={onKeep} />
@@ -371,11 +372,11 @@ const styles = StyleSheet.create({
   center: { gap: space.sm, alignItems: "center" },
   live: { backgroundColor: colors.payLow, overflow: "hidden", borderRadius: radius.panel, paddingHorizontal: space.md, paddingVertical: space.xs },
   qr: { marginTop: space.lg, backgroundColor: colors.paper, padding: space.md },
-  amount: { marginVertical: space.md, borderRadius: radius.card, backgroundColor: colors.pay, padding: space.lg, alignItems: "center" },
-  handshake: { flexDirection: "row", justifyContent: "space-between", borderWidth: 1, borderColor: colors.border, borderRadius: radius.card, padding: space.md },
+  amount: { marginVertical: space.md, borderRadius: radius["2xl"], backgroundColor: colors.pay, padding: space.lg, alignItems: "center" },
+  handshake: { flexDirection: "row", justifyContent: "space-between", borderWidth: 1, borderColor: colors.border, borderRadius: radius["2xl"], padding: space.md },
   row: { gap: space.sm },
   payRow: { gap: space.sm },
-  pay: { minHeight: 48, borderRadius: radius.card, backgroundColor: colors.pay, alignItems: "center", justifyContent: "center" },
+  pay: { minHeight: 48, borderRadius: radius["2xl"], backgroundColor: colors.pay, alignItems: "center", justifyContent: "center" },
   answer: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: space.sm },
   sheet: { flex: 1, backgroundColor: colors.paper, padding: space.lg, gap: space.md },
   lines: { gap: space.sm },

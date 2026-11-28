@@ -58,7 +58,7 @@ function Face({ item }: { item: FeedItem }) {
       )}
       {item.vip ? (
         <View style={styles.crown}>
-          <Icon name="star-filled" size={11} color={colors.onVip} />
+          <Icon strokeWidth={2.25} name="star-filled" size={11} color={colors.onVip} />
         </View>
       ) : null}
     </View>
@@ -78,7 +78,7 @@ function Row({ item, onPerson, onPlace }: { item: FeedItem; onPerson: () => void
             <Text role="label" style={styles.link}>{item.placeName}</Text>
           </Text>
           <View style={styles.quiet}>
-            <Icon name="clock" size={12} color={colors.muted} />
+            <Icon strokeWidth={2.25} name="clock" size={12} color={colors.muted} />
             <Text role="caption" tone="muted">{ago(item.at)}</Text>
             {item.distanceKm != null ? <Text role="caption" tone="muted">· {km(item.distanceKm)}</Text> : null}
           </View>
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   thumb: {
     width: 48,
     height: 48,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
     backgroundColor: colors.fill,
     alignItems: "center",
     justifyContent: "center",

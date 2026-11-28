@@ -70,7 +70,7 @@ export function ResultsPanel({
 }
 
 const styles = StyleSheet.create({
-  box: { marginHorizontal: space.md, marginBottom: space.sm, borderRadius: radius.card, backgroundColor: colors.paper, overflow: "hidden" },
+  box: { marginHorizontal: space.md, marginBottom: space.sm, borderRadius: radius["2xl"], backgroundColor: colors.paper, overflow: "hidden" },
   note: { padding: space.md, gap: space.xs },
   clear: { alignSelf: "center", marginTop: space.xs, height: 36, paddingHorizontal: space.md, borderRadius: radius.panel, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   row: { paddingHorizontal: space.md, paddingVertical: space.sm, gap: 2 },

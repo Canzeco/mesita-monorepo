@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.paper },
   none: { flex: 1, justifyContent: "center", paddingHorizontal: 40, backgroundColor: colors.page },
   list: { paddingBottom: 100 },
-  skeleton: { flexDirection: "row", marginHorizontal: space.sm, marginTop: space.sm, overflow: "hidden", borderRadius: radius.card },
+  skeleton: { flexDirection: "row", marginHorizontal: space.sm, marginTop: space.sm, overflow: "hidden", borderRadius: radius["2xl"] },
   half: { flex: 1, aspectRatio: 1, borderRadius: 0 },
   paper: { borderWidth: 1, borderLeftWidth: 0, borderColor: colors.border },
   switch: { flexDirection: "row", gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.sm, backgroundColor: colors.paper },

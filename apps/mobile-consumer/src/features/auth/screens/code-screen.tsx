@@ -46,7 +46,7 @@ export function CodeScreen({ phone, onWrongNumber }: Props) {
     <CoverPage>
       <View style={styles.top}>
         <Pressable accessibilityRole="button" accessibilityLabel="Change number" onPress={onWrongNumber} style={styles.back}>
-          <Icon name="arrow-left" size={12} color={colors.onPhotoSoft} />
+          <Icon strokeWidth={2.25} name="arrow-left" size={12} color={colors.onPhotoSoft} />
           <Text role="label" tone="onPhotoSoft">
             Change number
           </Text>
@@ -106,6 +106,6 @@ const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 4 },
   field: { gap: 6 },
-  input: { ...type.code, height: 52, color: colors.ink, textAlign: "center", borderRadius: radius.phone, backgroundColor: colors.paper },
+  input: { ...type.code, height: 52, color: colors.ink, textAlign: "center", borderRadius: radius["3xl"], backgroundColor: colors.paper },
   resend: { minHeight: 44, alignItems: "center", justifyContent: "center" },
 });

@@ -25,7 +25,7 @@ export function ReservationsScreen({ onOpen, onFind, onCalendar, half, onHalf }:
           options={{
             headerRight: () => (
               <Pressable accessibilityRole="button" accessibilityLabel="Calendar" onPress={onCalendar} hitSlop={8}>
-                <Icon name="calendar" size={22} />
+                <Icon strokeWidth={2.25} name="calendar" size={22} />
               </Pressable>
             ),
           }}

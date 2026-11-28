@@ -47,12 +47,12 @@ export function GenerateSheet({
     <Modal visible={target !== null} transparent animationType="fade" onRequestClose={() => { if (!create.isPending) onClose(); }}>
       <View style={styles.scrim}>
         <View style={styles.card}>
-          {facts?.photoUrl ? <Image source={facts.photoUrl} style={styles.photo} contentFit="cover" /> : <Icon name="sparkles" size={28} />}
+          {facts?.photoUrl ? <Image source={facts.photoUrl} style={styles.photo} contentFit="cover" /> : <Icon strokeWidth={2.25} name="sparkles" size={28} />}
           <Text role="title" style={styles.center}>{title}</Text>
           <Text role="small" tone="muted" style={styles.center}>{body}</Text>
           {facts?.canAdd && facts.message ? <Text role="caption" style={styles.center}>{facts.message}</Text> : null}
           <View style={styles.place}>
-            <Icon name="map-pin" size={20} color={colors.muted} />
+            <Icon strokeWidth={2.25} name="map-pin" size={20} color={colors.muted} />
             <View style={styles.words}>
               <Text role="strong" numberOfLines={1}>{name}</Text>
               {facts?.category || facts?.rating ? (
@@ -86,13 +86,13 @@ export function GenerateSheet({
 
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: colors.scrim, alignItems: "center", justifyContent: "center", padding: space.lg },
-  card: { width: "100%", borderRadius: radius.card, backgroundColor: colors.paper, padding: space.lg, gap: space.sm, alignItems: "center" },
-  photo: { width: "100%", height: 140, borderRadius: radius.field },
+  card: { width: "100%", borderRadius: radius["2xl"], backgroundColor: colors.paper, padding: space.lg, gap: space.sm, alignItems: "center" },
+  photo: { width: "100%", height: 140, borderRadius: radius.xl },
   center: { textAlign: "center" },
-  place: { alignSelf: "stretch", flexDirection: "row", gap: space.sm, backgroundColor: colors.fill, borderRadius: radius.field, padding: space.md },
+  place: { alignSelf: "stretch", flexDirection: "row", gap: space.sm, backgroundColor: colors.fill, borderRadius: radius.xl, padding: space.md },
   words: { flex: 1, gap: 2 },
   row: { alignSelf: "stretch", flexDirection: "row", gap: space.sm, marginTop: space.sm },
-  cancel: { flex: 1, minHeight: 48, borderRadius: radius.field, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
-  go: { flex: 1, minHeight: 48, borderRadius: radius.field, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  cancel: { flex: 1, minHeight: 48, borderRadius: radius.xl, backgroundColor: colors.fill, alignItems: "center", justifyContent: "center" },
+  go: { flex: 1, minHeight: 48, borderRadius: radius.xl, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   off: { opacity: 0.4 },
 });

@@ -3,12 +3,13 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
 import { useActiveLocation } from "@/features/discovery";
 import { colors, radius, space } from "@/theme";
 
-import { listCredits, listPayPlaces, money, readPayCode } from "../api";
+import { listCredits, listPayPlaces, readPayCode } from "../api";
 import { pendingLine } from "../open-bill";
 import { needsGuest } from "../visit";
 import { PlacesSheet } from "./places-screen";
@@ -73,7 +74,7 @@ export function PayScreen({
       <View style={styles.head}>
         <Text role="wordmark" style={styles.word}>Mesita</Text>
         <Pressable accessibilityRole="button" accessibilityLabel="Tickets" onPress={onTickets} style={styles.tickets}>
-          <Icon name="ticket" size={18} />
+          <Icon strokeWidth={2.25} name="ticket" size={18} />
           <Text role="label">Tickets</Text>
         </Pressable>
       </View>
@@ -82,7 +83,7 @@ export function PayScreen({
           <Text role="strong">Pending Tickets</Text>
           <Text role="label" numberOfLines={1}>{bill.place.name ?? "Your bill"}</Text>
           <Text role="small" tone="muted">{pendingLine(bill, now)}</Text>
-          <Text role="numeric">{money((bill.quote ? bill.quote.outsideCents : (bill.billCents ?? 0) + bill.tipCents), bill.currency)}</Text>
+          <Text role="numeric">{moneyLabel((bill.quote ? bill.quote.outsideCents : (bill.billCents ?? 0) + bill.tipCents), bill.currency)}</Text>
         </Pressable>
       ) : null}
       <View style={styles.tiles}>
@@ -96,7 +97,7 @@ export function PayScreen({
             credits.data.map((row) => (
               <Pressable key={row.placeId} accessibilityRole="button" onPress={() => onCode(row.placeId)} style={styles.creditRow}>
                 <Text role="strong" numberOfLines={1} style={styles.creditName}>{row.name}</Text>
-                <Text role="numeric">{money(row.spendableCents, row.currency)}</Text>
+                <Text role="numeric">{moneyLabel(row.spendableCents, row.currency)}</Text>
               </Pressable>
             ))
           ) : credits.isError ? null : (
@@ -164,7 +165,7 @@ function Tile({ label, line, mark, color, ink, bubble, bubbleInk, onPress }: { l
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={[styles.tile, { backgroundColor: color }]}>
       <View style={[styles.bubble, { backgroundColor: bubble }]}>
-        {mark === "QR" ? <Icon name="qr" size={22} color={bubbleInk} /> : <Text role="heading" style={{ color: bubbleInk }}>%</Text>}
+        {mark === "QR" ? <Icon strokeWidth={2.25} name="qr" size={22} color={bubbleInk} /> : <Text role="heading" style={{ color: bubbleInk }}>%</Text>}
       </View>
       <Text role="strong" style={{ color: ink }}>{label}</Text>
       <Text role="caption" style={{ color: ink }}>{line}</Text>
@@ -176,23 +177,23 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.paper, paddingHorizontal: space.sm, paddingTop: space.sm },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: space.sm },
   word: { paddingVertical: space.sm },
-  tickets: { flexDirection: "row", alignItems: "center", gap: space.xs, backgroundColor: colors.fill, borderRadius: radius.control, paddingHorizontal: space.md, minHeight: 40 },
-  pending: { backgroundColor: colors.paper, borderRadius: radius.field, padding: space.md, gap: 2, marginTop: space.sm },
+  tickets: { flexDirection: "row", alignItems: "center", gap: space.xs, backgroundColor: colors.fill, borderRadius: radius.lg, paddingHorizontal: space.md, minHeight: 40 },
+  pending: { backgroundColor: colors.paper, borderRadius: radius.xl, padding: space.md, gap: 2, marginTop: space.sm },
   tiles: { flexDirection: "row", gap: space.sm },
-  tile: { flex: 1, aspectRatio: 3 / 2, borderRadius: radius.card, alignItems: "center", justifyContent: "center", gap: 4 },
+  tile: { flex: 1, aspectRatio: 3 / 2, borderRadius: radius["2xl"], alignItems: "center", justifyContent: "center", gap: 4 },
   bubble: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
-  credits: { flex: 1, marginVertical: space.sm, backgroundColor: colors.ink, borderRadius: radius.card, padding: 6 },
+  credits: { flex: 1, marginVertical: space.sm, backgroundColor: colors.ink, borderRadius: radius["2xl"], padding: 6 },
   creditsTitle: { textAlign: "center", paddingVertical: space.md },
-  creditList: { flex: 1, backgroundColor: colors.paper, borderRadius: radius.field },
+  creditList: { flex: 1, backgroundColor: colors.paper, borderRadius: radius.xl },
   creditContent: { paddingVertical: space.xs },
   creditRow: { minHeight: 56, paddingHorizontal: space.md, flexDirection: "row", alignItems: "center", gap: space.md },
   creditName: { flex: 1 },
   failed: { padding: space.md, gap: space.xs },
   scrim: { flex: 1, backgroundColor: colors.scrim, justifyContent: "center", padding: space.lg },
-  dialog: { backgroundColor: colors.paper, borderRadius: radius.card, padding: space.lg, gap: space.sm },
-  find: { minHeight: 44, borderRadius: radius.field, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
+  dialog: { backgroundColor: colors.paper, borderRadius: radius["2xl"], padding: space.lg, gap: space.sm },
+  find: { minHeight: 44, borderRadius: radius.xl, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" },
   close: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   empty: { padding: space.lg },
   signedOut: { flex: 1, backgroundColor: colors.paper, padding: space.xl, gap: space.md, justifyContent: "center" },
-  signIn: { backgroundColor: colors.ink, borderRadius: radius.control, minHeight: 48, alignItems: "center", justifyContent: "center" },
+  signIn: { backgroundColor: colors.ink, borderRadius: radius.lg, minHeight: 48, alignItems: "center", justifyContent: "center" },
 });

@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
-import { colors, maxFontSizeMultiplier, pressedOpacity, radius, searchMapStyle, space, type } from "@/theme";
+import { colors, maxFontSizeMultiplier, pressedStyle, radius, searchMapStyle, shadow, space, type } from "@/theme";
 
 import { GenerateSheet, type GenerateTarget } from "../components/generate-sheet";
 import { ResultsPanel } from "../components/results-panel";
@@ -139,11 +139,11 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
             accessibilityLabel={`Location: ${location.name}. Change location`}
             onPress={onChooseLocation}
             testID="location"
-            style={({ pressed }) => [styles.locate, pressed && { opacity: pressedOpacity }]}
+            style={({ pressed }) => [styles.locate, pressed && pressedStyle]}
           >
-            <Icon name="navigation" size={18} />
+            <Icon strokeWidth={2.25} name="navigation" size={18} />
           </Pressable>
-          <Icon name="search" size={16} color={colors.muted} />
+          <Icon strokeWidth={2.25} name="search" size={16} color={colors.muted} />
           <TextInput
             ref={field}
             value={term}
@@ -158,7 +158,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
             accessibilityRole="button"
             accessibilityLabel="Ask AI"
             onPress={() => field.current?.focus()}
-            style={({ pressed }) => [styles.ai, pressed && { opacity: pressedOpacity }]}
+            style={({ pressed }) => [styles.ai, pressed && pressedStyle]}
           >
             <Sparkle />
             <Text role="label">AI</Text>
@@ -316,7 +316,7 @@ function MapChips({
         testID="menu"
         style={[styles.chip, filtered ? styles.chipFiltered : styles.chipOff]}
       >
-        <Icon name="layout-grid" size={16} color={filtered ? colors.onInk : colors.ink} />
+        <Icon strokeWidth={2.25} name="layout-grid" size={16} color={filtered ? colors.onInk : colors.ink} />
         <Text role="label" tone={filtered ? "onInk" : "ink"}>Menu</Text>
       </Pressable>
       {chips.map((row) => {
@@ -435,7 +435,7 @@ function RailCard({
     <View style={[styles.card, { width }, on && styles.cardOn]}>
       {place.reservable ? (
         <Pressable accessibilityRole="button" accessibilityLabel={`Reserve ${place.name}`} onPress={onReserve ?? onPress} style={styles.reserve}>
-          <Icon name="calendar" size={14} color={colors.onInk} />
+          <Icon strokeWidth={2.25} name="calendar" size={14} color={colors.onInk} />
           <Text role="label" tone="onInk">Reserve</Text>
         </Pressable>
       ) : null}
@@ -461,7 +461,7 @@ function RailCard({
             <View style={styles.cardLine}>
               {facts.rating ? (
                 <>
-                  <Icon name="star-filled" size={14} color={colors.ink} />
+                  <Icon strokeWidth={2.25} name="star-filled" size={14} color={colors.ink} />
                   <Text role="small">{`${facts.rating}${facts.reviews ? ` (${facts.reviews})` : ""}`}</Text>
                 </>
               ) : null}
@@ -472,11 +472,11 @@ function RailCard({
           </View>
           <View style={styles.cardActions}>
             <Pressable accessibilityRole="button" accessibilityLabel={saved ? "Saved" : "Save"} onPress={onSave} style={styles.action}>
-              <Icon name={saved ? "heart-filled" : "heart"} size={14} />
+              <Icon strokeWidth={2.25} name={saved ? "heart-filled" : "heart"} size={14} />
               <Text role="small">{saved ? "Saved" : "Save"}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Share" onPress={onShare} style={styles.action}>
-              <Icon name="share-2" size={14} />
+              <Icon strokeWidth={2.25} name="share-2" size={14} />
               <Text role="small">Share</Text>
             </Pressable>
           </View>
@@ -486,14 +486,8 @@ function RailCard({
   );
 }
 
-const FLOAT = {
-  backgroundColor: colors.paper,
-  shadowColor: colors.photo,
-  shadowOpacity: 0.16,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 4,
-} as const;
+/** A control on the map wears the web's shadow-float. */
+const FLOAT = { backgroundColor: colors.paper, boxShadow: shadow.float } as const;
 
 /** Reserve, Save, Share and the Premier pill share one height (MESITA-5061). */
 const CARD_BUTTON_HEIGHT = 32;
@@ -544,7 +538,7 @@ const styles = StyleSheet.create({
     ...FLOAT,
     padding: space.md,
     gap: space.xs,
-    borderRadius: radius.card,
+    borderRadius: radius["2xl"],
     alignItems: "center",
   },
   signIn: {
@@ -597,7 +591,7 @@ const styles = StyleSheet.create({
     left: space.md,
     right: space.md,
     padding: space.md,
-    borderRadius: radius.card,
+    borderRadius: radius["2xl"],
     backgroundColor: colors.paper,
   },
   rail: { position: "absolute", left: 0, right: 0 },
@@ -608,7 +602,7 @@ const styles = StyleSheet.create({
     right: space.md,
     padding: space.md,
     gap: space.xs,
-    borderRadius: radius.card,
+    borderRadius: radius["2xl"],
     backgroundColor: colors.ink,
   },
   addPill: {
@@ -623,7 +617,7 @@ const styles = StyleSheet.create({
   },
   card: {
     ...FLOAT,
-    borderRadius: radius.card,
+    borderRadius: radius["2xl"],
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.border,
@@ -649,7 +643,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 10,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
     backgroundColor: colors.vip,
   },
   nameRow: { flexDirection: "row", alignItems: "center", gap: space.xs },
@@ -663,7 +657,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: space.xs,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
   },

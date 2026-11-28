@@ -60,7 +60,7 @@ export type { Plan };
 const styles = StyleSheet.create({
   fill: { flex: 1 },
   page: { padding: space.lg, gap: space.md },
-  card: { padding: space.lg, borderWidth: 1, borderColor: colors.border, borderRadius: radius.card, backgroundColor: colors.paper, gap: space.sm },
+  card: { padding: space.lg, borderWidth: 1, borderColor: colors.border, borderRadius: radius["2xl"], backgroundColor: colors.paper, gap: space.sm },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.md },
   words: { flex: 1, gap: 2 },
   track: { height: 6, borderRadius: 3, backgroundColor: colors.fill, overflow: "hidden" },

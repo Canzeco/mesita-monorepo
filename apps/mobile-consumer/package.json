@@ -16,7 +16,8 @@
   },
   "scripts": {
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm export",
-    "lint": "expo lint --max-warnings 0 && node lint/check-fixture.mjs",
+    "lint": "expo lint --max-warnings 0 && node lint/check-fixture.mjs && node scripts/sync-icons.mjs --check",
+    "icons": "node scripts/sync-icons.mjs",
     "typecheck": "expo customize tsconfig.json && tsc --noEmit",
     "test": "jest && node --test scripts/release-order.test.mjs",
     "export": "node scripts/with-env.mjs production expo export --platform ios --platform android",

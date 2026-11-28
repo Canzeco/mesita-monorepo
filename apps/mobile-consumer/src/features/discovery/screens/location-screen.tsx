@@ -1,14 +1,15 @@
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
 import { useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
+import { Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native";
 
 import { Icon, type IconName } from "@/components/icon";
+import { Spinner } from "@/components/spinner";
 import { Text } from "@/components/text";
 import { Window } from "@/components/window";
 import { useSession } from "@/features/auth";
 import { useErrorCopy } from "@/lib/error-copy";
-import { colors, maxFontSizeMultiplier, pressedOpacity, radius, type } from "@/theme";
+import { colors, maxFontSizeMultiplier, pressedStyle, radius, type } from "@/theme";
 
 import { useActiveLocation } from "../location-context";
 import { DISTRITO_TEC, type Point } from "../model";
@@ -88,7 +89,7 @@ export function LocationScreen({ onDone, onSignIn }: { onDone: () => void; onSig
         {member ? (
           <View style={styles.search}>
             <View style={styles.box}>
-              <Icon name="search" size={16} color={colors.muted} />
+              <Icon strokeWidth={2.25} name="search" size={16} color={colors.muted} />
               <TextInput
                 accessibilityLabel="Search a location"
                 placeholder="Search a city, neighborhood or address"
@@ -209,10 +210,10 @@ function LocationRow({ icon, title, line, alert = false, busy = false, chosen = 
       disabled={busy}
       onPress={onPress}
       testID={testID}
-      style={({ pressed }) => [styles.row, pressed && { opacity: pressedOpacity }]}
+      style={({ pressed }) => [styles.row, pressed && pressedStyle]}
     >
       <View style={[styles.disc, chosen && styles.discOn]}>
-        {busy ? <ActivityIndicator color={colors.ink} /> : <Icon name={icon} size={16} color={chosen ? colors.onInk : colors.ink} />}
+        {busy ? <Spinner /> : <Icon strokeWidth={2.25} name={icon} size={16} color={chosen ? colors.onInk : colors.ink} />}
       </View>
       <View style={styles.words}>
         <Text role="label">{title}</Text>
@@ -222,7 +223,7 @@ function LocationRow({ icon, title, line, alert = false, busy = false, chosen = 
           </Text>
         ) : null}
       </View>
-      {chosen ? <Icon name="check" size={16} /> : null}
+      {chosen ? <Icon strokeWidth={2.25} name="check" size={16} /> : null}
     </Pressable>
   );
 }
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.field,
+    borderRadius: radius.xl,
   },
   input: { ...type.small, flex: 1, color: colors.ink },
   row: {

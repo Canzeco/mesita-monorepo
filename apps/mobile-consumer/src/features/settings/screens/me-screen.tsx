@@ -11,7 +11,7 @@ import { useMyProfile, useSession, type Profile } from "@/features/auth";
 import { listNotices } from "@/features/notifications";
 import { listReservations } from "@/features/reservations";
 import { useErrorCopy } from "@/lib/error-copy";
-import { colors, pressedOpacity, radius, space } from "@/theme";
+import { colors, pressedStyle, radius, space } from "@/theme";
 
 export type MeState =
   | { kind: "anonymous" }
@@ -111,10 +111,10 @@ export function MeView({
                 accessibilityRole="button"
                 accessibilityLabel={tile.label}
                 onPress={nav?.[tile.key]}
-                style={({ pressed }) => [styles.tile, pressed && { opacity: pressedOpacity }]}
+                style={({ pressed }) => [styles.tile, pressed && pressedStyle]}
               >
                 <View style={styles.chip}>
-                  <Icon name={tile.icon} size={18} />
+                  <Icon strokeWidth={2.25} name={tile.icon} size={18} />
                 </View>
                 <Text role="label" numberOfLines={1} style={styles.tileLabel}>{tile.label}</Text>
                 {(badges[tile.key] ?? 0) > 0 ? (
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   nameBar: {
     alignSelf: "stretch",
     minHeight: 48,
-    borderRadius: radius.control,
+    borderRadius: radius.lg,
     backgroundColor: colors.paper,
     borderWidth: 1,
     borderColor: colors.border,
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     flexBasis: "46%",
     minHeight: 56,
     backgroundColor: colors.paper,
-    borderRadius: radius.card,
+    borderRadius: radius["2xl"],
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: "row",

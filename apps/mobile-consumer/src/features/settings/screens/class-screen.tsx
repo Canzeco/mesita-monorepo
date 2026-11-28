@@ -57,6 +57,6 @@ export function ClassScreen({ nav }: { nav: ClassNav }) {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: colors.page },
   content: { padding: space.lg, gap: space.lg },
-  card: { backgroundColor: colors.ink, borderRadius: radius.card, padding: space.lg, gap: space.sm, borderWidth: 1, borderColor: colors.vip },
+  card: { backgroundColor: colors.ink, borderRadius: radius["2xl"], padding: space.lg, gap: space.sm, borderWidth: 1, borderColor: colors.vip },
   upgrade: { gap: space.md, alignSelf: "stretch" },
 });

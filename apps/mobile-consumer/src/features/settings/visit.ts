@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { callEdge } from "@/lib/edge";
 
 export type Visit = {
@@ -30,9 +31,6 @@ export type Visit = {
   billedAt: string | null;
   payingAt: string | null;
 };
-
-const money = (cents: number, currency: string) =>
-  (cents / 100).toLocaleString("en-US", { style: "currency", currency: currency.toUpperCase() });
 
 /** One visit, the same read the web ticket uses. */
 export function getVisit(id: string, signal?: AbortSignal): Promise<Visit | null> {
@@ -81,18 +79,18 @@ export function getVisit(id: string, signal?: AbortSignal): Promise<Visit | null
       place: tab.place?.name ?? "A Mesita place",
       status: tab.status,
       currency: tab.currency,
-      bill: tab.bill_cents == null ? null : money(tab.bill_cents, tab.currency),
+      bill: tab.bill_cents == null ? null : moneyLabel(tab.bill_cents, tab.currency),
       billCents: tab.bill_cents ?? null,
-      credit: money(tab.credit_cents, tab.currency),
+      credit: moneyLabel(tab.credit_cents, tab.currency),
       creditCents: tab.credit_cents,
-      card: money(card, tab.currency),
+      card: moneyLabel(card, tab.currency),
       cardCents: card,
-      cash: money(cash, tab.currency),
+      cash: moneyLabel(cash, tab.currency),
       cashCents: cash,
-      tip: money(tip, tab.currency),
+      tip: moneyLabel(tip, tab.currency),
       tipCents: tip,
-      suggestedTip: tab.tip_suggested_cents && tab.tip_suggested_cents !== tip ? money(tab.tip_suggested_cents, tab.currency) : null,
-      total: money(total, tab.currency),
+      suggestedTip: tab.tip_suggested_cents && tab.tip_suggested_cents !== tip ? moneyLabel(tab.tip_suggested_cents, tab.currency) : null,
+      total: moneyLabel(total, tab.currency),
       paidAt: tab.paid_at ?? null,
       waiter: tab.waiter_name ?? null,
       ticket: tab.ticket ?? null,

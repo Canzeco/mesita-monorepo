@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { callEdge } from "@/lib/edge";
 
 const person = z.object({
@@ -70,24 +71,20 @@ export function getGift(id: string, signal?: AbortSignal): Promise<Gift | null> 
   });
 }
 
-export function giftMoney(cents: number, currency: string): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: currency.toUpperCase() });
-}
-
 function who(person: { name: string; you: boolean } | null, none: string): string {
   if (!person) return none;
   return person.you ? "You" : person.name || none;
 }
 
 export function giftSentence(gift: Gift): string {
-  const amount = giftMoney(gift.amountCents, gift.currency);
+  const amount = moneyLabel(gift.amountCents, gift.currency);
   if (gift.sender.you) return `You sent ${amount}`;
   if (gift.recipient?.you) return `${gift.sender.name} sent you ${amount}`;
   return `${gift.sender.name} sent ${amount}`;
 }
 
 export function giftOutcome(gift: Gift): string {
-  const amount = giftMoney(gift.amountCents, gift.currency);
+  const amount = moneyLabel(gift.amountCents, gift.currency);
   if (gift.status === "open") return "Waiting for a friend to take it.";
   if (gift.status === "taken_back") {
     return gift.sender.you ? `You took it back. ${amount} is in your balance again.` : `${gift.sender.name} took it back.`;

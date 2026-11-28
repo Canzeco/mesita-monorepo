@@ -5,7 +5,7 @@ import { SettingsGroup, SettingsRow } from "@/components/settings-row";
 import { Text } from "@/components/text";
 import { useMyProfile, signOut } from "@/features/auth";
 import { CONTRACT } from "@/lib/build";
-import { colors, pressedOpacity, space } from "@/theme";
+import { colors, pressedStyle, space } from "@/theme";
 
 const TERMS = "https://landing.mesita.ai/terms";
 const PRIVACY = "https://landing.mesita.ai/privacy";
@@ -43,8 +43,8 @@ export function SettingsScreen({ nav }: { nav: SettingsNav }) {
         <SettingsRow icon="scroll" label="Privacy policy" onPress={() => void Linking.openURL(PRIVACY)} />
       </SettingsGroup>
       <SettingsGroup>
-        <Pressable accessibilityRole="button" testID="sign-out" onPress={askSignOut} style={({ pressed }) => [styles.signOut, pressed && { opacity: pressedOpacity }]}>
-          <Icon name="log-in" size={16} />
+        <Pressable accessibilityRole="button" testID="sign-out" onPress={askSignOut} style={({ pressed }) => [styles.signOut, pressed && pressedStyle]}>
+          <Icon strokeWidth={2.25} name="log-in" size={16} />
           <Text role="label">Sign out</Text>
         </Pressable>
       </SettingsGroup>

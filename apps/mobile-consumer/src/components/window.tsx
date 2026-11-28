@@ -22,7 +22,7 @@ export function Window({ title, label, onClose, children }: Props) {
               {title}
             </Text>
             <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.close}>
-              <Icon name="x" size={24} />
+              <Icon strokeWidth={2.25} name="x" size={24} />
             </Pressable>
           </View>
         ) : null}
@@ -34,7 +34,7 @@ export function Window({ title, label, onClose, children }: Props) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, justifyContent: "center", paddingHorizontal: 20, backgroundColor: colors.dim },
-  card: { maxHeight: "100%", overflow: "hidden", borderRadius: radius.card, backgroundColor: colors.paper },
+  card: { maxHeight: "100%", overflow: "hidden", borderRadius: radius["2xl"], backgroundColor: colors.paper },
   header: {
     height: 56,
     flexDirection: "row",

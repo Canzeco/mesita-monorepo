@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { callEdge } from "@/lib/edge";
 
 const entrySchema = z.object({
@@ -62,10 +63,6 @@ export type Credit = {
     purchase: string;
   } | null;
 };
-
-function money(cents: number, currency: string): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: currency.toUpperCase() });
-}
 
 function dated(iso: string): string {
   const date = new Date(iso);
@@ -142,7 +139,7 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
       return {
         place,
         placeId,
-        headline: money(refunded, currency),
+        headline: moneyLabel(refunded, currency),
         state: "Refunded",
         when: when(refund.at),
         note: "Refunded to the card you paid with.",
@@ -153,19 +150,19 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
         type: null,
         refund: null,
         refundWhen: null,
-        available: money(balance.available_cents, currency),
+        available: moneyLabel(balance.available_cents, currency),
         pending: null,
-        spendable: money(balance.spendable_cents, currency),
+        spendable: moneyLabel(balance.spendable_cents, currency),
         purchase: pid.slice(0, 8).toUpperCase(),
         canPay: false,
         canGift: false,
         bonusStep: null,
         refundCard: {
-          bought: original ? { when: when(original.at), value: money(Math.abs(original.amount_cents), currency) } : null,
+          bought: original ? { when: when(original.at), value: moneyLabel(Math.abs(original.amount_cents), currency) } : null,
           refundedOn: when(refund.at),
-          amount: money(refunded, currency),
-          taken: taken !== refunded ? money(taken, currency) : null,
-          original: original ? { when: when(original.at), value: money(Math.abs(original.amount_cents), currency) } : null,
+          amount: moneyLabel(refunded, currency),
+          taken: taken !== refunded ? moneyLabel(taken, currency) : null,
+          original: original ? { when: when(original.at), value: moneyLabel(Math.abs(original.amount_cents), currency) } : null,
           purchase: pid.slice(0, 8).toUpperCase(),
         },
       };
@@ -185,16 +182,16 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
     const given = entry.kind === "gift_out" || entry.kind === "gift_back";
     const place = balance.place?.name ?? "A Mesita place";
     const headline = out
-      ? `−${money(amount, currency)}`
+      ? `−${moneyLabel(amount, currency)}`
       : (bought && !refund) || entry.kind === "bonus" || entry.kind === "gift_in"
-        ? `+${money(amount, currency)}`
-        : money(amount, currency);
+        ? `+${moneyLabel(amount, currency)}`
+        : moneyLabel(amount, currency);
     const note = received
       ? `A friend sent you credit at ${place}.`
       : given
         ? entry.kind === "gift_back"
-          ? `You took back ${money(amount, currency)} you had sent. It is in your balance at ${place}.`
-          : `You sent ${money(amount, currency)} of your credit at ${place} to a friend.`
+          ? `You took back ${moneyLabel(amount, currency)} you had sent. It is in your balance at ${place}.`
+          : `You sent ${moneyLabel(amount, currency)} of your credit at ${place} to a friend.`
         : null;
     return {
       place,
@@ -204,23 +201,23 @@ export function getCredit(placeId: string, entryKey: string, signal?: AbortSigna
       when: when(entry.at),
       note,
       testMode: wallet.test_mode,
-      bought: bought ? money(amount, currency) : null,
-      bonus: bonus ? `+${money(bonus.amount_cents, currency)}` : null,
-      totalCredit: bought && bonus ? money(amount + bonus.amount_cents, currency) : null,
+      bought: bought ? moneyLabel(amount, currency) : null,
+      bonus: bonus ? `+${moneyLabel(bonus.amount_cents, currency)}` : null,
+      totalCredit: bought && bonus ? moneyLabel(amount + bonus.amount_cents, currency) : null,
       type: bought || received || given ? null : labelOf(entry),
-      refund: refund ? money(refund.refunded_cents ?? Math.abs(refund.amount_cents), currency) : null,
+      refund: refund ? moneyLabel(refund.refunded_cents ?? Math.abs(refund.amount_cents), currency) : null,
       refundWhen: refund ? when(refund.at) : null,
-      available: money(balance.available_cents, currency),
-      pending: balance.pending_cents > 0 ? money(balance.pending_cents, currency) : null,
-      spendable: money(balance.spendable_cents, currency),
+      available: moneyLabel(balance.available_cents, currency),
+      pending: balance.pending_cents > 0 ? moneyLabel(balance.pending_cents, currency) : null,
+      spendable: moneyLabel(balance.spendable_cents, currency),
       purchase: entry.purchase_id ? entry.purchase_id.slice(0, 8).toUpperCase() : null,
       canPay: !given && balance.spendable_cents > 0,
       canGift: wallet.can_send && balance.spendable_cents > 0,
       bonusStep: bought && bonus && !refund
         ? {
-            pay: money(amount, currency),
+            pay: moneyLabel(amount, currency),
             waiting: entry.pending || bonus.pending,
-            bonus: `+${money(bonus.amount_cents, currency)}`,
+            bonus: `+${moneyLabel(bonus.amount_cents, currency)}`,
             ready: bonus.pending && bonus.available_at ? bonus.available_at : null,
           }
         : null,

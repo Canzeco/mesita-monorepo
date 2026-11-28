@@ -7,7 +7,7 @@ export function Skeleton({ style }: { style?: ViewStyle }) {
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[{ backgroundColor: colors.fill, borderRadius: radius.control }, style]}
+      style={[{ backgroundColor: colors.fill, borderRadius: radius.lg }, style]}
     />
   );
 }
