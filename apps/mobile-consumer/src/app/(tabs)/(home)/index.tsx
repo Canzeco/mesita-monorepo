@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 
 import { HomeScreen } from "@/features/discovery/screens/home-screen";
 import { FeedScreen } from "@/features/social/screens/feed-screen";
+import { CreditReminder } from "@/features/pay";
 
 export { RouteError as ErrorBoundary } from "@/features/auth";
 
@@ -32,6 +33,7 @@ export default function Route() {
       onMenu={() => router.push("/categories")}
       onWelcome={welcome}
       onSocial={() => setSocial(true)}
+      reminder={<CreditReminder onOpen={(id) => router.push({ pathname: "/place/[id]", params: { id } })} />}
     />
   );
 }
