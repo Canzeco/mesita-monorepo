@@ -243,6 +243,8 @@ export function PlaceRowCard({
             </div>
           )}
           {isPremierPlace(place) ? <PremierPill placement="top" /> : null}
+          {/* Cashback on the photo's bottom-left (MESITA-5103). */}
+          <OfferDisplay offers={google ? null : (place.offers as OfferInput | null | undefined)} />
           {showScores ? (
             <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
           ) : null}
@@ -280,7 +282,6 @@ export function PlaceRowCard({
         <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col gap-2">
           {/* WHAT YOU GET, THEN WHAT YOU CAN DO (MESITA-5100): the two offer
               boxes over Reserve, on Save · Share's grid. */}
-          <OfferDisplay offers={google ? null : (place.offers as OfferInput | null | undefined)} />
           {/* Reserve alone takes the row (MESITA-5091); Premier is on the
               photo (MESITA-5059). */}
           <PlaceBannerRow

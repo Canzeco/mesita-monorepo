@@ -2,7 +2,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
-import { BadgePercent, CalendarCheck, ReceiptText, Wallet } from "lucide-react";
+import { BadgePercent, CalendarCheck, ReceiptText } from "lucide-react";
 
 import {
   OfferTrack,
@@ -13,7 +13,6 @@ import {
   type OfferInput,
   type OfferSlide,
 } from "@mesita/place-profile";
-import { voucherPct } from "@mesita/place-profile/lib/offers";
 import type { Place } from "@/lib/api/places";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -114,36 +113,26 @@ export function OfferButton({
  *  the right column on Save · Share's grid (CARD_ACTIONS_ROW): Bonus over
  *  Save, Back over Share; the photo keeps only Premier. */
 export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
-  const bonus = offers?.sell.includes("voucher_1000") ? voucherPct(offers, "voucher_1000") : 0;
+  // ONLY CASHBACK, ON THE PHOTO'S BOTTOM-LEFT (Pato, 2026-11-28, MESITA-5103:
+  // "in preview don't show the bonus, only the cashback, is easier to
+  // understand. 5% Cashback … don't mention bonuses. and move cashback to the
+  // bottom left"): one green box, Premier's mirror at the bottom, the
+  // place's highest cashback line. No cashback, no box. A label: a tap
+  // opens the place.
   const back = offers?.cashback_pct ?? 0;
-  const boxes = [
-    // AN ICON EACH (Pato, 2026-11-28, MESITA-5101: "icon for pay and for
-    // prepay, maybe wallet"): a wallet for the credit you load ahead, a
-    // receipt for the bill you pay.
-    ...(bonus > 0 ? [{ key: "prepay", words: `${bonus}% Bonus`, tone: "bg-[#635BFF] text-white", Icon: Wallet }] : []),
-    ...(back > 0 ? [{ key: "pay", words: `${back}% Back`, tone: "bg-[#00D66F] text-neutral-950", Icon: ReceiptText }] : []),
-  ];
-  if (boxes.length === 0) return null;
+  if (back <= 0) return null;
   return (
     <p
-      className={cn("pointer-events-none m-0 grid gap-2", boxes.length === 2 ? "grid-cols-2" : "grid-cols-1")}
-      aria-label={boxes.map((b) => b.words).join(", ")}
+      className={cn(
+        CARD_BUTTON_BOX,
+        "pointer-events-none absolute bottom-2 left-2 z-10 m-0 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#00D66F] px-2.5 font-sans text-sm font-semibold text-neutral-950 tabular-nums",
+      )}
+      aria-label={`${back}% Cashback`}
       data-card-offer-display
+      data-card-offer="pay"
     >
-      {boxes.map((b) => (
-        <span
-          key={b.key}
-          className={cn(
-            CARD_BUTTON_BOX,
-            "flex min-w-0 items-center justify-center border border-[#141414] px-2 font-sans text-sm font-semibold tabular-nums",
-            b.tone,
-          )}
-          data-card-offer={b.key}
-        >
-          <b.Icon className="mr-1.5 h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">{b.words}</span>
-        </span>
-      ))}
+      <ReceiptText className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      {back}% Cashback
     </p>
   );
 }
@@ -164,8 +153,11 @@ export function listCardReservable(place: {
  *  Prepay under MESITA-5056, Bonus under MESITA-5054, and Off for a visit
  *  discount under MESITA-5050. Tickets and receipts still name the bonus
  *  amount Bonus. */
-export function offerBannerWord(_slides: OfferSlide[]): "Offers" {
-  return "Offers";
+// THE CASHBACK ITSELF (Pato, 2026-11-28, MESITA-5103: "instead of saying
+// offers, mention the actual cashback. 5% Cashback or 10% Cashback"): the
+// place's cashback where it gives one; Offers only where it gives none.
+export function offerBannerWord(_slides: OfferSlide[], cashbackPct?: number | null): string {
+  return cashbackPct && cashbackPct > 0 ? `${cashbackPct}% Cashback` : "Offers";
 }
 
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
@@ -190,6 +182,7 @@ export function PlaceBannerRow({
   reserveLabel,
   reserveDetail,
   premier = false,
+  cashbackPct,
   className,
   cellClassName,
 }: {
@@ -201,6 +194,8 @@ export function PlaceBannerRow({
    *  okay, and that's it"): a gold Premier segment first. Search's map card
    *  only; Home keeps Premier on its photo. A label: a tap opens nothing. */
   premier?: boolean;
+  /** The place's highest cashback line (MESITA-5103): the green cell says it. */
+  cashbackPct?: number | null;
   /** Read by the place screen's times; the still card does not need them. */
   hours?: unknown;
   timezone?: string | null;
@@ -302,7 +297,7 @@ export function PlaceBannerRow({
             data-tile-bonus
           >
             <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
-            {offerBannerWord(slides)}
+            {offerBannerWord(slides, cashbackPct)}
           </PushLink>
         ),
       )}
