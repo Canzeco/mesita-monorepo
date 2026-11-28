@@ -168,8 +168,10 @@ export function offerSlides(offers: OfferInput | null | undefined): OfferSlide[]
     if (s.key === "cashback") {
       const { pct, flat } = cashbackOf(offers);
       if (pct <= 0) return [];
-      // "Cashback" (MESITA-4777; "Back" before; Discount gone, MESITA-5076).
-      const word = "Cashback";
+      // "BACK", NOT "CASHBACK" (Pato, 2026-11-27, MESITA-5092: "don't
+      // mention cashback, mention back. its more honest": it comes back as
+      // credit here, not as cash). "Cashback" under MESITA-4777.
+      const word = "Back";
       // NO "UP TO" (Pato, 2026-11-23, MESITA-4781: "in pay it only applies
       // one offer"): the guest's own line, else the highest one.
       void flat;
