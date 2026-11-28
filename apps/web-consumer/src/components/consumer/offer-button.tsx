@@ -2,7 +2,7 @@
 
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
-import { BadgePercent, CalendarCheck, ReceiptText } from "lucide-react";
+import { BadgePercent, CalendarCheck, QrCode } from "lucide-react";
 
 import {
   OfferTrack,
@@ -134,7 +134,8 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
       data-card-offer-display
       data-card-offer="pay"
     >
-      <ReceiptText className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      {/* The Pay tab's QR (MESITA-5116): cashback is earned paying by QR. */}
+      <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       {back}% Cashback
     </p>
   );
@@ -299,7 +300,12 @@ export function PlaceBannerRow({
             )}
             data-tile-bonus
           >
-            <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
+            {/* Cashback shows the Pay tab's QR, Offers the percent badge (MESITA-5116). */}
+            {cashbackPct && cashbackPct > 0 ? (
+              <QrCode className="h-4 w-4 shrink-0" aria-hidden />
+            ) : (
+              <BadgePercent className="h-4 w-4 shrink-0" aria-hidden />
+            )}
             {offerBannerWord(slides, cashbackPct)}
           </PushLink>
         ),
