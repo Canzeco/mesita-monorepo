@@ -243,20 +243,21 @@ export function PlaceBannerRow({
 /** A Premier place on a card: a small gold pill on the photo's top-left
  *  corner, 8px in from both edges (Pato, MESITA-5059, moved up by
  *  MESITA-5061: "premier on top, not at the bottom"), on Home's card and
- *  Search's rail card. The card buttons' box (CARD_BUTTON_BOX), so it is
- *  as tall as Reserve, Prepay, Save and Share (MESITA-5061). The VIP gold, dark type, a black rosette (MESITA-5052). A label,
+ *  Search's rail card. 24px, smaller than the card buttons, with a 1px
+ *  black border (MESITA-5063, Pato: "add black border … do smaller"): it is
+ *  a label, not a button, and the border keeps the gold visible on a bright
+ *  photo. The VIP gold, dark type, a black rosette (MESITA-5052). A label,
  *  so a tap falls through to the photo. */
 export function PremierPill({ className }: { className?: string }) {
   return (
     <p
       className={cn(
-        CARD_BUTTON_BOX,
-        "pointer-events-none absolute top-2 left-2 z-10 flex items-center gap-1.5 bg-[#E9C46A] px-2.5 font-sans text-xs font-semibold text-neutral-950 shadow-sm",
+        "pointer-events-none absolute top-2 left-2 z-10 flex h-6 items-center gap-1 rounded-md border border-[#141414] bg-[#E9C46A] pr-2 pl-1.5 font-sans type-label font-semibold text-neutral-950",
         className,
       )}
       data-card-premier
     >
-      <PremierRosette className="h-4 w-4" fill="#141414" check="#fff" decorative />
+      <PremierRosette className="h-[13px] w-[13px]" fill="#141414" check="#fff" decorative />
       Premier
     </p>
   );
