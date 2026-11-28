@@ -107,9 +107,12 @@ export function OfferButton({
  *  is pay. For prepay, select always the medium prepay bonus"). Left, purple
  *  "Y% Bonus": the medium voucher's bonus (voucher_1000), only where the
  *  place sells it. Right, green "X% Back": the place's highest cashback
- *  line. One alone takes the whole width. Nothing moves. 8px from the
- *  photo's sides and 9px up, on Save · Share's line (MESITA-5090), a black
- *  border like Premier (MESITA-5091). A label: a tap opens the place. */
+ *  line. One alone takes the whole width. Nothing moves. A black border
+ *  like Premier (MESITA-5091). A label: a tap opens the place.
+ *  ABOVE RESERVE, NOT ON THE PHOTO (Pato, 2026-11-28, MESITA-5100): the
+ *  card reads what it is, what you get, what you can do. The boxes sit in
+ *  the right column on Save · Share's grid (CARD_ACTIONS_ROW): Bonus over
+ *  Save, Back over Share; the photo keeps only Premier. */
 export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
   const bonus = offers?.sell.includes("voucher_1000") ? voucherPct(offers, "voucher_1000") : 0;
   const back = offers?.cashback_pct ?? 0;
@@ -120,7 +123,7 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
   if (boxes.length === 0) return null;
   return (
     <p
-      className="pointer-events-none absolute inset-x-2 bottom-[9px] z-10 flex gap-2"
+      className={cn("pointer-events-none m-0 grid gap-2", boxes.length === 2 ? "grid-cols-2" : "grid-cols-1")}
       aria-label={boxes.map((b) => b.words).join(", ")}
       data-card-offer-display
     >
@@ -129,7 +132,7 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
           key={b.key}
           className={cn(
             CARD_BUTTON_BOX,
-            "flex min-w-0 flex-1 items-center justify-center border border-[#141414] px-2 font-sans text-sm font-semibold tabular-nums shadow-sm",
+            "flex min-w-0 items-center justify-center border border-[#141414] px-2 font-sans text-sm font-semibold tabular-nums",
             b.tone,
           )}
           data-card-offer={b.key}
