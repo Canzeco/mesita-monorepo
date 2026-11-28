@@ -1,24 +1,33 @@
-// 🦚 Main § 7, Voucher Offers (MESITA-5002): what the app sells. Three
+// 🦚 Main § 7, Voucher Offers (MESITA-5126): what the app sells. Four
 // vouchers, each bonus the place's pick (money.ts VOUCHER_BONUS_STEPS_BPS);
-// then the visit discounts each place sets (cashback.ts *_STEPS_BPS). Guests
-// see discounts only (#4928). Guest words: credit and bonus.
+// then the one credit-back rate on every bill (MESITA-5124). Every reward is
+// credit: there are no discounts and no VIP lines. Guest words: credit and
+// bonus.
 const VOUCHERS = [
+  {
+    name: "Welcome",
+    note: "One per guest per place",
+    pay: "MX$100",
+    bonus: "+30% or +60%",
+  },
   { name: "Small", pay: "MX$200", bonus: "+10% or +20%" },
   { name: "Medium", pay: "MX$1,000", bonus: "+20% or +40%" },
   { name: "Big", pay: "MX$5,000", bonus: "+30% or +60%" },
 ];
 
-const VISITS = [
-  { name: "Welcome", who: "Your first bill at the place", off: "10% or 20%" },
-  { name: "Returning", who: "Every bill after that", off: "5% or 10%" },
-  { name: "VIP Welcome", who: "A VIP’s first bill", off: "10% or 20%" },
-  { name: "VIP Returning", who: "A VIP’s bills after that", off: "10% or 20%" },
+const BACK = [
+  { name: "Every bill", who: "The first like every later one", back: "5%" },
+  {
+    name: "Where Small is +20%",
+    who: "A place whose Small voucher bonus is +20% can give more",
+    back: "10%",
+  },
 ];
 
 const RULES = [
   {
-    title: "Your money now, the bonus in 3 hours.",
-    body: "What the guest pays is ready the moment the voucher sells and can pay that night’s bill. The bonus lands 3 hours later, so it always pays for a return visit.",
+    title: "Everything lands in 3 hours.",
+    body: "What the guest pays and the bonus land together 3 hours after the voucher sells, nothing before. A meal is shorter than that, so a voucher always pays for a return visit.",
   },
   {
     title: "All credit behaves the same.",
@@ -44,8 +53,8 @@ function Offers() {
             Pay MX$1,000. Get up to MX$1,400.
           </h2>
           <p className="text-muted-foreground text-base leading-relaxed md:text-lg">
-            Three vouchers, each with a bonus the place picks. What you pay is
-            ready now; the bonus lands in 3 hours.
+            Four vouchers, each with a bonus the place picks. What you pay and
+            the bonus land together, 3 hours later.
           </p>
         </div>
 
@@ -55,14 +64,19 @@ function Offers() {
               <tr className="text-muted-foreground border-border border-b text-xs font-semibold tracking-wide uppercase">
                 <th className={TH}>Voucher</th>
                 <th className={TH}>You pay</th>
-                <th className={`${TH} text-right`}>Bonus in 3 h</th>
+                <th className={`${TH} text-right`}>Bonus</th>
               </tr>
             </thead>
             <tbody className="divide-border divide-y">
-              {VOUCHERS.map(({ name, pay, bonus }) => (
-                <tr key={name}>
+              {VOUCHERS.map(({ name, note, pay, bonus }) => (
+                <tr key={name} className="align-top">
                   <th scope="row" className={`${TH} font-semibold`}>
                     {name}
+                    {note && (
+                      <span className="text-muted-foreground mt-1 block text-sm font-normal">
+                        {note}
+                      </span>
+                    )}
                   </th>
                   <td className={`${TH} tabular-nums`}>{pay}</td>
                   <td
@@ -78,23 +92,24 @@ function Offers() {
 
         <div className="flex flex-col gap-4">
           <h3 className="text-xl font-semibold tracking-tight">
-            Discounts at the bill
+            Credit back on every bill
           </h3>
           <p className="text-muted-foreground max-w-3xl text-[15px] leading-relaxed">
-            Each place can also take a discount off the part of the bill not
-            paid with credit. An invitation code makes a guest VIP.
+            Paying a bill also earns credit back, on the part not paid with
+            credit. Each place decides whether to give it. It is paid in credit
+            at that place, never as a discount off the bill.
           </p>
           <div className="border-border bg-card shadow-elev overflow-hidden rounded-3xl border">
             <table className="w-full text-left text-[15px]">
               <thead>
                 <tr className="text-muted-foreground border-border border-b text-xs font-semibold tracking-wide uppercase">
-                  <th className={TH}>Visit</th>
+                  <th className={TH}>Bill</th>
                   <th className={`${TH} hidden md:table-cell`}>When</th>
-                  <th className={`${TH} text-right`}>Off the bill</th>
+                  <th className={`${TH} text-right`}>Credit back</th>
                 </tr>
               </thead>
               <tbody className="divide-border divide-y">
-                {VISITS.map(({ name, who, off }) => (
+                {BACK.map(({ name, who, back }) => (
                   <tr key={name} className="align-top">
                     <th scope="row" className={`${TH} font-semibold`}>
                       {name}
@@ -111,7 +126,7 @@ function Offers() {
                     <td
                       className={`${TH} text-primary text-right font-semibold whitespace-nowrap tabular-nums`}
                     >
-                      {off}
+                      {back}
                     </td>
                   </tr>
                 ))}
