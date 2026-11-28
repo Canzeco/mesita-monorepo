@@ -33,7 +33,7 @@ const OFFER_BOX =
 
 /** ONE SWITCHING BOX (Pato, 2026-11-17, MESITA-4219: "this boxes looks like
  *  shit, return to the switching boxes"): every offer this guest can buy here
- *  in one box the height of Save · Share, Prepay · Welcome, each
+ *  in one box the height of Save · Share, Offers · Welcome, each
  *  in its colour with its "N% Bonus" pill, on the shared 2s beat. A TAP OPENS
  *  THE PLACE (Pato, 2026-11-19, MESITA-4455: "don't redirect directly to the
  *  offers page. direct to the place profile, and then i need to click
@@ -111,12 +111,13 @@ export function listCardReservable(place: {
   return place.reservations_enabled === true && (place.phone ?? "").trim() !== "";
 }
 
-/** The green button's word (Pato, 2026-11-27, MESITA-5056: "Don't call it
- *  Bonus, call it Prepay"). Every offer says Prepay. It said Bonus under
- *  MESITA-5054, and Off for a visit discount under MESITA-5050. Tickets and
- *  receipts still name the bonus amount Bonus. */
-export function offerBannerWord(_slides: OfferSlide[]): "Prepay" {
-  return "Prepay";
+/** The green button's word (Pato, 2026-11-27, MESITA-5078: "change from
+ *  prepay in green to offers, is cleaner"). Every offer says Offers. It said
+ *  Prepay under MESITA-5056, Bonus under MESITA-5054, and Off for a visit
+ *  discount under MESITA-5050. Tickets and receipts still name the bonus
+ *  amount Bonus. */
+export function offerBannerWord(_slides: OfferSlide[]): "Offers" {
+  return "Offers";
 }
 
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
@@ -124,10 +125,10 @@ export function offerBannerWord(_slides: OfferSlide[]): "Prepay" {
  *  / and green say icon discounts / use icons"; then "discounts in green").
  *  Nothing moves. Reservations only: one red Reserve, the full width
  *  (MESITA-5021: the left half grows from 50% to 100%). Offers only: one
- *  green Prepay, the full width (the right half grows from 50% to 100%).
- *  Both: Reserve left, Prepay right, each half. Neither: nothing, and
+ *  green Offers, the full width (the right half grows from 50% to 100%).
+ *  Both: Reserve left, Offers right, each half. Neither: nothing, and
  *  Save · Share stay.
- *  Reserve opens Reserve; Prepay opens the place (MESITA-4455). A live
+ *  Reserve opens Reserve; Offers opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
  *  (MESITA-5014). The open times that rotated in Reserve (MESITA-5011) are
  *  gone from the card; the place screen keeps them. */
