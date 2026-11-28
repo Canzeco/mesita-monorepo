@@ -39,6 +39,16 @@ export const colors = {
   /** Home's photo: the black box Prepay and Pay sit in (MESITA-5125), and
    *  the Premier pill's edge and seal. */
   offerBox: "#141414",
+  /** Search's card: white at 95% (the web's bg-card/95; its blur is not drawn). */
+  paperGlass: "rgba(255, 255, 255, 0.95)",
+  /** The web's bg-border/60: Search's grey Save and Share. */
+  buttonGrey: "rgba(219, 219, 219, 0.6)",
+  /** The selected Search card's inner ring (ring-primary/30). */
+  inkRing: "rgba(23, 23, 23, 0.3)",
+  /** The hairline under Search's band (border-fact-price/30). */
+  priceLine: "rgba(0, 130, 54, 0.3)",
+  /** Paper at 70% on ink (the Add card's second line). */
+  onInkSoft: "rgba(255, 255, 255, 0.7)",
   /** The percent's small black box on an offer (MESITA-5128). */
   percentBox: "#0a0a0a",
   /** Ink on the Premier gold (the web's text-neutral-950). */
@@ -107,6 +117,9 @@ export const colors = {
   mapArea: "#7a7a7a",
   /** The search ring's whisper of white. */
   mapRing: "rgba(255,255,255,0.06)",
+  /** Search's pin names: the selected one, then the rest (the web's #1a1a1a, #3f3f3f). */
+  mapLabelOn: "#1a1a1a",
+  mapLabelOff: "#3f3f3f",
 } as const;
 
 /** The web Search basemap: light land, mint parks, roads, fewer names. */
@@ -205,6 +218,8 @@ export const radius = { base: 4, sm: 5, md: 6, lg: 8, xl: 10, "2xl": 12, "3xl": 
 export const shadow = {
   float: "0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15)",
   elev: "0 25px 60px -15px rgba(0, 0, 0, 0.14)",
+  /** Search's ring: a thin dark outline and a soft glow (the web's RING_CLASS). */
+  ring: "0 0 0 1px rgba(0, 0, 0, 0.18), inset 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 6px rgba(0, 0, 0, 0.12)",
 } as const;
 
 /** A pressed control shrinks a touch, as the web's active:scale-[0.98]. */

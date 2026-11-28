@@ -44,7 +44,7 @@ export const TWINS = ["money-state.ts", "money-codes.ts"] as const;
 
 /** The place-profile modules the phone app uses, relative to PACKAGE_DIR. A
  *  module joins when a feature first needs it; its imports follow by themselves. */
-export const MOBILE_MODULES = ["lib/offers.ts", "lib/place-price.ts", "place-to-detail.ts"] as const;
+export const MOBILE_MODULES = ["lib/offers.ts", "lib/place-price.ts", "place-to-detail.ts", "premier.ts"] as const;
 
 const IMPORT = /\b(?:from|import)\s*\(?\s*(["'])([^"'\n]+)\1/g;
 const BROWSER_GLOBAL =

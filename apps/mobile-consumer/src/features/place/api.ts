@@ -134,10 +134,15 @@ const suggestionSchema = z.object({
 });
 
 /** Google places a member can add. Cities are left out: those set Search's centre. */
-export async function suggestPlaces(input: string, sessionToken: string): Promise<{ placeId: string; mainText: string }[]> {
+export async function suggestPlaces(
+  input: string,
+  sessionToken: string,
+  near: { lat: number; lng: number } | null = null,
+): Promise<{ placeId: string; mainText: string }[]> {
   const answer = await callEdge(
     "consumer-web-suggest-places",
-    { input, sessionToken, mode: "fast" },
+    // Biased to the map's point Search opened Add from (the web's /search/add?lat&lng).
+    { input, sessionToken, mode: "fast", ...(near ? { lat: near.lat, lng: near.lng } : {}) },
     z.object({ predictions: z.array(suggestionSchema) }),
   );
   return answer.predictions.filter((row) => row.kind !== "location");

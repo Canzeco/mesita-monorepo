@@ -4,6 +4,7 @@ import { callEdge } from "@/lib/edge";
 
 import type { Question } from "./families";
 import type { OfferInput } from "@/generated/shared/lib/offers";
+import { isPremierPlace, premierLabel } from "@/generated/shared/premier";
 
 import type { Area, CatalogPlace, Point } from "./model";
 
@@ -102,7 +103,8 @@ export const placeSchema = z
       category: p.category_label ?? p.category ?? null,
       googleType: orNull(p.category),
       // The web's cardPhoto: the first photo, never one for a Google-only row.
-      photo: googleOnly(p) ? null : (p.photos[0] ?? null),
+      // The web keeps https photos only (stripInsecurePhotos).
+      photo: googleOnly(p) ? null : (p.photos.find((u) => u.startsWith("https://")) ?? null),
       priceLevel: orNull(p.price_level),
       priceRange: orNull(p.price_range),
       rating: p.google_rating ?? orNull(p.google_stars_overall),
@@ -114,7 +116,8 @@ export const placeSchema = z
       timezone: orNull(p.timezone),
       zone: orNull(p.zone),
       distanceKm: orNull(p.distance_km),
-      isPremier: (p.boost_tier ?? 0) > 0,
+      // The web's isPremierPlace: tier 1 or 2 only.
+      isPremier: isPremierPlace({ boost_tier: p.boost_tier }),
       isAd: p.ad === true,
       reservable: p.reservations_enabled === true && (p.phone ?? "").trim() !== "",
       lat: orNull(p.lat),
@@ -175,20 +178,38 @@ export async function fillCatalog(
 const mapSchema = z.object({
   places: z.array(placeSchema).catch([]),
   dots: z.array(z.unknown()).catch([]),
+  reloadIdleSec: number,
+  reloadMinViewportPct: number,
 });
 
 export type MapDot = { id: string; lat: number; lng: number; premier: boolean };
-export type MapAnswer = { places: CatalogPlace[]; dots: MapDot[] };
+/** The web's MapBounds: the visible map's corners. */
+export type MapBounds = { low: Point; high: Point };
+export type MapAnswer = {
+  places: CatalogPlace[];
+  dots: MapDot[];
+  /** When a guest's pan reloads (MESITA-2451, MESITA-2732); null = the web's defaults. */
+  reloadIdleSec: number | null;
+  reloadMinViewportPct: number | null;
+};
 
-/** Search's map. The same read the web map makes: a centre, and the families that are on. */
-export async function listPlaces(point: Point, familyKeys: readonly string[], signal?: AbortSignal): Promise<MapAnswer> {
+/** Search's map. The same read the web map makes: the sight, the visible
+ *  map, and the families that are on. Google-only rows are dropped, as the
+ *  web's: the pins and the rail hold Mesita places alone. */
+export async function listPlaces(
+  point: Point,
+  familyKeys: readonly string[],
+  bounds: MapBounds | null,
+  signal?: AbortSignal,
+): Promise<MapAnswer> {
   const answer = await callEdge(
     "consumer-web-list-places",
     {
       google: true,
+      familyKeys: [...familyKeys],
       lat: point.lat,
       lng: point.lng,
-      ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
+      ...(bounds ? { bounds } : {}),
     },
     mapSchema,
     { signal },
@@ -200,7 +221,13 @@ export async function listPlaces(point: Point, familyKeys: readonly string[], si
     if (!Number.isFinite(dot.lat) || !Number.isFinite(dot.lng)) return [];
     return [{ id: dot.id, lat: dot.lat, lng: dot.lng, premier: dot.premier === true }];
   });
-  return { places: answer.places, dots };
+  return {
+    // A created place keeps its real id; only Google's own rows ("g:") go.
+    places: answer.places.filter((p) => !(p.googleOnly && p.id.startsWith("g:"))),
+    dots,
+    reloadIdleSec: answer.reloadIdleSec ?? null,
+    reloadMinViewportPct: answer.reloadMinViewportPct ?? null,
+  };
 }
 
 export type SavedPlaces = { ids: string[]; places: CatalogPlace[] };
@@ -228,24 +255,73 @@ export async function getShareCode(): Promise<string> {
   return res.code;
 }
 
-const suggestionSchema = z.object({ placeId: z.string(), mainText: z.string(), secondaryText: text, kind: text });
+const suggestionSchema = z.object({
+  placeId: z.string(),
+  mainText: z.string(),
+  secondaryText: text,
+  kind: text,
+  state: text,
+  mesitaId: text,
+  mesitaSlug: text,
+  boost_tier: number,
+  card: z.unknown().optional(),
+  lat: number,
+  lng: number,
+  locationType: text,
+});
 
-export type Suggestion = { placeId: string; mainText: string; secondaryText: string | null; kind: string | null };
+export type Suggestion = {
+  placeId: string;
+  mainText: string;
+  secondaryText: string | null;
+  kind: string | null;
+  /** The Mesita place it is, when it is one. */
+  mesitaId: string | null;
+  /** The web's predictionOnMesita: a Mesita id or slug, or any state but not-in-Mesita. */
+  onMesita: boolean;
+  premier: boolean;
+  /** The Premier plan's name for the spoken label, or null. */
+  premierName: string | null;
+  point: Point | null;
+  locationType: string | null;
+  /** The Mesita card the server sent with it, for a pick outside the map's set. */
+  card: CatalogPlace | null;
+};
 
-/** Every suggestion the bar can show: a place or a location. */
-export async function suggestPlaces(input: string, sessionToken: string, signal?: AbortSignal): Promise<Suggestion[]> {
+function cardOf(raw: unknown): { place: CatalogPlace; tier: number | null } | null {
+  const parsed = placeSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  const tier = (raw as { boost_tier?: unknown }).boost_tier;
+  return { place: parsed.data, tier: typeof tier === "number" ? tier : null };
+}
+
+export type SuggestAnswer = { rows: Suggestion[]; idleSec: number | null };
+
+/** Every suggestion the bar can show, a place or a location, biased to the
+ *  map's sight (the web's deep search). */
+export async function suggestPlaces(input: string, sessionToken: string, origin: Point | null, signal?: AbortSignal): Promise<SuggestAnswer> {
   const answer = await callEdge(
     "consumer-web-suggest-places",
-    { input, sessionToken, mode: "fast" },
-    z.object({ predictions: z.array(suggestionSchema) }),
+    { input, sessionToken, mode: "deep", ...(origin ? { lat: origin.lat, lng: origin.lng } : {}) },
+    z.object({ predictions: z.array(suggestionSchema), idleSec: number }),
     { signal },
   );
-  return answer.predictions.map((row) => ({
-    placeId: row.placeId,
-    mainText: row.mainText,
-    secondaryText: row.secondaryText ?? null,
-    kind: row.kind ?? null,
-  }));
+  return {
+    idleSec: answer.idleSec ?? null,
+    rows: answer.predictions.map((row) => ({
+      placeId: row.placeId,
+      mainText: row.mainText,
+      secondaryText: row.secondaryText ?? null,
+      kind: row.kind ?? null,
+      mesitaId: row.mesitaId ?? null,
+      onMesita: Boolean(row.mesitaId || row.mesitaSlug) || row.state !== "not_in_mesita",
+      premier: isPremierPlace({ boost_tier: row.boost_tier ?? cardOf(row.card)?.tier ?? null }),
+      premierName: premierLabel(row.boost_tier ?? cardOf(row.card)?.tier ?? null),
+      locationType: row.locationType ?? null,
+      card: cardOf(row.card)?.place ?? null,
+      point: row.lat !== null && row.lat !== undefined && row.lng !== null && row.lng !== undefined ? { lat: row.lat, lng: row.lng } : null,
+    })),
+  };
 }
 
 /** A read that costs a Google lookup: members only, as on the web. */
@@ -260,13 +336,21 @@ export async function suggestLocations(input: string, sessionToken: string, sign
 }
 
 /** A read, once per pick: where the chosen location is. */
-export async function resolveLocation(placeId: string): Promise<Point> {
+/** A picked location's point and, when Google has one, its extent. */
+export async function resolveLocation(placeId: string): Promise<Point & { viewport: MapBounds | null }> {
+  const corner = z.object({ lat: z.number(), lng: z.number() });
   const answer = await callEdge(
     "consumer-web-suggest-places",
     { anchorPlaceId: placeId },
-    z.object({ anchor: z.object({ lat: z.number(), lng: z.number() }) }),
+    z.object({
+      anchor: z.object({
+        lat: z.number(),
+        lng: z.number(),
+        viewport: z.object({ low: corner, high: corner }).nullish().catch(null),
+      }),
+    }),
   );
-  return answer.anchor;
+  return { lat: answer.anchor.lat, lng: answer.anchor.lng, viewport: answer.anchor.viewport ?? null };
 }
 
 export type PlacePreview = {

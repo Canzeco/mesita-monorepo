@@ -1,4 +1,5 @@
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { useSession } from "@/features/auth";
 
@@ -16,6 +17,7 @@ import {
   suggestLocations,
   suggestPlaces,
   type CatalogRank,
+  type MapBounds,
   type SavedPlaces,
 } from "./api";
 import { questionOf, type ChipKey } from "./families";
@@ -25,8 +27,8 @@ export const discoveryKeys = {
   all: ["discovery"] as const,
   catalog: (point: Point | null, chip: ChipKey) =>
     ["discovery", "catalog", point?.lat ?? null, point?.lng ?? null, chip] as const,
-  map: (point: Point | null, chip: ChipKey) =>
-    ["discovery", "map", point?.lat ?? null, point?.lng ?? null, chip] as const,
+  map: (point: Point | null, chip: ChipKey, n = 0) =>
+    ["discovery", "map", point?.lat ?? null, point?.lng ?? null, chip, n] as const,
   saved: (guestId: string | null) => ["discovery", "saved", guestId] as const,
   locations: (input: string) => ["discovery", "locations", input] as const,
 };
@@ -69,13 +71,16 @@ export function useCachedRank(location: ActiveLocation | null, chip: ChipKey): C
   return client.getQueryData<{ pages: Page[] }>(discoveryKeys.catalog(location, chip))?.pages[0]?.rank ?? null;
 }
 
-/** The map's places and its extra pins, for the families that are on. */
-export function useMapPlaces(location: ActiveLocation | null, chip: ChipKey) {
+/** The map's places and its extra pins, for the families that are on, read
+ *  at the sight (`at`, with the visible map). The last answer stays while a
+ *  reload is in flight: the web dims the old cards, it never blanks them. */
+export function useMapPlaces(at: { point: Point; bounds: MapBounds | null; n: number } | null, chip: ChipKey) {
   const familyKeys = questionOf(chip).familyKeys;
   return useQuery({
-    queryKey: discoveryKeys.map(location, chip),
-    queryFn: ({ signal }) => listPlaces(location as Point, familyKeys, signal),
-    enabled: location !== null,
+    queryKey: discoveryKeys.map(at?.point ?? null, chip, at?.n ?? 0),
+    queryFn: ({ signal }) => listPlaces(at?.point as Point, familyKeys, at?.bounds ?? null, signal),
+    enabled: at !== null,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -124,15 +129,43 @@ export function useShareCode(): string | null {
   return member ? (q.data ?? null) : null;
 }
 
-/** `sessionToken` groups one search's keystrokes for Google's billing. */
-export function usePlaceSearch(input: string, sessionToken: string, member: boolean) {
+/** `sessionToken` groups one search's keystrokes for Google's billing. The
+ *  search leaves once typing has rested the server's idle seconds (the web's
+ *  Word idle, 1 s until the first answer names it). */
+export function usePlaceSearch(input: string, sessionToken: string, member: boolean, origin: Point | null) {
   const term = input.trim();
-  return useQuery({
-    queryKey: ["place-search", term],
-    queryFn: ({ signal }) => suggestPlaces(term, sessionToken, signal),
-    enabled: member && term.length >= 2,
-    placeholderData: keepPreviousData,
+  const [idleMs, setIdleMs] = useState(1000);
+  // A rested term carries the session it was typed in. A renewed token (a
+  // pick, an open, a clear) applies from the next keystroke: the open term
+  // is never searched again, as on the web.
+  const [rested, setRested] = useState({ term, token: sessionToken });
+  const rest = useEffectEvent(() => setRested({ term, token: sessionToken }));
+  // A pick, a clear or a term under 2 ends the search at once (the web's
+  // setPredictions([])): adjusted during render, React's documented pattern.
+  if (term.length < 2 && rested.term !== "") setRested({ term: "", token: sessionToken });
+  useEffect(() => {
+    const id = setTimeout(rest, idleMs);
+    return () => clearTimeout(id);
+  }, [term, idleMs]);
+  const settled = rested.term;
+  const query = useQuery({
+    queryKey: ["place-search", settled, rested.token],
+    queryFn: async ({ signal }) => {
+      const answer = await suggestPlaces(settled, rested.token, origin, signal);
+      if (answer.idleSec !== null) setIdleMs(Math.round(answer.idleSec * 1000));
+      return answer.rows;
+    },
+    enabled: member && settled.length >= 2,
+    // Never fetched again by focus, reconnect or remount, even after an
+    // error: its session may have ended. Try again still refetches.
+    staleTime: "static",
+    // The last rows stay while the next search runs, but never across a
+    // search that ended (a pick or a clear empties the list, as on the web).
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[2] === rested.token && term.length >= 2 ? previous : undefined,
   });
+  // Waiting out the idle counts as searching (the web's spinner shows at once).
+  return { ...query, waiting: term.length >= 2 && term !== settled };
 }
 
 export function useLocationSearch(input: string, sessionToken: string, member: boolean) {

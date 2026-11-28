@@ -11,7 +11,10 @@ import { useActiveLocation } from "../location-context";
 /** Every family, five across, under the special lists: Social on its own,
  *  an upright line, then the specials (the web's CategoriesModal). */
 export function CategoriesScreen({ onClose, home = true }: { onClose: () => void; home?: boolean }) {
-  const { chip, selectChip } = useActiveLocation();
+  const context = useActiveLocation();
+  // Home's window writes Home's chip; Search's writes the map's own.
+  const chip = home ? context.chip : context.mapChip;
+  const selectChip = home ? context.selectChip : context.selectMapChip;
   // Saved is Home's (Search's window has Nearby and Popular only).
   const chips = chipsFor(useSession().guestId !== null && home, home);
   const lead = chips.filter((c) => c.key === "social");
