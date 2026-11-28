@@ -112,7 +112,7 @@ select is(
 
 select is(
   (select amount_cents from public.wallet_entries where tab_id = '00000000-0000-4000-8000-0000000f4717' and kind = 'cashback'),
-  1000, 'Welcome 10% of the MX$100 paid by card, not of the MX$300 bill (MX$200 was credit)');
+  500, 'Cashback 5% (the one line, MESITA-5124) of the MX$100 paid by card, not of the MX$300 bill (MX$200 was credit)');
 
 select * from finish();
 rollback;
