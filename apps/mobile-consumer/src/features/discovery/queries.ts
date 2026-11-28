@@ -140,6 +140,9 @@ export function usePlaceSearch(input: string, sessionToken: string, member: bool
   // is never searched again, as on the web.
   const [rested, setRested] = useState({ term, token: sessionToken });
   const rest = useEffectEvent(() => setRested({ term, token: sessionToken }));
+  // A pick, a clear or a term under 2 ends the search at once (the web's
+  // setPredictions([])): adjusted during render, React's documented pattern.
+  if (term.length < 2 && rested.term !== "") setRested({ term: "", token: sessionToken });
   useEffect(() => {
     const id = setTimeout(rest, idleMs);
     return () => clearTimeout(id);
