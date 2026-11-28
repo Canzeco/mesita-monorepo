@@ -144,11 +144,18 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
           data-card-offer={b.key}
         >
           {b.word}
-          <span className="rounded bg-neutral-950 px-[3px] py-0.5 leading-none text-white">{b.pct}%</span>
+          <PercentBox pct={b.pct} />
         </span>
       ))}
     </p>
   );
+}
+
+/** A card offer's percent: a small black box, white type, 3px inside
+ *  (MESITA-5128). Home's photo and Search's band draw the same one
+ *  (MESITA-5131). */
+function PercentBox({ pct }: { pct: number }) {
+  return <span className="rounded bg-neutral-950 px-[3px] py-0.5 leading-none text-white tabular-nums">{pct}%</span>;
 }
 
 /** ONE SOURCE FOR A CARD'S TWO OFFERS (MESITA-5129): Home's photo boxes and
@@ -194,9 +201,12 @@ export function listCardReservable(place: {
  *  purple "Prepay X%" and green "Pay Y%" (cardOfferBoxes), each its own
  *  cell, no icon. One green "Cashback X%" cell before (MESITA-5103, 5119),
  *  "Offers" before that (MESITA-5078). The cells share the row in equal
- *  parts where their words fit, and never clip them: measured at 360px with
- *  all four, 6px inside each cell. No black box here (MESITA-5125 is the
- *  photo's): the band has no photo under it.
+ *  parts where their words fit, and never clip them.
+ *  THE PERCENT IN A BLACK BOX, AS ON HOME (Pato, 2026-11-28, MESITA-5131,
+ *  asked if Search's percent should sit in a black box too: "Yes, match
+ *  Home"): the same PercentBox, 2px after the word. Measured at 360px with
+ *  all four cells and "Prepay 60%" + "Pay 10%": about 8px spare with 3px
+ *  inside each cell (BANNER_CELL), none with 6px.
  *  Reserve opens Reserve; an offer cell opens the place (MESITA-4455). A live
  *  table says Booking, or Booked once the place confirms, in the red button
  *  (MESITA-5014). */
@@ -276,11 +286,12 @@ export function PlaceBannerRow({
           onClick={() => {
             if (placeId) trackEvent(getSupabase(), "offer_chip_tap", { place_id: placeId, voucher: b.voucher });
           }}
-          className={cn(CARD_BUTTON_BOX, BANNER_CELL, "tabular-nums", b.tone, cellClassName)}
+          className={cn(CARD_BUTTON_BOX, BANNER_CELL, "gap-0.5", b.tone, cellClassName)}
           data-tile-bonus
           data-card-offer={b.key}
         >
-          {b.words}
+          {b.word}
+          <PercentBox pct={b.pct} />
         </PushLink>
       ))}
     </div>
@@ -329,11 +340,13 @@ export function PremierPill({
   );
 }
 
-/** One still banner cell: a mark and a word, centred, never wrapped. 6px
- *  inside and 4px between mark and word (8 and 6 before): Search's four
- *  cells fit a 360px phone (MESITA-5129). */
+/** One still banner cell: a mark and a word, centred, never wrapped. 3px
+ *  inside (6 under MESITA-5129, 8 before) and 4px between mark and word:
+ *  Search's four cells, two with a percent box, fit a 360px phone
+ *  (MESITA-5131). The cells share the row, so the 3px shows only where the
+ *  row is full. */
 const BANNER_CELL =
-  "pointer-events-auto relative flex min-w-0 items-center justify-center gap-1 px-1.5 font-sans text-xs font-semibold whitespace-nowrap focus-visible:ring-primary outline-none focus-visible:ring-2";
+  "pointer-events-auto relative flex min-w-0 items-center justify-center gap-1 px-[3px] font-sans text-xs font-semibold whitespace-nowrap focus-visible:ring-primary outline-none focus-visible:ring-2";
 
 /** The Search map card's top strip (MESITA-3444): the same slides on the
  *  same beat (MESITA-3467), part of the card (its tap opens the place). */
