@@ -22,7 +22,7 @@ import { ResultsPanel } from "../components/results-panel";
 import { chipsFor, isSpecial, type Chip, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
 import { factsOf, shareUrl, type CatalogPlace } from "../model";
-import { useMapPlaces, usePlaceSearch, useResolveLocation, useSaved, useToggleSaved } from "../queries";
+import { useMapPlaces, usePlaceSearch, useResolveLocation, useSaved, useShareCode, useToggleSaved } from "../queries";
 
 type Nav = {
   onChooseLocation: () => void;
@@ -41,6 +41,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const member = useSession().guestId !== null;
   const saved = useSaved();
   const toggle = useToggleSaved();
+  const shareCode = useShareCode();
   const [drop, setDrop] = useState<CatalogPlace | null>(null);
   const shown: ChipKey = chip === "saved" ? "near" : chip;
   const map = useMapPlaces(location ?? null, shown);
@@ -225,7 +226,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
             if (saved.data?.ids.includes(place.id)) setDrop(place);
             else toggle.mutate({ place, on: true });
           }}
-          onShare={(place) => void Share.share({ message: `${place.name}\n${shareUrl(place)}` })}
+          onShare={(place) => void Share.share({ message: `${place.name}\n${shareUrl(place, shareCode)}` })}
         />
       )}
     </View>

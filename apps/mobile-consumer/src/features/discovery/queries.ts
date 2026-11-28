@@ -4,6 +4,7 @@ import { useSession } from "@/features/auth";
 
 import {
   fillCatalog,
+  getShareCode,
   listPlaces,
   listSaved,
   rankCatalog,
@@ -102,6 +103,14 @@ export function withSaved(saved: SavedPlaces | undefined, place: CatalogPlace, o
 
 export function useRecordShare() {
   return useMutation({ mutationFn: recordShare });
+}
+
+/** The member's share code (MESITA-5060); null for a visitor or before it lands. */
+export function useShareCode(): string | null {
+  const guestId = useSession().guestId;
+  const member = guestId !== null;
+  const q = useQuery({ queryKey: ["share-code", guestId], queryFn: getShareCode, enabled: member, staleTime: Infinity });
+  return member ? (q.data ?? null) : null;
 }
 
 /** `sessionToken` groups one search's keystrokes for Google's billing. */

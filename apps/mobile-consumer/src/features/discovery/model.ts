@@ -91,8 +91,11 @@ export function factsOf(p: CatalogPlace): Facts {
   };
 }
 
-export function shareUrl(p: Pick<CatalogPlace, "id" | "slug">): string {
-  return `https://mesita.ai/place/${encodeURIComponent(p.slug || p.id)}`;
+/** `code`: the guest's share code (MESITA-5060), so the opens and new guests
+ *  this link brings are counted. */
+export function shareUrl(p: Pick<CatalogPlace, "id" | "slug">, code: string | null = null): string {
+  const url = `https://mesita.ai/place/${encodeURIComponent(p.slug || p.id)}`;
+  return code ? `${url}?s=${encodeURIComponent(code)}` : url;
 }
 
 export function readActiveLocation(raw: string | null): ActiveLocation | null {

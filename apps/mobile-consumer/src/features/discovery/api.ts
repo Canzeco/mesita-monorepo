@@ -146,6 +146,12 @@ export async function recordShare(placeId: string): Promise<void> {
   await callEdge("consumer-web-track-place-share", { place_id: placeId }, z.object({}), { mutation: true });
 }
 
+/** MESITA-5060: the guest's share code, `?s=<code>` on every link they share. Members only. */
+export async function getShareCode(): Promise<string> {
+  const res = await callEdge("consumer-web-get-share-code", {}, z.object({ code: z.string() }));
+  return res.code;
+}
+
 const suggestionSchema = z.object({ placeId: z.string(), mainText: z.string(), secondaryText: text, kind: text });
 
 export type Suggestion = { placeId: string; mainText: string; secondaryText: string | null; kind: string | null };
