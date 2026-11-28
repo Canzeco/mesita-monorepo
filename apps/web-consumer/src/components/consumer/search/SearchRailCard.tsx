@@ -23,7 +23,7 @@ import {
   StarsOpenRow,
   cardFacts,
 } from "@/components/consumer/place-card";
-import { PlaceBannerRow, PremierPill, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { PlaceBannerRow, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
@@ -166,8 +166,8 @@ export function RailCard({
   const google = isGoogleOnlyPlace(place);
   const slides = google ? [] : offerSlides(place);
   const reservable = !google && listCardReservable(place);
-  const banner = reservable || slides.length > 0;
   const premier = isPremierPlace(place);
+  const banner = reservable || slides.length > 0 || premier;
 
   return (
     <div
@@ -189,6 +189,7 @@ export function RailCard({
               reservable={reservable}
               reserveHref={placeReservePath(place.slug || place.id)}
               offerHref={placeHref(place.slug || place.id)}
+              premier={premier}
               className="gap-0"
               cellClassName={RAIL_CARD_STRIP}
             />
@@ -242,7 +243,7 @@ export function RailCard({
                 )}
               </span>
             )}
-            {premier ? <PremierPill placement="rail" /> : null}
+            {/* A CLEAN PHOTO (MESITA-5094): Premier lives in the top band now. */}
             {photoOverlay}
           </div>
           <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
