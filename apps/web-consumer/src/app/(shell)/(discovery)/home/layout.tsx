@@ -15,7 +15,7 @@ import { CreditReminder } from "@/components/consumer/home/CreditReminder";
 //
 // No deck fetch in this layout. CatalogRails loads its own rows.
 //
-// CreditReminder (MESITA-5068) sits under the tabs: "You have MX$X at <place>"
+// CreditReminder (MESITA-5068, MESITA-5075) sits under the tabs: "You have credits at <place>"
 // when the guest holds credit somewhere; nothing otherwise.
 //
 // THE CHILDREN SLOT IS A FLEX COLUMN, not a block. EmptyState asks for

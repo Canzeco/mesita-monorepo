@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronRight, Wallet as WalletIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { apiGetWallet, money, WALLET_CACHE_KEY, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, WALLET_CACHE_KEY, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { placePath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { useCachedQuery } from "@/lib/use-cached-query";
@@ -11,8 +11,12 @@ import { useCachedQuery } from "@/lib/use-cached-query";
 // keeps a guest if they remember the credit. Home names the place where the
 // guest holds the most spendable credit; a tap opens that place. Credit is
 // spendable only at its own place, so the reminder sends the guest back
-// there. No credit, no row. The money is the server's (consumer-web-get-wallet,
-// the same read and key as the Wallet), never added up here.
+// there. No credit, no row. The read is the server's (consumer-web-get-wallet,
+// the same read and key as the Wallet).
+//
+// NO AMOUNT, NO WALLET ICON (Pato, 2026-11-27, MESITA-5075: "don't mention
+// the amount on the header … don't mention wallet there"): the row says
+// "You have credits at <place>" and nothing more.
 
 /** The balance to remind about: the most available credit, newest on a tie. */
 export function reminderBalance(w: Wallet | null | undefined): WalletBalance | null {
@@ -36,9 +40,8 @@ export function CreditReminder() {
       className="border-border bg-card hover:bg-muted/60 flex shrink-0 items-center gap-3 border-b px-4 py-2.5 transition-colors"
       data-home-credit-reminder
     >
-      <WalletIcon className="text-foreground h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
       <span className="min-w-0 flex-1 truncate text-sm">
-        You have <span className="font-semibold tabular-nums">{money(b.available_cents, b.currency)}</span> at{" "}
+        You have credits at{" "}
         <span className="font-semibold">{name}</span>
       </span>
       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
