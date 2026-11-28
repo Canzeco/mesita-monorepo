@@ -186,7 +186,7 @@ export type Database = {
           small_bonus_bps: number
           updated_at: string
           updated_by: string | null
-          visit_mechanism: string
+          welcome_bonus_bps: number
           welcome_bps: number
           welcome_vip_bps: number
         }
@@ -199,7 +199,7 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
-          visit_mechanism?: string
+          welcome_bonus_bps?: number
           welcome_bps?: number
           welcome_vip_bps?: number
         }
@@ -212,7 +212,7 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
-          visit_mechanism?: string
+          welcome_bonus_bps?: number
           welcome_bps?: number
           welcome_vip_bps?: number
         }
@@ -370,6 +370,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "consumer_notifications_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      consumer_push_sends: {
+        Row: {
+          attempts: number
+          outcome: string
+          reservation_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          outcome: string
+          reservation_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          outcome?: string
+          reservation_id?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
+      consumer_push_tokens: {
+        Row: {
+          consumer_id: string
+          install_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          consumer_id: string
+          install_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          install_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumer_push_tokens_consumer_id_fkey"
             columns: ["consumer_id"]
             isOneToOne: false
             referencedRelation: "consumers"
@@ -590,8 +640,6 @@ export type Database = {
           created_at: string
           credit_cents: number
           currency: string
-          discount_bps: number
-          discount_cents: number
           end_reason: string | null
           ending_at: string | null
           ending_reason: string | null
@@ -611,7 +659,6 @@ export type Database = {
           tender: string
           tip_cents: number
           token_hash: string
-          visit_mechanism: string | null
         }
         Insert: {
           bill_cents: number
@@ -625,8 +672,6 @@ export type Database = {
           created_at?: string
           credit_cents?: number
           currency: string
-          discount_bps?: number
-          discount_cents?: number
           end_reason?: string | null
           ending_at?: string | null
           ending_reason?: string | null
@@ -646,7 +691,6 @@ export type Database = {
           tender: string
           tip_cents?: number
           token_hash: string
-          visit_mechanism?: string | null
         }
         Update: {
           bill_cents?: number
@@ -660,8 +704,6 @@ export type Database = {
           created_at?: string
           credit_cents?: number
           currency?: string
-          discount_bps?: number
-          discount_cents?: number
           end_reason?: string | null
           ending_at?: string | null
           ending_reason?: string | null
@@ -681,7 +723,6 @@ export type Database = {
           tender?: string
           tip_cents?: number
           token_hash?: string
-          visit_mechanism?: string | null
         }
         Relationships: [
           {
@@ -1074,8 +1115,6 @@ export type Database = {
           created_at: string
           credit_cents: number
           currency: string
-          discount_bps: number
-          discount_cents: number
           end_reason: string | null
           expires_at: string
           id: string
@@ -1098,7 +1137,6 @@ export type Database = {
           updated_at: string
           verified_at: string | null
           verified_key_hash: string | null
-          visit_mechanism: string | null
           waiter_id: string | null
           waiter_name: string | null
         }
@@ -1117,8 +1155,6 @@ export type Database = {
           created_at?: string
           credit_cents?: number
           currency: string
-          discount_bps?: number
-          discount_cents?: number
           end_reason?: string | null
           expires_at: string
           id?: string
@@ -1141,7 +1177,6 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_key_hash?: string | null
-          visit_mechanism?: string | null
           waiter_id?: string | null
           waiter_name?: string | null
         }
@@ -1160,8 +1195,6 @@ export type Database = {
           created_at?: string
           credit_cents?: number
           currency?: string
-          discount_bps?: number
-          discount_cents?: number
           end_reason?: string | null
           expires_at?: string
           id?: string
@@ -1184,7 +1217,6 @@ export type Database = {
           updated_at?: string
           verified_at?: string | null
           verified_key_hash?: string | null
-          visit_mechanism?: string | null
           waiter_id?: string | null
           waiter_name?: string | null
         }
@@ -1370,7 +1402,7 @@ export type Database = {
           small_bonus_bps: number
           updated_at: string
           updated_by: string | null
-          visit_mechanism: string
+          welcome_bonus_bps: number
           welcome_bps: number
           welcome_vip_bps: number
         }
@@ -1383,7 +1415,7 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
-          visit_mechanism?: string
+          welcome_bonus_bps?: number
           welcome_bps?: number
           welcome_vip_bps?: number
         }
@@ -1396,7 +1428,7 @@ export type Database = {
           small_bonus_bps?: number
           updated_at?: string
           updated_by?: string | null
-          visit_mechanism?: string
+          welcome_bonus_bps?: number
           welcome_bps?: number
           welcome_vip_bps?: number
         }
@@ -2927,7 +2959,6 @@ export type Database = {
           lookup_hash: string | null
           name: string
           name_required: boolean
-          no_code: boolean
           place_id: string
           removed_at: string | null
           updated_at: string
@@ -2940,7 +2971,6 @@ export type Database = {
           lookup_hash?: string | null
           name: string
           name_required?: boolean
-          no_code?: boolean
           place_id: string
           removed_at?: string | null
           updated_at?: string
@@ -2953,7 +2983,6 @@ export type Database = {
           lookup_hash?: string | null
           name?: string
           name_required?: boolean
-          no_code?: boolean
           place_id?: string
           removed_at?: string | null
           updated_at?: string
@@ -3446,6 +3475,192 @@ export type Database = {
           {
             foreignKeyName: "saved_locations_consumer_id_fkey"
             columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_codes: {
+        Row: {
+          code: string
+          consumer_id: string
+          created_at: string
+        }
+        Insert: {
+          code: string
+          consumer_id: string
+          created_at?: string
+        }
+        Update: {
+          code?: string
+          consumer_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_codes_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: true
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_opens: {
+        Row: {
+          code: string
+          id: number
+          opened_at: string
+          place_id: string | null
+          visitor: string
+        }
+        Insert: {
+          code: string
+          id?: never
+          opened_at?: string
+          place_id?: string | null
+          visitor: string
+        }
+        Update: {
+          code?: string
+          id?: never
+          opened_at?: string
+          place_id?: string | null
+          visitor?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_opens_code_fkey"
+            columns: ["code"]
+            isOneToOne: false
+            referencedRelation: "share_codes"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "share_opens_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      share_signups: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          opened_at: string | null
+          place_id: string | null
+          sharer_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          opened_at?: string | null
+          place_id?: string | null
+          sharer_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          opened_at?: string | null
+          place_id?: string | null
+          sharer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "share_signups_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: true
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_signups_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "share_signups_sharer_id_fkey"
+            columns: ["sharer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_blocks: {
+        Row: {
+          blocked_id: string
+          consumer_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          consumer_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          consumer_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_blocks_blocked_id_fkey"
+            columns: ["blocked_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_blocks_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_reports: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: string
+          note: string | null
+          reason: string
+          reported_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason: string
+          reported_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          reason?: string
+          reported_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_reports_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_reports_reported_id_fkey"
+            columns: ["reported_id"]
             isOneToOne: false
             referencedRelation: "consumers"
             referencedColumns: ["id"]
@@ -4373,11 +4588,11 @@ export type Database = {
       catalog_rank_lanes: {
         Args: {
           p_ad_distance_exp: number
-          p_ad_floor?: number
           p_ad_fsq_exp?: number
           p_ad_fsq_factor?: number
           p_ad_google_exp: number
           p_ad_half_km: number
+          p_ad_offers_exp?: number
           p_ad_premier_exp: number
           p_ad_stars_exp: number
           p_families: string[]
@@ -4389,11 +4604,11 @@ export type Database = {
           p_organic_fsq_factor?: number
           p_organic_google_exp: number
           p_organic_half_km: number
+          p_organic_offers_exp?: number
           p_organic_premier_exp: number
           p_organic_stars_exp: number
           p_premier_1: number
           p_premier_2: number
-          p_repeat?: number
           p_require_active: boolean
         }
         Returns: Json
@@ -5167,7 +5382,6 @@ export type Database = {
           plan: string
         }[]
       }
-      place_visit_mechanism: { Args: { p_place_id: string }; Returns: string }
       place_visit_rows: {
         Args: { p_livemode: boolean; p_place_id: string }
         Returns: {
@@ -5313,10 +5527,6 @@ export type Database = {
       waiter_name_required: {
         Args: { p_bill_id: string; p_now?: string; p_token_hash: string }
         Returns: boolean
-      }
-      waiter_no_code: {
-        Args: { p_bill_id: string; p_now?: string; p_token_hash: string }
-        Returns: string
       }
       wallet_balance: {
         Args: {
