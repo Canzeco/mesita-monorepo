@@ -130,13 +130,13 @@ export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined
         CARD_BUTTON_BOX,
         "pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#00D66F] px-2.5 font-sans text-sm font-semibold text-neutral-950 tabular-nums",
       )}
-      aria-label={`${back}% Cashback`}
+      aria-label={`Cashback ${back}%`}
       data-card-offer-display
       data-card-offer="pay"
     >
       {/* The Pay tab's QR (MESITA-5116): cashback is earned paying by QR. */}
       <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      {back}% Cashback
+      Cashback {back}%
     </p>
   );
 }
@@ -161,7 +161,7 @@ export function listCardReservable(place: {
 // offers, mention the actual cashback. 5% Cashback or 10% Cashback"): the
 // place's cashback where it gives one; Offers only where it gives none.
 export function offerBannerWord(_slides: OfferSlide[], cashbackPct?: number | null): string {
-  return cashbackPct && cashbackPct > 0 ? `${cashbackPct}% Cashback` : "Offers";
+  return cashbackPct && cashbackPct > 0 ? `Cashback ${cashbackPct}%` : "Offers"; // "Cashback 5%" (MESITA-5118)
 }
 
 /** THE BANNER (Pato, 2026-11-26, MESITA-5010; STILL SINCE MESITA-5015:
