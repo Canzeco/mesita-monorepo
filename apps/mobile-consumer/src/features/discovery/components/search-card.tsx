@@ -7,6 +7,8 @@ import { Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { colors, radius, shadow, text, tracking, weight } from "@/theme";
 
+import { offerSlides } from "@/generated/shared/lib/offers";
+
 import { cardOffers, factsOf, placeholderOf, type CatalogPlace, type Facts } from "../model";
 
 /** The web's rail card: 134 tall with its border, 166 with the band (h-[8.375rem], h-[10.375rem]). */
@@ -140,12 +142,14 @@ export function SearchCard({ place, width, selected, saved, onOpen, onReserve, o
       ),
     })),
   ];
-  const band = cells.length > 0;
+  // The web shows the band whenever the place has any offer slide, an empty
+  // strip when no cell draws (SearchRailCard `banner`).
+  const band = cells.length > 0 || offerSlides(google ? null : place.offers).length > 0;
   // The text column starts a third in; Save · Share start a third in plus 12.
   const inner = width - 2;
   return (
     <View style={[styles.frame, { width, height: band ? CARD_WITH_BAND_HEIGHT : CARD_HEIGHT }, selected && styles.selected]}>
-      {band ? <Band cells={cells} /> : null}
+      {band ? cells.length > 0 ? <Band cells={cells} /> : <View style={styles.band} /> : null}
       <Pressable accessibilityRole="button" accessibilityLabel={`Open ${place.name}`} onPress={onOpen} style={styles.row}>
         <View style={[styles.photo, { width: inner / 3 }]}>
           {place.photo ? (

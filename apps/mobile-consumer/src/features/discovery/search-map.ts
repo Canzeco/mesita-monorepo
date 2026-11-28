@@ -67,6 +67,44 @@ export function zoomOf(r: Region, width: number): number {
   return Math.log2((360 * (width / 256)) / Math.max(1e-9, r.longitudeDelta));
 }
 
+/** The clear window's slice of the box, top and bottom as screen fractions
+ *  (the web's clearBox): what a load sends as `bounds`, so the server's
+ *  circle is the ring drawn. */
+export function clearBox(b: Box, top: number, bottom: number): Box {
+  const north = mercatorY(b.north);
+  const span = north - mercatorY(b.south);
+  return { ...b, north: latOfMercatorY(north - span * top), south: latOfMercatorY(north - span * bottom) };
+}
+
+/** Great-circle kilometres. */
+export function km(a: Point, b: Point): number {
+  const r = Math.PI / 180;
+  const h = Math.sin(((b.lat - a.lat) * r) / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(((b.lng - a.lng) * r) / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+/** A bar pick stays card one until a load lands this far from it (ANCHOR_DROP_KM). */
+export const ANCHOR_DROP_KM = 0.4;
+/** Locate reloads only past this from the last load (CATALOG_STALE_MIN_KM). */
+export const STALE_KM = 0.2;
+
+/** Is the point inside the view, less the web's VIEW_INSETS (6% top and bottom, 8% sides)? */
+export function isVisible(b: Box, p: Point): boolean {
+  const h = b.north - b.south;
+  const w = b.east - b.west;
+  if (!(h > 0) || !(w > 0)) return false;
+  return p.lat <= b.north - h * 0.06 && p.lat >= b.south + h * 0.06 && p.lng >= b.west + w * 0.08 && p.lng <= b.east - w * 0.08;
+}
+
+/** Within 4% of the view of the sight: a fly would not move (the web's isUnderSight). */
+export function isUnderSight(b: Box, p: Point, sightY: number): boolean {
+  const h = b.north - b.south;
+  const w = b.east - b.west;
+  if (!(h > 0) || !(w > 0)) return false;
+  const s = sightOf(b, sightY);
+  return Math.abs(p.lat - s.lat) <= h * 0.04 && Math.abs(p.lng - s.lng) <= w * 0.04;
+}
+
 /** The point under the screen fraction `sightY` (0 top, 1 bottom): the web's viewportSight. */
 export function sightOf(b: Box, sightY: number): Point {
   const north = mercatorY(b.north);

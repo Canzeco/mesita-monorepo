@@ -4,7 +4,7 @@ import { callEdge } from "@/lib/edge";
 
 import type { Question } from "./families";
 import type { OfferInput } from "@/generated/shared/lib/offers";
-import { isPremierPlace } from "@/generated/shared/premier";
+import { isPremierPlace, premierLabel } from "@/generated/shared/premier";
 
 import type { Area, CatalogPlace, Point } from "./model";
 
@@ -103,7 +103,8 @@ export const placeSchema = z
       category: p.category_label ?? p.category ?? null,
       googleType: orNull(p.category),
       // The web's cardPhoto: the first photo, never one for a Google-only row.
-      photo: googleOnly(p) ? null : (p.photos[0] ?? null),
+      // The web keeps https photos only (stripInsecurePhotos).
+      photo: googleOnly(p) ? null : (p.photos.find((u) => u.startsWith("https://")) ?? null),
       priceLevel: orNull(p.price_level),
       priceRange: orNull(p.price_range),
       rating: p.google_rating ?? orNull(p.google_stars_overall),
@@ -221,7 +222,8 @@ export async function listPlaces(
     return [{ id: dot.id, lat: dot.lat, lng: dot.lng, premier: dot.premier === true }];
   });
   return {
-    places: answer.places.filter((p) => !p.googleOnly),
+    // A created place keeps its real id; only Google's own rows ("g:") go.
+    places: answer.places.filter((p) => !(p.googleOnly && p.id.startsWith("g:"))),
     dots,
     reloadIdleSec: answer.reloadIdleSec ?? null,
     reloadMinViewportPct: answer.reloadMinViewportPct ?? null,
@@ -262,9 +264,10 @@ const suggestionSchema = z.object({
   mesitaId: text,
   mesitaSlug: text,
   boost_tier: number,
-  card: z.object({ boost_tier: number }).nullish().catch(null),
+  card: z.unknown().optional(),
   lat: number,
   lng: number,
+  locationType: text,
 });
 
 export type Suggestion = {
@@ -277,8 +280,20 @@ export type Suggestion = {
   /** The web's predictionOnMesita: a Mesita id or slug, or any state but not-in-Mesita. */
   onMesita: boolean;
   premier: boolean;
+  /** The Premier plan's name for the spoken label, or null. */
+  premierName: string | null;
   point: Point | null;
+  locationType: string | null;
+  /** The Mesita card the server sent with it, for a pick outside the map's set. */
+  card: CatalogPlace | null;
 };
+
+function cardOf(raw: unknown): { place: CatalogPlace; tier: number | null } | null {
+  const parsed = placeSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  const tier = (raw as { boost_tier?: unknown }).boost_tier;
+  return { place: parsed.data, tier: typeof tier === "number" ? tier : null };
+}
 
 export type SuggestAnswer = { rows: Suggestion[]; idleSec: number | null };
 
@@ -300,7 +315,10 @@ export async function suggestPlaces(input: string, sessionToken: string, origin:
       kind: row.kind ?? null,
       mesitaId: row.mesitaId ?? null,
       onMesita: Boolean(row.mesitaId || row.mesitaSlug) || row.state !== "not_in_mesita",
-      premier: isPremierPlace({ boost_tier: row.boost_tier ?? row.card?.boost_tier ?? null }),
+      premier: isPremierPlace({ boost_tier: row.boost_tier ?? cardOf(row.card)?.tier ?? null }),
+      premierName: premierLabel(row.boost_tier ?? cardOf(row.card)?.tier ?? null),
+      locationType: row.locationType ?? null,
+      card: cardOf(row.card)?.place ?? null,
       point: row.lat !== null && row.lat !== undefined && row.lng !== null && row.lng !== undefined ? { lat: row.lat, lng: row.lng } : null,
     })),
   };
@@ -318,13 +336,21 @@ export async function suggestLocations(input: string, sessionToken: string, sign
 }
 
 /** A read, once per pick: where the chosen location is. */
-export async function resolveLocation(placeId: string): Promise<Point> {
+/** A picked location's point and, when Google has one, its extent. */
+export async function resolveLocation(placeId: string): Promise<Point & { viewport: MapBounds | null }> {
+  const corner = z.object({ lat: z.number(), lng: z.number() });
   const answer = await callEdge(
     "consumer-web-suggest-places",
     { anchorPlaceId: placeId },
-    z.object({ anchor: z.object({ lat: z.number(), lng: z.number() }) }),
+    z.object({
+      anchor: z.object({
+        lat: z.number(),
+        lng: z.number(),
+        viewport: z.object({ low: corner, high: corner }).nullish().catch(null),
+      }),
+    }),
   );
-  return answer.anchor;
+  return { lat: answer.anchor.lat, lng: answer.anchor.lng, viewport: answer.anchor.viewport ?? null };
 }
 
 export type PlacePreview = {

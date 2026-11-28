@@ -1,13 +1,13 @@
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
-import { useEffect, useEffectEvent, useRef, useState, type ComponentRef } from "react";
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type ComponentRef } from "react";
 import { Alert, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button } from "@/components/button";
 import { RemoveSaved } from "@/components/remove-saved";
-import { Pulse } from "@/components/skeleton";
+import { Pulse, Skeleton } from "@/components/skeleton";
 import { Text } from "@/components/text";
 import { useSession } from "@/features/auth";
 import { colors, radius, searchMapStyle, shadow, text, weight } from "@/theme";
@@ -22,9 +22,14 @@ import { useActiveLocation } from "../location-context";
 import { shareUrl, type CatalogPlace, type Point } from "../model";
 import { useMapPlaces, usePlaceSearch, useResolveLocation, useSaved, useShareCode, useToggleSaved } from "../queries";
 import {
+  ANCHOR_DROP_KM,
   boundsOf,
   boxOf,
   centerForSight,
+  clearBox,
+  isUnderSight,
+  isVisible,
+  km,
   labelWidth,
   LABEL_LEFT,
   movedShare,
@@ -35,6 +40,7 @@ import {
   RING_INSET,
   screenOf,
   sightOf,
+  STALE_KM,
   START_ZOOM,
   visibleLabels,
   zoomOf,
@@ -47,7 +53,8 @@ type Nav = {
   onMenu: () => void;
   onOpen: (placeId: string) => void;
   onReserve?: (placeId: string) => void;
-  onAdd?: () => void;
+  /** Add a place, leaning to the map's point. */
+  onAdd?: (at: Point | null) => void;
   onSignIn: () => void;
 };
 
@@ -74,9 +81,12 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const [drop, setDrop] = useState<CatalogPlace | null>(null);
   const [term, setTerm] = useState("");
   const [focused, setFocused] = useState(false);
-  const [token] = useState(() => Crypto.randomUUID());
+  // One search session per query, for Google's billing: renewed after a pick or a clear.
+  const [token, setToken] = useState(() => Crypto.randomUUID());
+  const renew = () => setToken(Crypto.randomUUID());
   const [chosen, setChosen] = useState<string | null>(null);
-  const [anchorId, setAnchorId] = useState<string | null>(null);
+  // A bar pick: card one until a load lands 0.4 km from it.
+  const [anchor, setAnchor] = useState<{ id: string; point: Point; card: CatalogPlace | null } | null>(null);
   const [generate, setGenerate] = useState<GenerateTarget | null>(null);
   const [you, setYou] = useState<Point | null>(null);
   const [locate, setLocate] = useState<Locate>("idle");
@@ -91,6 +101,8 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const railRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const lastLoad = useRef<{ box: Box; at: number } | null>(null);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The pin the camera last flew to: its next tap opens.
+  const arrived = useRef<string | null>(null);
 
   const map = useMapPlaces(loadAt, shown);
   const querying = term.trim().length >= 2;
@@ -101,29 +113,38 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const sightY = sight.bottom > sight.top && size.height > 0 ? (sight.top + sight.bottom) / 2 / size.height : 0.5;
   const ring = RING_INSET * Math.min(size.width, Math.max(0, sight.bottom - sight.top));
 
+  /** Load at the sight; the bounds are the clear window, so the server's circle is the ring. */
   const load = (box: Box) => {
     lastLoad.current = { box, at: Date.now() };
-    setLoadAt({ point: sightOf(box, sightY), bounds: boundsOf(box) });
+    const point = sightOf(box, sightY);
+    const top = size.height > 0 ? sight.top / size.height : 0;
+    const bottom = size.height > 0 && sight.bottom > 0 ? sight.bottom / size.height : 1;
+    if (anchor && km(anchor.point, point) >= ANCHOR_DROP_KM) setAnchor(null);
+    setLoadAt({ point, bounds: boundsOf(clearBox(box, top, bottom)) });
   };
 
-  /** Put `p` under the sight, keeping the zoom (zoom 14 the first time), and load there. */
-  const moveTo = (p: Point, from: Region | null) => {
+  /** Put `p` under the sight, keeping the zoom; load there unless told not to. */
+  const moveTo = (p: Point, from: Region | null, reload = true) => {
     const base = from ?? regionAt(p, START_ZOOM, size.width, size.height);
     const c = centerForSight(p, boxOf({ ...base, latitude: p.lat, longitude: p.lng }), sightY);
     const next = { ...base, latitude: c.lat, longitude: c.lng };
     mapRef.current?.animateToRegion(next, 300);
     setRegion(next);
-    load(boxOf(next));
+    if (reload) load(boxOf(next));
   };
 
-  // The first camera, once the map and the sight are known, and again when
-  // the guest picks another location.
+  // The first camera: the chosen point at the map's centre, zoom 14; the
+  // first load goes out at the sight. Again when the guest picks another location.
   const start = useEffectEvent(() => {
     if (!location || !mapReady || sight.bottom === 0) return;
     const key = `${location.lat},${location.lng}`;
     if (startedAt === key) return;
+    const first = startedAt === null;
     setStartedAt(key);
-    moveTo(location, null);
+    const r = regionAt(location, START_ZOOM, size.width, size.height);
+    if (!first) mapRef.current?.animateToRegion(r, 300);
+    setRegion(r);
+    load(boxOf(r));
   });
   useEffect(() => {
     // After the layout pass that produced these values, not inside it.
@@ -145,7 +166,8 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
       const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setYou(p);
       setLocate("located");
-      if (recentre) moveTo(p, region);
+      // Recentre always; reload only once the fix has left the loaded set behind.
+      if (recentre) moveTo(p, region, !loadAt || km(loadAt.point, p) >= STALE_KM);
     } catch {
       setLocate("blocked");
       if (recentre) Alert.alert("Couldn't find you", "Turn on Location Services, then tap again.");
@@ -160,6 +182,18 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     };
   }, []);
 
+  // The rail rests on the chosen card's page for each new set, and when it comes back.
+  const railKey = (map.data?.places ?? []).map((p) => p.id).join("|");
+  const railBack = term.trim().length < 2 && !focused;
+  const rest = useEffectEvent(() => {
+    const list = map.data?.places ?? [];
+    const i = Math.max(0, list.findIndex((p) => p.id === chosen));
+    railRef.current?.scrollTo({ x: (i + 1) * (size.width - PAGE_INSET), animated: false });
+  });
+  useLayoutEffect(() => {
+    if (railBack) rest();
+  }, [railKey, railBack]);
+
   // A guest move reloads when the map rests, at most once every reloadIdleSec
   // from the last reload, and only past reloadMinViewportPct of that screen.
   const onRest = (next: Region, gesture: boolean) => {
@@ -172,7 +206,8 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     pending.current = setTimeout(() => {
       pending.current = null;
       const box = boxOf(next);
-      const from = lastLoad.current?.box ?? null;
+      // After a failed load the next rest retries at any distance.
+      const from = map.isError ? null : (lastLoad.current?.box ?? null);
       if (from && minPct > 0 && movedShare(from, box, sightY) * 100 < minPct) return;
       load(box);
     }, wait);
@@ -190,18 +225,27 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   }
 
   const raw = map.data?.places ?? [];
-  // A bar pick is card one (the web's prependAnchorPlace).
-  const anchored = anchorId ? raw.find((p) => p.id === anchorId) : undefined;
-  const places = anchored ? [anchored, ...raw.filter((p) => p.id !== anchorId)] : raw;
-  const picked = places.find((p) => p.id === chosen) ?? places[0] ?? null;
+  // A bar pick is card one (the web's prependAnchorPlace); outside the set, its own card.
+  const anchored = anchor ? (raw.find((p) => p.id === anchor.id) ?? anchor.card ?? undefined) : undefined;
+  const places = anchored ? [anchored, ...raw.filter((p) => p.id !== anchored.id)] : raw;
+  // While typing, the results' pins replace the catalog's; a row with no
+  // point takes its catalog row's.
   const resultPins: Pin[] = querying
-    ? (suggestions.data ?? []).flatMap((row) =>
-        row.kind !== "location" && row.onMesita && row.point
-          ? [{ id: row.mesitaId ?? row.placeId, lat: row.point.lat, lng: row.point.lng, name: row.mainText, premier: row.premier, dot: false }]
-          : [],
-      )
+    ? (suggestions.data ?? []).flatMap((row) => {
+        if (row.kind === "location" || !row.onMesita || !row.mesitaId) return [];
+        const at = row.point ?? (() => {
+          const own = raw.find((p) => p.id === row.mesitaId);
+          return own && own.lat !== null && own.lng !== null ? { lat: own.lat, lng: own.lng } : null;
+        })();
+        return at ? [{ id: row.mesitaId, lat: at.lat, lng: at.lng, name: row.mainText, premier: row.premier, dot: false }] : [];
+      })
     : [];
-  const pins = [...pinsOf(places, map.data?.dots ?? []), ...resultPins.filter((r) => !places.some((p) => p.id === r.id))];
+  const catalogPins = pinsOf(places, map.data?.dots ?? []);
+  const pins = resultPins.length > 0 ? [...catalogPins.filter((p) => p.dot), ...resultPins] : catalogPins;
+  // The rail's card is the chosen place, else place one; a pin outside the
+  // rail can be chosen too.
+  const railPicked = places.find((p) => p.id === chosen) ?? places[0] ?? null;
+  const picked = { id: pins.some((p) => p.id === chosen) ? chosen : (railPicked?.id ?? null) };
   const zoom = region ? zoomOf(region, size.width) : START_ZOOM;
   const named =
     region && zoom >= PIN_NAME_MIN_ZOOM
@@ -209,7 +253,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
           pins.flatMap((pin) => {
             if (pin.dot || !pin.name) return [];
             const at = screenOf(pin, boxOf(region), size.width, size.height);
-            return [{ id: pin.id, title: pin.name, x: at.x, y: at.y, focused: pin.id === picked?.id }];
+            return [{ id: pin.id, title: pin.name, x: at.x, y: at.y, focused: pin.id === picked.id }];
           }),
         )
       : new Set<string>();
@@ -224,51 +268,83 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     if (i >= 0) railRef.current?.scrollTo({ x: (i + 1) * page, animated: true });
   };
 
-  // A catalog pin: select · fly · open (the web's pinGesture).
+  const flyTo = (pin: Pin) => {
+    if (!region) return;
+    const c = centerForSight(pin, boxOf(region), sightY);
+    mapRef.current?.animateToRegion({ ...region, latitude: c.lat, longitude: c.lng }, 300);
+  };
+
+  // A pin: select · fly · open (the web's pinGesture). The first tap pans
+  // only when the pin is off the visible map.
   const tapPin = (pin: Pin) => {
     if (pin.dot) return;
-    if (picked?.id !== pin.id) {
+    const box = region ? boxOf(region) : null;
+    if (picked.id !== pin.id) {
+      arrived.current = null;
       setChosen(pin.id);
       scrollToPlace(pin.id);
+      if (box && !isVisible(box, pin)) flyTo(pin);
       return;
     }
-    const box = region ? boxOf(region) : null;
-    const at = box ? screenOf(pin, box, size.width, size.height) : null;
-    const underSight = at ? Math.hypot(at.x - size.width / 2, at.y - sightY * size.height) < 24 : true;
-    if (!underSight && box && region) {
-      const c = centerForSight(pin, box, sightY);
-      mapRef.current?.animateToRegion({ ...region, latitude: c.lat, longitude: c.lng }, 300);
+    if (arrived.current === pin.id || !box || isUnderSight(box, pin, sightY)) {
+      onOpen(pin.id);
       return;
     }
-    onOpen(pin.id);
+    arrived.current = pin.id;
+    flyTo(pin);
   };
 
   // Every bar pick anchors the map; a Google-only place opens Generate at once.
   const pickRow = (row: Suggestion) => {
     if (row.kind === "location") {
       setTerm("");
+      renew();
       field.current?.blur();
-      resolve.mutate(row.placeId, { onSuccess: (point) => moveTo(point, region) });
+      setChosen(null);
+      setAnchor(null);
+      // A location fits its own extent: a city opens wide, a neighbourhood close.
+      resolve.mutate(row.placeId, {
+        onSuccess: (found) => {
+          if (!found.viewport) {
+            moveTo(found, region);
+            return;
+          }
+          const { low, high } = found.viewport;
+          const next = {
+            latitude: (low.lat + high.lat) / 2,
+            longitude: (low.lng + high.lng) / 2,
+            latitudeDelta: Math.max(0.002, high.lat - low.lat),
+            longitudeDelta: Math.max(0.002, high.lng - low.lng),
+          };
+          mapRef.current?.animateToRegion(next, 300);
+          setRegion(next);
+          load(boxOf(next));
+        },
+      });
       return;
     }
     if (!row.onMesita) {
       setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText });
       return;
     }
-    if (!row.point) {
+    const own = row.mesitaId ? raw.find((p) => p.id === row.mesitaId) : undefined;
+    const point = own && own.lat !== null && own.lng !== null ? { lat: own.lat, lng: own.lng } : row.point;
+    if (!point) {
       if (row.mesitaId) onOpen(row.mesitaId);
       return;
     }
     setTerm("");
+    renew();
     field.current?.blur();
     if (row.mesitaId) {
-      setAnchorId(row.mesitaId);
+      setAnchor({ id: row.mesitaId, point, card: own ?? row.card });
       setChosen(row.mesitaId);
     }
-    moveTo(row.point, region);
+    moveTo(point, region);
   };
 
   const actRow = (row: Suggestion) => {
+    renew();
     if (row.onMesita && row.mesitaId) onOpen(row.mesitaId);
     else setGenerate({ gid: row.placeId, name: row.mainText, address: row.secondaryText });
   };
@@ -298,12 +374,19 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
         customMapStyle={searchMapStyle}
         initialRegion={regionAt(location, START_ZOOM, size.width, size.height)}
         onMapReady={() => setMapReady(true)}
+        // Any new move cancels a pending reload; the rest that ends it arms another.
+        onRegionChange={() => {
+          if (pending.current) clearTimeout(pending.current);
+        }}
         onRegionChangeComplete={(next, details) => onRest(next, details?.isGesture === true)}
         testID="search-map"
       >
         {pins.map((pin) => (
-          <PlaceMarker key={pin.id} pin={pin} selected={pin.id === picked?.id} named={named.has(pin.id)} onPress={() => tapPin(pin)} />
+          <PlaceMarker key={pin.id} pin={pin} selected={pin.id === picked.id} onPress={() => tapPin(pin)} />
         ))}
+        {pins.map((pin) =>
+          named.has(pin.id) && pin.name ? <PinName key={`name-${pin.id}`} pin={pin} selected={pin.id === picked.id} /> : null,
+        )}
         {you ? (
           <Marker coordinate={{ latitude: you.lat, longitude: you.lng }} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false} zIndex={100}>
             <View style={[styles.disc, styles.you]} />
@@ -329,7 +412,10 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
       >
         <SearchHeader
           term={term}
-          onTerm={setTerm}
+          onTerm={(next) => {
+            if (next.trim().length < 2 && term.trim().length >= 2) renew();
+            setTerm(next);
+          }}
           field={field}
           onFocus={setFocused}
           locate={locate}
@@ -338,8 +424,11 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
           chosen={shown}
           onChip={(key) => {
             selectMapChip(key);
-            // Nearby is Popular at the guest's own point.
-            if (key === "near" && you) moveTo(you, region);
+            // Nearby is Popular at the guest's own point (the chosen one without a fix).
+            if (key === "near") {
+              moveTo(you ?? location, region);
+              void map.refetch();
+            }
           }}
           onMenu={onMenu}
           chipsHidden={querying}
@@ -354,10 +443,13 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
               onPick={pickRow}
               onAction={actRow}
               onRetry={() => void suggestions.refetch()}
-              onClear={() => setTerm("")}
+              onClear={() => {
+                setTerm("");
+                renew();
+              }}
             />
           ) : null}
-          {!querying && failed ? (
+          {failed ? (
             <View style={styles.failed}>
               <View style={styles.errorBox}>
                 <Text role="caption" tone="danger">
@@ -398,7 +490,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
           ) : places.length === 0 ? (
             <View style={styles.pagesCentred}>
               <View style={[styles.pageBox, { width: page }]}>
-                <AddCard width={card} empty={!failed} filterLabel={filterLabel} onAdd={onAdd ?? onSignIn} />
+                <AddCard width={card} empty={!failed} filterLabel={filterLabel} onAdd={() => (onAdd ? onAdd(loadAt?.point ?? null) : onSignIn())} />
               </View>
             </View>
           ) : (
@@ -413,19 +505,19 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
               contentContainerStyle={styles.railContent}
               onMomentumScrollEnd={(e) => {
                 const place = places[Math.round(e.nativeEvent.contentOffset.x / page) - 1];
-                if (place && place.id !== picked?.id) setChosen(place.id);
+                if (place && place.id !== picked.id) setChosen(place.id);
               }}
             >
               {/* Page 0: the Add card, off-screen left while the rail rests on place one. */}
               <View style={[styles.pageBox, { width: page }]}>
-                <AddCard width={card} empty={false} filterLabel={null} onAdd={onAdd ?? onSignIn} />
+                <AddCard width={card} empty={false} filterLabel={null} onAdd={() => (onAdd ? onAdd(loadAt?.point ?? null) : onSignIn())} />
               </View>
               {places.map((place) => (
                 <View key={place.id} style={[styles.pageBox, { width: page }, map.isFetching && styles.dimmed]}>
                   <SearchCard
                     place={place}
                     width={card}
-                    selected={place.id === picked?.id}
+                    selected={place.id === picked.id}
                     saved={savedIds.includes(place.id)}
                     onOpen={() =>
                       place.googleOnly && place.googleId ? setGenerate({ gid: place.googleId, name: place.name, address: null }) : onOpen(place.id)
@@ -453,7 +545,16 @@ function SearchLoading({ width, insetTop }: { width: number; insetTop: number })
         <View style={styles.barBlock} />
         <View style={styles.chipsBlock}>
           {["Menu", "Popular", "Coffee", "Breakfast", "Brunch", "Bakery"].map((w) => (
-            <View key={w} style={[styles.chipBlock, { width: 28 + w.length * 8 }]} />
+            // The real chip's own width: an invisible copy over a white pulse.
+            <View key={w} style={styles.chipBlock}>
+              <Skeleton style={styles.chipPulse} />
+              <View style={styles.chipCopy}>
+                <View style={styles.chipMarkSpace} />
+                <Text role="label" style={styles.invisible}>
+                  {w}
+                </Text>
+              </View>
+            </View>
           ))}
         </View>
       </View>
@@ -483,36 +584,62 @@ function pinsOf(places: readonly CatalogPlace[], dots: readonly { id: string; la
   return [...fromCards, ...extra];
 }
 
-/** A pin: the web's 7-radius disc with a white ring in a 44 tap pad, or a
- *  3-radius dot nobody taps; its name 9 right of the centre when shown. */
-function PlaceMarker({ pin, selected, named, onPress }: { pin: Pin; selected: boolean; named: boolean; onPress: () => void }) {
+/** A pin: the web's 7-radius disc with a 1.25 white stroke centred on its
+ *  edge, in a 44 tap pad, or a 3-radius dot nobody taps. The key carries the
+ *  colour, so a selection redraws the marker. */
+function PlaceMarker({ pin, selected, onPress }: { pin: Pin; selected: boolean; onPress: () => void }) {
   const fill = selected ? colors.mapSelected : pin.premier ? colors.mapPremier : colors.mapPin;
   // The web's stacking: dot 1, Premier dot 2, pin 10, Premier pin 11, you 100, selected 200.
   const z = selected ? 200 : pin.dot ? (pin.premier ? 2 : 1) : pin.premier ? 11 : 10;
   const pad = pin.dot ? 12 : 44;
-  const width = named && pin.name ? pad / 2 + LABEL_LEFT + labelWidth(pin.name) : pad;
   return (
     <Marker
+      key={`${pin.id}-${selected ? "on" : "off"}`}
       coordinate={{ latitude: pin.lat, longitude: pin.lng }}
-      // The anchor is the disc's centre, half a pad in from the left.
-      anchor={{ x: pad / 2 / width, y: 0.5 }}
+      anchor={{ x: 0.5, y: 0.5 }}
       tracksViewChanges={false}
       zIndex={z}
       tappable={!pin.dot}
       onPress={pin.dot ? undefined : onPress}
     >
-      <View style={[styles.marker, { width, height: pad }]}>
-        <View style={[styles.pad, { width: pad, height: pad }]}>
-          <View style={[pin.dot ? styles.dot : styles.disc, { backgroundColor: fill }]} />
-        </View>
-        {named && pin.name ? (
-          <Text
-            numberOfLines={1}
-            style={[styles.pinName, { left: pad / 2 + LABEL_LEFT, maxWidth: labelWidth(pin.name) }, selected ? styles.pinNameOn : styles.pinNameOff]}
-          >
-            {pin.name}
+      <View style={[styles.pad, { width: pad, height: pad }]}>
+        <View style={[pin.dot ? styles.dot : styles.disc, { backgroundColor: fill }]} />
+      </View>
+    </Marker>
+  );
+}
+
+const HALO = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+] as const;
+
+/** A pin's name, 9 right of its centre: ink over a white halo (the web's 2 px
+ *  stroke and four 1 px shadows), its own marker so it takes no taps. */
+function PinName({ pin, selected }: { pin: Pin; selected: boolean }) {
+  const title = pin.name ?? "";
+  const width = LABEL_LEFT + labelWidth(title);
+  const ink = selected ? styles.pinNameOn : styles.pinNameOff;
+  return (
+    <Marker
+      key={`name-${pin.id}-${selected ? "on" : "off"}`}
+      coordinate={{ latitude: pin.lat, longitude: pin.lng }}
+      anchor={{ x: 0, y: 0.5 }}
+      tracksViewChanges={false}
+      tappable={false}
+      zIndex={selected ? 201 : 12}
+    >
+      <View style={[styles.nameBox, { width, height: 16 }]} pointerEvents="none">
+        {HALO.map(([x, y]) => (
+          <Text key={`${x}${y}`} numberOfLines={1} style={[styles.pinName, styles.halo, ink, { left: LABEL_LEFT + x, top: y, width: labelWidth(title) }]}>
+            {title}
           </Text>
-        ) : null}
+        ))}
+        <Text numberOfLines={1} style={[styles.pinName, ink, { left: LABEL_LEFT, top: 0, width: labelWidth(title) }]}>
+          {title}
+        </Text>
       </View>
     </Marker>
   );
@@ -542,10 +669,12 @@ const styles = StyleSheet.create({
   pagesCentred: { flexDirection: "row", justifyContent: "center" },
   pageBox: { paddingHorizontal: 3 },
   dimmed: { opacity: 0.55 },
-  marker: { justifyContent: "center" },
   pad: { alignItems: "center", justifyContent: "center" },
-  disc: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.25, borderColor: colors.paper },
-  dot: { width: 6, height: 6, borderRadius: 3, borderWidth: 1, borderColor: colors.paper },
+  // The web strokes on the edge, half out: r 7 + 0.625 and r 3 + 0.5.
+  disc: { width: 15.25, height: 15.25, borderRadius: 7.625, borderWidth: 1.25, borderColor: colors.paper },
+  dot: { width: 7, height: 7, borderRadius: 3.5, borderWidth: 1, borderColor: colors.paper },
+  nameBox: {},
+  halo: { color: colors.paper },
   you: { backgroundColor: colors.mapYou },
   // type-label, ink with a white halo (the web strokes 2 px white and shadows 1 px each way).
   pinName: {
@@ -558,6 +687,10 @@ const styles = StyleSheet.create({
   pinNameOn: { color: colors.mapLabelOn, fontWeight: weight.semibold },
   pinNameOff: { color: colors.mapLabelOff, fontWeight: weight.normal },
   barBlock: { height: 48, borderRadius: radius.full, backgroundColor: colors.paper, boxShadow: shadow.float },
-  chipsBlock: { flexDirection: "row", gap: 8, overflow: "hidden" },
-  chipBlock: { height: 32, borderRadius: radius.full, backgroundColor: colors.paper, boxShadow: shadow.float },
+  chipsBlock: { flexDirection: "row", gap: 8, overflow: "hidden", paddingVertical: 8 },
+  chipBlock: { height: 32, borderRadius: radius.full, boxShadow: shadow.float },
+  chipPulse: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, borderRadius: radius.full, backgroundColor: colors.paper },
+  chipCopy: { height: 32, flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 13 },
+  chipMarkSpace: { width: 16, height: 16 },
+  invisible: { opacity: 0 },
 });

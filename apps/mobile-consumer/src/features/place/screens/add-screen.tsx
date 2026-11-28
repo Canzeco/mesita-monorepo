@@ -9,7 +9,16 @@ import { colors, maxFontSizeMultiplier, space, type } from "@/theme";
 import { createPlace, suggestPlaces } from "../api";
 
 /** Members add a Google place Mesita does not have yet. A guest is sent to sign in. */
-export function AddPlaceScreen({ onSignIn, onCreated }: { onSignIn: () => void; onCreated: (id: string) => void }) {
+export function AddPlaceScreen({
+  onSignIn,
+  onCreated,
+  near = null,
+}: {
+  onSignIn: () => void;
+  onCreated: (id: string) => void;
+  /** The map's point when Search opened it: the search leans there. */
+  near?: { lat: number; lng: number } | null;
+}) {
   const member = useSession().guestId !== null;
   const [term, setTerm] = useState("");
   const [token] = useState(() => Crypto.randomUUID());
@@ -31,7 +40,7 @@ export function AddPlaceScreen({ onSignIn, onCreated }: { onSignIn: () => void; 
       setRows([]);
       return;
     }
-    const found = await suggestPlaces(value.trim(), token).catch(() => []);
+    const found = await suggestPlaces(value.trim(), token, near).catch(() => []);
     setRows(found.map((row) => ({ placeId: row.placeId, mainText: row.mainText })));
   };
   const add = async (placeId: string) => {

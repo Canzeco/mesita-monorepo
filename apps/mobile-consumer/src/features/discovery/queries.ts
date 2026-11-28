@@ -148,6 +148,8 @@ export function usePlaceSearch(input: string, sessionToken: string, member: bool
       return answer.rows;
     },
     enabled: member && settled.length >= 2,
+    // The last rows stay while the next search runs, as on the web.
+    placeholderData: keepPreviousData,
   });
   // Waiting out the idle counts as searching (the web's spinner shows at once).
   return { ...query, waiting: term.length >= 2 && term !== settled };

@@ -67,16 +67,44 @@ export function ResultsPanel(props: Props) {
   );
 }
 
+/** The web's locationTypeLabel. */
+function locationTypeLabel(type: string | null): string {
+  switch (type) {
+    case "locality":
+      return "City";
+    case "administrative_area_level_1":
+      return "State";
+    case "administrative_area_level_2":
+      return "Region";
+    case "country":
+      return "Country";
+    case "postal_code":
+      return "Postal code";
+    case "neighborhood":
+    case "sublocality":
+    case "sublocality_level_1":
+      return "Neighborhood";
+    default:
+      return "Location";
+  }
+}
+
 /** One result: the web's PlaceActionRow. A place has Open or Generate on its right. */
 function Line({ row, first, onPick, onAction }: { row: Suggestion; first: boolean; onPick: () => void; onAction: () => void }) {
   const spoken = `${row.mainText}${row.secondaryText ? `, ${row.secondaryText}` : ""}`;
   const location = row.kind === "location";
-  const tone = location ? "" : row.premier ? "Mesita Premier" : row.onMesita ? "Basic Mesita profile" : "No profile yet";
+  const tone = location
+    ? locationTypeLabel(row.locationType)
+    : row.premier
+      ? (row.premierName ?? "Mesita Premier")
+      : row.onMesita
+        ? "Basic Mesita profile"
+        : "No profile yet";
   return (
     <View style={[styles.row, !first && styles.divided]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={location ? spoken : `${spoken}, ${tone}`}
+        accessibilityLabel={`${spoken}, ${tone}`}
         onPress={onPick}
         style={({ pressed }) => [styles.body, pressed && styles.dim]}
       >

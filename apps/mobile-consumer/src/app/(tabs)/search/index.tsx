@@ -12,7 +12,7 @@ export default function Route() {
       onMenu={() => router.push({ pathname: "/categories", params: { from: "search" } })}
       onOpen={(id) => router.push({ pathname: "/place/[id]", params: { id } })}
       onReserve={(id) => router.push({ pathname: "/reserve/[placeId]", params: { placeId: id } })}
-      onAdd={() => router.push("/place/add")}
+      onAdd={(at) => router.push(at ? { pathname: "/place/add", params: { lat: String(at.lat), lng: String(at.lng) } } : "/place/add")}
       onSignIn={() => router.push("/me")}
     />
   );
