@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
 import { useKeyboardHeight } from "@/components/use-keyboard-height";
-import { colors, radius, space } from "@/theme";
+import { colors, radius, space, text } from "@/theme";
 
 // THE WEB'S BOTTOM BAR, DRAWN (Pato, 2026-11-28, MESITA-5102: "ignore the
 // Apple bubble menu. Use Mesita own components for both bottom menu and
@@ -54,7 +54,7 @@ export function TabBar(props: Props) {
           const route = props.routes.find((r) => r.name === item.route);
           if (!route) return null;
           const focused = route.key === props.focusedKey;
-          const photo = item.route === "me" && props.avatarUrl ? props.avatarUrl : null;
+          const photo = item.route === "me" && item.label === "Me" && props.avatarUrl ? props.avatarUrl : null;
           return (
             <Pressable
               key={route.key}
@@ -65,12 +65,14 @@ export function TabBar(props: Props) {
                 if (!focused) void Haptics.selectionAsync();
                 props.onPress(route, focused);
               }}
-              style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+              style={styles.item}
             >
               {focused ? <View style={styles.lit} /> : null}
               <View style={[styles.circle, focused && styles.circleOn]}>
                 {photo ? (
-                  <Image source={photo} style={[styles.photo, focused && styles.photoOn]} contentFit="cover" />
+                  <View style={[styles.photoFrame, focused && styles.photoOn]}>
+                    <Image source={photo} style={styles.photo} contentFit="cover" />
+                  </View>
                 ) : (
                   <Icon
                     name={item.icon}
@@ -151,7 +153,7 @@ const styles = StyleSheet.create({
   // border-border bg-card/95 border-t px-0.5 pt-2
   bar: {
     backgroundColor: colors.bar,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingHorizontal: 2,
     paddingTop: space.sm,
@@ -168,20 +170,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     paddingVertical: space.xs,
   },
-  pressed: { transform: [{ scale: 0.98 }] },
   // absolute -top-2 h-1 w-8 rounded-full bg-primary
   lit: { position: "absolute", top: -space.sm, width: 32, height: 4, borderRadius: radius.full, backgroundColor: colors.ink },
   circle: { width: 32, height: 32, borderRadius: radius.full, alignItems: "center", justifyContent: "center" },
   circleOn: { backgroundColor: colors.ink },
   photo: { width: 24, height: 24, borderRadius: radius.full },
-  photoOn: { borderWidth: 2, borderColor: colors.onInk },
+  // ring-2 ring-primary-foreground: the ring sits outside the 24pt photo.
+  photoFrame: { width: 28, height: 28, borderRadius: radius.full, borderWidth: 2, borderColor: "transparent", alignItems: "center", justifyContent: "center" },
+  photoOn: { borderColor: colors.onInk },
   // absolute -top-1.5 -right-3
-  bubbleSpot: { position: "absolute", top: -6, right: -12 },
+  // -top-1.5 -right-3 of the 20pt pill; its 2pt ring adds 2 on each side.
+  bubbleSpot: { position: "absolute", top: -8, right: -14 },
   // h-5 min-w-5 rounded-full px-1.5 bg-destructive, ring-2 ring-card
   bubble: {
-    height: 20,
-    minWidth: 20,
-    paddingHorizontal: 6,
+    height: 24,
+    minWidth: 24,
+    paddingHorizontal: 8,
     borderRadius: radius.full,
     backgroundColor: colors.danger,
     borderWidth: 2,
@@ -189,6 +193,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bubbleText: { fontVariant: ["tabular-nums"] },
+  bubbleText: { fontVariant: ["tabular-nums"], lineHeight: text.meta.fontSize },
   fallback: { paddingVertical: space.md },
 });

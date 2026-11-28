@@ -14,6 +14,7 @@ import { report } from "@/lib/report";
 import { colors, space } from "@/theme";
 
 import { listNotices, type Notice } from "../api";
+import { useMarkSeen } from "../seen";
 import { shortAgo } from "../when";
 
 function openNotice(router: ReturnType<typeof useRouter>, row: Notice) {
@@ -36,6 +37,7 @@ export function NoticesScreen() {
   const router = useRouter();
   const [now] = useState(() => Date.now());
   const query = useQuery({ queryKey: ["notices"], queryFn: ({ signal }) => listNotices(signal) });
+  useMarkSeen(query.data);
   const copy = useErrorCopy(query.error);
   if (query.isPending) return <Skeleton style={styles.fill} />;
   if (query.isError) {

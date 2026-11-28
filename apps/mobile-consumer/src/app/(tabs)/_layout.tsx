@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
 import { Tabs, type BottomTabBarProps } from "expo-router/js-tabs";
 
 import { TabBar, TabBarBoundary, type TabItem } from "@/components/tab-bar";
 import { useGate, useMyProfile } from "@/features/auth";
-import { listNotices } from "@/features/notifications";
+import { useUnseenCount } from "@/features/notifications";
 import { report } from "@/lib/report";
 
 // THE DRAWN BAR (Pato, 2026-11-28, MESITA-5102): JavaScript tabs with
@@ -35,7 +34,7 @@ function hidesBar(route: { name: string } & Nested): boolean {
 function Bar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const { member } = useGate();
   const avatarUrl = useMyProfile().data?.avatarUrl ?? null;
-  const notices = useQuery({ queryKey: ["notices"], queryFn: ({ signal }) => listNotices(signal), enabled: member });
+  const unseen = useUnseenCount(member);
   const items = member ? MEMBER : ANONYMOUS;
   const focused = state.routes[state.index];
   const press = (route: { key: string }, isFocused: boolean) => {
@@ -57,7 +56,7 @@ function Bar({ state, emitter, navigateToTab }: BottomTabBarProps) {
         focusedKey={focused.key}
         onPress={press}
         avatarUrl={avatarUrl}
-        unseen={member ? (notices.data?.length ?? 0) : 0}
+        unseen={unseen}
         hidden={hidesBar(focused as typeof focused & Nested)}
       />
     </TabBarBoundary>

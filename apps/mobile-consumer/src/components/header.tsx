@@ -33,7 +33,7 @@ export function HeaderButton({
       accessibilityLabel={label}
       onPress={onPress}
       disabled={disabled}
-      style={({ pressed }) => [styles.square, pressed && pressedStyle]}
+      style={({ pressed }) => [styles.square, pressed && pressedStyle, disabled && styles.off]}
     >
       <Icon name={icon} size={20} strokeWidth={2.25} />
     </Pressable>
@@ -105,10 +105,11 @@ const styles = StyleSheet.create({
     paddingBottom: space.sm,
     backgroundColor: colors.paper,
   },
-  rule: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  side: { flex: 1, flexDirection: "row" },
+  rule: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  side: { flex: 1, minWidth: 44, flexDirection: "row" },
   end: { justifyContent: "flex-end", minHeight: 44 },
   spacer: { width: 44, height: 44 },
+  off: { opacity: 0.5 },
   // text-xl font-semibold tracking-tight, centred, one line
   title: {
     ...text.xl,
