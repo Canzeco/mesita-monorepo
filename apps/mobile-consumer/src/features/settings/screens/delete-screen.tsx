@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Alert, ScrollView, StyleSheet } from "react-native";
 
+import { DEFAULT_CURRENCY, moneyLabel } from "@/generated/shared/lib/money";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { Skeleton } from "@/components/skeleton";
@@ -11,8 +12,6 @@ import { space } from "@/theme";
 
 import { creditsHeld, deleteAccount } from "../account";
 
-const money = (cents: number) => `$${(cents / 100).toFixed(2)}`;
-
 /** Shows the credits still held, then asks, then closes the account. */
 export function DeleteScreen() {
   const query = useQuery({ queryKey: ["credits-held"], queryFn: ({ signal }) => creditsHeld(signal) });
@@ -20,7 +19,7 @@ export function DeleteScreen() {
   if (query.isPending) return <Skeleton style={styles.fill} />;
   if (query.isError) return <ErrorState message={copy.message} offline={copy.offline} onRetry={() => void query.refetch()} />;
   const ask = () =>
-    Alert.alert("Delete your account?", `You hold ${money(query.data)} in credits. This cannot be undone.`, [
+    Alert.alert("Delete your account?", `You hold ${moneyLabel(query.data, DEFAULT_CURRENCY)} in credits. This cannot be undone.`, [
       { text: "Keep my account", style: "cancel" },
       {
         text: "Delete account",
@@ -32,7 +31,7 @@ export function DeleteScreen() {
     ]);
   return (
     <ScrollView contentContainerStyle={styles.page}>
-      <Text role="title">{money(query.data)}</Text>
+      <Text role="title">{moneyLabel(query.data, DEFAULT_CURRENCY)}</Text>
       <Text role="body">This is the credit still on your account. Deleting the account does not pay it out.</Text>
       <Button label="Delete account" kind="danger" onPress={ask} />
     </ScrollView>

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { Button } from "@/components/button";
 import { ErrorState } from "@/components/error-state";
 import { SettingsGroup, SettingsRow } from "@/components/settings-row";
@@ -21,10 +22,6 @@ const NAME: Record<VoucherKey, string> = {
   voucher_5000: "Big Bonus",
 };
 
-function money(cents: number, currency: string): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: currency.toUpperCase() });
-}
-
 const LIMIT: Record<VoucherKey, string> = {
   voucher_welcome: "One per place.",
   voucher_vip: "One per visit.",
@@ -36,7 +33,7 @@ const LIMIT: Record<VoucherKey, string> = {
 function offerFacts(key: VoucherKey, line: { price_cents: number; credit_cents: number; bonus_cents: number }, currency: string) {
   const bonus = line.price_cents > 0 ? `${Math.round((line.bonus_cents / line.price_cents) * 100)}% bonus` : null;
   return {
-    pay: `Pay ${money(line.price_cents, currency)}, get ${money(line.credit_cents, currency)}.`,
+    pay: `Pay ${moneyLabel(line.price_cents, currency)}, get ${moneyLabel(line.credit_cents, currency)}.`,
     limit: LIMIT[key],
     bonus,
   };
@@ -50,11 +47,11 @@ function balanceLine(box: PlaceMoney): string | null {
   const balance = box.balance;
   if (!balance) return null;
   const currency = box.currency ?? "mxn";
-  const ready = money(balance.spendable_cents, currency);
+  const ready = moneyLabel(balance.spendable_cents, currency);
   if (balance.pending_cents <= 0) return `Balance ${ready}`;
   const at = balance.next_ready_at ? new Date(balance.next_ready_at) : null;
   const when = at && !Number.isNaN(at.getTime()) ? at.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
-  const pending = `+${money(balance.pending_cents, currency)} ${when ? `lands at ${when}` : "lands soon"}`;
+  const pending = `+${moneyLabel(balance.pending_cents, currency)} ${when ? `lands at ${when}` : "lands soon"}`;
   return `Balance ${ready}. ${pending}`;
 }
 

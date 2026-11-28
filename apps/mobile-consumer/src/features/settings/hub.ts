@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { moneyLabel } from "@/generated/shared/lib/money";
 import { callEdge } from "@/lib/edge";
 
 export const FEEDBACK_MAX = 1000;
@@ -11,8 +12,7 @@ export function sendFeedback(note: string): Promise<void> {
 
 export type Refund = { id: string; place: string; amount: string; when: string };
 
-const money = (cents: number | null, currency: string) =>
-  cents == null ? null : `${(cents / 100).toLocaleString("en-US", { style: "currency", currency: currency.toUpperCase() })}`;
+const money = (cents: number | null, currency: string) => (cents == null ? null : moneyLabel(cents, currency));
 
 /** Money the server says went back to the card. */
 export function listRefunds(signal?: AbortSignal): Promise<Refund[]> {
