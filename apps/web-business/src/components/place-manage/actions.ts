@@ -482,33 +482,6 @@ export async function setPlaceListed(
   };
 }
 
-export type AdminPlaceReport = {
-  id: string;
-  place_id: string;
-  place_name: string;
-  consumer_id: string;
-  first_name: string | null;
-  member_number: string | null;
-  reason: string;
-  note: string | null;
-  created_at: string;
-};
-
-/** The place's guest reports, newest first (admin-web-list-place-reports,
- *  MESITA-2686). Read-only. Every place's at once is Activity › Feedback
- *  (app/(app)/feedback/actions.ts). */
-export async function listPlaceReports(
-  placeId: string,
-): Promise<Result<{ reports: AdminPlaceReport[]; capped: boolean }>> {
-  const r = await efInvoke<{ reports?: AdminPlaceReport[]; capped?: boolean }>(
-    "business-web-list-place-reports",
-    { placeId },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: { reports: r.data.reports ?? [], capped: r.data.capped === true } };
-}
-
-
 /** Start the full Enrich for this place (business-web-enrich-place). */
 export async function enrichPlace(placeId: string): Promise<Result<true>> {
   const r = await efInvoke<{ enrichmentTriggered?: boolean }>("business-web-enrich-place", { placeId });

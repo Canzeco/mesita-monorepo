@@ -881,12 +881,9 @@ verify_jwt = true
 [functions.business-web-leave-place]
 verify_jwt = true
 
-# MESITA-3104: the rest of the place page moved to web-business; these four
+# MESITA-3104: the rest of the place page moved to web-business; these three
 # share their bodies with the admin list pages (_shared/*-handler.ts).
 [functions.business-web-set-place-listed]
-verify_jwt = true
-
-[functions.business-web-list-place-reports]
 verify_jwt = true
 
 [functions.business-web-enrich-place]
