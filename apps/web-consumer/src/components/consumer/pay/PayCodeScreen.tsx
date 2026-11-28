@@ -61,7 +61,7 @@ const CODE_KEY = "mesita.pay.code";
 function HandshakeSide({ who, ready }: { who: string; ready: boolean }) {
   return (
     <span className="flex w-20 flex-col items-center gap-1 text-center" data-handshake-side={who} data-ready={ready}>
-      <span className={cn("flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300", ready ? "border-[#635BFF] bg-[#635BFF] text-white" : "border-border text-muted-foreground border-dashed")} aria-hidden>
+      <span className={cn("flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all duration-300", ready ? "border-[#00D66F] bg-[#00D66F] text-neutral-950" : "border-border text-muted-foreground border-dashed")} aria-hidden>
         {ready ? <Check className="h-6 w-6" strokeWidth={3} /> : <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />}
       </span>
       <span className="text-sm font-semibold">{who}</span>
@@ -363,7 +363,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
     // that still sends it after the amounts.
     const coding = t.step === "code" && t.bill_cents === 0;
     const row = (label: string, cents: number, on: boolean, empty: string) => (
-      <div className={cn("flex items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-all duration-300", on ? "border-[#635BFF] bg-[#635BFF]/10" : "border-border")} data-write-bill-row={label}>
+      <div className={cn("flex items-center justify-between gap-3 rounded-2xl border-2 px-4 py-4 transition-all duration-300", on ? "border-[#00D66F] bg-[#00D66F]/10" : "border-border")} data-write-bill-row={label}>
         <dt className={cn("text-base font-semibold", !on && "text-muted-foreground")}>{label}</dt>
         <dd className={cn("flex items-center gap-1 text-2xl font-bold tabular-nums", cents === 0 && "text-muted-foreground")}>
           <LiveAmount text={cents > 0 ? shown(cents) : empty} />
@@ -375,9 +375,9 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       "Bill",
       <section className="flex min-h-fit flex-1 flex-col justify-center gap-4 py-4" data-write-bill={t.step}>
         <div className="flex flex-col items-center gap-1 text-center">
-          <p className="mb-2 flex items-center gap-2 rounded-full bg-[#635BFF]/15 px-3 py-1 text-sm font-semibold">
+          <p className="mb-2 flex items-center gap-2 rounded-full bg-[#00D66F]/15 px-3 py-1 text-sm font-semibold">
             <span className="relative flex h-2.5 w-2.5" aria-hidden>
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#635BFF] opacity-75 motion-reduce:animate-none" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00D66F] opacity-75 motion-reduce:animate-none" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#00A85A]" />
             </span>
             Live
@@ -524,7 +524,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
         </span>
       </div>
       <p className="mt-4 text-2xl font-semibold leading-tight">{say}</p>
-      <p className={cn("mt-3 rounded-3xl bg-[#635BFF] px-5 py-6 text-center leading-tight font-bold tracking-tight text-white tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
+      <p className={cn("mt-3 rounded-3xl bg-[#00D66F] px-5 py-6 text-center leading-tight font-bold tracking-tight text-neutral-950 tabular-nums", big.length > 10 ? "text-4xl" : "text-5xl")}>{big}</p>
       <button
         type="button"
         className="bg-foreground text-background mt-3 flex min-h-12 w-full items-center justify-center rounded-2xl text-base font-semibold"
@@ -568,7 +568,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
   const handshake = (
     <div className="border-border flex shrink-0 items-center rounded-2xl border px-4 py-3" role="status" data-handshake>
       <HandshakeSide who="You" ready={bill.state === "accepted"} />
-      <span className={cn("h-0.5 flex-1 rounded-full", bill.state === "accepted" || bill.waiter_ready ? "bg-[#635BFF]" : "bg-border")} aria-hidden />
+      <span className={cn("h-0.5 flex-1 rounded-full", bill.state === "accepted" || bill.waiter_ready ? "bg-[#00D66F]" : "bg-border")} aria-hidden />
       <HandshakeSide who="Waiter" ready={bill.waiter_ready === true} />
     </div>
   );
@@ -665,7 +665,7 @@ export function PayCodeScreen({ from }: { from: string | null }) {
       </button>
       <Button
         size="lg"
-        className="min-h-12 w-full rounded-2xl bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6]"
+        className="min-h-12 w-full rounded-2xl bg-[#00D66F] text-base font-semibold text-neutral-950 hover:bg-[#00c265]"
         disabled={busy !== null || now < armedAt}
         onClick={() => void answer("accept")}
         aria-label={nothingOwed ? `Use ${m(q.credit_cents)} of my credits` : `I paid ${m(q.outside_cents)} to my waiter`}
