@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { isPremierPlace, SizedImage } from "@mesita/place-profile";
+import { isPremierPlace, SizedImage, type OfferInput } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import {
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { placeReservePath } from "@/lib/consumer-route-contract";
 import type { LiveTable } from "@/lib/use-live-reservations";
 import { CardActions } from "@/components/consumer/place-card";
-import { OfferDisplay, PlaceBannerRow, PremierPill, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { OfferDisplay, PlaceBannerRow, PremierPill, listCardReservable } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
@@ -172,7 +172,6 @@ export function PlaceRowCard({
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
-  const slides = google ? [] : offerSlides(place);
   const reservable = !google && listCardReservable(place);
 
   const openCard = () => {
@@ -244,7 +243,7 @@ export function PlaceRowCard({
             </div>
           )}
           {isPremierPlace(place) ? <PremierPill placement="top" /> : null}
-          <OfferDisplay slides={slides} />
+          <OfferDisplay offers={google ? null : (place.offers as OfferInput | null | undefined)} />
           {showScores ? (
             <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
           ) : null}

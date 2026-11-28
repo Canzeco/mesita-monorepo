@@ -10,8 +10,10 @@ import {
   offerSlides as slidesFor,
   offersLabel,
   useOfferSlide,
+  type OfferInput,
   type OfferSlide,
 } from "@mesita/place-profile";
+import { voucherPct } from "@mesita/place-profile/lib/offers";
 import type { Place } from "@/lib/api/places";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -100,30 +102,41 @@ export function OfferButton({
   );
 }
 
-/** THE OFFER DISPLAY ON THE PHOTO (Pato, 2026-11-27, MESITA-5090: "display
- *  offers carrosuel vertical in the image at the bottom", and the sketch:
- *  Premier top-left, "Offer Display" along the photo's bottom). Every offer
- *  here, one at a time, in its own colour, rising on the shared 2s beat
- *  (OfferTrack, the slide-up the switching box used). 8px from the photo's
- *  sides and 9px up, so it shares Save · Share's line and height. A label:
- *  a tap falls through to the photo and opens the place. A black border,
- *  like Premier (MESITA-5091). */
-export function OfferDisplay({ slides }: { slides: OfferSlide[] }) {
-  const live = useOfferSlide(slides);
-  if (slides.length === 0) return null;
-  const slide = slides[live.index];
+/** THE OFFERS ON THE PHOTO: TWO STILL BOXES (Pato, 2026-11-28, MESITA-5099:
+ *  "don't make it dancing here … two boxes, left box is prepay, right box
+ *  is pay. For prepay, select always the medium prepay bonus"). Left, purple
+ *  "Y% Bonus": the medium voucher's bonus (voucher_1000), only where the
+ *  place sells it. Right, green "X% Back": the place's highest cashback
+ *  line. One alone takes the whole width. Nothing moves. 8px from the
+ *  photo's sides and 9px up, on Save · Share's line (MESITA-5090), a black
+ *  border like Premier (MESITA-5091). A label: a tap opens the place. */
+export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
+  const bonus = offers?.sell.includes("voucher_1000") ? voucherPct(offers, "voucher_1000") : 0;
+  const back = offers?.cashback_pct ?? 0;
+  const boxes = [
+    ...(bonus > 0 ? [{ key: "prepay", words: `${bonus}% Bonus`, tone: "bg-[#635BFF] text-white" }] : []),
+    ...(back > 0 ? [{ key: "pay", words: `${back}% Back`, tone: "bg-[#00D66F] text-neutral-950" }] : []),
+  ];
+  if (boxes.length === 0) return null;
   return (
     <p
-      className={cn(
-        CARD_BUTTON_BOX,
-        OFFER_BOX,
-        slide.tone,
-        "pointer-events-none absolute inset-x-2 bottom-[9px] z-10 w-auto overflow-hidden border border-[#141414] shadow-sm",
-      )}
-      aria-hidden
+      className="pointer-events-none absolute inset-x-2 bottom-[9px] z-10 flex gap-2"
+      aria-label={boxes.map((b) => b.words).join(", ")}
       data-card-offer-display
     >
-      <OfferTrack slides={slides} index={live.index} previous={live.previous} bare />
+      {boxes.map((b) => (
+        <span
+          key={b.key}
+          className={cn(
+            CARD_BUTTON_BOX,
+            "flex min-w-0 flex-1 items-center justify-center border border-[#141414] px-2 font-sans text-sm font-semibold tabular-nums shadow-sm",
+            b.tone,
+          )}
+          data-card-offer={b.key}
+        >
+          <span className="truncate">{b.words}</span>
+        </span>
+      ))}
     </p>
   );
 }
