@@ -2,10 +2,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { enrichmentView, isEnrichedPlace } from "./place-enriched";
-import {
-  crenupMeterLine,
-  enrichmentStepRows,
-} from "@/components/place-manage/sections/state-enrichment";
 
 const STAMP = "2026-10-01T00:00:00Z";
 
@@ -53,51 +49,5 @@ describe("isEnrichedPlace — an Enrich run completed (MESITA-2154)", () => {
     expect(fn).toContain("enrichedAt");
     expect(fn).not.toContain("content_state");
     expect(fn).not.toContain("contentState");
-  });
-});
-
-describe("crenupMeterLine — the completeness meter, never the yes/no", () => {
-  it("prints N of total and where a Created place stopped", () => {
-    expect(
-      crenupMeterLine({
-        enrich_crenup: 1,
-        enrich_crenup_total: 8,
-        enrich_crenup_labels: ["Seed", "Details", "Serp"],
-        enrich_crenup_blocked: { key: "serp", index: 2, state: "missing" },
-      }),
-    ).toBe("1 of 8, stopped at Serp (missing).");
-  });
-
-  it("drops the stop reason once the queue finished, and the line on an older payload", () => {
-    expect(crenupMeterLine({ enrich_crenup: 8, enrich_crenup_total: 8, enrich_crenup_blocked: null })).toBe(
-      "8 of 8.",
-    );
-    expect(crenupMeterLine({})).toBeNull();
-  });
-});
-
-describe("enrichmentStepRows — the Enrich pass, Seed left off", () => {
-  it("names 1–8 with the Enriched suffix and skips Seed", () => {
-    const rows = enrichmentStepRows(
-      {
-        details: { state: "completed", at: null, detail: null },
-        serp: { state: "failed", at: null, detail: null },
-      },
-      true,
-    );
-    expect(rows.map((row) => row.label)).toEqual([
-      "1. Details Enriched",
-      "2. Serp Enriched",
-      "3. Links Enriched",
-      "4. Social Enriched",
-      "5. Reviews Enriched",
-      "6. Images Enriched",
-      "7. Description Enriched",
-      "8. Vectors Enriched",
-    ]);
-    expect(rows.map((row) => row.key)).not.toContain("seed");
-    expect(rows.find((row) => row.key === "details")?.on).toBe(true);
-    expect(rows.find((row) => row.key === "serp")?.failed).toBe(true);
-    expect(rows.find((row) => row.key === "links")?.on).toBe(false);
   });
 });

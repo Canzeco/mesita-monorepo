@@ -50,7 +50,6 @@ describe("Plan labels", () => {
     PLAN_WORDS: read("components", "consumer", "me", "plan-words.ts"),
     CARD: read("components", "consumer", "IdentityCard.tsx"),
     LABELS: read("lib", "guest-standing.ts"),
-    PERKS: read("components", "consumer", "me", "perk-list.tsx"),
   };
   // String literals only: comments may explain the history.
   const strings = (src: string) =>

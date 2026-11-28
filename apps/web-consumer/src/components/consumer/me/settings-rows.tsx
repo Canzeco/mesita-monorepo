@@ -62,7 +62,7 @@ export function RowDivider() {
 }
 
 /** Marks the guest's own Class or Plan row, beside its title (MESITA-2983);
- *  the row's subtitle never changes. PerkList's Soon pill's shape. */
+ *  the row's subtitle never changes. */
 export function CurrentPill(props: { [key: `data-${string}`]: string }) {
   return (
     <span

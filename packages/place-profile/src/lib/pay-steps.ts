@@ -15,11 +15,6 @@
 // A plain module (no React): web-consumer, web-visit and web-business import
 // it from @mesita/place-profile/lib/pay-steps.
 
-/** The waiter's button: the action, never the total. */
-export function signLabel(cashCents: number, money: (cents: number) => string): string {
-  return cashCents > 0 ? `Confirm · collect ${money(cashCents)}` : "Confirm · paid in the app";
-}
-
 /** Every Confirm label, whole. Confirmed means a phone at the place confirmed the
  *  payment (the owner's row shows the phone); no screen names a person. */
 export const SIGN = {

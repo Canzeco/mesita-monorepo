@@ -87,7 +87,6 @@ const DIALOG_ALLOWLIST = [
   // Home's Categories, floating (MESITA-4433, decision: Pato asked for
   // "modal floating"; a full-screen sheet in MESITA-4417).
   "components/consumer/home/CategoriesModal.tsx",
-  "components/consumer/ComingSoonModal.tsx",
   // Ask AI over Search (MESITA-4480, decision: Pato asked for a popup
   // modal, not its own page).
   "components/consumer/search/AskAiModal.tsx",
