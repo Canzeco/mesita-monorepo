@@ -13,6 +13,7 @@ import {
   type OfferInput,
   type OfferSlide,
 } from "@mesita/place-profile";
+import { CASHBACK_TONE, STANDARD_BONUS, VOUCHER_TONE, voucherPct } from "@mesita/place-profile/lib/offers";
 import type { Place } from "@/lib/api/places";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -101,49 +102,60 @@ export function OfferButton({
   );
 }
 
-/** THE OFFERS ON THE PHOTO: TWO STILL BOXES (Pato, 2026-11-28, MESITA-5099:
- *  "don't make it dancing here … two boxes, left box is prepay, right box
- *  is pay. For prepay, select always the medium prepay bonus"). Left, purple
- *  "Y% Bonus": the medium voucher's bonus (voucher_1000), only where the
- *  place sells it. Right, green "X% Back": the place's highest cashback
- *  line. One alone takes the whole width. Nothing moves. A black border
- *  like Premier (MESITA-5091). A label: a tap opens the place.
- *  ABOVE RESERVE, NOT ON THE PHOTO (Pato, 2026-11-28, MESITA-5100): the
- *  card reads what it is, what you get, what you can do. The boxes sit in
- *  the right column on Save · Share's grid (CARD_ACTIONS_ROW): Bonus over
- *  Save, Back over Share; the photo keeps only Premier. */
+/** THE OFFERS ON THE PHOTO: PREPAY LEFT, PAY RIGHT (Pato, 2026-11-28,
+ *  MESITA-5123: "i want prepay and pay, two buttons. prepay bottom left is
+ *  purple. pay bottom right is green. just mention Prepay (X%), Pay (Y%)").
+ *  Two still boxes along the photo's bottom, 8px in on every side. Left,
+ *  purple "Prepay X%": the Medium voucher's bonus (MESITA-5099: "select
+ *  always the medium prepay bonus"), or the best voucher on sale where the
+ *  place does not sell Medium. Right, green "Pay Y%": the place's highest
+ *  cashback line. One alone takes the full width (MESITA-5105). Equal
+ *  halves where both fit; on a narrow phone Prepay keeps its words and Pay
+ *  takes the rest (measured at 360px: 12px type, 4px inside). No icon and
+ *  no black percent box: neither fits two boxes on a phone. A label: a tap
+ *  opens the place. One green Cashback band before (MESITA-5103). */
 export function OfferDisplay({ offers }: { offers: OfferInput | null | undefined }) {
-  // ONLY CASHBACK, ON THE PHOTO'S BOTTOM-LEFT (Pato, 2026-11-28, MESITA-5103:
-  // "in preview don't show the bonus, only the cashback, is easier to
-  // understand. 5% Cashback … don't mention bonuses. and move cashback to the
-  // bottom left"): one green box, Premier's mirror at the bottom, the
-  // place's highest cashback line. No cashback, no box. A label: a tap
-  // opens the place.
-  // THE PHOTO'S FULL WIDTH (Pato, 2026-11-28, MESITA-5105: "cashback must be
-  // either 50% or 100% wide"; decision: 100%): left-2 right-2, the same 8px
-  // inset on every side, text centred.
-  const back = offers?.cashback_pct ?? 0;
-  if (back <= 0) return null;
+  const prepay = cardPrepayPct(offers);
+  const pay = offers?.cashback_pct ?? 0;
+  const boxes = [
+    ...(prepay > 0 ? [{ key: "prepay", words: `Prepay ${prepay}%`, tone: VOUCHER_TONE.voucher_1000 }] : []),
+    ...(pay > 0 ? [{ key: "pay", words: `Pay ${pay}%`, tone: CASHBACK_TONE }] : []),
+  ];
+  if (boxes.length === 0) return null;
   return (
     <p
-      className={cn(
-        CARD_BUTTON_BOX,
-        "pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#00D66F] px-2.5 font-sans text-sm font-semibold text-neutral-950 tabular-nums",
-      )}
-      aria-label={`Cashback ${back}%`}
+      className="pointer-events-none absolute right-2 bottom-2 left-2 z-10 m-0 grid auto-cols-[minmax(max-content,1fr)] grid-flow-col gap-2"
+      aria-label={boxes.map((b) => b.words).join(", ")}
       data-card-offer-display
-      data-card-offer="pay"
     >
-      {/* The Pay tab's QR (MESITA-5116): cashback is earned paying by QR. */}
-      <QrCode className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      <CashbackWords pct={back} />
+      {boxes.map((b) => (
+        <span
+          key={b.key}
+          className={cn(
+            CARD_BUTTON_BOX,
+            "flex items-center justify-center border border-[#141414] px-1 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
+            b.tone,
+          )}
+          data-card-offer={b.key}
+        >
+          {b.words}
+        </span>
+      ))}
     </p>
   );
 }
 
+/** The card's Prepay percent: Medium's bonus where the place sells it, else
+ *  the best standard voucher on sale; 0 = the place sells none. */
+function cardPrepayPct(offers: OfferInput | null | undefined): number {
+  if (!offers) return 0;
+  if (offers.sell.includes("voucher_1000")) return voucherPct(offers, "voucher_1000");
+  return Math.max(0, ...Object.keys(STANDARD_BONUS).filter((k) => offers.sell.includes(k)).map((k) => voucherPct(offers, k)));
+}
+
 /** "Cashback" then the percent in a small black box, white type (Pato,
  *  2026-11-28, MESITA-5119: "put the 5% or x% in a black box white
- *  letters"). Home's photo box and Search's green cell. */
+ *  letters"). Search's green cell; Home's photo says "Pay Y%" (MESITA-5123). */
 function CashbackWords({ pct }: { pct: number }) {
   return (
     <>

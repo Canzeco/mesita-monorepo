@@ -243,7 +243,7 @@ export function PlaceRowCard({
             </div>
           )}
           {isPremierPlace(place) ? <PremierPill placement="top" /> : null}
-          {/* Cashback on the photo's bottom-left (MESITA-5103). */}
+          {/* Prepay left, Pay right along the photo's bottom (MESITA-5123). */}
           <OfferDisplay offers={google ? null : (place.offers as OfferInput | null | undefined)} />
           {showScores ? (
             <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
