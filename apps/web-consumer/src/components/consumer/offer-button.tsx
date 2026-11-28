@@ -240,24 +240,37 @@ export function PlaceBannerRow({
   );
 }
 
-/** A Premier place on a card: a small gold pill on the photo's top-left
- *  corner, 8px in from both edges (Pato, MESITA-5059, moved up by
- *  MESITA-5061: "premier on top, not at the bottom"), on Home's card and
- *  Search's rail card. 24px, smaller than the card buttons, with a 1px
- *  black border (MESITA-5063, Pato: "add black border … do smaller"): it is
- *  a label, not a button, and the border keeps the gold visible on a bright
- *  photo. The VIP gold, dark type, a black rosette (MESITA-5052). A label,
- *  so a tap falls through to the photo. */
-export function PremierPill({ className }: { className?: string }) {
+/** A Premier place on a card: a gold pill on the photo, the card buttons'
+ *  box (CARD_BUTTON_BOX) with a 1px black border (MESITA-5063: the border
+ *  keeps the gold visible on a bright photo). The VIP gold, dark type, a
+ *  black rosette (MESITA-5052). A label, so a tap falls through to the photo.
+ *
+ *  `save`: Home's card. SAVE'S MIRROR on the photo (Pato, MESITA-5065:
+ *  "premier at the bottom … symmetrical to save button but on top of the
+ *  image"): Save's width, (100% − 25px) / 2 (the photo and the info box are
+ *  the same width; the info box spends 1px of border, 2 × 8px of padding and
+ *  the 8px gap), 8px from the left, 9px up (its border + 8px) so it shares
+ *  Save · Share's line.
+ *  `corner`: Search's rail card, whose buttons sit under the text: the
+ *  photo's top-left corner, as wide as the word. */
+export function PremierPill({
+  placement = "save",
+  className,
+}: {
+  placement?: "save" | "corner";
+  className?: string;
+}) {
   return (
     <p
       className={cn(
-        "pointer-events-none absolute top-2 left-2 z-10 flex h-6 items-center gap-1 rounded-md border border-[#141414] bg-[#E9C46A] pr-2 pl-1.5 font-sans type-label font-semibold text-neutral-950",
+        CARD_BUTTON_BOX,
+        "pointer-events-none absolute left-2 z-10 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#E9C46A] px-2.5 font-sans text-sm font-semibold text-neutral-950",
+        placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "top-2",
         className,
       )}
       data-card-premier
     >
-      <PremierRosette className="h-[13px] w-[13px]" fill="#141414" check="#fff" decorative />
+      <PremierRosette className="h-4 w-4" fill="#141414" check="#fff" decorative />
       Premier
     </p>
   );
