@@ -100,6 +100,33 @@ export function OfferButton({
   );
 }
 
+/** THE OFFER DISPLAY ON THE PHOTO (Pato, 2026-11-27, MESITA-5090: "display
+ *  offers carrosuel vertical in the image at the bottom", and the sketch:
+ *  Premier top-left, "Offer Display" along the photo's bottom). Every offer
+ *  here, one at a time, in its own colour, rising on the shared 2s beat
+ *  (OfferTrack, the slide-up the switching box used). 8px from the photo's
+ *  sides and 9px up, so it shares Save · Share's line and height. A label:
+ *  a tap falls through to the photo and opens the place. */
+export function OfferDisplay({ slides }: { slides: OfferSlide[] }) {
+  const live = useOfferSlide(slides);
+  if (slides.length === 0) return null;
+  const slide = slides[live.index];
+  return (
+    <p
+      className={cn(
+        CARD_BUTTON_BOX,
+        OFFER_BOX,
+        slide.tone,
+        "pointer-events-none absolute inset-x-2 bottom-[9px] z-10 w-auto overflow-hidden shadow-sm",
+      )}
+      aria-hidden
+      data-card-offer-display
+    >
+      <OfferTrack slides={slides} index={live.index} previous={live.previous} short />
+    </p>
+  );
+}
+
 /** A list card may show Reserve (MESITA-5021). The switch has to be on and
  *  the row has to carry a phone: with neither, the call cannot be placed, and
  *  a missing flag is not a yes. The Reservations phone stays off this payload;
@@ -260,7 +287,10 @@ export function PremierPill({
   placement = "save",
   className,
 }: {
-  placement?: "save" | "rail";
+  /** `top`: Home's card since MESITA-5090 (Pato's sketch: Premier at the
+   *  photo's top-left, the offer display along its bottom), 8px in, as wide
+   *  as the word. */
+  placement?: "save" | "rail" | "top";
   className?: string;
 }) {
   return (
@@ -268,7 +298,7 @@ export function PremierPill({
       className={cn(
         CARD_BUTTON_BOX,
         "pointer-events-none absolute left-2 z-10 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#E9C46A] px-2.5 font-sans text-sm font-semibold text-neutral-950",
-        placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "bottom-3 left-3",
+        placement === "top" ? "top-2" : placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "bottom-3 left-3",
         className,
       )}
       data-card-premier

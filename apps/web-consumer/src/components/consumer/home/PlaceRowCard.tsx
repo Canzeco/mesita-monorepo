@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { placeReservePath } from "@/lib/consumer-route-contract";
 import type { LiveTable } from "@/lib/use-live-reservations";
 import { CardActions } from "@/components/consumer/place-card";
-import { PlaceBannerRow, PremierPill, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
+import { OfferDisplay, PlaceBannerRow, PremierPill, listCardReservable, offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 import { PlaceFactsLines } from "./place-facts";
 import { ordinal } from "@/lib/catalog-modes";
@@ -92,7 +92,7 @@ function ScoreLabel({
   ];
   return (
     <dl
-      className="pointer-events-none absolute top-2 left-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums"
+      className="pointer-events-none absolute top-2 right-2 grid grid-cols-[auto_auto] gap-x-2 rounded-md bg-black/70 px-2 py-1 type-label font-mono leading-tight text-white tabular-nums"
       aria-label="Score breakdown (temporary)"
       data-score-label
     >
@@ -243,7 +243,8 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
-          {isPremierPlace(place) ? <PremierPill /> : null}
+          {isPremierPlace(place) ? <PremierPill placement="top" /> : null}
+          <OfferDisplay slides={slides} />
           {showScores ? (
             <ScoreLabel area={place.area} ad={ad} lane={place.lane} rank={rank} />
           ) : null}
