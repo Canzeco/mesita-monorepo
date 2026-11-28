@@ -119,8 +119,11 @@ export function readCashbackInput(
   if (welcome_vip_bps !== undefined && !isIn(WELCOME_VIP_STEPS_BPS, welcome_vip_bps)) {
     return { ok: false, error: "Welcome VIP must be Off, 10% or 20%" };
   }
-  if (visit_mechanism !== undefined && !isVisitMechanism(visit_mechanism)) {
-    return { ok: false, error: "The Visit Mechanic must be Discount or Cashback" };
+  // DISCOUNT IS GONE (Pato, 2026-11-27, MESITA-5067: Prepay is the business,
+  // Cashback is the first step). A save may only say cashback; the SQL keeps
+  // reading 'discount' on bills already recorded with it.
+  if (visit_mechanism !== undefined && (!isVisitMechanism(visit_mechanism) || visit_mechanism !== "cashback")) {
+    return { ok: false, error: "The Visit Mechanic is Cashback" };
   }
   const rates: Pick<CashbackRates, "welcome_bps" | "returning_bps"> & Partial<CashbackRates> = {
     welcome_bps,

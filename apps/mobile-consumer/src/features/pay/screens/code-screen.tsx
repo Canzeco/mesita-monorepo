@@ -335,6 +335,7 @@ function Why({ open, bill, onClose }: { open: boolean; bill: GuestBill | null; o
             {quote.discountCents > 0 ? <Line label={`${quote.discountBps / 100}% Discount`} value={`−${money(quote.discountCents, bill.currency)}`} /> : null}
             {quote.creditCents > 0 ? <Line label="Your credits" value={`−${money(quote.creditCents, bill.currency)}`} /> : null}
             {bill.tipCents > 0 ? <Line label={bill.billCents ? `Tip · ${Math.round((bill.tipCents * 100) / bill.billCents)}%` : "Tip"} value={money(bill.tipCents, bill.currency)} /> : null}
+            {quote.cashbackCents > 0 ? <Line label={quote.cashbackCapped ? "Cashback (maximum)" : `${quote.cashbackBps / 100}% Cashback`} value={`+${money(quote.cashbackCents, bill.currency)}`} /> : null}
           </View>
         ) : null}
         <Button label="Close" kind="secondary" onPress={onClose} />

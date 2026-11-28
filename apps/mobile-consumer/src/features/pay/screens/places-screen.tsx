@@ -6,7 +6,7 @@ import { Icon } from "@/components/icon";
 import { Text } from "@/components/text";
 import { colors, radius, space } from "@/theme";
 
-import { acceptsCredits, bonusPct, offerScore, passesShow, VOUCHERS, type PayPlace, type PayShow, type PaySort } from "../places";
+import { acceptsCredits, bonusPct, cashbackBps, offerScore, passesShow, VOUCHERS, type PayPlace, type PayShow, type PaySort } from "../places";
 import { PlacePhoto } from "./photo";
 
 type Kind = "prepay" | "pay";
@@ -116,7 +116,7 @@ const PREPAY_SHOWS: { id: PayShow; label: string }[] = [
 ];
 const PAY_SHOWS: { id: PayShow; label: string }[] = [
   { id: "all", label: "All" },
-  { id: "discount", label: "Extra discount" },
+  { id: "cashback", label: "Cashback" },
 ];
 
 function Filters({
@@ -183,7 +183,9 @@ function PayHeads() {
   return (
     <View style={styles.bar}>
       <Text role="caption" tone="onInk" style={styles.barName}>Place</Text>
-      <Text role="caption" tone="onInk" style={styles.payHead}>Accepts Credits</Text>
+      {["Accepts Credits", "Cashback"].map((label) => (
+        <Text key={label} role="caption" tone="onInk" style={styles.payHead}>{label}</Text>
+      ))}
     </View>
   );
 }
@@ -211,11 +213,12 @@ function PrepayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) =>
 
 function PayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) => void }) {
   const name = place.name ?? "A Mesita place";
+  const cashback = cashbackBps(place) / 100;
   const credits = acceptsCredits(place);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Select ${name}, Accepts Credits ${credits ? "Yes" : "No"}`}
+      accessibilityLabel={`Select ${name}, Accepts Credits ${credits ? "Yes" : "No"}, Cashback ${cashback}%`}
       onPress={() => onPick(place.place_id)}
       style={styles.payRow}
     >
@@ -225,6 +228,7 @@ function PayRow({ place, onPick }: { place: PayPlace; onPick: (id: string) => vo
       </View>
       <View style={styles.offers}>
         <Cell label={credits ? "Yes" : "No"} on={credits} />
+        <Cell label={`${cashback}%`} on={cashback > 0} />
       </View>
     </Pressable>
   );

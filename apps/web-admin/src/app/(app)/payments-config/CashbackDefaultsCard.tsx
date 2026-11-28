@@ -6,7 +6,7 @@
 // (at most MX$1,000 a bill, MESITA-4831), one Save through
 // admin-web-save-cashback-defaults. A place's own lines on Business › Offers
 // win; this never touches them. MESITA-4775: and the default Visit Offer,
-// Discount (off the bill) or Cashback (credit back), for all three lines.
+// Cashback (credit back) for all four lines; Discount is gone (MESITA-5067).
 
 import { useState, useTransition } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
@@ -30,10 +30,6 @@ const LINES: { key: keyof typeof STEPS; name: string; who: string }[] = [
   { key: "welcome_vip_bps", name: "Welcome VIP", who: "A VIP guest's first bill at the place" },
   { key: "returning_vip_bps", name: "Returning VIP", who: "Every later bill of a VIP guest at the place" },
 ];
-const MECHANISMS = [
-  { value: "cashback", label: "Cashback" },
-  { value: "discount", label: "Discount" },
-] as const;
 
 export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | null }) {
   const [saved, setSaved] = useState<CashbackDefaults | null>(initial);
@@ -59,35 +55,12 @@ export function CashbackDefaultsCard({ initial }: { initial: CashbackDefaults | 
     <SectionCard
       icon={<ArrowsClockwiseIcon aria-hidden />}
       title="Visit Offers"
-      subtitle="The defaults for every place that hasn't set its own on Business › Offers: one Visit Mechanic (Discount or Cashback) for the four rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, at most MX$1,000 a bill, 1 hour later. Mesita takes no fee."
+      subtitle="The defaults for every place that hasn't set its own on Business › Offers: the four cashback rates. Cashback earns credit on the part paid by card or cash, never credit or the tip, at most MX$1,000 a bill, 1 hour later. Mesita takes no fee."
     >
       {!draft ? (
         <Notice className="mt-4">Couldn&apos;t load the cashback defaults. Reload to edit them.</Notice>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3" data-admin-visit-mechanism>
-            <div className="min-w-0">
-              <p className="font-semibold">Visit Mechanic</p>
-              <p className="text-muted-foreground text-sm">
-                {draft.visit_mechanism === "discount"
-                  ? "Discount: the rates come off the printed bill at the table, never the tip. No Credits Agreement needed."
-                  : "Cashback: the rates come back as credit for the guest's next visit. Needs the Credits Agreement."}
-              </p>
-            </div>
-            <SelectField
-              aria-label="Visit Mechanic default"
-              className="w-36"
-              value={draft.visit_mechanism}
-              disabled={pending}
-              onChange={(v) => setDraft({ ...draft, visit_mechanism: v === "discount" ? "discount" : "cashback" })}
-            >
-              {MECHANISMS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </SelectField>
-          </div>
           <Table className="min-w-[560px]" data-admin-cashback-lines>
             <THead>
               <Tr>

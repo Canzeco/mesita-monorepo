@@ -11,8 +11,8 @@
 //                                            Credits Payments (Loyalty Cards: on
 //                                            once signed, then locked)
 //   Stripe Account     #stripe-account     · the account and its button
-//   Visit Checkout     #visit-checkout     · Enabled · Visit Mechanic (MESITA-4770,
-//                                            MESITA-4789: Discount | Cashback) ·
+//   Visit Checkout     #visit-checkout     · Enabled (Cashback only since
+//                                            MESITA-5067; no Discount) ·
 //                                            Welcome Regular · Returning Regular ·
 //                                            Welcome VIP · Returning VIP (three
 //                                            picks each, Off included)
@@ -70,8 +70,6 @@ import {
   type VisitRateField,
   VOUCHER_BONUS_PICKS_BPS,
   type VoucherBonusField,
-  VISIT_MECHANISMS,
-  type VisitMechanism,
 } from "@/lib/cashback";
 import {
   setPlaceCashback,
@@ -168,8 +166,6 @@ const RATE_ROWS: Array<{ key: VisitRateField; id: string; name: string; line: st
     icon: CrownSimpleIcon,
   },
 ];
-/** MESITA-4770: the mechanism picks, in the owner's words. */
-const MECHANISM_LABEL: Record<VisitMechanism, string> = { discount: "Discount", cashback: "Cashback" };
 const pct = (bps: number) => `${bps / 100}%`;
 /** Every visit rate at 0: what Enabled Off stores. */
 const NO_RATES = { welcome_bps: 0, returning_bps: 0, returning_vip_bps: 0, welcome_vip_bps: 0 } as const;
@@ -571,11 +567,10 @@ export function PaymentsPanel({
     );
   };
 
-  // MESITA-4770: a Discount needs no Credits Agreement; Cashback does (new
-  // credit is born only while the Credits Account is on).
-  const discount = rates.visit_mechanism === "discount";
-  const visitBlock = discount ? null : creditsBlock;
-  const visitOn = (discount || settings.loyalty_cards) && anyRate(rates);
+  // Cashback needs the Credits Agreement (new credit is born only while the
+  // Credits Account is on). Discount is gone (Pato, 2026-11-27, MESITA-5067).
+  const visitBlock = creditsBlock;
+  const visitOn = settings.loyalty_cards && anyRate(rates);
 
   return (
     <>
@@ -698,7 +693,7 @@ export function PaymentsPanel({
             state: "visit_checkout",
             line: (
               <>
-                {line(discount ? "Guests pay the bill here by cash or credit, and get a discount." : "Guests pay the bill here by cash or credit, and earn cashback.")}
+                {line("Guests pay the bill here by cash or credit, and earn cashback.")}
                 {under(visitBlock, null)}
               </>
             ),
@@ -717,35 +712,12 @@ export function PaymentsPanel({
             ),
           })}
           <ul className={ROWS}>
-            {/* MECHANISM (Pato, 2026-11-23, MESITA-4770: "YOU JUST SET THE TIER.
-                AND THEN THE MECHANISM FOR ALL YOUR VISIT TIERS"): one choice
-                for both rates. Discount comes off this bill; Cashback is
-                credit for the next visit. */}
-            <li id="visit-mechanism" className={cn(ROW, STACK)} data-place-state="visit_mechanism">
-              <div className={STACK_TEXT}>
-                {/* "Visit Mechanic" (Pato, 2026-11-23, MESITA-4789). */}
-                <p className="font-medium">Visit Mechanic</p>
-                <p className="text-muted-foreground">
-                  {discount ? "Off the bill at the table. No Credits Agreement needed." : "Credit back for the guest's next visit here."}
-                </p>
-              </div>
-              {segments(
-                "Visit Mechanic",
-                VISIT_MECHANISMS,
-                rates.visit_mechanism,
-                (m) => MECHANISM_LABEL[m],
-                pending,
-                (m) => editRates({ ...rates, visit_mechanism: m }),
-                // The rate rows' track, gap and switch: one left edge.
-                "w-full sm:w-50",
-              )}
-            </li>
             {/* LIKE A VOUCHER ROW (Pato, 2026-11-23, MESITA-4789: "same design
                 for these cashback mechanics"): two rate pills, then the
                 voucher's switch for On/Off; no Off pill. Off keeps the last
                 rate on its pill, greyed, and On brings it back. */}
             {RATE_ROWS.map((row) => {
-              const live = discount || settings.loyalty_cards ? rates[row.key] : 0;
+              const live = settings.loyalty_cards ? rates[row.key] : 0;
               const on = live > 0;
               const steps = VISIT_PICKS_BPS[row.key].filter((b) => b > 0);
               const remembered = lastRates[row.key] > 0 ? lastRates[row.key] : CASHBACK_DEFAULTS[row.key] > 0 ? CASHBACK_DEFAULTS[row.key] : steps[0];
@@ -754,7 +726,7 @@ export function PaymentsPanel({
                 <li key={row.key} id={row.id} className={cn(ROW, STACK)} data-place-state={row.key}>
                   <div className={STACK_TEXT}>
                     <p className="font-medium">{row.name}</p>
-                    <p className="text-muted-foreground">{discount ? row.line.replace("Cashback", "Discount") : row.line}</p>
+                    <p className="text-muted-foreground">{row.line}</p>
                   </div>
                   <div className={CONTROLS}>
                   {segments(row.name, steps, on ? live : remembered, pct, locked || !on, (b) => editRates({ ...rates, [row.key]: b }))}
@@ -808,9 +780,7 @@ export function PaymentsPanel({
           ) : null}
           <footer className={FOOT} data-waiter-charge>
             <p>
-              {discount
-                ? "The discount comes off the printed bill before it is paid, never off the tip. The waiter sees it on the bill."
-                : "A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill."}
+              A confirmed bill earns cashback on the part not paid with credit, never the tip, 1 hour later, up to $1,000MX per bill.
             </p>
             <p>VIP guests: by invitation code.</p>
           </footer>
