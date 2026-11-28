@@ -7,15 +7,15 @@
 // (the SQL trigger pay_tabs_grant_cashback checks); saving rates does not
 // need it, so an owner can set them before signing.
 //
-// MESITA-4766: three lines — Welcome Everyone 0 · 1000 · 2000, Returning
-// Regular 0 · 500 · 1000, Returning VIP 0 · 1000 · 2000 (optional, absent
-// keeps the saved one). The Instagram story reward is gone.
+// MESITA-5072: two lines — Welcome 0 · 1000 · 2000 and Returning 0 · 500,
+// with 1000 only where Small's bonus is 2000 (this save's or the saved one).
+// The VIP lines are gone: a non-zero VIP rate is refused, both are written 0.
 //
 // MESITA-4764: two picks per offer, and the voucher bonuses
 // small_bonus_bps 1000 · 2000, medium_bonus_bps 2000 · 4000, big_bonus_bps
 // 3000 · 6000 (MESITA-4980; optional; absent keeps the saved one).
 //
-// Body: { place_id, welcome_bps, returning_bps, returning_vip_bps?, welcome_vip_bps?, small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; no ceiling since MESITA-4728)
+// Body: { place_id, welcome_bps, returning_bps, returning_vip_bps? (0 only), welcome_vip_bps? (0 only), small_bonus_bps?, medium_bonus_bps?, big_bonus_bps? } (a cap_cents is ignored; no ceiling since MESITA-4728)
 // Response: { ok: true, cashback: { welcome_bps, welcome_vip_bps, returning_bps, returning_vip_bps, small_bonus_bps, medium_bonus_bps, big_bonus_bps } }
 //   400 (bad input) · 403 owner_only
 
@@ -24,7 +24,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { CASHBACK_RATE_COLUMNS, readCashbackInput } from "../_shared/cashback.ts";
+import { CASHBACK_RATE_COLUMNS, readCashbackInput, readCashbackRates } from "../_shared/cashback.ts";
 
 serveJson("business-web-set-cashback", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -35,12 +35,23 @@ serveJson("business-web-set-cashback", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  const input = readCashbackInput(bodyRes.body);
-  if (!input.ok) return json({ ok: false, code: "invalid", error: input.error }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
   if (!canManage(access.role)) return ownerOnly();
+
+  // What the place holds now (its row, else the defaults): Returning 10% is
+  // checked against Small's bonus, and that bonus is written with the row so
+  // a first save never meets the table default (MESITA-5072).
+  let saved;
+  try {
+    saved = await readCashbackRates(admin, placeId);
+  } catch (err) {
+    return json({ ok: false, error: err instanceof Error ? err.message : String(err) }, 500);
+  }
+  const input = readCashbackInput(bodyRes.body, saved);
+  if (!input.ok) return json({ ok: false, code: "invalid", error: input.error }, 400);
+  input.rates.small_bonus_bps ??= saved.small_bonus_bps;
 
   const { data, error } = await admin
     .from("place_cashback_settings")

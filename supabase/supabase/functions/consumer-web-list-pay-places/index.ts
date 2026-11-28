@@ -25,7 +25,7 @@
 //   credit).
 //   MESITA-4698: offers_ok = Loyalty Cards On at an active place (cashback,
 //   and vouchers where sold): Pay's Get Offers lists these.
-//   visit_line = welcome | welcome_vip (no paid bill here yet; MESITA-4789) | returning | returning_vip.
+//   visit_line = welcome (no paid bill here yet) | returning; VIP or not (MESITA-5072).
 //   MESITA-4519: offers is what Home's and the place screen's offer slides
 //   read (withVouchersUpTo), so each Pay card carries the same carousel.
 //   available_cents is spendable now (Available minus held credit).
@@ -41,7 +41,6 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { listRowMoney, NO_LIST_ROW_OFFERS, type PaymentKey, type PaymentSettings, SETTINGS_COLUMNS, settingsFromRow, withVouchersUpTo } from "../_shared/payments.ts";
-import { readIsVipForMoney } from "../_shared/cashback.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
@@ -141,8 +140,6 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   if (settingsRes.error) return fail("settings", settingsRes.error);
   if (paidRes.error) return fail("payments", paidRes.error.message);
   if (billedRes.error) return fail("bills", billedRes.error);
-  // MESITA-4766: VIP's later bills fall in Returning VIP (the money rule).
-  const vip = await readIsVipForMoney(admin, userId, livemode);
   const billed = new Set(billedRes.rows.map((r) => r.place_id));
 
   const settings = new Map<string, PaymentSettings>();
@@ -206,7 +203,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
         // Accepts Credits is Loyalty Cards on.
         credits_ok: p.offers_ok,
         offers_ok: p.offers_ok,
-        visit_line: billed.has(p.place_id) ? (vip ? "returning_vip" : "returning") : vip ? "welcome_vip" : "welcome",
+        visit_line: billed.has(p.place_id) ? "returning" : "welcome",
         offers: o,
       };
     }),

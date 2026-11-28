@@ -2,13 +2,12 @@
 // plain module: business-api.ts is "use server" and may export only async
 // functions.
 
-// FOUR LINES SINCE MESITA-4789 (Pato: "Welcome Regular, Returning Regular,
-// Welcome VIP, Returning VIP"): Welcome VIP is a VIP's first bill, Off · 10 ·
-// 20 %. THREE LINES SINCE MESITA-4766 (Pato, 2026-11-23: "BRING BACK VIP CUSTOMERS.
-// REMOVE INSTAGRAM STORIES."): Welcome Everyone (the guest's first paid bill
-// here) Off · 10 · 20 %, Returning Regular (every later bill) Off · 5 · 10 %,
-// Returning VIP (every later bill of a VIP guest: invitation code,
-// MESITA-4849) Off · 10 · 20 %. No cap per bill (MESITA-4728).
+// TWO LINES SINCE MESITA-5072 (Pato, 2026-11-27: VIP now changes only the
+// Story Reward, so VIP cashback goes): Welcome (the guest's first paid bill
+// here) Off · 10 · 20 %, Returning (every later bill) Off · 5 %, and 10 % only
+// where Small's bonus is +20 % (so every voucher bonus beats Returning). The
+// VIP fields stay in the record at 0; the server refuses anything else.
+// No cap per bill (MESITA-4728).
 // Voucher bonuses (MESITA-4764, Big's default 30% since MESITA-4980):
 // Small 10 · 20 %, Medium 20 · 40 %, Big 30 · 60 %. TWIN of supabase
 // _shared/cashback.ts and money.ts
@@ -16,8 +15,9 @@
 export type CashbackRates = {
   welcome_bps: number;
   returning_bps: number;
+  /** Retired (MESITA-5072): always 0. */
   returning_vip_bps: number;
-  /** MESITA-4789: Welcome VIP, a VIP guest's first paid bill here. */
+  /** Retired (MESITA-5072): always 0. */
   welcome_vip_bps: number;
   small_bonus_bps: number;
   medium_bonus_bps: number;
@@ -26,8 +26,6 @@ export type CashbackRates = {
 export const VISIT_PICKS_BPS = {
   welcome_bps: [0, 1000, 2000],
   returning_bps: [0, 500, 1000],
-  returning_vip_bps: [0, 1000, 2000],
-  welcome_vip_bps: [0, 1000, 2000],
 } as const;
 export type VisitRateField = keyof typeof VISIT_PICKS_BPS;
 export const VOUCHER_BONUS_PICKS_BPS = {
@@ -39,12 +37,28 @@ export type VoucherBonusField = keyof typeof VOUCHER_BONUS_PICKS_BPS;
 export const CASHBACK_DEFAULTS: CashbackRates = {
   welcome_bps: 1000,
   returning_bps: 500,
-  returning_vip_bps: 1000,
-  welcome_vip_bps: 1000,
+  returning_vip_bps: 0,
+  welcome_vip_bps: 0,
   small_bonus_bps: 1000,
   medium_bonus_bps: 2000,
   big_bonus_bps: 3000,
 };
+
+/** MESITA-5072: Returning's 10 % step only where Small gives +20 %. */
+export function returningPicks(smallBonusBps: number): readonly number[] {
+  return VISIT_PICKS_BPS.returning_bps.filter((b) => b !== 1000 || smallBonusBps === 2000);
+}
+
+/** The record a save sends: both VIP rates 0, and Returning 10 % down to 5 %
+ *  once Small is no longer +20 % (the server refuses the pair). */
+export function saveableCashback(r: CashbackRates): CashbackRates {
+  return {
+    ...r,
+    welcome_vip_bps: 0,
+    returning_vip_bps: 0,
+    returning_bps: returningPicks(r.small_bonus_bps).includes(r.returning_bps) ? r.returning_bps : 500,
+  };
+}
 
 /** The fields the server saves; anything else it sent (an older server's
  *  story_reward_cents or visit_mechanism) is dropped, and a field it lacks

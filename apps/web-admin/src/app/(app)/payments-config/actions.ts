@@ -19,24 +19,21 @@ export type VoucherPriceRow = {
 export type CurrencyRow = { code: string; country: string; small: number; big: number; selling: boolean };
 
 /** MESITA-4700: the cashback defaults (basis points; at most MX$1,000 a bill, MESITA-4831).
- *  MESITA-4766: and the Returning VIP rate (0 Off · 1000 · 2000). */
+ *  Two lines since MESITA-5072 (VIP cashback is gone). small_bonus_bps is
+ *  read only: Returning 10% is allowed only where it is 2000 (+20%). */
 export type CashbackDefaults = {
   welcome_bps: number;
   returning_bps: number;
-  returning_vip_bps: number;
-  /** MESITA-4789: Welcome VIP, a VIP guest's first bill (0 Off · 1000 · 2000). */
-  welcome_vip_bps: number;
+  small_bonus_bps: number;
 };
 
-/** A read from before Returning VIP carries none: Off. Anything else the server sends is dropped. */
+/** Anything else the server sends is dropped. */
 function readDefaults(d: Partial<CashbackDefaults> | null | undefined): CashbackDefaults | null {
   if (!d) return null;
   return {
     welcome_bps: Number(d.welcome_bps ?? 0),
     returning_bps: Number(d.returning_bps ?? 0),
-    returning_vip_bps: typeof d.returning_vip_bps === "number" ? d.returning_vip_bps : 0,
-    // An older server without Welcome VIP: the Welcome rate, what VIPs got then.
-    welcome_vip_bps: typeof d.welcome_vip_bps === "number" ? d.welcome_vip_bps : Number(d.welcome_bps ?? 0),
+    small_bonus_bps: Number(d.small_bonus_bps ?? 1000),
   };
 }
 
@@ -58,7 +55,11 @@ export async function getVoucherPrices(): Promise<ActionResult<VoucherPrices>> {
 
 /** MESITA-4700: save the cashback defaults every place without its own lines reads. */
 export async function saveCashbackDefaults(d: CashbackDefaults): Promise<ActionResult<{ cashback_defaults: CashbackDefaults }>> {
-  const r = await efInvoke<{ cashback_defaults: CashbackDefaults }>("admin-web-save-cashback-defaults", d);
+  // The two lines only; the server writes both VIP rates 0 (MESITA-5072).
+  const r = await efInvoke<{ cashback_defaults: CashbackDefaults }>("admin-web-save-cashback-defaults", {
+    welcome_bps: d.welcome_bps,
+    returning_bps: d.returning_bps,
+  });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, cashback_defaults: readDefaults(r.data.cashback_defaults)! };
 }
