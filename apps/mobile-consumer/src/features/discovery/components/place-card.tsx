@@ -28,6 +28,13 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
           transition={motion.fast}
           recyclingKey={place.id}
         />
+        {/* Premier sits on the photo, bottom left (MESITA-5059). */}
+        {place.isPremier ? (
+          <View style={styles.premier}>
+            <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
+            <Text role="label" tone="onVip">Premier</Text>
+          </View>
+        ) : null}
       </Pressable>
       <View style={styles.info}>
         <Pressable accessible={false} onPress={onOpen} style={styles.words}>
@@ -84,12 +91,6 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
             </View>
           ) : null}
         </Pressable>
-        {place.isPremier ? (
-          <View style={styles.premier}>
-            <PremierSeal size={16} color={colors.onVip} check={colors.onInk} />
-            <Text role="label" tone="onVip">Premier</Text>
-          </View>
-        ) : null}
         <View style={styles.actions}>
           <CardButton
             icon={saved ? "heart-filled" : "heart"}
@@ -144,12 +145,16 @@ const styles = StyleSheet.create({
   },
   words: { flex: 1, gap: 2 },
   premier: {
-    height: 32,
+    position: "absolute",
+    left: space.sm,
+    bottom: space.sm,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderRadius: radius.control,
+    gap: 4,
+    paddingVertical: 4,
+    paddingLeft: 6,
+    paddingRight: 10,
+    borderRadius: 999,
     backgroundColor: colors.vip,
   },
   name: { flexShrink: 1 },
