@@ -278,9 +278,11 @@ export function PlaceRowCard({
             taps between chips through to the name's stretched link (the dead
             spot MESITA-3797 removed); only the chips and Save · Share catch them. */}
         <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col gap-2">
-          {/* ONE OR TWO (Pato, 2026-11-26, MESITA-5010): both share the row;
-              a place with only one of them gets that one, full width. */}
-          {isPremierPlace(place) ? <PremierBar /> : null}
+          {/* TWO OVER THREE (Pato, 2026-11-27, MESITA-5058: "Reserve Prepay /
+              Save Share (Premier) only if premier"). Reserve · Prepay share
+              the top row, one alone takes it whole (MESITA-5010); Premier is
+              the third cell beside Save · Share, no longer a bar above
+              Reserve (MESITA-5046). */}
           <PlaceBannerRow
             name={place.name}
             placeId={place.id}
@@ -296,6 +298,7 @@ export function PlaceRowCard({
           />
           <div className="pointer-events-auto">
           <CardActions
+            third={isPremierPlace(place) ? <PremierBar /> : undefined}
             // White with a hairline, not grey (MESITA-4432).
             buttonClassName="bg-card border-border hover:bg-muted border"
             name={place.name}

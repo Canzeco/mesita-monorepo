@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Clock,
   Heart,
@@ -233,6 +234,7 @@ export function CardActions({
   onSave,
   onShare,
   onGenerate,
+  third,
   className,
   buttonClassName,
 }: {
@@ -241,6 +243,9 @@ export function CardActions({
   onSave: () => void;
   onShare: () => void;
   onGenerate?: () => void;
+  /** A third cell after Share, the row then in thirds: Home's Premier
+   *  (MESITA-5058, Pato: "Save Share (Premier) only if premier"). */
+  third?: ReactNode;
   className?: string;
   /** Added to each button: Home's tile passes EXACT_HIT (MESITA-3706). */
   buttonClassName?: string;
@@ -266,7 +271,10 @@ export function CardActions({
     );
   }
   return (
-    <div className={cn(CARD_ACTIONS_ROW, className)} data-tile-actions>
+    <div
+      className={cn(CARD_ACTIONS_ROW, third && "grid-cols-3", className)}
+      data-tile-actions
+    >
       <button
         type="button"
         onClick={onSave}
@@ -296,6 +304,7 @@ export function CardActions({
         <Share2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
         Share
       </button>
+      {third}
     </div>
   );
 }

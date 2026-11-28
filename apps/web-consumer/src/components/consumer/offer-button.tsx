@@ -240,9 +240,10 @@ export function PlaceBannerRow({
   );
 }
 
-/** A Premier place on a card (MESITA-5046): a bar the size of Reserve,
- *  sitting above it. The VIP gold, dark type, and a black rosette
- *  (MESITA-5052). A label, so a tap falls through to the card. */
+/** A Premier place on a card: the VIP gold, dark type, and a black rosette
+ *  (MESITA-5052). On Home's card it is the third cell of Save · Share
+ *  (MESITA-5058); on Search's rail card a strip on top (MESITA-5046). A
+ *  label, so a tap falls through to the card. */
 export function PremierBar({ className }: { className?: string }) {
   return (
     <p
