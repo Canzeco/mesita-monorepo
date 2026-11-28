@@ -87,7 +87,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare }: Props) {
         {place.isPremier ? (
           <View style={styles.premier}>
             <PremierSeal size={16} color={colors.onInk} check={colors.ink} />
-            <Text role="label" tone="onInk">Premier</Text>
+            <Text role="label" tone="ink">Premier</Text>
           </View>
         ) : null}
         <View style={styles.actions}>
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     borderRadius: radius.control,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.vip,
   },
   name: { flexShrink: 1 },
   line: { flexDirection: "row", alignItems: "center", gap: 4 },
