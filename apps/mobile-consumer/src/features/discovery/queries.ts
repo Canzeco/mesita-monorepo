@@ -63,6 +63,12 @@ export function useCatalog(location: ActiveLocation | null, chip: ChipKey) {
   };
 }
 
+/** The last rank a chip got, read from the cache only: never a fetch. */
+export function useCachedRank(location: ActiveLocation | null, chip: ChipKey): CatalogRank | null {
+  const client = useQueryClient();
+  return client.getQueryData<{ pages: Page[] }>(discoveryKeys.catalog(location, chip))?.pages[0]?.rank ?? null;
+}
+
 /** The map's places and its extra pins, for the families that are on. */
 export function useMapPlaces(location: ActiveLocation | null, chip: ChipKey) {
   const familyKeys = questionOf(chip).familyKeys;

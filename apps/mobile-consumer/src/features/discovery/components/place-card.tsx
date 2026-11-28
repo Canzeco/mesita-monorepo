@@ -86,13 +86,7 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
         {/* Prepay left, Pay right, straight on the photo 8 in; each percent
             in a small black box (MESITA-5123, MESITA-5128). Under 360 the two
             stack, each the full width. */}
-        {offers.length > 0 ? (
-          <View style={styles.offerBox} pointerEvents="none" accessibilityLabel={offers.map((o) => o.words).join(", ")}>
-            {offers.map((o) => (
-              <OfferCell key={o.key} offer={o} />
-            ))}
-          </View>
-        ) : null}
+        {offers.length > 0 ? <OfferRow offers={offers} /> : null}
       </Pressable>
 
       <Pressable accessible={false} onPress={google ? onGenerate : onOpen} style={styles.info}>
@@ -181,18 +175,50 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
   );
 }
 
-/** One offer on the photo, the web's min-w-max flex-[1_1_0]: never narrower
- *  than its content, equal halves where both fit, else they wrap and stack. */
-function OfferCell({ offer }: { offer: CardOffer }) {
-  const [content, setContent] = useState(0);
+/** The photo's offers, the web's flex flex-wrap gap-1 with min-w-max
+ *  flex-[1_1_0] cells: never narrower than their content, equal halves where
+ *  both fit, else they wrap and stack. Each content is measured by a hidden
+ *  copy laid out across the whole row, so a label wider than half still
+ *  claims its width. */
+function OfferRow({ offers }: { offers: CardOffer[] }) {
+  const [widths, setWidths] = useState<Record<string, number>>({});
+  return (
+    <View style={styles.offerBox} pointerEvents="none" accessibilityLabel={offers.map((o) => o.words).join(", ")}>
+      {offers.map((o) => (
+        <View
+          key={o.key}
+          style={[styles.offer, o.key === "prepay" ? styles.prepay : styles.pay, widths[o.key] ? { minWidth: Math.ceil(widths[o.key]) + 6 } : null]}
+        >
+          <OfferContent offer={o} />
+        </View>
+      ))}
+      {offers.map((o) => (
+        <View
+          key={`measure-${o.key}`}
+          style={styles.measure}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          onLayout={(e) => {
+            const w = e.nativeEvent.layout.width;
+            setWidths((was) => (was[o.key] === w ? was : { ...was, [o.key]: w }));
+          }}
+        >
+          <OfferContent offer={o} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function OfferContent({ offer }: { offer: CardOffer }) {
   const prepay = offer.key === "prepay";
   return (
-    <View style={[styles.offer, prepay ? styles.prepay : styles.pay, content > 0 && { minWidth: Math.ceil(content) + 6 }]}>
-      <View style={styles.offerInner} onLayout={(e) => setContent(e.nativeEvent.layout.width)}>
-        <Text style={[styles.offerWords, prepay ? styles.onPrepay : styles.onPay]}>{offer.word}</Text>
-        <View style={styles.pct}>
-          <Text style={styles.pctWords}>{`${offer.pct}%`}</Text>
-        </View>
+    <View style={styles.offerInner}>
+      <Text numberOfLines={1} style={[styles.offerWords, prepay ? styles.onPrepay : styles.onPay]}>
+        {offer.word}
+      </Text>
+      <View style={styles.pct}>
+        <Text numberOfLines={1} style={styles.pctWords}>{`${offer.pct}%`}</Text>
       </View>
     </View>
   );
@@ -253,6 +279,8 @@ const styles = StyleSheet.create({
   offer: { flexGrow: 1, flexShrink: 1, flexBasis: 0, height: BUTTON, alignItems: "center", justifyContent: "center", paddingHorizontal: 3, borderRadius: radius.lg },
   // gap-0.5 from word to percent; the content row is measured, never squeezed.
   offerInner: { flexDirection: "row", alignItems: "center", gap: 2, flexShrink: 0 },
+  // Hidden, across the whole row (left and right 0), content-sized.
+  measure: { position: "absolute", top: 0, left: 0, opacity: 0, alignSelf: "flex-start", flexDirection: "row" },
   // rounded, bg-neutral-950, px-[3px] py-0.5, leading-none, white.
   pct: { paddingHorizontal: 3, paddingVertical: 2, borderRadius: radius.base, backgroundColor: colors.percentBox },
   pctWords: { ...text.xs, lineHeight: text.xs.fontSize, fontWeight: weight.semibold, fontVariant: ["tabular-nums"], color: colors.onInk },

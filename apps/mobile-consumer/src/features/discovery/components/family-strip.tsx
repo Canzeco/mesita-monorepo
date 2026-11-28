@@ -24,13 +24,15 @@ export function FamilyStrip({ chips, chosen, onSelect, onMenu, menuOpen = false 
   const scroller = useRef<ComponentRef<typeof ScrollView>>(null);
   const boxes = useRef(new Map<ChipKey, LayoutRectangle>());
   const view = useRef({ x: 0, width: 0 });
-  useEffect(() => {
-    const box = boxes.current.get(chosen);
-    if (!box) return;
+  const reveal = (key: ChipKey) => {
+    const box = boxes.current.get(key);
+    if (!box || view.current.width === 0) return;
     const { x, width } = view.current;
     if (box.x - 8 < x) scroller.current?.scrollTo({ x: Math.max(0, box.x - 8), animated: true });
     else if (box.x + box.width + 8 > x + width) scroller.current?.scrollTo({ x: box.x + box.width + 8 - width, animated: true });
-  }, [chosen]);
+  };
+  // On a change, and once the chosen chip first reports where it is.
+  useEffect(() => reveal(chosen), [chosen]);
   return (
     <View style={styles.strip}>
       <Pressable
@@ -61,7 +63,14 @@ export function FamilyStrip({ chips, chosen, onSelect, onMenu, menuOpen = false 
         scrollEventThrottle={64}
       >
         {chips.map((chip) => (
-          <View key={chip.key} onLayout={(e) => boxes.current.set(chip.key, e.nativeEvent.layout)}>
+          <View
+            key={chip.key}
+            onLayout={(e) => {
+              const first = !boxes.current.has(chip.key);
+              boxes.current.set(chip.key, e.nativeEvent.layout);
+              if (first && chip.key === chosen) reveal(chip.key);
+            }}
+          >
             <FamilyChip chip={chip} on={chip.key === chosen} onPress={() => onSelect(chip.key)} />
           </View>
         ))}

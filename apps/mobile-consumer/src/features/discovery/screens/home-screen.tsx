@@ -18,7 +18,7 @@ import { chipsFor, CHIPS, type Chip, type ChipKey } from "../families";
 import { useActiveLocation } from "../location-context";
 import { shareUrl, type CatalogPlace } from "../model";
 import type { CatalogRank } from "../api";
-import { useCatalog, useRecordShare, useSaved, useShareCode, useToggleSaved } from "../queries";
+import { useCachedRank, useCatalog, useRecordShare, useSaved, useShareCode, useToggleSaved } from "../queries";
 
 type Nav = {
   onOpenPlace: (placeId: string) => void;
@@ -46,10 +46,11 @@ export type HomeState =
 let welcomed = false;
 
 export function HomeScreen(nav: Nav) {
-  const { location, chip, selectChip } = useActiveLocation();
+  const { location, chip, selectChip, poolChip } = useActiveLocation();
   const member = useSession().guestId !== null;
   const shown: ChipKey = chip === "saved" && !member ? "near" : chip;
   const catalog = useCatalog(location ?? null, shown);
+  const pooled = useCachedRank(location ?? null, poolChip);
   const saved = useSaved();
   const toggle = useToggleSaved();
   const [drop, setDrop] = useState<CatalogPlace | null>(null);
@@ -109,7 +110,7 @@ export function HomeScreen(nav: Nav) {
         // Saved rows have no rank (never an ad, no score position) but follow
         // the last rank's score switch, as on the web.
         rank={onSaved ? null : catalog.rank}
-        showScores={catalog.rank?.showScores !== false}
+        showScores={(catalog.rank ?? pooled)?.showScores !== false}
         more={!onSaved && catalog.hasNextPage === true}
         onSave={(place) => {
           if (!requireAccount("/")) return;
