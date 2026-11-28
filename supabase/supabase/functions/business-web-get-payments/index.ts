@@ -31,6 +31,9 @@
 //                          wallet_place_outstanding, the voucher buy's read.
 //                          null when either read fails.
 //             instagram_url: the place profile's Instagram link, or null
+//             came_back: { guests, spent_cents, days } | null  MESITA-5069:
+//                          guests who paid with credit here after earning
+//                          cashback here, last 30 days
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -44,6 +47,7 @@ import { errorMessage } from "../_shared/errors.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { CASHBACK_DEFAULTS, readCashbackRates } from "../_shared/cashback.ts";
 import { readPlaceOutstanding } from "../_shared/vouchers.ts";
+import { readCameBack } from "../_shared/came-back.ts";
 
 type CreditLimitStep = { step: "credits" | "stripe"; limit_cents: number };
 type CreditLimitView = {
@@ -152,13 +156,18 @@ serveJson("business-web-get-payments", async (req) => {
   });
   // MESITA-4732: the Credit Limit box and the read-only Place Username.
   const currency = String(placeRow?.currency ?? "MXN").toUpperCase();
-  const [limitRes, outstanding, profileRes] = await Promise.all([
+  const [limitRes, outstanding, profileRes, came_back] = await Promise.all([
     admin.rpc("place_credit_limit_info", { p_place_id: placeId, p_livemode: paymentsLivemode() }),
     readPlaceOutstanding(admin, placeId, currency, paymentsLivemode()).catch((err) => {
       console.error(`[business-web-get-payments] wallet_place_outstanding: ${errorMessage(err)}`);
       return null;
     }),
     admin.from("place_profiles").select("instagram_url").eq("id", placeId).maybeSingle(),
+    // MESITA-5069: guests who came back to spend cashback; null when the read fails.
+    readCameBack(admin, placeId, paymentsLivemode()).catch((err) => {
+      console.error(`[business-web-get-payments] came_back: ${errorMessage(err)}`);
+      return null;
+    }),
   ]);
   if (limitRes.error) console.error(`[business-web-get-payments] place_credit_limit_info: ${limitRes.error.message}`);
   if (profileRes.error) console.error(`[business-web-get-payments] place_profiles: ${profileRes.error.message}`);
@@ -181,6 +190,7 @@ serveJson("business-web-get-payments", async (req) => {
     name_required: codeRow?.name_required === true,
     no_code: noCode,
     credits_balance,
+    came_back,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
     cash_due: (dueRows ?? []).map((row) => ({
       attempt_id: row.id,
