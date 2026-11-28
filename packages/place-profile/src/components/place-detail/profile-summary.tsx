@@ -152,8 +152,11 @@ export function ProfileSummary({
             the red seal and no level (MESITA-3420). Creating and Enriching
             still lead the row while they are running. */}
         {isPremierPlace(place) ? (
-          <ProfileFact data-profile-premier>
-            <PremierRosette decorative className="h-4 w-4" />
+          // YELLOW (Pato, 2026-11-27, MESITA-5095: "make it yellow"): the
+          // cards' gold, a 1px black border and a black rosette, so the tag
+          // matches Home and Search.
+          <ProfileFact data-profile-premier className="border-[#141414] bg-[#E9C46A] text-neutral-950">
+            <PremierRosette decorative className="h-4 w-4" fill="#141414" check="#fff" />
             Premier
           </ProfileFact>
         ) : null}
