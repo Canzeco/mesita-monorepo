@@ -3,7 +3,6 @@
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Wallet, Clock, ArrowRight, Banknote, Percent, Receipt as ReceiptIcon, ChevronDown, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, QrCode, Ticket, X, type LucideIcon } from "lucide-react";
-import { Instagram } from "../brand-icons";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -583,64 +582,33 @@ function Stepper({ name, n, max, disabled, onChange }: { name: string; n: number
 // SQUARE (Pato, 2026-11-24, MESITA-4875: "must be squares").
 const BADGE = "flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl tabular-nums";
 
-export type CashbackLineRow = { line: "welcome" | "welcome_vip" | "returning" | "returning_vip"; title: string; klass: "Regular Class" | "VIP Class"; who: string; bps: number };
-
-/** The place's lines that earn (rate above Off): Welcome, Returning, then
- *  Returning VIP (MESITA-4766, Pato: "NOW THE PAY OFFERS ARE Welcome
- *  Everyone, Returning Regular, Returning VIP"). A guest never reads the
- *  word Regular: the middle line is plain Returning. Two lines under
- *  MESITA-4709 ("no more VIP"). */
-export function cashbackRows(cashback: PlaceCashback): CashbackLineRow[] {
-  return (
-    [
-      // FOUR TIERS IN PATO'S ORDER (2026-11-23, MESITA-4789), in the guest's
-      // words (MESITA-4806); Business keeps Welcome Regular … Returning VIP.
-      { line: "welcome", title: "Welcome Visit", klass: "Regular Class", who: "Your first bill here", bps: cashback.welcome_bps },
-      { line: "returning", title: "Returning Visit", klass: "Regular Class", who: "Every bill after your first", bps: cashback.returning_bps },
-      { line: "welcome_vip", title: "Welcome Visit", klass: "VIP Class", who: "Your first bill here", bps: cashback.welcome_vip_bps ?? cashback.welcome_bps },
-      { line: "returning_vip", title: "Returning Visit", klass: "VIP Class", who: "Every bill after your first", bps: cashback.returning_vip_bps ?? 0 },
-    ] as CashbackLineRow[]
-  ).filter((r) => r.bps > 0);
-}
-
-/** Why this guest cannot get a tier here (Pato, 2026-11-23, MESITA-4791:
- *  "if offer blocked, block the offer"), from the server's `line` for their
- *  next bill: a VIP tier for a Regular, a Regular tier for a VIP, a Welcome
- *  tier once their first bill here is paid. Null = theirs to get, or signed
- *  out (no line). The row stays, dimmed with a lock; a tier the place
- *  turned Off is not a row at all (cashbackRows). Pure. */
-export function lockedWhy(row: CashbackLineRow["line"], guest: PlaceCashback["line"] | null | undefined): string | null {
-  if (!guest) return null;
-  const guestVip = guest === "welcome_vip" || guest === "returning_vip";
-  const rowVip = row === "welcome_vip" || row === "returning_vip";
-  if (rowVip && !guestVip) return "VIP guests only";
-  if (!rowVip && guestVip) return "Regular guests only";
-  const guestFirst = guest === "welcome" || guest === "welcome_vip";
-  if ((row === "welcome" || row === "welcome_vip") && !guestFirst) return "Already used";
+/** THE PAY CARD (Pato, 2026-11-27, MESITA-5071): one card, only the rate
+ *  that applies to this guest, never the place's whole table. The server's
+ *  `line` says whether the next bill is their first here; VIP changes
+ *  nothing on Pay (VIP lives on Post only). Signed out reads as a first
+ *  visit. A first-visit rate of Off falls through to Returning. Null when
+ *  nothing applies: the tab shows its empty state. Pure. */
+export function payCard(cashback: PlaceCashback | null | undefined): { bps: number; first: boolean; thenBps: number } | null {
+  if (!cashback) return null;
+  const first = cashback.line == null || cashback.line === "welcome" || cashback.line === "welcome_vip";
+  if (first && cashback.welcome_bps > 0) return { bps: cashback.welcome_bps, first: true, thenBps: cashback.returning_bps };
+  if (cashback.returning_bps > 0) return { bps: cashback.returning_bps, first: false, thenBps: 0 };
   return null;
 }
 
-/** The row marked "You": the server's `line` for this guest's next bill,
- *  never worked out from the guest's Class (MESITA-4766). None signed out
- *  (`line` null) or when that line pays nothing here. */
-export function youLine(cashback: PlaceCashback | null | undefined): CashbackLineRow["line"] | null {
-  if (!cashback?.line) return null;
-  return cashbackRows(cashback).some((r) => r.line === cashback.line) ? cashback.line : null;
-}
-
-/** MESITA-4698/4702: the place's cashback on the one Offers page. Two
- *  lines (Welcome on a first bill, then Returning; MESITA-4709), the
- *  guest's own marked Yours. Nothing to buy: a
- *  confirmed bill earns it, 1 hour later (MESITA-4717), with no minimum. */
-function CashbackPanel({ cashback }: { cashback: PlaceCashback }) {
-  const rows = cashbackRows(cashback);
-  const you = youLine(cashback);
-  if (rows.length === 0) return null;
+/** "20% back · On your first bill here", then "Then 5% back on every bill."
+ *  Guests never read the word cashback (MESITA-5071): it is "X% back". */
+function PayCardView({ card }: { card: { bps: number; first: boolean; thenBps: number } }) {
   return (
-    <section className={cn(CARD, "shrink-0 overflow-hidden")} aria-label="Visit offers" data-promos="cashback">
-      <TierMatrix rows={rows} guest={you} line={cashback.line} />
-      {/* NO FOOTNOTE (Pato, MESITA-4702: "remove the explanations there,
-          that's why we have the i"): the rules live in How it works. */}
+    <section className={cn(CARD, "flex shrink-0 items-center gap-3 p-3")} aria-label="Pay offer" data-promos="cashback" data-pay-card={card.first ? "first" : "every"}>
+      <span className={cn(BADGE, CASHBACK_TONE, "text-xl font-bold")}>{card.bps / 100}%</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className={OFFERS_TITLE_CLASS}>{card.bps / 100}% back</span>
+        <span className="text-foreground text-sm">{card.first ? "On your first bill here" : "On every bill here, in credits"}</span>
+        {card.first && card.thenBps > 0 ? (
+          <span className="text-muted-foreground text-sm">Then {card.thenBps / 100}% back on every bill.</span>
+        ) : null}
+      </span>
     </section>
   );
 }
@@ -707,87 +675,6 @@ function HowItWorks({ title, lead, tab, menu, children }: { title: string; lead:
           )
         : null}
     </>
-  );
-}
-
-/** The four tiers as one matrix (MESITA-4807; the Pay tab's own since
- *  MESITA-4875, Pato: "maybe matrix is clearer"): which visit across, which
- *  Class down. The guest's own cell is the offer's colour with "You"; one they
- *  cannot get wears a lock and why; a tier that gives nothing is a dash. */
-function TierMatrix({
-  rows,
-  guest,
-  line,
-}: {
-  rows: CashbackLineRow[];
-  guest: CashbackLineRow["line"] | null;
-  /** The server's line for this guest's next bill; null signed out. */
-  line: PlaceCashback["line"];
-}) {
-  const cell = (key: CashbackLineRow["line"]) => {
-    const row = rows.find((o) => o.line === key);
-    const mine = guest === key && row != null;
-    const why = row ? lockedWhy(key, line) : null;
-    return (
-      <td className="py-1 pl-2">
-        <span
-          className={cn(
-            "flex min-h-20 flex-col items-center justify-center gap-0.5 rounded-xl text-2xl leading-tight font-semibold tabular-nums",
-            mine ? CASHBACK_TONE : row && !why ? "bg-muted text-foreground" : "bg-muted text-muted-foreground",
-          )}
-          data-how-tier={key}
-          data-cashback-mine={mine ? "" : undefined}
-        >
-          {row ? `${row.bps / 100}%` : "—"}
-          {mine ? (
-            <span className="text-xs">You</span>
-          ) : why ? (
-            <span className="flex items-center gap-1 text-xs">
-              <Lock className="h-3 w-3 shrink-0" strokeWidth={2.5} role="img" aria-label={why} />
-              {why === "Already used" ? "Used" : null}
-            </span>
-          ) : null}
-        </span>
-      </td>
-    );
-  };
-  const visits = [
-    { title: "Welcome Visit", who: "Your first bill here" },
-    { title: "Returning Visit", who: "Every bill after" },
-  ];
-  return (
-    <div className="p-3" data-cashback-lines>
-      <table className="w-full table-fixed">
-        <colgroup>
-          <col className="w-[26%]" />
-          <col />
-          <col />
-        </colgroup>
-        <thead>
-          <tr className="text-foreground text-sm font-semibold">
-            <td className="text-muted-foreground align-bottom pb-1 text-left text-xs font-semibold">Cashback</td>
-            {visits.map((v) => (
-              <th key={v.title} scope="col" className="pb-1 pl-2 font-semibold">
-                {v.title}
-                <span className="text-muted-foreground block text-xs font-normal">{v.who}</span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <th scope="row" className="text-foreground text-left text-sm font-semibold">Regular Class</th>
-            {cell("welcome")}
-            {cell("returning")}
-          </tr>
-          <tr>
-            <th scope="row" className="text-foreground text-left text-sm font-semibold">VIP Class</th>
-            {cell("welcome_vip")}
-            {cell("returning_vip")}
-          </tr>
-        </tbody>
-      </table>
-    </div>
   );
 }
 
@@ -889,18 +776,16 @@ function ArtClock({ text }: { text: string }) {
 
 /** Pay's How it works: cashback only (Pato, 2026-11-27, MESITA-5067:
  *  Discount is gone; cashback is how a guest starts coming back). */
-function PayHowItWorks({ rows, guest }: { rows: CashbackLineRow[]; guest: PlaceCashback["line"] }) {
-  const shown = rows.find((o) => o.line === guest) ?? rows[0];
-  if (!shown) return null;
-  const rate = `${shown.bps / 100}%`;
-  const gives = (EXAMPLE_BILL * shown.bps) / 10000;
+function PayHowItWorks({ bps }: { bps: number }) {
+  const rate = `${bps / 100}%`;
+  const gives = (EXAMPLE_BILL * bps) / 10000;
   return (
     <HowItWorks
       tab="pay"
-      title="How cashback works"
-      lead="This place gives cashback: part of what you pay comes back as credit for your next visit."
+      title="How it works"
+      lead="Part of what you pay here comes back as credits for your next visit."
     >
-      <Scenes note="The tip and the part you pay with credit earn no cashback, and one bill earns $1,000 at most. Your credit never expires.">
+      <Scenes note="The tip and the part you pay with credits earn nothing back, and one bill earns $1,000 at most. Your credit never expires.">
         <Scene n={1} tint="cashback" art={<ArtPhone />} title="Show your QR" text="When you want the bill, open Pay and show your QR to your waiter. Check the bill on your phone and tap Accept." />
         <Scene
           n={2}
@@ -941,7 +826,7 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
   const pay = whole(priceValue(p, line, currency));
   const get = whole(creditValue(p, line, currency));
   return (
-    <HowItWorks tab="prepay" title="How Prepay works" lead="Pay now and get more to spend here on your next visits.">
+    <HowItWorks tab="prepay" title="How Add Credits works" lead="Add credits now and get a bonus to spend here on your next visits.">
       <Scenes note="Your credit pays any bill at this place, never the tip, and never expires. You can also send it to a friend as a gift.">
         <Scene
           n={1}
@@ -997,7 +882,9 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
   );
 }
 
-/** TWO SUBPAGES, PREPAY · PAY (MESITA-4710; Post went with Stories,
+/** ADD · PAY (Pato, 2026-11-27, MESITA-5071: "Prepay" became Add; the
+ *  `prepay` key and `?rewards=` values stay so old links open).
+ *  TWO SUBPAGES, PREPAY · PAY (MESITA-4710; Post went with Stories,
  *  MESITA-4766): Prepay sells the vouchers, Pay is paying the bill here and
  *  the cashback it earns. What a guest earned stays on the Loyalty Card and
  *  Tickets. */
@@ -1006,7 +893,7 @@ export type OffersTab = "prepay" | "pay";
 // THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay the discount badge (MESITA-4844; the wallet, credit
 // loaded ahead, before), Pay a receipt (the bill).
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { id: "prepay", word: "Prepay", Icon: Percent },
+  { id: "prepay", word: "Add", Icon: Percent },
   { id: "pay", word: "Pay", Icon: ReceiptIcon },
 ];
 
@@ -1145,7 +1032,7 @@ function PrepaySection({
     // EVERY TAB HAS AN EMPTY STATE (MESITA-4710): no row to show, no bar.
     return (
       <p className={cn(CARD, "text-muted-foreground flex shrink-0 flex-col items-center gap-2 px-4 py-6 text-center text-sm")} data-offers-none="prepay">
-        This place sells no prepay offers yet.
+        No Add offers yet.
         {failed && actions?.onLoadVouchers ? (
           <button type="button" onClick={actions.onLoadVouchers} className="text-foreground min-h-9 font-semibold underline underline-offset-2">
             Retry
@@ -1316,61 +1203,35 @@ function PrepaySection({
   );
 }
 
-/** PAY (MESITA-4710; 1 hour since MESITA-4717): paying the bill here and the cashback it earns.
- *  The lines are the server's (Welcome, Returning, Returning VIP; MESITA-4766),
- *  then the purple Go to Pay Bill at the bottom (MESITA-4699). Nothing to
- *  buy: a confirmed bill earns it, 1 hour later, with no minimum. */
+/** PAY (MESITA-4710; one card since MESITA-5071): the rate this guest gets
+ *  on their next bill, How it works, then Pay Bill at the bottom
+ *  (MESITA-4699). Nothing to buy: a confirmed bill earns it, 1 hour later. */
 function CheckoutSection({
   cashback,
   loading,
   onPay,
-  onBecomeVip,
-  vipNote,
 }: {
   cashback: PlaceCashback | null;
   loading: boolean;
   onPay: (() => void) | undefined;
-  onBecomeVip?: () => void;
-  vipNote?: string | null;
 }) {
-  const rows = cashback ? cashbackRows(cashback) : [];
+  const card = payCard(cashback);
   return (
     <>
       {loading ? (
-        <BoneRows n={2} />
-      ) : cashback && rows.length > 0 ? (
-        <CashbackPanel cashback={cashback} />
+        <BoneRows n={1} />
+      ) : card ? (
+        <PayCardView card={card} />
       ) : (
-        // No cashback here, or the read failed: Pay Bill still works.
+        // Nothing back here, or the read failed: Pay Bill still works.
         <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="pay">
-          This place gives no cashback yet. You can still pay your bill here.
+          No Pay offers yet.
         </p>
       )}
-      {rows.length > 0 ? <PayHowItWorks rows={rows} guest={cashback?.line ?? null} /> : null}
-      {/* CONNECT INSTAGRAM, BELOW HOW IT WORKS (Pato, 2026-11-24, MESITA-4872:
-          "not the fourth offer"); in the VIP row under MESITA-4863. Only where a
-          VIP row shows and the host knows the guest is not VIP. */}
-      {onBecomeVip && rows.some((r) => r.klass === "VIP Class") ? (
-        <div className="flex shrink-0 flex-col items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onBecomeVip}
-            className="border-border bg-card text-foreground hover:bg-muted flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition"
-            data-cashback-become-vip
-          >
-            <Instagram className="h-[18px] w-[18px]" aria-hidden />
-            Connect Instagram to unlock VIP Class
-          </button>
-          {vipNote ? (
-            <p className="text-muted-foreground text-center text-sm" data-cashback-vip-note>
-              {vipNote}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-      {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699: "cashback
-          just have shortcut to Go to Pay bill at the bottom, purple color"),
-          sticky like Prepay's Pay bar. Absent onPay (admin's preview), no bar. */}
+      {card ? <PayHowItWorks bps={card.bps} /> : null}
+      {/* PAY BILL UNDER CHECKOUT (Pato, 2026-11-22, MESITA-4699), sticky like
+          Add's Pay bar; "Pay Bill", not "Go to Pay Bill" (MESITA-5071).
+          Absent onPay (admin's preview), no bar. */}
       {onPay ? (
         <div className="bg-card border-border sticky bottom-0 z-10 -mx-4 mt-auto -mb-4 border-t px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-cashback-pay-bar>
           <button
@@ -1380,7 +1241,7 @@ function CheckoutSection({
             data-cashback-pay-bill
           >
             <QrCode className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-            Go to Pay Bill
+            Pay Bill
           </button>
         </div>
       ) : null}
@@ -1541,10 +1402,12 @@ export function VouchersPane({
             cashback={cashback}
             loading={loading}
             onPay={actions?.onPay}
-            onBecomeVip={actions?.guest?.guestClass === "vip" ? undefined : actions?.onBecomeVip}
-            vipNote={actions?.guest?.vipNote}
           />
         )}
+        {/* ONE LINE ON EVERY TAB (MESITA-5071). */}
+        <p className="text-muted-foreground shrink-0 text-center text-sm" data-offers-footer>
+          Credits work only here and never expire.
+        </p>
       </div>
       {full ? <PlaceFull name={place.name} onClose={() => setFull(false)} /> : null}
     </div>

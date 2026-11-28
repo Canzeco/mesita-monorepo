@@ -13,7 +13,6 @@ import { useHydrated } from "@/components/consumer/console-layout";
 import { usePlaceVouchers } from "@/components/consumer/member-place-actions";
 import { money } from "@/lib/api/wallet";
 import {
-  CONSUMER_ROUTES,
   placePath,
   payCodePath,
   walletPlacePath,
@@ -21,7 +20,7 @@ import {
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useKeptScroll } from "@/lib/use-kept-scroll";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
-import { instagramVipLine, isVip } from "@/lib/vip";
+import { instagramVipLine } from "@/lib/vip";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 /** The guest's credit here (MESITA-4224): spendable now, and the pending
@@ -39,7 +38,7 @@ function creditHere(place: PlaceDetail, clock: boolean): { label: string; ready:
   const pending = balance.pending_cents > 0
     ? `+${money(balance.pending_cents, currency)} ${at ? `lands at ${at}` : "lands soon"}`
     : null;
-  return { label: `Balance ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
+  return { label: `Credits ${ready}${pending ? `. ${pending}` : ""}`, ready, pending };
 }
 
 function noopSubscribe() {
@@ -163,12 +162,6 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
         },
       }
       : {}),
-    // "Connect Instagram to unlock" under the locked VIP line (MESITA-4863):
-    // only for a signed-in guest the profile says is not VIP. A finished check
-    // there pops back to this page.
-    ...(profile && !isVip(profile)
-      ? { onBecomeVip: () => navigateTo(router, `${CONSUMER_ROUTES.mePages.instagram}?from=vip`, { motion: "drill" }) }
-      : {}),
   };
 
   return (
@@ -221,7 +214,7 @@ export function OffersPageBody({ place: fetched }: { place: PlaceDetail }) {
             data-offers-balance
           >
             <span className="flex items-center justify-between gap-3">
-              <span className="text-paper/70 text-sm font-semibold">Balance</span>
+              <span className="text-paper/70 text-sm font-semibold">Credits</span>
               <span className="min-w-0 truncate text-xl leading-tight font-bold tabular-nums">{credit.ready}</span>
             </span>
             {credit.pending ? (
