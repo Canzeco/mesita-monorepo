@@ -251,13 +251,15 @@ export function PlaceBannerRow({
  *  the same width; the info box spends 1px of border, 2 × 8px of padding and
  *  the 8px gap), 8px from the left, 9px up (its border + 8px) so it shares
  *  Save · Share's line.
- *  `corner`: Search's rail card, whose buttons sit under the text: the
- *  photo's top-left corner, as wide as the word. */
+ *  `rail`: Search's rail card, on Save · Share's line too (MESITA-5066,
+ *  Pato: "premier at the bottom"): 12px from the photo's left and bottom,
+ *  the rail's step (RAIL_CARD_ACTIONS bottom-3). As wide as the word: the
+ *  132px photo is narrower than Save. */
 export function PremierPill({
   placement = "save",
   className,
 }: {
-  placement?: "save" | "corner";
+  placement?: "save" | "rail";
   className?: string;
 }) {
   return (
@@ -265,7 +267,7 @@ export function PremierPill({
       className={cn(
         CARD_BUTTON_BOX,
         "pointer-events-none absolute left-2 z-10 flex items-center justify-center gap-1.5 border border-[#141414] bg-[#E9C46A] px-2.5 font-sans text-sm font-semibold text-neutral-950",
-        placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "top-2",
+        placement === "save" ? "bottom-[9px] w-[calc((100%-25px)/2)]" : "bottom-3 left-3",
         className,
       )}
       data-card-premier
