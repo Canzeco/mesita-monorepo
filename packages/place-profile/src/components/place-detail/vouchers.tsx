@@ -2,7 +2,7 @@
 
 import { type ComponentType, type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Wallet, Clock, ArrowRight, Banknote, Percent, Receipt as ReceiptIcon, ChevronDown, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, QrCode, Ticket, X, type LucideIcon } from "lucide-react";
+import { Camera, Wallet, Clock, ArrowRight, Banknote, Percent, Receipt as ReceiptIcon, ChevronDown, CircleCheck, CreditCard, Crown, Info, Lock, Minus, PartyPopper, Plus, QrCode, Ticket, X, type LucideIcon } from "lucide-react";
 import { isCardExpired, type PayCards } from "../../pay-cards";
 
 import type { PlaceActions, VoucherBasketItem } from "../../actions";
@@ -826,7 +826,7 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
   const pay = whole(priceValue(p, line, currency));
   const get = whole(creditValue(p, line, currency));
   return (
-    <HowItWorks tab="prepay" title="How Add Credits works" lead="Add credits now and get a bonus to spend here on your next visits.">
+    <HowItWorks tab="prepay" title="How Prepaid Credits work" lead="Prepay now and get a bonus to spend here on your next visits.">
       <Scenes note="Your credit pays any bill at this place, never the tip, and never expires. You can also send it to a friend as a gift.">
         <Scene
           n={1}
@@ -888,13 +888,17 @@ function PrepayHowItWorks({ products, co }: { products: Product[]; co: Checkout 
  *  MESITA-4766): Prepay sells the vouchers, Pay is paying the bill here and
  *  the cashback it earns. What a guest earned stays on the Loyalty Card and
  *  Tickets. */
-export type OffersTab = "prepay" | "pay";
+// PREPAID · PAY · POST (Pato, 2026-11-27, MESITA-5083): the tab says
+// Prepaid (the Pay page's tile says Prepaid Credits), and Post says Soon
+// until the Story Reward ships (MESITA-5073).
+export type OffersTab = "prepay" | "pay" | "post";
 
 // THE TABS' ICONS (Pato, 2026-11-23, MESITA-4726): Prepay the discount badge (MESITA-4844; the wallet, credit
 // loaded ahead, before), Pay a receipt (the bill).
 const OFFERS_TABS: { id: OffersTab; word: string; Icon: ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
-  { id: "prepay", word: "Add", Icon: Percent },
+  { id: "prepay", word: "Prepaid", Icon: Percent },
   { id: "pay", word: "Pay", Icon: ReceiptIcon },
+  { id: "post", word: "Post", Icon: Camera },
 ];
 
 /** The tab bar (MESITA-4710), MESITA-4701's last approved bar: three equal
@@ -1032,7 +1036,7 @@ function PrepaySection({
     // EVERY TAB HAS AN EMPTY STATE (MESITA-4710): no row to show, no bar.
     return (
       <p className={cn(CARD, "text-muted-foreground flex shrink-0 flex-col items-center gap-2 px-4 py-6 text-center text-sm")} data-offers-none="prepay">
-        No Add offers yet.
+        No Prepaid Credits offers yet.
         {failed && actions?.onLoadVouchers ? (
           <button type="button" onClick={actions.onLoadVouchers} className="text-foreground min-h-9 font-semibold underline underline-offset-2">
             Retry
@@ -1193,7 +1197,7 @@ function PrepaySection({
                 className="flex h-12 w-full items-center justify-center rounded-full bg-[#635BFF] text-base font-semibold text-white hover:bg-[#5249e6] disabled:opacity-60"
                 data-offer-pay
               >
-                {locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Pay ${amount(totals.price)}` : "Pay"}
+                {locked ? "Paying…" : co.needsCard ? "Add a card" : totals ? `Prepay ${amount(totals.price)}` : "Prepay Credits"}
               </button>
             )}
           </div>
@@ -1397,6 +1401,10 @@ export function VouchersPane({
             onQty={setQty}
             onPay={() => void pay()}
           />
+        ) : tab === "post" ? (
+          <p className={cn(CARD, "text-muted-foreground shrink-0 px-4 py-6 text-center text-sm")} data-offers-none="post">
+            Soon: credits for posting a Story about this place.
+          </p>
         ) : (
           <CheckoutSection
             cashback={cashback}

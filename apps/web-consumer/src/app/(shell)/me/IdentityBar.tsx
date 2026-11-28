@@ -106,7 +106,8 @@ export function IdentityBar({
             nameHref={CONSUMER_ROUTES.mePages.profile}
             // The Class is a badge in the name's box (MESITA-4864); none until
             // the profile is read.
-            guestClass={profile ? (profile.guest_class === "vip" ? "vip" : "regular") : undefined}
+            // No badge since MESITA-5083 (Class hidden for now).
+            guestClass={undefined}
           />
         )}
       </div>

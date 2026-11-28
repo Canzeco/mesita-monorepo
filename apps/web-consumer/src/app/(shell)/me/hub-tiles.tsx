@@ -4,7 +4,6 @@ import {
   Bell,
   CalendarCheck,
   CreditCard,
-  Crown,
   Gem,
   Heart,
   Settings as SettingsIcon,
@@ -159,12 +158,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // Me › VIP (status, or the invitation code). A crown, not Plan's gem.
   // CALLED CLASS (Pato, 2026-11-23, MESITA-4784: "the box must be called
   // Class, not VIP"): Class is Regular or VIP; the route stays /me/vip.
-  {
-    Icon: Crown,
-    title: "Class",
-    summary: "Invitation code",
-    href: CONSUMER_ROUTES.mePages.vip,
-  },
+  // CLASS HIDDEN (Pato, 2026-11-27, MESITA-5083: VIP is gone for now; the
+  // /me/vip route stays).
   {
     Icon: CalendarCheck,
     // The bar names it Bookings (MESITA-5055); this box is a second door.

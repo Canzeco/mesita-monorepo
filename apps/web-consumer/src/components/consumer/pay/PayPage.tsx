@@ -225,7 +225,7 @@ const PENDING_LINE = "text-muted-foreground block truncate text-sm tabular-nums"
 // A plain % (Pato, MESITA-4876; a badge around it under MESITA-4859) and
 // the QR, the same marks everywhere.
 const TILES: Record<PayModal, { word: string; line: string; icon: LucideIcon; ink: string }> = {
-  prepay: { word: "Add Credits", line: "Get Bonus", icon: Percent, ink: "bg-neutral-950 text-white" },
+  prepay: { word: "Prepaid Credits", line: "Get Bonus", icon: Percent, ink: "bg-neutral-950 text-white" },
   pay: { word: "Pay Bill", line: "Cash, Card, or Credits", icon: QrCode, ink: "bg-white text-indigo-500" },
 };
 

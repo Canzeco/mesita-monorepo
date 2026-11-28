@@ -34,7 +34,6 @@ export type MeNav = {
 
 const TILES: { key: keyof MeNav; label: string; icon: IconName }[] = [
   { key: "onProfile", label: "Profile", icon: "user" },
-  { key: "onClass", label: "Class", icon: "crown" },
   { key: "onReservations", label: "Bookings", icon: "calendar" },
   { key: "onNotifications", label: "Notifications", icon: "bell" },
   { key: "onTickets", label: "Tickets", icon: "ticket" },
@@ -103,9 +102,6 @@ export function MeView({
             )}
             <View style={styles.nameBar}>
               <Text role="strong">{state.profile.firstName?.trim() || state.profile.fullName?.trim() || "Mesita member"}</Text>
-              <View style={styles.classPill}>
-                <Text role="caption" tone="muted">{state.profile.isVip ? "VIP" : "Regular"}</Text>
-              </View>
             </View>
           </View>
           <View style={styles.grid}>
@@ -153,7 +149,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: space.sm,
   },
-  classPill: { backgroundColor: colors.fill, borderRadius: 999, paddingHorizontal: space.sm, paddingVertical: 2 },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
   tile: {
     width: "48%",
