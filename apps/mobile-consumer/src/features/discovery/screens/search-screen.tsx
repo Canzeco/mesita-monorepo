@@ -1,7 +1,7 @@
 import * as Crypto from "expo-crypto";
 import * as Location from "expo-location";
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type ComponentRef } from "react";
-import { Alert, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
+import { Alert, Platform, ScrollView, Share, StyleSheet, TextInput, useWindowDimensions, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -12,7 +12,7 @@ import { Text } from "@/components/text";
 import { useSession } from "@/features/auth";
 import { colors, radius, searchMapStyle, shadow, text, weight } from "@/theme";
 
-import type { MapBounds, Suggestion } from "../api";
+import type { MapAnswer, MapBounds, Suggestion } from "../api";
 import { GenerateSheet, type GenerateTarget } from "../components/generate-sheet";
 import { ResultsPanel, SmallButton } from "../components/results-panel";
 import { AddCard, SearchCard, SearchCardSkeleton } from "../components/search-card";
@@ -94,7 +94,10 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const [size, setSize] = useState({ width: screenWidth, height: screenHeight });
   const [sight, setSight] = useState({ top: 0, bottom: 0 });
   const [region, setRegion] = useState<Region | null>(null);
-  const [loadAt, setLoadAt] = useState<{ point: Point; bounds: MapBounds | null } | null>(null);
+  // `n` counts loads, so a repeat (Nearby tapped twice) is a fresh read.
+  const [loadAt, setLoadAt] = useState<{ point: Point; bounds: MapBounds | null; n: number } | null>(null);
+  // The last set that landed: a failed reload keeps it on screen, as the web does.
+  const [kept, setKept] = useState<MapAnswer | null>(null);
   const [startedAt, setStartedAt] = useState<string | null>(null);
   const mapRef = useRef<ComponentRef<typeof MapView>>(null);
   const field = useRef<ComponentRef<typeof TextInput>>(null);
@@ -113,42 +116,100 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const sightY = sight.bottom > sight.top && size.height > 0 ? (sight.top + sight.bottom) / 2 / size.height : 0.5;
   const ring = RING_INSET * Math.min(size.width, Math.max(0, sight.bottom - sight.top));
 
+  const answer = map.data ?? (map.isError ? kept : undefined);
+  const raw = answer?.places ?? [];
+  // A bar pick is card one (the web's prependAnchorPlace); outside the set, its own card.
+  const anchored = anchor ? (raw.find((p) => p.id === anchor.id) ?? anchor.card ?? undefined) : undefined;
+  const places = anchored ? [anchored, ...raw.filter((p) => p.id !== anchored.id)] : raw;
+  // While typing, the results' pins replace the catalog's; a row with no
+  // point takes its catalog row's.
+  const resultPins: Pin[] = querying
+    ? (suggestions.data ?? []).flatMap((row) => {
+        if (row.kind === "location" || !row.onMesita || !row.mesitaId) return [];
+        const own = raw.find((p) => p.id === row.mesitaId);
+        const at = row.point ?? (own && own.lat !== null && own.lng !== null ? { lat: own.lat, lng: own.lng } : null);
+        return at ? [{ id: row.mesitaId, lat: at.lat, lng: at.lng, name: row.mainText, premier: row.premier, dot: false }] : [];
+      })
+    : [];
+  const catalogPins = pinsOf(places, answer?.dots ?? []);
+  const pins = resultPins.length > 0 ? [...catalogPins.filter((p) => p.dot), ...resultPins] : catalogPins;
+  // The rail's card is the chosen place, else place one; a pin outside the
+  // rail can be chosen too.
+  const railPicked = places.find((p) => p.id === chosen) ?? places[0] ?? null;
+  const picked = { id: pins.some((p) => p.id === chosen) ? chosen : (railPicked?.id ?? null) };
+
+  // What timers and awaits read: this render's values, not their closure's.
+  const live = useRef({ region, loadAt, sightY, size, sight, isError: map.isError, pins });
+  useLayoutEffect(() => {
+    live.current = { region, loadAt, sightY, size, sight, isError: map.isError, pins };
+  });
+
+  // A new selection forgets the last fly (the web clears arrived on every change).
+  useEffect(() => {
+    arrived.current = null;
+  }, [picked.id]);
+
+  // A set that landed: keep it, and end a bar pick that landed 0.4 km away.
+  const landed = useEffectEvent(() => {
+    if (!map.data || map.isPlaceholderData) return;
+    setKept(map.data);
+    const at = loadAt?.point;
+    if (at) setAnchor((a) => (a && km(a.point, at) >= ANCHOR_DROP_KM ? null : a));
+  });
+  useEffect(() => {
+    const id = setTimeout(landed, 0);
+    return () => clearTimeout(id);
+  }, [map.dataUpdatedAt]);
+
   /** Load at the sight; the bounds are the clear window, so the server's circle is the ring. */
   const load = (box: Box) => {
+    const now = live.current;
     lastLoad.current = { box, at: Date.now() };
-    const point = sightOf(box, sightY);
-    const top = size.height > 0 ? sight.top / size.height : 0;
-    const bottom = size.height > 0 && sight.bottom > 0 ? sight.bottom / size.height : 1;
-    if (anchor && km(anchor.point, point) >= ANCHOR_DROP_KM) setAnchor(null);
-    setLoadAt({ point, bounds: boundsOf(clearBox(box, top, bottom)) });
+    const point = sightOf(box, now.sightY);
+    const top = now.size.height > 0 ? now.sight.top / now.size.height : 0;
+    const bottom = now.size.height > 0 && now.sight.bottom > 0 ? now.sight.bottom / now.size.height : 1;
+    setLoadAt((was) => ({ point, bounds: boundsOf(clearBox(box, top, bottom)), n: (was?.n ?? 0) + 1 }));
   };
 
   /** Put `p` under the sight, keeping the zoom; load there unless told not to. */
   const moveTo = (p: Point, from: Region | null, reload = true) => {
-    const base = from ?? regionAt(p, START_ZOOM, size.width, size.height);
-    const c = centerForSight(p, boxOf({ ...base, latitude: p.lat, longitude: p.lng }), sightY);
+    const { size: area, sightY: y } = live.current;
+    const base = from ?? regionAt(p, START_ZOOM, area.width, area.height);
+    const c = centerForSight(p, boxOf({ ...base, latitude: p.lat, longitude: p.lng }), y);
     const next = { ...base, latitude: c.lat, longitude: c.lng };
     mapRef.current?.animateToRegion(next, 300);
     setRegion(next);
     if (reload) load(boxOf(next));
   };
 
-  // The first camera: the chosen point at the map's centre, zoom 14; the
-  // first load goes out at the sight. Again when the guest picks another location.
-  const start = useEffectEvent(() => {
+  // The first camera: the chosen point at the map's centre, zoom 14 (the
+  // MapView's initialCamera); the first load goes out at the sight, from the
+  // camera the map really shows. Again when the guest picks another location.
+  const start = useEffectEvent(async () => {
     if (!location || !mapReady || sight.bottom === 0) return;
     const key = `${location.lat},${location.lng}`;
     if (startedAt === key) return;
     const first = startedAt === null;
     setStartedAt(key);
-    const r = regionAt(location, START_ZOOM, size.width, size.height);
-    if (!first) mapRef.current?.animateToRegion(r, 300);
-    setRegion(r);
-    load(boxOf(r));
+    if (!first) {
+      mapRef.current?.animateCamera({ center: { latitude: location.lat, longitude: location.lng }, zoom: START_ZOOM }, { duration: 300 });
+      await new Promise((done) => setTimeout(done, 350));
+    }
+    const edges = await mapRef.current?.getMapBoundaries().catch(() => null);
+    const box = edges
+      ? { north: edges.northEast.latitude, east: edges.northEast.longitude, south: edges.southWest.latitude, west: edges.southWest.longitude }
+      : boxOf(regionAt(location, START_ZOOM, size.width, size.height));
+    setRegion({
+      latitude: (box.north + box.south) / 2,
+      longitude: (box.east + box.west) / 2,
+      latitudeDelta: box.north - box.south,
+      longitudeDelta: box.east - box.west,
+    });
+    load(box);
   });
   useEffect(() => {
     // After the layout pass that produced these values, not inside it.
-    const id = setTimeout(start, 0);
+    const id = setTimeout(() => void start(), 0);
     return () => clearTimeout(id);
   }, [location, mapReady, sight.bottom]);
 
@@ -167,7 +228,8 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
       setYou(p);
       setLocate("located");
       // Recentre always; reload only once the fix has left the loaded set behind.
-      if (recentre) moveTo(p, region, !loadAt || km(loadAt.point, p) >= STALE_KM);
+      const now = live.current;
+      if (recentre) moveTo(p, now.region, !now.loadAt || km(now.loadAt.point, p) >= STALE_KM);
     } catch {
       setLocate("blocked");
       if (recentre) Alert.alert("Couldn't find you", "Turn on Location Services, then tap again.");
@@ -183,11 +245,10 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   }, []);
 
   // The rail rests on the chosen card's page for each new set, and when it comes back.
-  const railKey = (map.data?.places ?? []).map((p) => p.id).join("|");
-  const railBack = term.trim().length < 2 && !focused;
+  const railKey = places.map((p) => p.id).join("|");
+  const railBack = !querying && !focused;
   const rest = useEffectEvent(() => {
-    const list = map.data?.places ?? [];
-    const i = Math.max(0, list.findIndex((p) => p.id === chosen));
+    const i = Math.max(0, places.findIndex((p) => p.id === railPicked?.id));
     railRef.current?.scrollTo({ x: (i + 1) * (size.width - PAGE_INSET), animated: false });
   });
   useLayoutEffect(() => {
@@ -206,9 +267,10 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     pending.current = setTimeout(() => {
       pending.current = null;
       const box = boxOf(next);
+      const now = live.current;
       // After a failed load the next rest retries at any distance.
-      const from = map.isError ? null : (lastLoad.current?.box ?? null);
-      if (from && minPct > 0 && movedShare(from, box, sightY) * 100 < minPct) return;
+      const from = now.isError ? null : (lastLoad.current?.box ?? null);
+      if (from && minPct > 0 && movedShare(from, box, now.sightY) * 100 < minPct) return;
       load(box);
     }, wait);
   };
@@ -224,28 +286,6 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     );
   }
 
-  const raw = map.data?.places ?? [];
-  // A bar pick is card one (the web's prependAnchorPlace); outside the set, its own card.
-  const anchored = anchor ? (raw.find((p) => p.id === anchor.id) ?? anchor.card ?? undefined) : undefined;
-  const places = anchored ? [anchored, ...raw.filter((p) => p.id !== anchored.id)] : raw;
-  // While typing, the results' pins replace the catalog's; a row with no
-  // point takes its catalog row's.
-  const resultPins: Pin[] = querying
-    ? (suggestions.data ?? []).flatMap((row) => {
-        if (row.kind === "location" || !row.onMesita || !row.mesitaId) return [];
-        const at = row.point ?? (() => {
-          const own = raw.find((p) => p.id === row.mesitaId);
-          return own && own.lat !== null && own.lng !== null ? { lat: own.lat, lng: own.lng } : null;
-        })();
-        return at ? [{ id: row.mesitaId, lat: at.lat, lng: at.lng, name: row.mainText, premier: row.premier, dot: false }] : [];
-      })
-    : [];
-  const catalogPins = pinsOf(places, map.data?.dots ?? []);
-  const pins = resultPins.length > 0 ? [...catalogPins.filter((p) => p.dot), ...resultPins] : catalogPins;
-  // The rail's card is the chosen place, else place one; a pin outside the
-  // rail can be chosen too.
-  const railPicked = places.find((p) => p.id === chosen) ?? places[0] ?? null;
-  const picked = { id: pins.some((p) => p.id === chosen) ? chosen : (railPicked?.id ?? null) };
   const zoom = region ? zoomOf(region, size.width) : START_ZOOM;
   const named =
     region && zoom >= PIN_NAME_MIN_ZOOM
@@ -263,9 +303,31 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const failed = map.isError;
   const filterLabel = shown === "near" || shown === "all" ? null : (chipsFor(false).find((row) => row.key === shown)?.label ?? null);
 
+  // The card the rail came to rest on is the selected pin.
+  const settle = (x: number) => {
+    const place = places[Math.round(x / page) - 1];
+    if (place && place.id !== picked.id) setChosen(place.id);
+  };
+
   const scrollToPlace = (id: string) => {
     const i = places.findIndex((p) => p.id === id);
     if (i >= 0) railRef.current?.scrollTo({ x: (i + 1) * page, animated: true });
+  };
+
+  // iPhone's Google map hands a marker tap to the SDK (select and centre), so
+  // pins there take no taps and the map's own tap finds the nearest pin.
+  const hitPin = (x: number, y: number) => {
+    const now = live.current;
+    if (!now.region) return;
+    const box = boxOf(now.region);
+    let best: { pin: Pin; d: number } | null = null;
+    for (const pin of now.pins) {
+      if (pin.dot) continue;
+      const at = screenOf(pin, box, now.size.width, now.size.height);
+      const d = Math.hypot(at.x - x, at.y - y);
+      if (d <= 22 && (!best || d < best.d)) best = { pin, d };
+    }
+    if (best) tapPin(best.pin);
   };
 
   const flyTo = (pin: Pin) => {
@@ -330,6 +392,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     const own = row.mesitaId ? raw.find((p) => p.id === row.mesitaId) : undefined;
     const point = own && own.lat !== null && own.lng !== null ? { lat: own.lat, lng: own.lng } : row.point;
     if (!point) {
+      renew();
       if (row.mesitaId) onOpen(row.mesitaId);
       return;
     }
@@ -337,7 +400,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
     renew();
     field.current?.blur();
     if (row.mesitaId) {
-      setAnchor({ id: row.mesitaId, point, card: own ?? row.card });
+      setAnchor({ id: row.mesitaId, point, card: own ?? row.card ?? stubOf(row, point) });
       setChosen(row.mesitaId);
     }
     moveTo(point, region);
@@ -372,7 +435,11 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         customMapStyle={searchMapStyle}
-        initialRegion={regionAt(location, START_ZOOM, size.width, size.height)}
+        initialCamera={{ center: { latitude: location.lat, longitude: location.lng }, zoom: START_ZOOM, heading: 0, pitch: 0 }}
+        moveOnMarkerPress={false}
+        onPress={(e) => {
+          if (Platform.OS === "ios") hitPin(e.nativeEvent.position.x, e.nativeEvent.position.y);
+        }}
         onMapReady={() => setMapReady(true)}
         // Any new move cancels a pending reload; the rest that ends it arms another.
         onRegionChange={() => {
@@ -427,7 +494,6 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
             // Nearby is Popular at the guest's own point (the chosen one without a fix).
             if (key === "near") {
               moveTo(you ?? location, region);
-              void map.refetch();
             }
           }}
           onMenu={onMenu}
@@ -503,10 +569,8 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
               disableIntervalMomentum
               contentOffset={{ x: page, y: 0 }}
               contentContainerStyle={styles.railContent}
-              onMomentumScrollEnd={(e) => {
-                const place = places[Math.round(e.nativeEvent.contentOffset.x / page) - 1];
-                if (place && place.id !== picked.id) setChosen(place.id);
-              }}
+              onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.x)}
+              onScrollEndDrag={(e) => settle(e.nativeEvent.contentOffset.x)}
             >
               {/* Page 0: the Add card, off-screen left while the rail rests on place one. */}
               <View style={[styles.pageBox, { width: page }]}>
@@ -571,6 +635,28 @@ function SearchLoading({ width, insetTop }: { width: number; insetTop: number })
   );
 }
 
+/** A pick the server sent no card for: the web's anchorPlaceFromPrediction stub. */
+function stubOf(row: Suggestion, point: Point): CatalogPlace {
+  return {
+    id: row.mesitaId ?? row.placeId,
+    slug: null,
+    name: row.mainText,
+    category: null,
+    photo: null,
+    priceLevel: null,
+    rating: null,
+    reviews: null,
+    hours: null,
+    timezone: null,
+    zone: null,
+    distanceKm: null,
+    isPremier: row.premier,
+    isAd: false,
+    lat: point.lat,
+    lng: point.lng,
+  };
+}
+
 function pinsOf(places: readonly CatalogPlace[], dots: readonly { id: string; lat: number; lng: number; premier: boolean }[]): Pin[] {
   const fromCards = places.flatMap((place) =>
     place.lat !== null && place.lng !== null
@@ -599,8 +685,8 @@ function PlaceMarker({ pin, selected, onPress }: { pin: Pin; selected: boolean; 
       anchor={{ x: 0.5, y: 0.5 }}
       tracksViewChanges={false}
       zIndex={z}
-      tappable={!pin.dot}
-      onPress={pin.dot ? undefined : onPress}
+      tappable={Platform.OS !== "ios" && !pin.dot}
+      onPress={pin.dot || Platform.OS === "ios" ? undefined : onPress}
     >
       <View style={[styles.pad, { width: pad, height: pad }]}>
         <View style={[pin.dot ? styles.dot : styles.disc, { backgroundColor: fill }]} />
@@ -660,7 +746,8 @@ const styles = StyleSheet.create({
     boxShadow: shadow.ring,
   },
   chrome: { position: "absolute", top: 0, left: 0, right: 0 },
-  loadingChrome: { paddingHorizontal: 12, gap: 12 },
+  // The chips' row sits 4 + 8 under the bar, as the real one.
+  loadingChrome: { paddingHorizontal: 12, gap: 4 },
   failed: { alignItems: "center", gap: 8 },
   errorBox: { alignSelf: "stretch", paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.xl, backgroundColor: colors.dangerSoft },
   rail: { position: "absolute", left: 0, right: 0, bottom: RAIL_BOTTOM },

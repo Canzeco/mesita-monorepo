@@ -27,8 +27,8 @@ export const discoveryKeys = {
   all: ["discovery"] as const,
   catalog: (point: Point | null, chip: ChipKey) =>
     ["discovery", "catalog", point?.lat ?? null, point?.lng ?? null, chip] as const,
-  map: (point: Point | null, chip: ChipKey) =>
-    ["discovery", "map", point?.lat ?? null, point?.lng ?? null, chip] as const,
+  map: (point: Point | null, chip: ChipKey, n = 0) =>
+    ["discovery", "map", point?.lat ?? null, point?.lng ?? null, chip, n] as const,
   saved: (guestId: string | null) => ["discovery", "saved", guestId] as const,
   locations: (input: string) => ["discovery", "locations", input] as const,
 };
@@ -74,10 +74,10 @@ export function useCachedRank(location: ActiveLocation | null, chip: ChipKey): C
 /** The map's places and its extra pins, for the families that are on, read
  *  at the sight (`at`, with the visible map). The last answer stays while a
  *  reload is in flight: the web dims the old cards, it never blanks them. */
-export function useMapPlaces(at: { point: Point; bounds: MapBounds | null } | null, chip: ChipKey) {
+export function useMapPlaces(at: { point: Point; bounds: MapBounds | null; n: number } | null, chip: ChipKey) {
   const familyKeys = questionOf(chip).familyKeys;
   return useQuery({
-    queryKey: discoveryKeys.map(at?.point ?? null, chip),
+    queryKey: discoveryKeys.map(at?.point ?? null, chip, at?.n ?? 0),
     queryFn: ({ signal }) => listPlaces(at?.point as Point, familyKeys, at?.bounds ?? null, signal),
     enabled: at !== null,
     placeholderData: keepPreviousData,
@@ -148,8 +148,9 @@ export function usePlaceSearch(input: string, sessionToken: string, member: bool
       return answer.rows;
     },
     enabled: member && settled.length >= 2,
-    // The last rows stay while the next search runs, as on the web.
-    placeholderData: keepPreviousData,
+    // The last rows stay while the next search runs, but never across a
+    // search that ended (a pick or a clear empties the list, as on the web).
+    placeholderData: (previous) => (term.length >= 2 && settled.length >= 2 ? previous : undefined),
   });
   // Waiting out the idle counts as searching (the web's spinner shows at once).
   return { ...query, waiting: term.length >= 2 && term !== settled };
