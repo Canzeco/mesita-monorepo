@@ -1,5 +1,5 @@
 import { FlashList } from "@shopify/flash-list";
-import { type ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, RefreshControl, Share, StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/button";
@@ -26,8 +26,6 @@ type Nav = {
   onMenu: () => void;
   onWelcome: () => void;
   onSocial?: () => void;
-  /** MESITA-5080: the unspent-credit row, drawn by the route (pay sits below discovery). */
-  reminder?: ReactNode;
 };
 
 export type HomeState =
@@ -151,7 +149,6 @@ export function HomeView(props: ViewProps) {
           </Pressable>
         </View>
       ) : null}
-      {props.reminder}
       <FamilyStrip chips={props.chips} chosen={props.chip} onSelect={props.onChip} onMenu={props.onMenu} />
       <Body {...props} />
     </View>
