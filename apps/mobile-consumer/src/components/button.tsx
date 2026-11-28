@@ -13,10 +13,12 @@ type Props = {
   kind?: "primary" | "secondary" | "quiet" | "danger";
   busy?: boolean;
   disabled?: boolean;
+  /** The web's default Button: 44 tall, fully round, px 24 (EmptyState's action). */
+  pill?: boolean;
   testID?: string;
 };
 
-export function Button({ label, icon, onPress, kind = "primary", busy = false, disabled = false, testID }: Props) {
+export function Button({ label, icon, onPress, kind = "primary", busy = false, disabled = false, pill = false, testID }: Props) {
   const off = busy || disabled;
   const ink = kind === "primary" || kind === "danger" ? "onInk" : "ink";
   return (
@@ -30,7 +32,7 @@ export function Button({ label, icon, onPress, kind = "primary", busy = false, d
         void Haptics.selectionAsync().catch(() => undefined);
         onPress();
       }}
-      style={({ pressed }) => [styles.box, styles[kind], pressed && pressedStyle, disabled && { opacity: disabledOpacity }]}
+      style={({ pressed }) => [styles.box, styles[kind], pill && styles.pill, pressed && pressedStyle, disabled && { opacity: disabledOpacity }]}
     >
       {busy ? (
         <Spinner onInk={ink === "onInk"} />
@@ -56,6 +58,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: radius.lg,
   },
+  pill: { minHeight: 44, paddingHorizontal: 24, borderRadius: radius.full },
   primary: { backgroundColor: colors.ink },
   secondary: { backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border },
   quiet: { backgroundColor: "transparent" },

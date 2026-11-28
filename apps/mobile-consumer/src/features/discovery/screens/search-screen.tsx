@@ -43,7 +43,7 @@ export function SearchScreen({ onChooseLocation, onMenu, onOpen, onReserve, onAd
   const toggle = useToggleSaved();
   const shareCode = useShareCode();
   const [drop, setDrop] = useState<CatalogPlace | null>(null);
-  const shown: ChipKey = chip === "saved" ? "near" : chip;
+  const shown: ChipKey = chip === "saved" || chip === "social" ? "near" : chip;
   const map = useMapPlaces(location ?? null, shown);
   const copy = useErrorCopy(map.error);
   const [term, setTerm] = useState("");

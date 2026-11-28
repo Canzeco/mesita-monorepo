@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { Button } from "@/components/button";
 import { Icon, type IconName } from "@/components/icon";
 import { Text } from "@/components/text";
-import { colors, radius, space } from "@/theme";
+import { colors, leading, radius, space, text, tracking } from "@/theme";
 
 type Props = {
   icon?: IconName;
@@ -18,7 +18,7 @@ export function EmptyState({ icon = "compass", title, message, action, testID = 
   return (
     <View style={styles.box} testID={testID}>
       <View style={styles.icon}>
-        <Icon strokeWidth={2.25} name={icon} size={28} />
+        <Icon strokeWidth={2} name={icon} size={28} />
       </View>
       <Text role="heading" style={styles.title}>
         {title}
@@ -30,7 +30,7 @@ export function EmptyState({ icon = "compass", title, message, action, testID = 
       ) : null}
       {action ? (
         <View style={styles.action}>
-          <Button label={action.label} onPress={action.onPress} />
+          <Button label={action.label} onPress={action.onPress} pill />
         </View>
       ) : null}
     </View>
@@ -47,7 +47,8 @@ const styles = StyleSheet.create({
     borderRadius: radius["2xl"],
     backgroundColor: colors.inkSoft,
   },
-  title: { marginTop: space.lg, textAlign: "center" },
-  message: { marginTop: 6, maxWidth: 260, textAlign: "center" },
+  // text-lg font-semibold tracking-tight; text-sm leading-relaxed (1.625), max 30ch.
+  title: { marginTop: space.lg, textAlign: "center", letterSpacing: text.lg.fontSize * tracking.tight },
+  message: { marginTop: 6, maxWidth: 260, textAlign: "center", lineHeight: text.sm.fontSize * leading.relaxed },
   action: { marginTop: 20 },
 });

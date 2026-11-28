@@ -53,6 +53,7 @@ test("a chip asks its own question, and Saved is a member's", () => {
   expect(questionOf("drinks")).toEqual({ rankMode: "family", familyKeys: ["drinks"] });
   expect(chipsFor(false).map((c) => c.key)).not.toContain("saved");
   expect(chipsFor(true)).toHaveLength(28);
+  expect(chipsFor(false, true).map((c) => c.key).slice(0, 3)).toEqual(["social", "near", "all"]);
 });
 
 test("saving shows at once and unsaving takes it back", () => {

@@ -34,20 +34,23 @@ jest.mock("react-native-maps", () => {
 
 const nothing = () => undefined;
 const error = { kind: "error" as const, message: "No.", offline: false, requestId: "r1" };
+const homeError = { kind: "error" as const, offline: false };
 const place = {
   id: "a", slug: null, name: "Pinto", category: "Bar", photo: null, priceLevel: 2, rating: 4.4, reviews: 583,
   hours: null, timezone: null, zone: null, distanceKm: 0.1, isPremier: true, isAd: true, lat: 25.6, lng: -100.3,
 };
 
 const home: HomeState[] = [
-  { kind: "loading" }, { kind: "no-location" }, { kind: "empty" }, { kind: "nothing-saved" }, error, { ...error, offline: true },
+  { kind: "loading" }, { kind: "no-location" }, { kind: "social" }, { kind: "empty" }, { kind: "nothing-saved" }, homeError, { ...homeError, offline: true },
   { kind: "places", places: [place] },
+  { kind: "places", places: [{ ...place, photo: null, googleOnly: true, googleId: "g1" }] },
+  { kind: "places", places: [{ ...place, reservable: true, offers: { sell: ["voucher_1000"], cashback_pct: 5 } }] },
 ];
 test.each(home)("Home: $kind", async (state) => {
   const view = await render(
-    <HomeView state={state} location="Roma" chips={chipsFor(true)} chip="near" onChip={nothing}
-      isSaved={() => true} onSave={nothing} onShare={nothing} refreshing={false} onRefresh={nothing} onEnd={nothing}
-      onOpenPlace={nothing} onChooseLocation={nothing} onMenu={nothing} onWelcome={nothing} />,
+    <HomeView state={state} location="Roma" chips={chipsFor(true, true)} chip="near" onChip={nothing}
+      isSaved={() => true} onSave={nothing} onShare={nothing} onGenerate={nothing} rank={null} refreshing={false} onRefresh={nothing} onEnd={nothing}
+      onOpenPlace={nothing} onReserve={nothing} onChooseLocation={nothing} onMenu={nothing} onWelcome={nothing} />,
   );
   expect(view.toJSON()).not.toBeNull();
 });

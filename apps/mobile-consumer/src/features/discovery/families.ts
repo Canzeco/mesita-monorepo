@@ -2,6 +2,8 @@
 // renamed; the pictures are Fluent Emoji Flat.
 
 export const CHIPS = [
+  // Social before Saved (MESITA-4758, MESITA-4802): Home's feed, not a pool.
+  { key: "social", label: "Social", picture: require("../../../assets/families/social.svg") },
   { key: "saved", label: "Saved", picture: require("../../../assets/families/saved.svg") },
   { key: "near", label: "Nearby", picture: require("../../../assets/families/near.svg") },
   { key: "all", label: "Popular", picture: require("../../../assets/families/all.svg") },
@@ -35,12 +37,12 @@ export const CHIPS = [
 export type Chip = (typeof CHIPS)[number];
 export type ChipKey = Chip["key"];
 
-const SPECIAL: readonly ChipKey[] = ["saved", "near", "all"];
+const SPECIAL: readonly ChipKey[] = ["social", "saved", "near", "all"];
 export const isSpecial = (key: ChipKey) => SPECIAL.includes(key);
 
-/** Saved is a member's. */
-export function chipsFor(member: boolean): readonly Chip[] {
-  return CHIPS.filter((c) => member || c.key !== "saved");
+/** Saved is a member's; Social is Home's only (Search has neither). */
+export function chipsFor(member: boolean, home = false): readonly Chip[] {
+  return CHIPS.filter((c) => (member || c.key !== "saved") && (home || c.key !== "social"));
 }
 
 export type Question = { rankMode: "nearby" | "popular" | "family"; familyKeys: string[] };
@@ -48,6 +50,6 @@ export type Question = { rankMode: "nearby" | "popular" | "family"; familyKeys: 
 /** What a chip asks the catalog. */
 export function questionOf(key: ChipKey): Question {
   if (key === "near") return { rankMode: "nearby", familyKeys: [] };
-  if (key === "all" || key === "saved") return { rankMode: "popular", familyKeys: [] };
+  if (key === "all" || key === "saved" || key === "social") return { rankMode: "popular", familyKeys: [] };
   return { rankMode: "family", familyKeys: [key] };
 }
