@@ -1,4 +1,4 @@
-// pnpm sim [--width 390|430|360] [--build <id>] — start the Expo Simulators
+// pnpm sim [--width 390|440] [--build <id>] — start the Expo Simulators
 // session `pair` and `shot` drive: the phone of that width, holding the newest
 // finished build that runs on it (or the one named). It stops by itself after
 // 15 idle minutes.

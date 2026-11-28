@@ -22,20 +22,9 @@ export const DEVICES = {
     top: 47,
     bottom: 34,
   },
-  430: {
-    platform: "ios",
-    device: "iPhone 16 Plus",
-    profile: "simulator",
-    top: 59,
-    bottom: 34,
-  },
-  360: {
-    platform: "android",
-    device: "small_phone",
-    profile: "preview",
-    top: 24,
-    bottom: 0,
-  },
+  // Expo has no 430 iPhone (its large one is 440) and no 360 Android phone (its
+  // smallest is 412): Android is not captured yet (MESITA-5106 names the follow-up).
+  440: { platform: "ios", device: "iPhone 17 Pro Max", profile: "simulator", top: 62, bottom: 34 },
 };
 
 export class PairError extends Error {

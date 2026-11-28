@@ -9,10 +9,10 @@ import { isAbsolute, join } from "node:path";
 import { device, EAS, exitWith, PairError, readSession, ROOT, SESSION_FILE } from "./device.mjs";
 import { PAIR_STATES, stubAnswer } from "../src/lib/pair-state.ts";
 
-const HELP = `pnpm pair <route> [--width 390|430|360] [--state ${PAIR_STATES.join("|")}] [--out dir] [--web url]
+const HELP = `pnpm pair <route> [--width 390|440] [--state ${PAIR_STATES.join("|")}] [--out dir] [--web url]
 
 The three commands:
-  pnpm sim [--width 390|430|360]   start the phone (an Expo Simulators session; it stops after 15 idle minutes)
+  pnpm sim [--width 390|440]   start the phone (an Expo Simulators session; it stops after 15 idle minutes)
   pnpm pair <route>                capture the pair
   pnpm pair --judge <pair.png>     print the judge's prompt for that pair, to hand to a fresh agent
 
@@ -23,7 +23,8 @@ Both sides are the same test guest at the same pinned location, drawn at the
 same scale with motion stopped, and compared inside the phone's safe areas;
 the web's own home-indicator strip is cropped.
 
-  --width  390 (iPhone, the default), 430 (large iPhone), 360 (Android). The
+  --width  390 (iPhone, the default), 440 (large iPhone; Expo has no 430 phone). Android is
+           not captured yet: Expo's emulators have no 360 phone. The
            running session must be that phone: pnpm sim --width <n>.
   --state  main, or a forced one: loading, empty, error, long. The phone takes
            it from the link (only a build with EXPO_PUBLIC_PAIR_STATES has
@@ -34,7 +35,7 @@ the web's own home-indicator strip is cropped.
            the web: that PR's preview address, share link included.
 
 Errors go to stderr as TYPE: what happened, then the command that fixes it:
-  NO SIM SESSION, NO REUSABLE BUILD, WRONG WIDTH, SIGN-IN FAILED,
+  NO SIM SESSION, NO REUSABLE BUILD, WRONG WIDTH, WRONG STATE, SIGN-IN FAILED,
   WEB COOKIE MINT FAILED, ROUTE NOT FOUND.
 `;
 
@@ -144,36 +145,58 @@ function capturePhone(session, opts, route, file) {
   const { latitude, longitude } = LOCATION;
   device(["settings", "location", "set", String(latitude), String(longitude)]);
 
-  if (!session.signedIn) {
-    const flow = device(["replay", ".maestro/pair/sign-in.yaml", "--maestro", "--platform", session.platform], {
-      seconds: 180,
-      env: {
-        AD_VAR_MAESTRO_TEST_PHONE: process.env.MAESTRO_TEST_PHONE,
-        AD_VAR_MAESTRO_TEST_CODE: process.env.MAESTRO_TEST_CODE,
-      },
-    });
+  const signIn = () => {
+    const replay = () =>
+      device(
+        ["replay", ".maestro/pair/sign-in.yaml", "--maestro", "--platform", session.platform, "--timeout", "200000"],
+        {
+          seconds: 220,
+          env: {
+            AD_VAR_MAESTRO_TEST_PHONE: process.env.MAESTRO_TEST_PHONE,
+            AD_VAR_MAESTRO_TEST_CODE: process.env.MAESTRO_TEST_CODE,
+          },
+        },
+      );
+    // A phone that has just started is slow and can stop halfway: once more, from a clean app.
+    let flow = replay();
     if (!flow.ok) {
-      // The step that failed, never the flow's output: it may hold what was typed.
-      const step = /\.yaml:line (\d+)/.exec(flow.out)?.[1];
+      device(["settings", "clear-app-state", APP_ID]);
+      device(["settings", "permission", "grant", "location", "--app", APP_ID]);
+      flow = replay();
+    }
+    if (!flow.ok) {
+      // The driver's own error line, which never holds what was typed, with every number masked.
+      const why = (/Error \([A-Z_]+\): [^\n]*/.exec(flow.out)?.[0] ?? "").replace(/\d{4,}/g, "…").slice(0, 240);
       throw new PairError(
         "SIGN-IN FAILED",
-        `The test guest did not reach Home${step ? ` (sign-in.yaml line ${step})` : ""}. The code may have lapsed: Supabase › Auth › Phone › Test phone numbers.`,
+        `The test guest did not reach Home. ${why} The code may have lapsed: Supabase › Auth › Phone › Test phone numbers.`,
         "pnpm pair /",
       );
     }
     session.signedIn = true;
     writeFileSync(SESSION_FILE, JSON.stringify(session, null, 2));
-  }
-
+  };
   const state = opts.state === "main" ? "" : `${route.phone.includes("?") ? "&" : "?"}pairState=${opts.state}`;
-  const opened = device(["open", APP_ID, `mesita:/${route.phone}${state}`, "--platform", session.platform]);
-  if (!opened.ok) throw new PairError("NO SIM SESSION", "The phone did not open the link.", fix);
-  // iPhone asks before it opens a test link, a moment after the link is sent.
-  for (let i = 0; session.platform === "ios" && i < 3; i++) {
-    if (/Open in/.test(device(["alert", "get"]).out)) {
-      device(["alert", "accept"]);
-      break;
+  const open = () => {
+    const opened = device(["open", APP_ID, `mesita:/${route.phone}${state}`, "--platform", session.platform]);
+    if (!opened.ok) throw new PairError("NO SIM SESSION", "The phone did not open the link.", fix);
+    // iPhone asks before it opens a test link, a moment after the link is sent.
+    for (let i = 0; session.platform === "ios" && i < 3; i++) {
+      if (/Open in/.test(device(["alert", "get"]).out)) {
+        device(["alert", "accept"]);
+        break;
+      }
     }
+    // What a signed-out guest sees: the Sign tab, Welcome, or the sign-in page.
+    return !/\[button\] "Sign"|"Just browse"|"Text me the code"/.test(device(["snapshot", "-i"]).out);
+  };
+
+  if (!session.signedIn) signIn();
+  if (!open()) {
+    // The session ended since the last pair (a day passed, or the app was reset).
+    signIn();
+    if (!open())
+      throw new PairError("SIGN-IN FAILED", "The phone shows a signed-out screen after signing in.", "pnpm pair /");
   }
 
   // Motion is stopped by waiting it out: two captures in a row must be equal.

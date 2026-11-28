@@ -13,7 +13,12 @@ appId: com.mesita.consumer
     commands:
       - launchApp:
           permissions: { location: allow }
-- extendedWaitUntil: { visible: "Home", timeout: 30000 }
+# A phone that has just started can still ask, whatever launchApp was told.
+- runFlow:
+    when: { visible: "Allow While Using App" }
+    commands:
+      - tapOn: "Allow While Using App"
+- extendedWaitUntil: { visible: "Home", timeout: 60000 }
 - runFlow:
     when: { visible: "Just browse" }
     commands:
