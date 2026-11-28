@@ -67,11 +67,12 @@ function readFromPay(): boolean {
  *  whatever this says (the pane decides that). */
 function tabOf(rewards: string | null): OffersTab {
   if (rewards === "cashback") return "pay";
+  if (rewards === "post") return "post";
   return "prepay";
 }
 
 /** The `?rewards=` value a tab writes back. */
-const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", pay: "cashback" };
+const REWARDS_PARAM: Record<OffersTab, string> = { prepay: "prepayment", pay: "cashback", post: "post" };
 
 // THE OFFERS PAGE (MESITA-4379, Pato: "when i click to see a profile, why the
 // fuck are you showing me that … why it needs to pass across that page"):
