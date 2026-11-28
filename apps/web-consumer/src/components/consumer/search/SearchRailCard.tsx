@@ -186,14 +186,13 @@ export function RailCard({
             <PlaceBannerRow
               name={place.name}
               placeId={place.id}
-              slides={slides}
+              offers={google ? null : (place.offers as OfferInput | null | undefined)}
               hours={place.hours}
               timezone={place.timezone}
               reservable={reservable}
               reserveHref={placeReservePath(place.slug || place.id)}
               offerHref={placeHref(place.slug || place.id)}
               premier={premier}
-              cashbackPct={(place.offers as OfferInput | null | undefined)?.cashback_pct ?? null}
               className="gap-0"
               cellClassName={RAIL_CARD_STRIP}
             />
