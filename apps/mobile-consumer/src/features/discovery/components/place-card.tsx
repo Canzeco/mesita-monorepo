@@ -83,8 +83,9 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
             <View style={styles.flex} />
           </View>
         ) : null}
-        {/* Prepay left, Pay right, in one black box along the photo's
-            bottom (MESITA-5123, MESITA-5125). */}
+        {/* Prepay left, Pay right, straight on the photo 8 in; each percent
+            in a small black box (MESITA-5123, MESITA-5128). Under 360 the two
+            stack, each the full width. */}
         {offers.length > 0 ? (
           <View style={styles.offerBox} pointerEvents="none" accessibilityLabel={offers.map((o) => o.words).join(", ")}>
             {offers.map((o) => (
@@ -180,20 +181,19 @@ export function PlaceCard({ place, saved, onOpen, onSave, onShare, onGenerate, o
   );
 }
 
-/** One offer on the photo. The web's minmax(max-content, 1fr): never narrower
- *  than its words; equal halves where both fit, else Prepay keeps its words
- *  and Pay takes the rest. */
+/** One offer on the photo, the web's min-w-max flex-[1_1_0]: never narrower
+ *  than its content, equal halves where both fit, else they wrap and stack. */
 function OfferCell({ offer }: { offer: CardOffer }) {
-  const [words, setWords] = useState(0);
+  const [content, setContent] = useState(0);
   const prepay = offer.key === "prepay";
   return (
-    <View style={[styles.offer, prepay ? styles.prepay : styles.pay, words > 0 && { minWidth: Math.ceil(words) + 8 }]}>
-      <Text
-        style={[styles.offerWords, prepay ? styles.onPrepay : styles.onPay]}
-        onTextLayout={(e) => setWords(Math.max(0, ...e.nativeEvent.lines.map((l) => l.width)))}
-      >
-        {offer.words}
-      </Text>
+    <View style={[styles.offer, prepay ? styles.prepay : styles.pay, content > 0 && { minWidth: Math.ceil(content) + 6 }]}>
+      <View style={styles.offerInner} onLayout={(e) => setContent(e.nativeEvent.layout.width)}>
+        <Text style={[styles.offerWords, prepay ? styles.onPrepay : styles.onPay]}>{offer.word}</Text>
+        <View style={styles.pct}>
+          <Text style={styles.pctWords}>{`${offer.pct}%`}</Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -249,18 +249,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.vip,
   },
   premierWord: { ...text.sm, fontWeight: weight.semibold, color: colors.onPremier },
-  offerBox: {
-    position: "absolute",
-    left: STEP,
-    right: STEP,
-    bottom: STEP,
-    flexDirection: "row",
-    gap: 4,
-    padding: 4,
-    borderRadius: radius.xl,
-    backgroundColor: colors.offerBox,
-  },
-  offer: { flexGrow: 1, flexBasis: 0, height: BUTTON, alignItems: "center", justifyContent: "center", paddingHorizontal: 4, borderRadius: radius.lg },
+  offerBox: { position: "absolute", left: STEP, right: STEP, bottom: STEP, flexDirection: "row", flexWrap: "wrap", gap: 4 },
+  offer: { flexGrow: 1, flexShrink: 1, flexBasis: 0, height: BUTTON, alignItems: "center", justifyContent: "center", paddingHorizontal: 3, borderRadius: radius.lg },
+  // gap-0.5 from word to percent; the content row is measured, never squeezed.
+  offerInner: { flexDirection: "row", alignItems: "center", gap: 2, flexShrink: 0 },
+  // rounded, bg-neutral-950, px-[3px] py-0.5, leading-none, white.
+  pct: { paddingHorizontal: 3, paddingVertical: 2, borderRadius: radius.base, backgroundColor: colors.percentBox },
+  pctWords: { ...text.xs, lineHeight: text.xs.fontSize, fontWeight: weight.semibold, fontVariant: ["tabular-nums"], color: colors.onInk },
   prepay: { backgroundColor: colors.prepay },
   pay: { backgroundColor: colors.pay },
   offerWords: { ...text.xs, fontWeight: weight.semibold, fontVariant: ["tabular-nums"] },

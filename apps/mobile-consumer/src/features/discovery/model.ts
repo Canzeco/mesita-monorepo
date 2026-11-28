@@ -133,9 +133,11 @@ export function placeholderOf(p: Pick<CatalogPlace, "name" | "googleType">): Pla
   return { kind: "initial", text: p.name.trim().slice(0, 1).toUpperCase() || "·" };
 }
 
-export type CardOffer = { key: "prepay" | "pay"; words: string };
+/** `words` is the whole label (spoken); `word` and `pct` its two halves, for
+ *  the percent's black box (MESITA-5128). */
+export type CardOffer = { key: "prepay" | "pay"; words: string; word: string; pct: number };
 
-/** The photo's offers, Prepay left and Pay right (the web's OfferDisplay,
+/** The photo's offers, Prepay left and Pay right (the web's cardOfferBoxes,
  *  MESITA-5123): Medium's bonus where the place sells it, else the best
  *  standard voucher on sale; Pay is the highest cashback line. None for a
  *  Google-only row. */
@@ -147,8 +149,8 @@ export function cardOffers(p: Pick<CatalogPlace, "offers" | "googleOnly">): Card
     : Math.max(0, ...Object.keys(STANDARD_BONUS).filter((k) => offers.sell.includes(k)).map((k) => voucherPct(offers, k)));
   const pay = offers.cashback_pct ?? 0;
   return [
-    ...(prepay > 0 ? [{ key: "prepay" as const, words: `Prepay ${prepay}%` }] : []),
-    ...(pay > 0 ? [{ key: "pay" as const, words: `Pay ${pay}%` }] : []),
+    ...(prepay > 0 ? [{ key: "prepay" as const, words: `Prepay ${prepay}%`, word: "Prepay", pct: prepay }] : []),
+    ...(pay > 0 ? [{ key: "pay" as const, words: `Pay ${pay}%`, word: "Pay", pct: pay }] : []),
   ];
 }
 

@@ -39,6 +39,8 @@ export const colors = {
   /** Home's photo: the black box Prepay and Pay sit in (MESITA-5125), and
    *  the Premier pill's edge and seal. */
   offerBox: "#141414",
+  /** The percent's small black box on an offer (MESITA-5128). */
+  percentBox: "#0a0a0a",
   /** Ink on the Premier gold (the web's text-neutral-950). */
   onPremier: "#0a0a0a",
   /** The temporary score label's ground (black at 70%). */

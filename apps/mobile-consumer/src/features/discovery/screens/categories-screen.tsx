@@ -12,7 +12,10 @@ import { useActiveLocation } from "../location-context";
  *  an upright line, then the specials (the web's CategoriesModal). */
 export function CategoriesScreen({ onClose, home = true }: { onClose: () => void; home?: boolean }) {
   const { chip, selectChip } = useActiveLocation();
-  const chips = chipsFor(useSession().guestId !== null, home);
+  // Saved is Home's (Search's window has Nearby and Popular only).
+  const chips = chipsFor(useSession().guestId !== null && home, home);
+  const lead = chips.filter((c) => c.key === "social");
+  const saved = chips.filter((c) => c.key === "saved");
   const families = chips.filter((c) => !isSpecial(c.key));
   // Rows of five equal columns, 2 apart: the web's grid-cols-5 gap-x-0.5.
   const rows = Array.from({ length: Math.ceil(families.length / 5) }, (_, i) => families.slice(i * 5, i * 5 + 5));
@@ -27,9 +30,13 @@ export function CategoriesScreen({ onClose, home = true }: { onClose: () => void
     <Window title="Categories" label="Categories" onClose={onClose}>
       <ScrollView>
         <View style={styles.specials}>
-          {chips.filter((c) => c.key === "social").map(draw)}
-          {home ? <View style={styles.upright} /> : null}
-          {chips.filter((c) => isSpecial(c.key) && c.key !== "social").map(draw)}
+          {/* Three groups, a line after each that is there (MESITA-5131):
+              Social | Saved | Nearby Popular. */}
+          {lead.map(draw)}
+          {lead.length > 0 ? <View style={styles.upright} /> : null}
+          {saved.map(draw)}
+          {saved.length > 0 ? <View style={styles.upright} /> : null}
+          {chips.filter((c) => isSpecial(c.key) && c.key !== "social" && c.key !== "saved").map(draw)}
         </View>
         <View style={styles.rule} />
         <View style={styles.grid}>
