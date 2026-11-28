@@ -169,12 +169,18 @@ export function PlaceBannerRow({
   reservable,
   reserveLabel,
   reserveDetail,
+  premier = false,
   className,
   cellClassName,
 }: {
   name: string;
   placeId?: string;
   slides: OfferSlide[];
+  /** THREE COLOURS ON TOP (Pato, 2026-11-27, MESITA-5094, design 1 of 5:
+   *  "Premier, Reserve, Offers … three things on the top, three colours is
+   *  okay, and that's it"): a gold Premier segment first. Search's map card
+   *  only; Home keeps Premier on its photo. A label: a tap opens nothing. */
+  premier?: boolean;
   /** Read by the place screen's times; the still card does not need them. */
   hours?: unknown;
   timezone?: string | null;
@@ -192,21 +198,36 @@ export function PlaceBannerRow({
   const getSupabase = useLazyBrowserSupabase();
   const canOffer = slides.length > 0;
   const showReserve = reservable || holding;
-  if (!showReserve && !canOffer) return null;
-  const cells: Array<"reserve" | "offer"> =
-    showReserve && canOffer
-      ? ["reserve", "offer"]
-      : showReserve
-        ? ["reserve"]
-        : ["offer"];
+  if (!showReserve && !canOffer && !premier) return null;
+  const cells: Array<"premier" | "reserve" | "offer"> = [
+    ...(premier ? (["premier"] as const) : []),
+    ...(showReserve ? (["reserve"] as const) : []),
+    ...(canOffer ? (["offer"] as const) : []),
+  ];
   const offer = slides[0];
   return (
     <div
       className={cn("flex w-full", className)}
-      data-place-banner={cells.length === 2 ? "both" : cells[0]}
+      data-place-banner={cells.length === 1 ? cells[0] : cells.includes("premier") ? cells.join("-") : "both"}
     >
       {cells.map((kind, i) =>
-        kind === "reserve" ? (
+        kind === "premier" ? (
+          <span
+            key={`${kind}-${i}`}
+            className={cn(
+              CARD_BUTTON_BOX,
+              BANNER_CELL,
+              "min-w-0 flex-1",
+              "bg-[#E9C46A] text-neutral-950",
+              cellClassName,
+              "shrink",
+            )}
+            data-card-premier
+          >
+            <PremierRosette className="h-4 w-4 shrink-0" fill="#141414" check="#fff" decorative />
+            Premier
+          </span>
+        ) : kind === "reserve" ? (
           <PushLink
             key={`${kind}-${i}`}
             href={reserveHref}
