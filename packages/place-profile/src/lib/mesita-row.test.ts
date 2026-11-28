@@ -63,3 +63,27 @@ describe("mesitaRowState", () => {
     expect(mesitaRowState({ money: undefined }, true).offers).toEqual({ works: false, loading: true, slides: [] });
   });
 });
+
+// The place screen's Offers box (MESITA-5120): one offer a slide, what you
+// do over what you get, with the place's real prices and bonuses.
+describe("rowOfferSlides", () => {
+  it("reads Pay, then each voucher on sale by price", () => {
+    const slides = mesitaRowState({
+      money: {
+        ...BASE,
+        sell: ["voucher_1000", "voucher_200"],
+        catalog: {
+          voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 },
+          voucher_1000: { price_cents: 100000, bonus_cents: 40000, credit_cents: 140000, available_after_sec: 3600 },
+        },
+        cashback: { welcome_bps: 1000, returning_bps: 500, returning_vip_bps: 0, welcome_vip_bps: 0, line: "returning" },
+      },
+    }).offers.slides;
+    expect(slides.map((s) => `${s.lead} / ${s.pillShort}`)).toEqual([
+      "Pay / 5% Cashback",
+      "Prepay $200MX / +10% Bonus",
+      "Prepay $1,000MX / +40% Bonus",
+    ]);
+    expect(slides.map((s) => s.voucher ?? null)).toEqual([null, "voucher_200", "voucher_1000"]);
+  });
+});

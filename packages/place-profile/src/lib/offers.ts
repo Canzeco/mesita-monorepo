@@ -197,8 +197,50 @@ export function offersLabel(name: string, slides: OfferSlide[]): string {
   return `Offers at ${name}: ${slides.map((s) => s.spoken).join("; ")}`;
 }
 
-/** THE PLACE SCREEN ROW'S OFFER WORDS (Pato, MESITA-4184): the same slides
- *  as Home since MESITA-4219, Prepay first, "N% Bonus". */
-export function rowOfferSlides(offers: OfferInput | null | undefined): OfferSlide[] {
-  return offerSlides(offers);
+/** "$200MX", "$1,000MX": a whole price, Pato's way of writing pesos. */
+function priceWords(cents: number, currency: string | undefined): string {
+  const n = Math.round(cents / 100).toLocaleString("en-US");
+  const c = (currency ?? "mxn").toUpperCase();
+  return c === "MXN" ? `$${n}MX` : `$${n} ${c}`;
+}
+
+/** THE PLACE SCREEN ROW'S OFFER WORDS: ONE OFFER A SLIDE (Pato, 2026-11-28,
+ *  MESITA-5120: "Prepay $200MX / 5% cashback … or pay y / 20% bonus. top
+ *  (for pay or prepay x), bottom for (amount and type)"). Laid out like the
+ *  Reserve box's TODAY / 15:00: the small caption says what you do (PAY,
+ *  PREPAY $200MX), the big line what you get (5% Cashback, +10% Bonus).
+ *  Pay first, then each voucher on sale, smallest first. Cashback reads the
+ *  rate of this guest's next bill when the server names its line, else the
+ *  range of the lines that are on. A voucher's bonus is its catalog line's
+ *  (the place's pick), else voucherPct. Home and Search keep offerSlides. */
+export function rowOfferSlides(
+  offers: (OfferInput & { catalog?: Partial<Record<string, { price_cents: number; bonus_cents: number }>>; currency?: string }) | null | undefined,
+): OfferSlide[] {
+  if (!offers) return [];
+  const out: OfferSlide[] = [];
+  const c = offers.cashback;
+  const lineBps = c?.line === "welcome" ? c.welcome_bps : c?.line === "returning" ? c.returning_bps : 0;
+  const range = lineBps > 0 ? ([lineBps / 100, lineBps / 100] as [number, number]) : cashbackRange(offers);
+  if (range) {
+    const rate = range[0] === range[1] ? `${range[1]}%` : `${range[0]}–${range[1]}%`;
+    const words = `${rate} Cashback`;
+    out.push({ key: "cashback", lead: "Pay", pill: words, pillShort: words, short: "Pay", spoken: `Pay, ${words.toLowerCase()}`, section: "cashback", tone: CASHBACK_TONE });
+  }
+  const sell = new Set(offers.sell);
+  const vouchers = Object.keys(STANDARD_BONUS)
+    .filter((key) => sell.has(key))
+    .map((key) => {
+      const line = offers.catalog?.[key];
+      const price = line?.price_cents ?? Number(key.replace("voucher_", "")) * 100;
+      const pct = line && line.price_cents > 0 ? Math.round((line.bonus_cents / line.price_cents) * 100) : voucherPct(offers, key);
+      return { key, price, pct };
+    })
+    .filter((v) => v.pct > 0 && v.price > 0)
+    .sort((a, b) => a.price - b.price);
+  for (const v of vouchers) {
+    const lead = `Prepay ${priceWords(v.price, offers.currency)}`;
+    const words = `+${v.pct}% Bonus`;
+    out.push({ key: `prepay-${v.key}`, lead, pill: words, pillShort: words, short: "Prepay", spoken: `${lead}, ${words.toLowerCase()}`, section: "prepayment", tone: PURPLE, bonus: v.pct, voucher: v.key });
+  }
+  return out;
 }
