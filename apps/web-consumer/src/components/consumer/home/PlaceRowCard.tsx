@@ -289,8 +289,7 @@ export function PlaceRowCard({
             placeId={place.id}
             // RESERVE ALONE, THE FULL WIDTH (Pato, 2026-11-27, MESITA-5091:
             // "reservations must be 100%, never share with offers"): the
-            // offers live on the photo (OfferDisplay), so no Offers button.
-            slides={[]}
+            // offers live on the photo (OfferDisplay), so this row passes none.
             hours={place.hours}
             timezone={place.timezone}
             reservable={reservable}
